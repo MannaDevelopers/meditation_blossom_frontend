@@ -76,9 +76,9 @@ android {
     ndkVersion rootProject.ext.ndkVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.mannadev.meditation"
+    namespace "app.mannadev.meditation"
     defaultConfig {
-        applicationId "com.mannadev.meditation"
+        applicationId "app.mannadev.meditation"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

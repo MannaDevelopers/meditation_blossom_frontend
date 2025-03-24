@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-      android:name=".MainApplication"
+      android:name="app.mannadev.meditation.MainApplication"
       android:label="@string/app_name"
       android:icon="@mipmap/ic_launcher"
       android:roundIcon="@mipmap/ic_launcher_round"
@@ -11,8 +11,7 @@
       android:theme="@style/AppTheme"
       android:supportsRtl="true">
       <activity
-        android:name=".MainActivity"
-        android:label="@string/app_name"
+        android:name="app.mannadev.meditation.MainActivity"
         android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
         android:launchMode="singleTask"
         android:windowSoftInputMode="adjustResize"

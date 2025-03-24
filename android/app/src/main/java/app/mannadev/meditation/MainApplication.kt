@@ -1,4 +1,4 @@
-package com.mannadev.meditation
+package app.mannadev.meditation
 
 import android.app.Application
 import com.facebook.react.PackageList

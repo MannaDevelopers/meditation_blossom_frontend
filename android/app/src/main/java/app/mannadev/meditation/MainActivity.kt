@@ -1,4 +1,4 @@
-package com.mannadev.meditation
+package app.mannadev.meditation
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
