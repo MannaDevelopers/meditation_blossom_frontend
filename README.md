@@ -1,5 +1,19 @@
 # 만개하다
 
+## PR 및 브랜치 정책
+
+### PR 정책
+- PR 제목은 `[SCRUM-n]` 또는 `[HOTFIX]`로 시작해야 합니다.
+- PR 템플릿을 사용하여 작업 내용을 명확히 작성해야 합니다.
+- PR은 최소 1명의 승인이 필요합니다.
+- Squash and Merge 방식으로 병합합니다.
+
+### 브랜치 정책 (Git Flow)
+- `main`: 프로덕션 브랜치
+- `hotfix`: 긴급 버그 수정 브랜치
+- `dev`: 개발 브랜치
+- `feature/task_id`: 기능 개발 브랜치 (예: feature/SCRUM-12)
+
 ## 안드로이드 빌드 가이드
 
 ### 1. GitHub Actions를 통한 자동 빌드
