@@ -1,0 +1,21 @@
+name: PR Title Check
+
+on:
+  pull_request:
+    types: [opened, edited]
+
+permissions:
+  pull-requests: read
+  contents: read
+
+jobs:
+  check-pr-title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title format
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          subjectPattern: ^(?:\[SCRUM-\d+\]|\[HOTFIX\]).+$
+          subjectPatternError: 'PR 제목은 "[SCRUM-숫자] 설명" 또는 "[HOTFIX] 설명" 형식이어야 합니다. 예: [SCRUM-123] 로그인 기능 구현 또는 [HOTFIX] 로그인 버그 수정' 
