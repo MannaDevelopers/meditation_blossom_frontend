@@ -1,4 +1,4 @@
-name: PR Title Check
+name: PR Title Format Check
 
 on:
   pull_request:
@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   check-pr-title:
+    name: Validate PR Title Format
     runs-on: ubuntu-latest
     steps:
       - name: Check PR title format
