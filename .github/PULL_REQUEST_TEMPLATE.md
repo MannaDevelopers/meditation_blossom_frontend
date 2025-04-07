@@ -4,6 +4,10 @@
 <!-- Jira 이슈 링크를 포함하여 작업 내용을 설명해주세요 -->
 - [SCRUM-#] Ticket제목과 링크를 적어주세요.
 
+## Jira 티켓
+<!-- Jira 티켓 링크를 넣어주세요 -->
+🔗 [SCRUM-#](https://blossom-scrum.atlassian.net/browse/SCRUM-#)
+
 ## 변경 사항
 ### 기능 추가
 - 
