@@ -1,5 +1,8 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 // secrets.properties 파일 로드 함수
-fun getSecrets(): Properties? {
+fun loadSecrets(): Properties? {
     val secretsFile = rootProject.file("app/secrets.properties")
     if (!secretsFile.exists()) {
         if (gradle.startParameter.taskNames.any { it.contains("Release") || it.contains("release") }) {
@@ -12,7 +15,7 @@ fun getSecrets(): Properties? {
     return secrets
 }
 
-val secrets = getSecrets()
+val secrets = loadSecrets()
 
 plugins {
     id("com.android.application")
