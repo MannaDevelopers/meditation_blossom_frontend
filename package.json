@@ -12,6 +12,7 @@
   "dependencies": {
     "@react-native-firebase/app": "^21.13.0",
     "@react-native-firebase/firestore": "^21.13.0",
+    "false": "^0.0.4",
     "react": "19.0.0",
     "react-native": "0.78.1"
   },

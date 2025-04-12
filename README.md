@@ -1,3 +1,75 @@
+# 만개하다
+
+## PR 및 브랜치 정책
+
+### PR 정책
+- PR 제목은 `[SCRUM-n]` 또는 `[HOTFIX]`로 시작해야 합니다.
+- PR 템플릿을 사용하여 작업 내용을 명확히 작성해야 합니다.
+- PR은 최소 1명의 승인이 필요합니다.
+- Squash and Merge 방식으로 병합합니다.
+
+### 브랜치 정책 (Git Flow)
+- `main`: 프로덕션 브랜치
+- `hotfix`: 긴급 버그 수정 브랜치
+- `dev`: 개발 브랜치
+- `feature/task_id`: 기능 개발 브랜치 (예: feature/SCRUM-12)
+
+## 안드로이드 빌드 가이드
+
+### 1. GitHub Actions를 통한 자동 빌드
+릴리스 빌드는 GitHub Actions를 통해 자동으로 생성됩니다.
+
+#### 빌드 방법
+1. 태그 생성 및 푸시
+```bash
+git tag v1.0.0  # 버전 형식: v{major}.{minor}.{patch}
+git push origin v1.0.0
+```
+2. GitHub Actions가 자동으로 실행되어 릴리스를 생성합니다.
+3. 생성된 릴리스는 GitHub 저장소의 Releases 페이지에서 확인할 수 있습니다.
+
+### 2. 로컬 환경에서 빌드
+로컬에서 직접 빌드하기 위해서는 다음 파일들이 필요합니다:
+
+#### 필요한 파일
+- `android/app/release.keystore`
+- `android/app/secrets.properties`
+
+> 💡 위 파일들은 보안상의 이유로 git에 포함되어 있지 않습니다.
+> Discord의 `group-android-widget` 채널에서 파일을 받을 수 있습니다.
+
+#### 설정 방법
+
+1. **release.keystore 파일 생성**
+```bash
+# Discord에서 받은 BASE64_SECRETS_STRING을 사용하여 생성
+echo "$BASE64_SECRETS_STRING" | base64 --decode > android/app/release.keystore
+```
+
+2. **secrets.properties 파일 생성**
+```properties
+# android/app/secrets.properties 파일 생성 후 아래 내용 입력
+STORE_FILE=release.keystore
+STORE_PASSWORD=<비밀번호>
+KEY_ALIAS=<키 별칭>
+KEY_PASSWORD=<키 비밀번호>
+```
+
+> ⚠️ 실제 값은 Discord 채널에서 확인하세요.
+
+#### 빌드 실행
+```bash
+# 프로젝트 루트 디렉토리에서
+cd android
+./gradlew bundleRelease  # AAB 파일 생성
+# 또는
+./gradlew assembleRelease  # APK 파일 생성
+```
+
+생성된 파일 위치:
+- AAB: `android/app/build/outputs/bundle/release/app-release.aab`
+- APK: `android/app/build/outputs/apk/release/app-release.apk`
+
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
 # Getting Started
@@ -12,9 +84,9 @@ To start Metro, run the following command from the _root_ of your React Native p
 
 ```bash
 # using npm
-npm start
+# npm start
 
-# OR using Yarn
+# npm 대신 yarn 을 쓰는걸 권장합니다.
 yarn start
 ```
 
@@ -26,9 +98,9 @@ Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _roo
 
 ```bash
 # using npm
-npm run android
+# npm run android
 
-# OR using Yarn
+# npm 대신 yarn 을 쓰는걸 권장합니다.
 yarn android
 ```
 
@@ -36,9 +108,9 @@ yarn android
 
 ```bash
 # using npm
-npm run ios
+# npm run ios
 
-# OR using Yarn
+# npm 대신 yarn 을 쓰는걸 권장합니다.
 yarn ios
 ```
 

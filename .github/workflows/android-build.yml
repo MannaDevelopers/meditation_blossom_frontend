@@ -1,0 +1,74 @@
+name: Android Build
+
+on:
+  push:
+    tags: [ "v*" ]  # v로 시작하는 태그만 트리거
+
+# 권한 설정 추가
+permissions:
+  contents: write  # releases 생성을 위한 권한
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # 무료 Ubuntu 러너 사용
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.20.6'  # 정확한 Node.js 버전 지정
+    
+    - name: Install dependencies
+      run: |
+        yarn add false
+    
+    - name: Make Gradlew Executable
+      run: cd android && chmod +x ./gradlew
+    
+    - name: Create secrets.properties
+      run: |
+        cat << EOF > android/app/secrets.properties
+        STORE_FILE=${{ secrets.ANDROID_KEYSTORE_FILE }}
+        STORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}
+        KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}
+        EOF
+    
+    - name: Decode Keystore
+      run: |
+        echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
+    
+    - name: Build Android Release
+      run: |
+        cd android
+        ./gradlew bundleRelease --no-daemon
+
+    - name: Upload AAB
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release
+        path: android/app/build/outputs/bundle/release/app-release.aab
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: android/app/build/outputs/bundle/release/app-release.aab
+        name: Release ${{ github.ref_name }}
+        body: |
+          Release ${{ github.ref_name }}
+          
+          Changes in this release:
+          - 자동 생성된 릴리스
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

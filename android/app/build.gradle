@@ -1,3 +1,17 @@
+def getSecrets() {
+    def secretsFile = rootProject.file("app/secrets.properties")
+    if (!secretsFile.exists()) {
+        if (gradle.startParameter.taskNames.any { it.contains('Release') || it.contains('release') }) {
+            throw new RuntimeException('secrets.properties file not found. Release build requires secrets.properties file.')
+        }
+        return null
+    }
+    def secrets = new Properties()
+    secrets.load(new FileInputStream(secretsFile))
+    return secrets
+}
+
+def secrets = getSecrets()
 
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
@@ -85,7 +99,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0"
+        versionName "0.0.1"
     }
     signingConfigs {
         debug {
@@ -94,6 +108,14 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            if (gradle.startParameter.taskNames.any { it.contains('Release') || it.contains('release') }) {
+                storeFile file(secrets.getProperty('STORE_FILE'))
+                storePassword secrets.getProperty('STORE_PASSWORD')
+                keyAlias secrets.getProperty('KEY_ALIAS')
+                keyPassword secrets.getProperty('KEY_PASSWORD')
+            }
+        }
     }
     buildTypes {
         debug {
@@ -101,9 +123,7 @@ android {
             applicationIdSuffix ".debug"
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
