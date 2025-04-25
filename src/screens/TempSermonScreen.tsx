@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 
-function App(): React.JSX.Element {
+function TempSermonScreen(): React.JSX.Element {
   const [sermons, setSermons] = useState<{ id: string; title: string; content: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -77,4 +77,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default App;
+export default TempSermonScreen;
