@@ -10,7 +10,10 @@ function App(): React.JSX.Element {
   return (
     // <EditScreen/>
     // <TempSermonScreen/>
+    <View style={{flex: 1, backgroundColor: 'white'}}>
     <HomeScreen/>
+    </View>
+    // <Text>Hello</Text>
   );
 }
 
