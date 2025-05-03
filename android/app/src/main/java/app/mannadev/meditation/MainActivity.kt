@@ -1,5 +1,6 @@
 package app.mannadev.meditation
 
+import android.os.Bundle;
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
@@ -23,4 +24,8 @@ class MainActivity : ReactActivity() {
           mainComponentName,
           DefaultNewArchitectureEntryPoint.fabricEnabled
       )
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+      super.onCreate(null);
+    }
 }

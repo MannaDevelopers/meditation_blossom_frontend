@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">meditation_blossom</string>
+    <string name="app_name">meditation blossom</string>
+    <string name="my_widget_name">my widget name</string>
+    <string name="widget_description">My widget description</string>
 </resources>
