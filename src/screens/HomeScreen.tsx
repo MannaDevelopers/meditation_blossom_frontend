@@ -1,7 +1,13 @@
 import { View, Text, StyleSheet, ScrollView, Image, Button, TouchableOpacity, ImageBackground } from 'react-native';
 import WidgetPreview from '../components/WidgetPreview';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 // import Icon from 'react-native-vector-icons/AntDesign';
-const HomeScreen = () => {
+import { RootStackParamList } from '../types/navigation';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'HomeScreen'>;
+
+
+const HomeScreen = ({navigation}: Props) => {
   return (
     <View style={{ flex: 1, backgroundColor: 'transparent', marginHorizontal: 35, marginVertical: 35, justifyContent: 'center', alignItems: 'center' }}>
       <View style={{ backgroundColor: 'transparent', flex: 1 }}>
@@ -9,7 +15,7 @@ const HomeScreen = () => {
           <Image source={require('../assets/image/20250416_meditation_icon.png')} style={{ backgroundColor: 'transparent', borderRadius: 15, width: 20, height: 20 }} />
           <Text style={{ color: '#49454F', fontSize: 20, letterSpacing: -1, fontFamily: "Pretendard-Medium", marginLeft: 8}}>묵상만개</Text>
           {/* <Icon name="setting" size={20} color="#49454F" style={{ marginLeft: 'auto' }} /> */}
-          <TouchableOpacity onPress={() => console.log('Button pressed')} style={{ marginLeft: 'auto' }}>
+          <TouchableOpacity onPress={() => navigation.navigate('SettingsScreen')} style={{ marginLeft: 'auto' }}>
             <Image source={require('../assets/image/Settings.png')} style={{ backgroundColor: 'transparent', borderRadius: 15, width: 20, height: 20 }} />
           </TouchableOpacity>
         </View>
@@ -23,7 +29,7 @@ const HomeScreen = () => {
           <WidgetPreview />
         </View>
         <View style={{ backgroundColor: 'transparent', width: 305, height: 38, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
-          <TouchableOpacity onPress={() => console.log('Button pressed')}>
+          <TouchableOpacity onPress={() => navigation.navigate('EditScreen')}>
             <ImageBackground
               source={require('../assets/image/EditButton.png')}
               style={{ width: 62, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }}
