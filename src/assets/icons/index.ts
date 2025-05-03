@@ -1,0 +1,1 @@
+export { default as TextLeft } from './TextLeft.svg';
