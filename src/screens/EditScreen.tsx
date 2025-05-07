@@ -1,10 +1,10 @@
-import { View, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, Text } from 'react-native';
 import WidgetPreview from '../components/WidgetPreview';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import SvgIcon from '../components/SvgIcon';
 import React, {useState} from 'react';
 import styled from 'styled-components/native';
-import GradientText from '../components/GradientText';
 
 const TextAlignIconBox = styled.TouchableOpacity<{selected: boolean}>`
   width: 55;
@@ -34,13 +34,19 @@ const MainCategoryIconBox = styled.TouchableOpacity<{selected: boolean}>`
   background-color: ${({selected}) => (selected ? 'gray' : 'transparent')};
 `;
 
+type Props = NativeStackScreenProps<RootStackParamList, 'EditScreen'>;
 
-const EditScreen = () => {
+const EditScreen = ({navigation}: Props) => {
   const [textAlignIconSelected, setTextAlignIconSelected] = useState<number>(0);
   const [textSettingItemSelected, setTextSettingItemSelected] = useState<number>(0);
   const [mainCategorySelected, setMainCategorySelected] = useState<number>(0);
   return (
+    <View style={{flex: 1, backgroundColor:'black'}}>
     <View style={{ flex: 1, backgroundColor: 'black', marginHorizontal: 35, marginVertical: 60, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{backgroundColor: 'transparent', width: 305, height: 26, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+        <TouchableOpacity onPress={() => {navigation.goBack();}}><SvgIcon name="BackButton" size={20} /></TouchableOpacity>
+        <TouchableOpacity><Text style={{color: 'white', fontWeight: 'bold', fontSize: 20, textAlign: 'center', textAlignVertical: 'center'}}>저장</Text></TouchableOpacity>
+      </View>
       <View style={{ backgroundColor: 'blue', marginVertical: 105, borderRadius: 20 }} >
         <WidgetPreview />
       </View>
@@ -82,6 +88,7 @@ const EditScreen = () => {
 </MainCategoryIconBox>
   </View>
 
+</View>
 </View>
 );
 }
