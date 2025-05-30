@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:minWidth="60dp"
-    android:minHeight="100dp"
+    android:minWidth="120dp"
+    android:minHeight="120dp"
     android:targetCellHeight="2"
     android:targetCellWidth="2"
     android:updatePeriodMillis="1800000"
@@ -10,4 +10,6 @@
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:description="@string/verse_widget_small_description"
+    android:configure="app.mannadev.meditation.WidgetConfigurationActivity"
+    android:widgetFeatures="reconfigurable|configuration_optional"
     tools:targetApi="31" />

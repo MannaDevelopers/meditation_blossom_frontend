@@ -22,6 +22,13 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".WidgetConfigurationActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE"/>
+            </intent-filter>
+        </activity>
+
         <receiver
             android:name=".widget.VerseWidgetSmallReceiver"
             android:label="@string/verse_widget_small_name"
