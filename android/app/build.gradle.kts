@@ -1,5 +1,5 @@
-import java.util.Properties
 import java.io.FileInputStream
+import java.util.Properties
 
 // secrets.properties 파일 로드 함수
 fun loadSecrets(): Properties? {
@@ -21,7 +21,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.facebook.react")
-    id("org.jetbrains.kotlin.plugin.compose") version "2.0.0"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
     id("com.google.gms.google-services")  // Google Services 플러그인 추가
 }
 
@@ -45,7 +45,7 @@ android {
     compileSdk = rootProject.extra["compileSdkVersion"].toString().toInt()
 
     namespace = "app.mannadev.meditation"
-    
+
     defaultConfig {
         applicationId = "app.mannadev.meditation"
         minSdk = rootProject.extra["minSdkVersion"].toString().toInt()
@@ -61,7 +61,7 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
-        
+
         // release signing 설정 추가
         create("release") {
             if (gradle.startParameter.taskNames.any { it.contains("Release") || it.contains("release") }) {
@@ -124,9 +124,11 @@ dependencies {
     implementation("androidx.compose.material3:material3")
 
     // Glance (Widget)
-    implementation("androidx.glance:glance:1.1.1")
-    implementation("androidx.glance:glance-appwidget:1.1.1")
-    implementation("androidx.glance:glance-material3:1.1.1")
+    implementation("androidx.glance:glance:1.2.0-alpha01")
+    implementation("androidx.glance:glance-appwidget:1.2.0-alpha01")
+    implementation("androidx.glance:glance-material3:1.2.0-alpha01")
+    debugImplementation("androidx.glance:glance-preview:1.2.0-alpha01")
+    debugImplementation("androidx.glance:glance-appwidget-preview:1.2.0-alpha01")
 
     // WorkManager
     implementation("androidx.work:work-runtime-ktx:2.10.0")
@@ -134,6 +136,6 @@ dependencies {
     // Debug dependencies
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
-} 
+}
 
 apply(from = file("../../node_modules/react-native-vector-icons/fonts.gradle"))
