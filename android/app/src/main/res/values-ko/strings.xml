@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">묵상만개</string>
-    <string name="my_widget_name">my widget name</string>
-    <string name="widget_description">My widget description</string>
+    <string name="verse_widget_small_name">small widget name</string>
+    <string name="verse_widget_small_description">small widget description</string>
+    <string name="verse_widget_large_name">large widget name</string>
+    <string name="verse_widget_large_description">large widget description</string>
 </resources>

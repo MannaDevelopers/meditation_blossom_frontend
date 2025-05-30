@@ -15,7 +15,7 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.text.Text
 import app.mannadev.meditation.MainActivity
 
-class MeditationWidget : GlanceAppWidget() {
+class VerseWidgetLarge : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
             Column(
