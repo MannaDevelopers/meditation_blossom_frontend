@@ -93,6 +93,8 @@ const HomeScreen = ({navigation}: Props) => {
         }
       } else {
         console.log('No local data found');
+        // 로컬 데이터가 없으면 서버에서 데이터 가져오기
+        await fetchDataFromServer();
       }
       setLoading(false);
     } catch (error) {
@@ -293,7 +295,7 @@ const HomeScreen = ({navigation}: Props) => {
           <Image source={require('../assets/image/20250416_meditation_icon.png')} style={{ backgroundColor: 'transparent', borderRadius: 15, width: 20, height: 20 }} />
           <Text style={{ color: '#49454F', fontSize: 20, letterSpacing: -1, fontFamily: "Pretendard-Medium", marginLeft: 8}}>묵상만개</Text>
           {/* <Icon name="setting" size={20} color="#49454F" style={{ marginLeft: 'auto' }} /> */}
-          <TouchableOpacity onPress={() => navigation.navigate('SettingsScreen')} style={{ marginLeft: 'auto' }}>
+          <TouchableOpacity onPress={() => navigation.navigate('SettingsScreen', { setSermons, setLatestDate, setMetadata, onRefresh })} style={{ marginLeft: 'auto' }}>
             <Image source={require('../assets/image/Settings.png')} style={{ backgroundColor: 'transparent', borderRadius: 15, width: 20, height: 20 }} />
           </TouchableOpacity>
         </View>
@@ -317,9 +319,6 @@ const HomeScreen = ({navigation}: Props) => {
             </ImageBackground>
             </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={onRefresh} style={{ backgroundColor: 'black', width: 305, height: 40, justifyContent: 'center', alignItems: 'center', marginTop: 20 }}>
-          <Text style={{ color: 'white', fontSize: 16, fontFamily: "Pretendard-Regular" }}>fetch data (임시 버튼)</Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
