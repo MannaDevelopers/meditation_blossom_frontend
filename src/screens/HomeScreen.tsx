@@ -317,6 +317,9 @@ const HomeScreen = ({navigation}: Props) => {
             </ImageBackground>
             </TouchableOpacity>
         </View>
+        <TouchableOpacity onPress={onRefresh} style={{ backgroundColor: 'black', width: 305, height: 40, justifyContent: 'center', alignItems: 'center', marginTop: 20 }}>
+          <Text style={{ color: 'white', fontSize: 16, fontFamily: "Pretendard-Regular" }}>fetch data (임시 버튼)</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
