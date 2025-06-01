@@ -6,6 +6,7 @@ export type RootStackParamList = {
       setSermons: (sermons: Sermon[]) => void;
       setLatestDate: (date: string | null) => void;
       setMetadata: (metadata: SermonMetadata) => void;
+      setDisplaySermon: (sermons: Sermon | undefined) => void;
       onRefresh: () => void;
     };
     // Add other screens here as needed

@@ -21,6 +21,7 @@ const HomeScreen = ({navigation}: Props) => {
     lastUpdated: new Date().toISOString(),
     totalCount: 0
   });
+  const [displaySermon, setDisplaySermon] = useState<Sermon | undefined>(undefined);
 
   // 메타데이터 로드
   const loadMetadata = async (): Promise<SermonMetadata> => {
@@ -209,62 +210,11 @@ const HomeScreen = ({navigation}: Props) => {
       setRefreshing(false);
     }
   };
-  // 로컬 스토리지 비우기
-  const clearLocalStorage = async () => {
-    try {
-      await AsyncStorage.removeItem(STORAGE_KEY);
-      await AsyncStorage.removeItem(METADATA_KEY);
-      
-      setSermons([]);
-      setLatestDate(null);
-      setMetadata({
-        latestDate: '',
-        lastUpdated: new Date().toISOString(),
-        totalCount: 0
-      });
-      
-      console.log('Local storage and metadata cleared');
-    } catch (error) {
-      console.error('Error clearing local storage:', error);
-    }
-  };
-
-  // 로컬 스토리지 내용 확인
-  const inspectStorage = async () => {
-    console.log('Inspecting AsyncStorage...');
-    try {
-      const keys = await AsyncStorage.getAllKeys();
-      
-      // 모든 키를 로그로 출력
-      console.log(keys);
-      
-      // 각 키에 대한 데이터 검사
-      for (const key of keys) {
-        const value = await AsyncStorage.getItem(key);
-        console.log([JSON.parse(value || '{}')]);
-      }
-    } catch (error) {
-      console.error('Error inspecting AsyncStorage:', JSON.stringify(error, null, 2));
-    }
-  };
 
   // 새로고침 핸들러
   const onRefresh = () => {
     setRefreshing(true);
     fetchDataFromServer();
-  };
-
-  // 날짜 포맷팅
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    // 날짜만 표시
-    return date.toLocaleDateString();
-  };
-
-  // 타임스탬프 포맷팅
-  const formatTimestamp = (timestamp: number): string => {
-    const date = new Date(timestamp * 1000); // 초 단위 타임스탬프를 밀리초로 변환
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 
   // 최신 날짜의 설교만 표시
@@ -275,18 +225,24 @@ const HomeScreen = ({navigation}: Props) => {
     return sermons.filter(sermon => sermon.date === latestDate);
   };
 
-  // 최신 날짜의 설교 목록 계산
-  const latestSermons = getLatestSermons();
-
   // 초기 데이터 로드
   useEffect(() => {
     loadLocalData();
   }, []);
 
   useEffect(() => {
-    // 최신 설교가 변경될 때마다 로그 출력
-    console.log('Latest sermons updated:', latestSermons);
-  } );
+    // 설교가 변경되면 보여줄 설교를 업데이트
+    setDisplaySermon(getLatestSermons()[0] || null);    
+  }, [sermons])
+  
+  useEffect(() => {
+    // 화면에 표시할 설교는 따로 저장 (가장 최신 설교)
+    const saveDisplaySermon = async () => {
+      await AsyncStorage.setItem('display_sermon', JSON.stringify(displaySermon));
+    };
+    saveDisplaySermon();
+    console.log('Display sermon saved:', displaySermon);
+  }, [displaySermon]);
 
   return (
     <View style={{ flex: 1, backgroundColor: 'transparent', marginHorizontal: 35, marginVertical: 35, justifyContent: 'center', alignItems: 'center' }}>
@@ -295,21 +251,21 @@ const HomeScreen = ({navigation}: Props) => {
           <Image source={require('../assets/image/20250416_meditation_icon.png')} style={{ backgroundColor: 'transparent', borderRadius: 15, width: 20, height: 20 }} />
           <Text style={{ color: '#49454F', fontSize: 20, letterSpacing: -1, fontFamily: "Pretendard-Medium", marginLeft: 8}}>묵상만개</Text>
           {/* <Icon name="setting" size={20} color="#49454F" style={{ marginLeft: 'auto' }} /> */}
-          <TouchableOpacity onPress={() => navigation.navigate('SettingsScreen', { setSermons, setLatestDate, setMetadata, onRefresh })} style={{ marginLeft: 'auto' }}>
+          <TouchableOpacity onPress={() => navigation.navigate('SettingsScreen', { setSermons, setLatestDate, setMetadata, setDisplaySermon, onRefresh })} style={{ marginLeft: 'auto' }}>
             <Image source={require('../assets/image/Settings.png')} style={{ backgroundColor: 'transparent', borderRadius: 15, width: 20, height: 20 }} />
           </TouchableOpacity>
         </View>
         <View style={{ backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', width: 305, height: 25 }}>
-          <Text style={{ color: "#A59EAE", fontSize: 20, letterSpacing: -3, fontFamily: "Pretendard-SemiBold" }}>{latestSermons[0]?.date}</Text>
+          <Text style={{ color: "#A59EAE", fontSize: 20, letterSpacing: -3, fontFamily: "Pretendard-SemiBold" }}>{displaySermon?.date}</Text>
         </View>
         <View style={{ backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', width: 305, height: 30 }}>
-          <Text style={{ color: "#A59EAE", fontSize: 24, letterSpacing: -3, fontFamily: "Pretendard-Bold" }}>{latestSermons[0]?.title}</Text>
+          <Text style={{ color: "#A59EAE", fontSize: 24, letterSpacing: -3, fontFamily: "Pretendard-Bold" }}>{displaySermon?.title}</Text>
         </View>
         <View style={{ backgroundColor: 'transparent', width: 305, height: 300, justifyContent: 'center', alignItems: 'center' }}>
-          <WidgetPreview content={latestSermons[0]?.content} />
+          <WidgetPreview content={displaySermon?.content} />
         </View>
         <View style={{ backgroundColor: 'transparent', width: 305, height: 38, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
-            <TouchableOpacity onPress={() => navigation.navigate('EditScreen', { sermon: latestSermons[0] })}>
+            <TouchableOpacity onPress={() => navigation.navigate('EditScreen', { sermon: displaySermon })}>
             <ImageBackground
               source={require('../assets/image/EditButton.png')}
               style={{ width: 62, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }}

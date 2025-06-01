@@ -12,6 +12,7 @@ const SettingsScreen = ({navigation, route}: Props) => {
     try {
       await AsyncStorage.removeItem(STORAGE_KEY);
       await AsyncStorage.removeItem(METADATA_KEY);
+      await AsyncStorage.removeItem('dispaly_sermon');
 
       route.params.setSermons([]);
       route.params.setLatestDate(null);
@@ -20,10 +21,30 @@ const SettingsScreen = ({navigation, route}: Props) => {
         lastUpdated: new Date().toISOString(),
         totalCount: 0
       });
+      route.params.setDisplaySermon(undefined);
       
       console.log('Local storage and metadata cleared');
     } catch (error) {
       console.error('Error clearing local storage:', error);
+    }
+  };
+
+  // 로컬 스토리지 내용 확인
+  const inspectStorage = async () => {
+    console.log('Inspecting AsyncStorage...');
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      
+      // 모든 키를 로그로 출력
+      console.log(keys);
+      
+      // 각 키에 대한 데이터 검사
+      for (const key of keys) {
+        const value = await AsyncStorage.getItem(key);
+        console.log([JSON.parse(value || '{}')]);
+      }
+    } catch (error) {
+      console.error('Error inspecting AsyncStorage:', JSON.stringify(error, null, 2));
     }
   };
 
@@ -35,6 +56,9 @@ const SettingsScreen = ({navigation, route}: Props) => {
       </TouchableOpacity>
       <TouchableOpacity onPress={route.params.onRefresh} style={{ backgroundColor: 'blue', padding: 10, borderRadius: 5, marginTop: 20 }}>
         <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 20, textAlign: 'center' }}>Refresh Data</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={inspectStorage} style={{ backgroundColor: 'blue', padding: 10, borderRadius: 5, marginTop: 20 }}>
+        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 20, textAlign: 'center' }}>Inspect Storage</Text>
       </TouchableOpacity>
     </View>
   );
