@@ -186,8 +186,6 @@ const HomeScreen = ({navigation}: Props) => {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(mergedSermons));
       console.log('Saved merged data to local storage');
       
-      setSermons(mergedSermons);
-      
       // 가장 최신 날짜 찾기
       const newLatestDate = findLatestDate(mergedSermons);
       if (newLatestDate) {
@@ -202,7 +200,9 @@ const HomeScreen = ({navigation}: Props) => {
         
         await saveMetadata(newMetadata);
         console.log(`Updated metadata with latest date: ${newLatestDate}`);
+
       }
+      setSermons([...mergedSermons]);
     } catch (error) {
       console.error('Error fetching sermons:', error);
     } finally {
@@ -232,7 +232,7 @@ const HomeScreen = ({navigation}: Props) => {
 
   useEffect(() => {
     // 설교가 변경되면 보여줄 설교를 업데이트
-    setDisplaySermon(getLatestSermons()[0] || null);    
+    setDisplaySermon(getLatestSermons()[0] || undefined);    
   }, [sermons])
   
   useEffect(() => {
