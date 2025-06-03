@@ -20,3 +20,4 @@ export interface SermonMetadata {
 // 스토리지 키
 export const STORAGE_KEY = 'sermons_data';
 export const METADATA_KEY = 'sermons_metadata';
+export const DISPLAY_SERMON_KEY = 'display_sermon';

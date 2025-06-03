@@ -4,7 +4,7 @@ import WidgetPreview from '../components/WidgetPreview';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 // import Icon from 'react-native-vector-icons/AntDesign';
 import { RootStackParamList } from '../types/navigation';
-import { Sermon, SermonMetadata, STORAGE_KEY, METADATA_KEY } from '../types/Sermon';
+import { Sermon, SermonMetadata, STORAGE_KEY, METADATA_KEY, DISPLAY_SERMON_KEY } from '../types/Sermon';
 import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -267,7 +267,7 @@ const HomeScreen = ({navigation}: Props) => {
   useEffect(() => {
     // 화면에 표시할 설교는 따로 저장 (가장 최신 설교)
     const saveDisplaySermon = async () => {
-      await AsyncStorage.setItem('display_sermon', JSON.stringify(displaySermon));
+      await AsyncStorage.setItem(DISPLAY_SERMON_KEY, JSON.stringify(displaySermon));
     };
     saveDisplaySermon();
     console.log('Display sermon saved:', displaySermon);
