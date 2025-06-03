@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { use, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, Button, TouchableOpacity, ImageBackground } from 'react-native';
 import WidgetPreview from '../components/WidgetPreview';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -224,6 +224,35 @@ const HomeScreen = ({navigation}: Props) => {
     // 가장 최근 날짜를 가진 설교만 필터링
     return sermons.filter(sermon => sermon.date === latestDate);
   };
+
+  
+  // 1주일 마다 자동으로 서버에서 데이터 요청
+  const AutoRequest = () =>
+  {
+    if(latestDate == null)
+      return false;
+
+    // 현재 날짜와 최신 날짜를 비교
+    const currentDate = new Date(); 
+    const latestSermonDate = new Date(latestDate);
+    const oneWeekAgo = new Date(currentDate);
+    oneWeekAgo.setDate(currentDate.getDate() - 7);
+
+    console.log('Current Date:', currentDate.toISOString());
+    console.log('Latest Sermon Date:', latestSermonDate.toISOString());
+
+    // 최신 날짜가 1주일 전보다 이전이면 서버에서 데이터 요청
+    if (latestSermonDate < oneWeekAgo) {
+      console.log('Fetching data from server due to outdated latest date');
+      onRefresh();
+    }
+    return true;
+  }
+
+  useEffect(() => {
+    AutoRequest();
+  }
+  , [latestDate]);
 
   // 초기 데이터 로드
   useEffect(() => {
