@@ -51,16 +51,38 @@ struct MeditationBlossomWidgetEntryView : View {
     switch family {
     case .systemSmall:
       ZStack {
-        Image("background_364_382")
-          .resizable()
-          .frame(width:130, height:290/3)
-          .offset(y:15)
+        VStack{
+          Text("묵상")
+            .font(.system(size:20, weight:.bold))
+            .foregroundColor(.black)
+            .frame(width:320/3, height:30/3, alignment:.leading);
+          ZStack {
+            Image("background_364_382")
+              .resizable()
+            Text("또 비유로 말씀하시되 천국은 마치 여자가 가루 서 말 속에 갖다 넣어 전부 부풀게 한 누룩과 같으니라")
+              .font(.system(size:22, weight: .bold))
+              .foregroundColor(.black)
+              .frame(width:250/3, height:180/3)
+          }
+        }
       }
     case .systemMedium:
       ZStack {
         Image("background_364_170")
           .resizable()
-          .frame(width:364, height:170)
+          .frame(width:364, height:170);
+        VStack{
+          Text("또 비유로 말씀하시되 천국은 마치 여자가 가루 서 말 속에 갖다 넣어 전부 부풀게 한 누룩과 같으니라")
+            .font(.system(size:22, weight: .bold))
+            .foregroundColor(.black)
+            .frame(width:300, height:100)
+            .offset(y:3)
+          Text("마태복음 13:33")
+            .font(.system(size:15))
+            .foregroundColor(.black)
+            .frame(width:180, height:20, alignment:.trailing)
+            .offset(x:69)
+        }
       }
     default:
       Text("Error occured")
@@ -68,7 +90,7 @@ struct MeditationBlossomWidgetEntryView : View {
   }
 }
 
-#Preview(as: .systemSmall) {
+#Preview(as: .systemMedium) {
     MeditationBlossomWidget()
 } timeline: {
     SimpleEntry(date: .now)
