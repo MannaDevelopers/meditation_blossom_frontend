@@ -52,7 +52,7 @@ const SettingsScreen = ({navigation, route}: Props) => {
   return (
     <View style={{ flex: 1, backgroundColor: 'black' }}>
       {/* 헤더 영역 */}
-    <View style={{ backgroundColor: 'transparent', width: '100%', height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20 }}>
+    <View style={{ backgroundColor: 'transparent', width: '100%', height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 30 }}>
       {/* 뒤로가기 버튼 */}
       <TouchableOpacity onPress={() => {navigation.goBack();}}><SvgIcon name="BackButton" size={20} /></TouchableOpacity>
     </View>
