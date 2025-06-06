@@ -36,10 +36,11 @@ const MainCategoryIconBox = styled.TouchableOpacity<{selected: boolean}>`
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditScreen'>;
 
-const EditScreen = ({navigation}: Props) => {
+const EditScreen = ({navigation, route}: Props) => {
   const [textAlignIconSelected, setTextAlignIconSelected] = useState<number>(0);
   const [textSettingItemSelected, setTextSettingItemSelected] = useState<number>(0);
   const [mainCategorySelected, setMainCategorySelected] = useState<number>(0);
+  const sermon = route.params?.sermon;
   return (
     <View style={{flex: 1, backgroundColor:'black'}}>
     <View style={{ flex: 1, backgroundColor: 'black', marginHorizontal: 35, marginVertical: 60, justifyContent: 'center', alignItems: 'center' }}>
@@ -47,8 +48,8 @@ const EditScreen = ({navigation}: Props) => {
         <TouchableOpacity onPress={() => {navigation.goBack();}}><SvgIcon name="BackButton" size={20} /></TouchableOpacity>
         <TouchableOpacity><Text style={{color: 'white', fontWeight: 'bold', fontSize: 20, textAlign: 'center', textAlignVertical: 'center'}}>저장</Text></TouchableOpacity>
       </View>
-      <View style={{ backgroundColor: 'blue', marginVertical: 105, borderRadius: 20 }} >
-        <WidgetPreview />
+      <View style={{ backgroundColor: 'transparent', marginVertical: 105, borderRadius: 20 }} >
+        <WidgetPreview content={sermon?.content} />
       </View>
       {/*Edit Tab*/}
       {/*Tab 1*/} 
