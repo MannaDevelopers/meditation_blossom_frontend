@@ -200,7 +200,11 @@ const HomeScreen = ({navigation}: Props) => {
         
         await saveMetadata(newMetadata);
         console.log(`Updated metadata with latest date: ${newLatestDate}`);
-
+        
+        // 화면에 표시할 설교는 따로 저장 (가장 최신 설교)
+        const displaySermon = mergedSermons.filter(sermon => sermon.date === newLatestDate);
+        await AsyncStorage.setItem(DISPLAY_SERMON_KEY, JSON.stringify(displaySermon));        
+        console.log('Display sermon saved:', displaySermon);
       }
       setSermons([...mergedSermons]);
     } catch (error) {
@@ -264,14 +268,7 @@ const HomeScreen = ({navigation}: Props) => {
     setDisplaySermon(getLatestSermons()[0] || undefined);    
   }, [sermons])
   
-  useEffect(() => {
-    // 화면에 표시할 설교는 따로 저장 (가장 최신 설교)
-    const saveDisplaySermon = async () => {
-      await AsyncStorage.setItem(DISPLAY_SERMON_KEY, JSON.stringify(displaySermon));
-    };
-    saveDisplaySermon();
-    console.log('Display sermon saved:', displaySermon);
-  }, [displaySermon]);
+
 
   return (
     <View style={{ flex: 1, backgroundColor: 'transparent', marginHorizontal: 35, marginVertical: 35, justifyContent: 'center', alignItems: 'center' }}>
