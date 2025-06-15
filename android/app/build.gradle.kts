@@ -22,7 +22,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("com.facebook.react")
     //noinspection NewerVersionAvailable -> check libs.versions.toml on @react-native/gradle-plugin
-    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
+    id("org.jetbrains.kotlin.plugin.compose") version libs.versions.kotlin
     id("com.google.gms.google-services")  // Google Services 플러그인 추가
 }
 
@@ -53,6 +53,8 @@ android {
         targetSdk = rootProject.extra["targetSdkVersion"].toString().toInt()
         versionCode = 1
         versionName = "0.0.1"  // 버전 업데이트
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -109,11 +111,11 @@ android {
 
 dependencies {
     // React Native
-    implementation("com.facebook.react:react-android")
+    implementation(libs.react.android)
 
     // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:33.12.0"))
-    implementation("com.google.firebase:firebase-analytics")
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
 
     // Hermes
     if (project.extra["hermesEnabled"].toString().toBoolean()) {
@@ -123,26 +125,31 @@ dependencies {
     }
 
     // Compose
-    implementation(platform("androidx.compose:compose-bom:2025.04.00"))
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.activity:activity-compose")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.material3:material3")
-    debugImplementation("androidx.compose.ui:ui-tooling-preview")
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.ui)
+    implementation(libs.activity.compose)
+    implementation(libs.ui.graphics)
+    implementation(libs.material3)
+    debugImplementation(libs.ui.tooling.preview)
 
     // Glance (Widget)
-    implementation("androidx.glance:glance:1.2.0-alpha01")
-    implementation("androidx.glance:glance-appwidget:1.2.0-alpha01")
-    implementation("androidx.glance:glance-material3:1.2.0-alpha01")
-    debugImplementation("androidx.glance:glance-preview:1.2.0-alpha01")
-    debugImplementation("androidx.glance:glance-appwidget-preview:1.2.0-alpha01")
+    implementation(libs.androidx.glance)
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
+    debugImplementation(libs.androidx.glance.preview)
+    debugImplementation(libs.androidx.glance.appwidget.preview)
 
     // WorkManager
-    implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation(libs.androidx.work.runtime.ktx)
 
     // Debug dependencies
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
 }
 
 apply(from = file("../../node_modules/react-native-vector-icons/fonts.gradle"))
