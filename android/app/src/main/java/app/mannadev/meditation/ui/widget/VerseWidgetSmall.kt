@@ -1,15 +1,12 @@
-package app.mannadev.meditation.widget
+package app.mannadev.meditation.ui.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
-import androidx.glance.ImageProvider
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -19,23 +16,20 @@ import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
+import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
-import androidx.glance.layout.fillMaxHeight
-import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.height
 import androidx.glance.layout.padding
-import androidx.glance.layout.width
-import androidx.glance.layout.wrapContentHeight
-import androidx.glance.layout.wrapContentWidth
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextDefaults
-import androidx.glance.unit.ColorProvider
 import app.mannadev.meditation.MainActivity
 import app.mannadev.meditation.data.Verse
 import app.mannadev.meditation.dto.VerseDto
 
-class VerseWidgetLarge : GlanceAppWidget() {
+class VerseWidgetSmall : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val verseDto = VerseDto(
             title = "2. 회심에 대하여(고백록)",
@@ -50,65 +44,68 @@ class VerseWidgetLarge : GlanceAppWidget() {
                 "13 낮에와 같이 단정히 행하고 방탕하거나 술 취하지 말며 음란하거나 호색하지 말며 다투거나 시기하지 말고",
                 "14 오직 주 예수 그리스도로 옷 입고 정욕을 위하여 육신의 일을 도모하지 말라"
             ),
-            bookName = "로마서 13:11-14"
+            bookName = "로마서 13:11-14",
+            title = "2. 회심에 대하여(고백록)"
         )
         provideContent {
-            VerseWidgetLargeContent(verse)
+            VerseWidgetSmallContent(verse)
         }
     }
 }
 
-
 @Composable
-private fun VerseWidgetLargeContent(verse: Verse) {
-    val background = remember {
-        createGradientBitmap(
-            width = 200,
-            height = 150,
-            startColor = Color(0xFFFFE094).toArgb(),
-            endColor = Color(0xFF99E6FF).toArgb()
-        )
-    }
-    Row(
+private fun VerseWidgetSmallContent(verse: Verse) {
+    Column(
         modifier = GlanceModifier
-            .fillMaxWidth()
-            .wrapContentHeight()
+            .fillMaxSize()
             .clickable(actionStartActivity<MainActivity>())
             .appWidgetBackground()
-            .cornerRadius(15.dp)
-            .background(ImageProvider(background))
-            .padding(top = 26.dp, bottom = 20.dp, start = 30.dp, end = 20.dp),
+            .background(Color.White)
+            .padding(vertical = 17.dp, horizontal = 18.dp),
         horizontalAlignment = Alignment.Start,
         verticalAlignment = Alignment.Top
     ) {
-        LazyColumn(
-            GlanceModifier.fillMaxHeight().defaultWeight()
-        ) {
-            items(verse.contents.size) { index ->
-                Text(
-                    modifier = GlanceModifier.padding(horizontal = 19.dp),
-                    text = verse.contents[index],
-                    style = TextDefaults.defaultTextStyle
-                        .copy(
-                            fontWeight = FontWeight.Bold,
-                            color = ColorProvider(Color.Black),
-                            fontSize = 18.sp,
-                        ),
-                )
-            }
-        }
-
-        Spacer(GlanceModifier.width(20.dp))
         Row(
-            GlanceModifier.wrapContentWidth().fillMaxHeight(),
-            horizontalAlignment = Alignment.End,
-            verticalAlignment = Alignment.Bottom
+            GlanceModifier.padding(start = 6.dp)
         ) {
             Text(
+                "묵상",
+                style = TextDefaults.defaultTextStyle
+                    .copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    ),
+            )
+        }
+        Spacer(GlanceModifier.height(17.dp))
+        Column(
+            GlanceModifier
+                .cornerRadius(15.dp)
+                .xmlGradientBackground()
+                .padding(vertical = 34.dp)
+        ) {
+            LazyColumn(
+                GlanceModifier.height(120.dp)
+            ) {
+                items(verse.contents.size) { index ->
+                    Text(
+                        modifier = GlanceModifier.padding(horizontal = 19.dp),
+                        text = verse.contents[index],
+                        style = TextDefaults.defaultTextStyle
+                            .copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                            ),
+                    )
+                }
+            }
+
+            Spacer(GlanceModifier.height(20.dp))
+            Text(
+                modifier = GlanceModifier.padding(horizontal = 19.dp),
                 text = verse.bookName,
                 style = TextDefaults.defaultTextStyle
                     .copy(
-                        color = ColorProvider(Color.Black),
                         fontSize = 16.sp,
                     ),
             )
@@ -117,7 +114,7 @@ private fun VerseWidgetLargeContent(verse: Verse) {
 }
 
 //@OptIn(ExperimentalGlancePreviewApi::class)
-//@Preview(widthDp = 624, heightDp = 130)
+//@Preview(widthDp = 200, heightDp = 300)
 //@Composable
 //private fun VerseWidgetSmallPreview() {
 //    val verseDto = VerseDto(
@@ -137,6 +134,6 @@ private fun VerseWidgetLargeContent(verse: Verse) {
 //    )
 //
 //    GlanceTheme {
-//        VerseWidgetLargeContent(verse)
+//        VerseWidgetSmallContent(verse)
 //    }
 //}
