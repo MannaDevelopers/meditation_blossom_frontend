@@ -3,7 +3,7 @@ buildscript {
         set("minSdkVersion", 28)
         set("compileSdkVersion", 35)
         set("targetSdkVersion", 35)
-        set("ndkVersion", "26.1.10909125")
+        set("ndkVersion", "28.1.13356709")
     }
 
     repositories {

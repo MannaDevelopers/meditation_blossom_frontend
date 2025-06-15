@@ -21,6 +21,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.facebook.react")
+    //noinspection NewerVersionAvailable -> check libs.versions.toml on @react-native/gradle-plugin
     id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
     id("com.google.gms.google-services")  // Google Services 플러그인 추가
 }
@@ -98,6 +99,11 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+    }
+    packaging{
+        jniLibs{
+            useLegacyPackaging = false // Ensures libraries are page-aligned and uncompressed
+        }
     }
 }
 
