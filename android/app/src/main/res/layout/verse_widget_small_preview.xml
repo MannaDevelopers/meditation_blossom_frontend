@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+"기도하면 응답되나요?"
+"본문: 이사야 55:8-9, 로마서 8:28 8 이는 내 생각이 너희의 생각과 다르며 내 길은 너희의 길과 다름이니라 여호와의 말씀이니라 9 이는 하늘이 땅보다 높음 같이 내 길은 너희의 길보다 높으며 내 생각은 너희의 생각보다 높음이니라 28 우리가 알거니와 하나님을 사랑하는 자 곧 그의 뜻대로 부르심을 입은 자들에게는 모든 것이 합력하여 선을 이루느니라"
+이사야 55:8-9, 로마서 8:28
+
+
+private object VerseSmallWidgetDimens {
+    val appBarHeight = 56.dp
+    val horizontalPadding = 24.dp
+    val bookNameTopSpacer = 8.dp
+    val contentBackgroundRadius = 16.dp
+    val contentPadding = 12.dp
+    val widgetPadding = 12.dp
+}
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/white"
+    android:orientation="vertical">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="56.dp"
+        android:paddingHorizontal="24.dp">
+
+        <!--Typography.titleMedium-->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:text="@string/widget_preview_title"
+            android:textColor="@android:color/black"
+            android:textFontWeight="500"
+            android:textSize="16.sp" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0.dp"
+        android:layout_marginHorizontal="12.dp"
+        android:layout_marginBottom="12.dp"
+        android:layout_weight="1"
+        android:background="@drawable/rounded_gradient_background"
+        android:orientation="vertical"
+        android:padding="12.dp">
+        <!--Typography.bodyMedium-->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="0.dp"
+            android:layout_weight="1"
+            android:scrollbars="vertical"
+            android:text="@string/widget_preview_verses"
+            android:textColor="@android:color/black"
+            android:textFontWeight="400"
+            android:textSize="14.sp"
+            tools:ignore="NestedWeights" />
+
+        <!--Typography.labelSmall-->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8.dp"
+            android:text="@string/widget_preview_books"
+            android:textColor="@android:color/black"
+            android:textFontWeight="500"
+            android:textSize="11.sp" />
+    </LinearLayout>
+
+</LinearLayout>
