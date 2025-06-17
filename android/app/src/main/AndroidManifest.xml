@@ -22,16 +22,36 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".WidgetConfigurationActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE"/>
+            </intent-filter>
+        </activity>
+
         <receiver
-            android:name=".widget.MeditationWidgetReceiver"
-            android:label="@string/my_widget_name"
+            android:name=".widget.VerseWidgetSmallReceiver"
+            android:label="@string/verse_widget_small_name"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/meditation_widget_info" />
+                android:resource="@xml/verse_widget_small_info" />
+        </receiver>
+
+
+        <receiver
+            android:name=".widget.VerseWidgetLargeReceiver"
+            android:label="@string/verse_widget_large_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/verse_widget_large_info" />
         </receiver>
     </application>
 
