@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">묵상만개</string>
-    <string name="verse_widget_small_name">small widget name</string>
-    <string name="verse_widget_small_description">small widget description</string>
-    <string name="verse_widget_large_name">large widget name</string>
-    <string name="verse_widget_large_description">large widget description</string>
+    <string name="verse_widget_small_name">이번 주 말씀 (작은 크기)</string>
+    <string name="verse_widget_small_description">이번 주 성경 말씀을 작은 크기로 보여줍니다.</string>
+    <string name="verse_widget_large_name">이번 주 말씀 (큰 크기)</string>
+    <string name="verse_widget_large_description">이번 주 성경 말씀을 큰 크기로 보여줍니다.</string>
     <string name="widget_error_message">말씀 내용을 불러올 수 없습니다.</string>
     <string name="widget_error_title">묵상만개</string>
 </resources>
