@@ -22,11 +22,14 @@ import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import app.mannadev.meditation.MainActivity
+import app.mannadev.meditation.R
 import app.mannadev.meditation.data.Verse
 import app.mannadev.meditation.dto.VerseDto
 import app.mannadev.meditation.ui.widget.theme.Typography
 
-class VerseWidgetLarge : GlanceAppWidget() {
+class VerseWidgetLarge : GlanceAppWidget(
+    errorUiLayout = R.layout.verse_widget_large_error,
+) {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val verseDto = VerseDto(
             title = "2. 회심에 대하여(고백록)",

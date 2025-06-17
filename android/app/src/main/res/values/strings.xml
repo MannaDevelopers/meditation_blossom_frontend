@@ -4,4 +4,6 @@
     <string name="verse_widget_small_description">small widget description</string>
     <string name="verse_widget_large_name">large widget name</string>
     <string name="verse_widget_large_description">large widget description</string>
+    <string name="widget_error_message">말씀 내용을 불러올 수 없습니다.</string>
+    <string name="widget_error_title">Meditation blossom</string>
 </resources>

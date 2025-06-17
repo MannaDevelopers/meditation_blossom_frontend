@@ -10,4 +10,6 @@
     android:targetCellHeight="2"
     android:updatePeriodMillis="1800000"
     android:widgetCategory="home_screen"
+    android:previewLayout="@layout/verse_widget_large_preview"
     tools:targetApi="31" />
+<!--    android:previewImage="@drawable/verse_widget_large_preview_image"-->
