@@ -3,21 +3,18 @@
 agp = "8.8.0"
 #noinspection NewerVersionAvailable. check libs.versions.toml on @react-native/gradle-plugin
 kotlin = "2.0.21"
-composeBomVersion = "2025.04.00"
+googleServices = "4.4.2"
 firebaseBom = "33.12.0"
 glance = "1.2.0-alpha01"
 glanceAppwidget = "1.2.0-alpha01"
 glanceAppwidgetPreview = "1.2.0-alpha01"
 glanceMaterial3 = "1.2.0-alpha01"
 glancePreview = "1.2.0-alpha01"
-gson = "2.8.9"
-guava = "31.0.1-jre"
-javapoet = "1.13.0"
 junit = "4.13.2"
-assertj = "3.25.1"
 coreKtx = "1.16.0"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
+kotlinGradlePlugin = "2.0.21"
 lifecycleRuntimeKtx = "2.9.1"
 activityCompose = "1.10.1"
 composeBom = "2024.09.00"
@@ -34,6 +31,8 @@ androidx-glance-material3 = { module = "androidx.glance:glance-material3", versi
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workRuntimeKtx" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+google-services = { module = "com.google.gms:google-services", version.ref = "googleServices" }
+gradle = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -47,14 +46,17 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlinGradlePlugin" }
 material3 = { module = "androidx.compose.material3:material3" }
 react-android = { module = "com.facebook.react:react-android" }
+react-native-gradle-plugin = { module = "com.facebook.react:react-native-gradle-plugin" }
 ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
 ui = { module = "androidx.compose.ui:ui" }
 
 [plugins]
-android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+android-application = { id = "com.android.application"}
+kotlin-android = { id = "org.jetbrains.kotlin.android"}
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services"}
 

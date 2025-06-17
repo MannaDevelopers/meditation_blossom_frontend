@@ -12,10 +12,10 @@ buildscript {
     }
 
     dependencies {
-        classpath("com.android.tools.build:gradle:8.8.0")
-        classpath("com.facebook.react:react-native-gradle-plugin")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21")
-        classpath("com.google.gms:google-services:4.4.2")
+        classpath(libs.gradle)
+        classpath(libs.react.native.gradle.plugin)
+        classpath(libs.kotlin.gradle.plugin)
+        classpath(libs.google.services)
     }
 }
 

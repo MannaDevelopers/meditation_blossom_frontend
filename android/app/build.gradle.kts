@@ -18,12 +18,11 @@ fun loadSecrets(): Properties? {
 val secrets = loadSecrets()
 
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.services) // Google Services 플러그인 추가
     id("com.facebook.react")
-    //noinspection NewerVersionAvailable -> check libs.versions.toml on @react-native/gradle-plugin
-    id("org.jetbrains.kotlin.plugin.compose") version libs.versions.kotlin
-    id("com.google.gms.google-services")  // Google Services 플러그인 추가
 }
 
 react {
