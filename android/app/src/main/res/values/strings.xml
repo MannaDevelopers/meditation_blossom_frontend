@@ -6,4 +6,10 @@
     <string name="verse_widget_large_description">large widget description</string>
     <string name="widget_error_message">말씀 내용을 불러올 수 없습니다.</string>
     <string name="widget_error_title">Meditation blossom</string>
+
+    <string name="widget_preview_title" translatable="false">기도하면 응답되나요?</string>
+    <string name="widget_preview_verses" translatable="false">28 우리가 알거니와 하나님을 사랑하는 자 곧 그의 뜻대로 부르심을 입은 자들에게는 모든 것이 합력하여 선을 이루느니라</string>
+    <string name="widget_preview_books" translatable="false">로마서 8:28</string>
+<!--    <string name="widget_preview_verses" translatable="false">8 이는 내 생각이 너희의 생각과 다르며 내 길은 너희의 길과 다름이니라 여호와의 말씀이니라\n9 이는 하늘이 땅보다 높음 같이 내 길은 너희의 길보다 높으며 내 생각은 너희의 생각보다 높음이니라\n28 우리가 알거니와 하나님을 사랑하는 자 곧 그의 뜻대로 부르심을 입은 자들에게는 모든 것이 합력하여 선을 이루느니라</string>-->
+<!--    <string name="widget_preview_books" translatable="false">이사야 55:8–9, 로마서 8:28</string>-->
 </resources>

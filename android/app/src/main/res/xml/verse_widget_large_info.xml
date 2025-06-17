@@ -5,11 +5,11 @@
     android:initialLayout="@layout/verse_widget_large_loading"
     android:minWidth="245dp"
     android:minHeight="115dp"
+    android:previewImage="@drawable/verse_widget_large_preview_image"
+    android:previewLayout="@layout/verse_widget_large_preview"
     android:resizeMode="horizontal|vertical"
     android:targetCellWidth="4"
     android:targetCellHeight="2"
     android:updatePeriodMillis="1800000"
     android:widgetCategory="home_screen"
-    android:previewLayout="@layout/verse_widget_large_preview"
-    tools:targetApi="31" />
-<!--    android:previewImage="@drawable/verse_widget_large_preview_image"-->
+    tools:targetApi="31" /><!--    android:previewImage="@drawable/verse_widget_large_preview_image"-->

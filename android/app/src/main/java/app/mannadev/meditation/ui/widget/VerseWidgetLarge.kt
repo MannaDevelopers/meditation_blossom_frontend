@@ -32,8 +32,8 @@ class VerseWidgetLarge : GlanceAppWidget(
 ) {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val verseDto = VerseDto(
-            title = "2. 회심에 대하여(고백록)",
-            content = "본문 : 로마서 13:11-14 11 또한 너희가 이 시기를 알거니와 자다가 깰 때가 벌써 되었으니 이는 이제 우리의 구원이 처음 믿을 때보다 가까웠음이라 12 밤이 깊고 낮이 가까웠으니 그러므로 우리가 어둠의 일을 벗고 빛의 갑옷을 입자 13 낮에와 같이 단정히 행하고 방탕하거나 술 취하지 말며 음란하거나 호색하지 말며 다투거나 시기하지 말고 14 오직 주 예수 그리스도로 옷 입고 정욕을 위하여 육신의 일을 도모하지 말라",
+            title = "기도하면 응답되나요?",
+            content = "본문 : 로마서 8:28 28 우리가 알거니와 하나님을 사랑하는 자 곧 그의 뜻대로 부르심을 입은 자들에게는 모든 것이 합력하여 선을 이루느니라",
             date = "2025-05-25",
             dayOfWeek = "SUN"
         )
