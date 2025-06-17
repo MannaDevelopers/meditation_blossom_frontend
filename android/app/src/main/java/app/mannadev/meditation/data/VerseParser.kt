@@ -67,7 +67,7 @@ object VerseParser {
         val versesWithNumber =
             verses.mapIndexed { index, string -> "${verseNumbers[index]} $string" }
         return Verse(
-            contents = versesWithNumber,
+            verses = versesWithNumber,
             bookName = bookName,
             title = dto.title
         )

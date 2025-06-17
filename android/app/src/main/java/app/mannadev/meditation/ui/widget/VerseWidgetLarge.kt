@@ -40,7 +40,7 @@ class VerseWidgetLarge : GlanceAppWidget() {
     }
 }
 
-private object VerseWidgetDimens {
+private object VerseLargeWidgetDimens {
     val appBarHeight = 56.dp
     val horizontalPadding = 24.dp
     val bottomPadding = 24.dp
@@ -69,40 +69,43 @@ private fun VerseWidgetLargeContent(verse: Verse) {
     ) {
         // Title Section
         Column(
-            modifier = GlanceModifier.height(VerseWidgetDimens.appBarHeight)
-                .padding(start = VerseWidgetDimens.horizontalPadding),
+            modifier = GlanceModifier.height(VerseLargeWidgetDimens.appBarHeight)
+                .padding(start = VerseLargeWidgetDimens.horizontalPadding),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = verse.title,
                 style = Typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                maxLines = 1
             )
         }
         // Content and Book Name Section
-        Column(
-            modifier = GlanceModifier.padding(horizontal = VerseWidgetDimens.horizontalPadding)
-                .padding(bottom = VerseWidgetDimens.bottomPadding)
-                .defaultWeight()
+        LazyColumn(
+            GlanceModifier.fillMaxWidth().defaultWeight()
         ) {
-            LazyColumn(
-                GlanceModifier.fillMaxWidth().defaultWeight()
-            ) {
-                items(verse.contents) { contentLine ->
-                    Text(
-                        text = contentLine,
-                        style = Typography.titleMedium.copy(fontWeight = FontWeight.Normal),
-                    )
-                }
-                item {
-                    Spacer(GlanceModifier.height(VerseWidgetDimens.verseContentBottomSpacer)) // 마지막 항목 아래 여백
-                }
+            items(verse.verses) { verse ->
+                Text(
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .padding(horizontal = VerseLargeWidgetDimens.horizontalPadding)
+                        .clickable(actionStartActivity<MainActivity>()),
+                    text = verse,
+                    style = Typography.titleMedium.copy(fontWeight = FontWeight.Normal),
+                )
             }
-            Spacer(GlanceModifier.height(VerseWidgetDimens.bookNameTopSpacer))
-            Text(
-                text = verse.bookName,
-                style = Typography.labelMedium
-            )
+            item {
+                Spacer(GlanceModifier.height(VerseLargeWidgetDimens.verseContentBottomSpacer)) // 마지막 항목 아래 여백
+            }
         }
+        Text(
+            modifier = GlanceModifier.padding(
+                start = VerseLargeWidgetDimens.horizontalPadding,
+                top = VerseLargeWidgetDimens.bookNameTopSpacer,
+                bottom = VerseLargeWidgetDimens.bottomPadding
+            ),
+            text = verse.bookName,
+            style = Typography.labelMedium
+        )
     }
 }
 

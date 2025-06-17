@@ -18,7 +18,7 @@ class VerseTest {
         )
 
         val expectedVerse = Verse(
-            contents = listOf(
+            verses = listOf(
                 "11 또한 너희가 이 시기를 알거니와 자다가 깰 때가 벌써 되었으니 이는 이제 우리의 구원이 처음 믿을 때보다 가까웠음이라",
                 "12 밤이 깊고 낮이 가까웠으니 그러므로 우리가 어둠의 일을 벗고 빛의 갑옷을 입자",
                 "13 낮에와 같이 단정히 행하고 방탕하거나 술 취하지 말며 음란하거나 호색하지 말며 다투거나 시기하지 말고",
@@ -33,8 +33,8 @@ class VerseTest {
         assertEquals(expectedVerse.title, actualVerse.title)
         assertEquals(expectedVerse.bookName, actualVerse.bookName)
         assertArrayEquals(
-            expectedVerse.contents.toTypedArray(),
-            actualVerse.contents.toTypedArray()
+            expectedVerse.verses.toTypedArray(),
+            actualVerse.verses.toTypedArray()
         )
     }
 
@@ -55,7 +55,7 @@ class VerseTest {
         val actualVerse = VerseParser.verseDtoToVerse(verseDto)
 
         assertEquals(expectedBookName, actualVerse.bookName)
-        assertArrayEquals(expectedContents.toTypedArray(), actualVerse.contents.toTypedArray())
+        assertArrayEquals(expectedContents.toTypedArray(), actualVerse.verses.toTypedArray())
         assertEquals(verseDto.title, actualVerse.title)
     }
 
@@ -68,7 +68,7 @@ class VerseTest {
             dayOfWeek = "TUE"
         )
         val expectedVerse = Verse(
-            contents = listOf(
+            verses = listOf(
                 "1 여호와는 나의 목자시니 내게 부족함이 없으리로다",
                 "2 그가 나를 푸른 풀밭에 누이시며 쉴 만한 물 가으로 인도하시는도다"
             ),
@@ -89,7 +89,7 @@ class VerseTest {
         )
 
         val expectedVerse = Verse(
-            contents = listOf(
+            verses = listOf(
                 "1 여호와는 나의 목자시니 내게 부족함이 없으리로다",
                 "2 그가 나를 푸른 풀밭에 누이시며 쉴 만한 물 가으로 인도하시는도다"
             ),
@@ -110,7 +110,7 @@ class VerseTest {
             dayOfWeek = "WED"
         )
         val expectedVerse = Verse(
-            contents = listOf(
+            verses = listOf(
                 "5 너의 마음을 다하여 여호와를 의뢰하고",
                 "6 너의 모든 길에서 그를 인정하라"
             ),
@@ -133,9 +133,9 @@ class VerseTest {
         val actualVerse = VerseParser.verseDtoToVerse(verseDto)
 
         assertEquals("요한일서 4:7-8", actualVerse.bookName)
-        assertEquals(2, actualVerse.contents.size)
-        assertEquals("7 사랑하는 자들아 우리가 서로 사랑하자", actualVerse.contents[0])
-        assertEquals("8 사랑하지 아니하는 자는 하나님을 알지 못하나니", actualVerse.contents[1])
+        assertEquals(2, actualVerse.verses.size)
+        assertEquals("7 사랑하는 자들아 우리가 서로 사랑하자", actualVerse.verses[0])
+        assertEquals("8 사랑하지 아니하는 자는 하나님을 알지 못하나니", actualVerse.verses[1])
         assertEquals(verseDto.title, actualVerse.title)
     }
 
@@ -176,8 +176,8 @@ class VerseTest {
         val actualVerse = VerseParser.verseDtoToVerse(verseDto)
 
         assertEquals("요한복음 3:16", actualVerse.bookName)
-        assertEquals(1, actualVerse.contents.size)
-        assertEquals("16 하나님이 세상을 이처럼 사랑하사 독생자를 주셨으니", actualVerse.contents[0])
+        assertEquals(1, actualVerse.verses.size)
+        assertEquals("16 하나님이 세상을 이처럼 사랑하사 독생자를 주셨으니", actualVerse.verses[0])
         assertEquals(verseDto.title, actualVerse.title)
     }
 
@@ -217,9 +217,9 @@ class VerseTest {
         val actualVerse = VerseParser.verseDtoToVerse(verseDto)
 
         assertEquals("잠언 3:5-6", actualVerse.bookName)
-        assertEquals(2, actualVerse.contents.size)
-        assertEquals("5 너의 마음을 다하여 여호와를 의뢰하고", actualVerse.contents[0])
-        assertEquals("6 너의 모든 길에서 그를 인정하라", actualVerse.contents[1])
+        assertEquals(2, actualVerse.verses.size)
+        assertEquals("5 너의 마음을 다하여 여호와를 의뢰하고", actualVerse.verses[0])
+        assertEquals("6 너의 모든 길에서 그를 인정하라", actualVerse.verses[1])
         assertEquals(verseDto.title, actualVerse.title)
     }
 
@@ -235,9 +235,9 @@ class VerseTest {
         val actualVerse = VerseParser.verseDtoToVerse(verseDto)
 
         assertEquals("시편 23:1-2", actualVerse.bookName)
-        assertEquals(2, actualVerse.contents.size)
-        assertEquals("1 여호와는 나의 목자시니", actualVerse.contents[0].trim())
-        assertEquals("2 그가 나를 푸른 풀밭에 누이시며", actualVerse.contents[1].trim())
+        assertEquals(2, actualVerse.verses.size)
+        assertEquals("1 여호와는 나의 목자시니", actualVerse.verses[0].trim())
+        assertEquals("2 그가 나를 푸른 풀밭에 누이시며", actualVerse.verses[1].trim())
         assertEquals(verseDto.title, actualVerse.title)
     }
 
@@ -251,9 +251,9 @@ class VerseTest {
         )
         val actualVerse = VerseParser.verseDtoToVerse(verseDto)
         assertEquals("시편 23:1-2", actualVerse.bookName)
-        assertEquals(2, actualVerse.contents.size)
-        assertEquals("1 이 시는 다윗의 시라", actualVerse.contents[0].trim())
-        assertEquals("2 여호와는 나의 목자시니", actualVerse.contents[1].trim())
+        assertEquals(2, actualVerse.verses.size)
+        assertEquals("1 이 시는 다윗의 시라", actualVerse.verses[0].trim())
+        assertEquals("2 여호와는 나의 목자시니", actualVerse.verses[1].trim())
         assertEquals(verseDto.title, actualVerse.title)
     }
 
@@ -356,8 +356,8 @@ class VerseTest {
         val actualVerse = VerseParser.verseDtoToVerse(verseDto)
 
         assertEquals("역대하 1:1", actualVerse.bookName)
-        assertEquals(1, actualVerse.contents.size)
-        assertEquals("1 솔로몬이 여호와를 의지하고", actualVerse.contents[0])
+        assertEquals(1, actualVerse.verses.size)
+        assertEquals("1 솔로몬이 여호와를 의지하고", actualVerse.verses[0])
         assertEquals(verseDto.title, actualVerse.title)
     }
 
@@ -385,10 +385,10 @@ class VerseTest {
         val actualVerse = VerseParser.verseDtoToVerse(verseDto)
 
         assertEquals("창세기 22:2, 신명기 34:4, 요한복음 3:30", actualVerse.bookName)
-        assertEquals(3, actualVerse.contents.size)
+        assertEquals(3, actualVerse.verses.size)
         assertEquals(
             "2 여호와께서 이르시되 네 아들 네 사랑하는 독자 이삭을 데리고 모리아 땅으로 가서 내가 네게 일러 준 한 산 거기서 그를 번제로 드리라",
-            actualVerse.contents[0]
+            actualVerse.verses[0]
         )
         assertEquals(verseDto.title, actualVerse.title)
     }

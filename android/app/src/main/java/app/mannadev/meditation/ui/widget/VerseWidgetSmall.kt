@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.action.actionStartActivity
@@ -13,21 +12,23 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
+import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
-import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
-import androidx.glance.text.TextDefaults
 import app.mannadev.meditation.MainActivity
 import app.mannadev.meditation.data.Verse
 import app.mannadev.meditation.dto.VerseDto
+import app.mannadev.meditation.ui.widget.theme.Typography
 
 class VerseWidgetSmall : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -43,6 +44,16 @@ class VerseWidgetSmall : GlanceAppWidget() {
     }
 }
 
+
+private object VerseSmallWidgetDimens {
+    val appBarHeight = 56.dp
+    val horizontalPadding = 24.dp
+    val bookNameTopSpacer = 8.dp
+    val contentBackgroundRadius = 16.dp
+    val contentPadding = 12.dp
+    val widgetPadding = 12.dp
+}
+
 @Composable
 private fun VerseWidgetSmallContent(verse: Verse) {
     Column(
@@ -50,55 +61,62 @@ private fun VerseWidgetSmallContent(verse: Verse) {
             .fillMaxSize()
             .clickable(actionStartActivity<MainActivity>())
             .appWidgetBackground()
-            .background(Color.White)
-            .padding(vertical = 17.dp, horizontal = 18.dp),
+            .background(Color.White),
         horizontalAlignment = Alignment.Start,
         verticalAlignment = Alignment.Top
     ) {
         Row(
-            GlanceModifier.padding(start = 6.dp)
+            GlanceModifier.height(VerseSmallWidgetDimens.appBarHeight)
+                .padding(start = VerseSmallWidgetDimens.horizontalPadding),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "묵상",
-                style = TextDefaults.defaultTextStyle
-                    .copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    ),
+                verse.title,
+                style = Typography.titleMedium,
+                maxLines = 1
             )
         }
-        Spacer(GlanceModifier.height(17.dp))
-        Column(
+        Box(
             GlanceModifier
-                .cornerRadius(15.dp)
-                .xmlGradientBackground()
-                .padding(vertical = 34.dp)
+                .padding(horizontal = VerseSmallWidgetDimens.widgetPadding)
+                .padding(bottom = VerseSmallWidgetDimens.widgetPadding)
         ) {
-            LazyColumn(
-                GlanceModifier.height(120.dp)
+            Column(
+                GlanceModifier
+                    .cornerRadius(VerseSmallWidgetDimens.contentBackgroundRadius)
+                    .xmlGradientBackground()
+                    .fillMaxSize()
             ) {
-                items(verse.contents.size) { index ->
-                    Text(
-                        modifier = GlanceModifier.padding(horizontal = 19.dp),
-                        text = verse.contents[index],
-                        style = TextDefaults.defaultTextStyle
-                            .copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                            ),
-                    )
+                LazyColumn(
+                    GlanceModifier.defaultWeight().fillMaxWidth()
+                ) {
+                    item {
+                        Spacer(GlanceModifier.height(VerseSmallWidgetDimens.contentPadding))
+                    }
+                    items(verse.verses) { verse ->
+                        Text(
+                            modifier = GlanceModifier
+                                .fillMaxWidth()
+                                .padding(horizontal = VerseSmallWidgetDimens.contentPadding)
+                                .clickable(actionStartActivity<MainActivity>()),
+                            text = verse,
+                            style = Typography.bodyMedium,
+                        )
+                    }
+                    item {
+                        Spacer(GlanceModifier.height(VerseSmallWidgetDimens.contentPadding))
+                    }
                 }
-            }
-
-            Spacer(GlanceModifier.height(20.dp))
-            Text(
-                modifier = GlanceModifier.padding(horizontal = 19.dp),
-                text = verse.bookName,
-                style = TextDefaults.defaultTextStyle
-                    .copy(
-                        fontSize = 16.sp,
+                Text(
+                    modifier = GlanceModifier.padding(
+                        top = VerseSmallWidgetDimens.bookNameTopSpacer,
+                        start = VerseSmallWidgetDimens.contentPadding,
+                        bottom = VerseSmallWidgetDimens.contentPadding
                     ),
-            )
+                    text = verse.bookName,
+                    style = Typography.labelSmall,
+                )
+            }
         }
     }
 }
