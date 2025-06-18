@@ -6,7 +6,6 @@ import app.mannadev.meditation.dto.VerseDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import java.io.File
 
 interface SermonRepository {
     suspend fun getDisplaySermon(): Verse?
@@ -15,12 +14,18 @@ interface SermonRepository {
 class SermonRepositoryImpl(
     private val sermonLocalDataSource: SermonLocalDataSource
 ) : SermonRepository {
+    companion object {
+        private val json = Json {
+            ignoreUnknownKeys = true // JSON에 정의되지 않은 키를 무시
+        }
+    }
+
     override suspend fun getDisplaySermon(): Verse? {
         return withContext(Dispatchers.IO) {
             val sermonJsonString =
                 sermonLocalDataSource.getDisplaySermonJson() ?: return@withContext null
             try {
-                val verseDto = Json.decodeFromString<VerseDto>(sermonJsonString)
+                val verseDto = json.decodeFromString<List<VerseDto>>(sermonJsonString).first()
                 Verse.fromDto(verseDto)
             } catch (e: Exception) {
                 e.printStackTrace()
