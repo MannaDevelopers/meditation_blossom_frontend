@@ -3035,6 +3035,8 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - RNDefaultPreference (1.4.4):
+    - React-Core
   - RNFBApp (21.14.0):
     - Firebase/CoreOnly (= 11.11.0)
     - React-Core
@@ -3248,6 +3250,7 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - "RNCMaskedView (from `../node_modules/@react-native-masked-view/masked-view`)"
+  - RNDefaultPreference (from `../node_modules/react-native-default-preference`)
   - "RNFBApp (from `../node_modules/@react-native-firebase/app`)"
   - "RNFBFirestore (from `../node_modules/@react-native-firebase/firestore`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
@@ -3417,6 +3420,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-async-storage/async-storage"
   RNCMaskedView:
     :path: "../node_modules/@react-native-masked-view/masked-view"
+  RNDefaultPreference:
+    :path: "../node_modules/react-native-default-preference"
   RNFBApp:
     :path: "../node_modules/@react-native-firebase/app"
   RNFBFirestore:
@@ -3520,6 +3525,7 @@ SPEC CHECKSUMS:
   ReactCommon: 00e8f55183ce1358c920a954cd588831ccf0c397
   RNCAsyncStorage: 5321442ed26760d7581b26effab82399ea5ff18b
   RNCMaskedView: f1d7a375655e54d0aca367a16692a04a8cb69a71
+  RNDefaultPreference: ee13d69e6693d193cd223d10e15e5b3c012d31ba
   RNFBApp: 4105e54d9ca4a1c10893a032268470f670181110
   RNFBFirestore: 80b3fb2371c3289343766b8bb5a72a4abf4cc052
   RNGestureHandler: 96fc2de36a25cf6bece93e030c2ed9a5e95d33dd

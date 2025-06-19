@@ -1,5 +1,5 @@
 import React, { use, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Button, TouchableOpacity, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, Button, TouchableOpacity, ImageBackground, Platform } from 'react-native';
 import WidgetPreview from '../components/WidgetPreview';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 // import Icon from 'react-native-vector-icons/AntDesign';
@@ -7,6 +7,7 @@ import { RootStackParamList } from '../types/navigation';
 import { Sermon, SermonMetadata, STORAGE_KEY, METADATA_KEY, DISPLAY_SERMON_KEY } from '../types/Sermon';
 import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Preference from 'react-native-default-preference';
 
 
 type Props = NativeStackScreenProps<RootStackParamList, 'HomeScreen'>;
@@ -268,7 +269,16 @@ const HomeScreen = ({navigation}: Props) => {
     setDisplaySermon(getLatestSermons()[0] || undefined);    
   }, [sermons])
   
-
+  // ios AppGroup으로 위젯에 전시될 말씀만 전달
+  if (Platform.OS === 'ios') {
+    Preference.setName('group.com.Blossom.MeditationBlossom');
+    Preference.clear('displaySermon').then(() => {
+      console.log('데이터 초기화')
+    });
+    Preference.set('displaySermon', JSON.stringify(displaySermon)).then(() => {
+      console.log('데이터 저장 성공, ', JSON.stringify(displaySermon));
+    });
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: 'transparent', marginHorizontal: 35, marginVertical: 35, justifyContent: 'center', alignItems: 'center' }}>
