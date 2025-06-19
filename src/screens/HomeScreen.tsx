@@ -284,13 +284,13 @@ const HomeScreen = ({navigation}: Props) => {
         <View style={{ backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', width: 305, height: 25 }}>
           <Text style={{ color: "#A59EAE", fontSize: 20, letterSpacing: -3, fontFamily: "Pretendard-SemiBold" }}>{displaySermon?.date}</Text>
         </View>
-        <View style={{ backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', width: 305, height: 30 }}>
-          <Text style={{ color: "#A59EAE", fontSize: 24, letterSpacing: -3, fontFamily: "Pretendard-Bold" }}>{displaySermon?.title}</Text>
+        <View style={{ backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', width: 305, minHeight: 30, paddingVertical: 5 }}>
+          <Text style={{ color: "#A59EAE", fontSize: 24, letterSpacing: -3, fontFamily: "Pretendard-Bold", textAlign: 'center', flexWrap: 'wrap' }} numberOfLines={0}>{displaySermon?.title}</Text>
         </View>
         <View style={{ backgroundColor: 'transparent', width: 305, height: 300, justifyContent: 'center', alignItems: 'center' }}>
           <WidgetPreview content={displaySermon?.content} />
         </View>
-        <View style={{ backgroundColor: 'transparent', width: 305, height: 38, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+        {/* <View style={{ backgroundColor: 'transparent', width: 305, height: 38, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
             <TouchableOpacity onPress={() => navigation.navigate('EditScreen', { sermon: displaySermon })}>
             <ImageBackground
               source={require('../assets/image/EditButton.png')}
@@ -300,7 +300,7 @@ const HomeScreen = ({navigation}: Props) => {
               <Text style={{ color: 'white', fontSize: 20, fontFamily: "Pretendard-Bold", textAlign: 'center', letterSpacing: -1 }}>편집</Text>
             </ImageBackground>
             </TouchableOpacity>
-        </View>
+        </View> */}
       </View>
     </View>
   );
