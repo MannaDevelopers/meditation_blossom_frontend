@@ -229,6 +229,14 @@ const HomeScreen = ({navigation}: Props) => {
     return sermons.filter(sermon => sermon.date === latestDate);
   };
 
+  // 제목 텍스트 처리 - 소괄호 부분을 줄바꿈
+  const processTitleText = (title: string | undefined): string => {
+    if (!title) return '';
+    
+    // 소괄호를 찾아서 줄바꿈 추가
+    return title.replace(/\(/g, '\n(').replace(/\)/g, ')');
+  };
+
   
   // 1주일 마다 자동으로 서버에서 데이터 요청
   const AutoRequest = () =>
@@ -285,7 +293,7 @@ const HomeScreen = ({navigation}: Props) => {
           <Text style={{ color: "#A59EAE", fontSize: 20, letterSpacing: -3, fontFamily: "Pretendard-SemiBold" }}>{displaySermon?.date}</Text>
         </View>
         <View style={{ backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', width: 305, minHeight: 30, paddingVertical: 5 }}>
-          <Text style={{ color: "#A59EAE", fontSize: 24, letterSpacing: -3, fontFamily: "Pretendard-Bold", textAlign: 'center', flexWrap: 'wrap' }} numberOfLines={0}>{displaySermon?.title}</Text>
+          <Text style={{ color: "#A59EAE", fontSize: 24, letterSpacing: -3, fontFamily: "Pretendard-Bold", textAlign: 'center', flexWrap: 'wrap' }} numberOfLines={0}>{processTitleText(displaySermon?.title)}</Text>
         </View>
         <View style={{ backgroundColor: 'transparent', width: 305, height: 300, justifyContent: 'center', alignItems: 'center' }}>
           <WidgetPreview content={displaySermon?.content} />
