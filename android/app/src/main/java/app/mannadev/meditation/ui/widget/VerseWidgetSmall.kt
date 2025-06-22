@@ -67,13 +67,13 @@ private fun VerseWidgetSmallContent(verse: Verse) {
     ) {
         Row(
             GlanceModifier.height(VerseSmallWidgetDimens.appBarHeight)
-                .padding(start = VerseSmallWidgetDimens.horizontalPadding),
+                .padding(horizontal = VerseSmallWidgetDimens.horizontalPadding),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 verse.title,
                 style = Typography.titleMedium,
-                maxLines = 1
+                maxLines = 2
             )
         }
         Box(

@@ -70,13 +70,13 @@ private fun VerseWidgetLargeContent(verse: Verse) {
         // Title Section
         Column(
             modifier = GlanceModifier.height(VerseLargeWidgetDimens.appBarHeight)
-                .padding(start = VerseLargeWidgetDimens.horizontalPadding),
+                .padding(horizontal = VerseLargeWidgetDimens.horizontalPadding),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = verse.title,
                 style = Typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                maxLines = 1
+                maxLines = 2
             )
         }
         // Content and Book Name Section
