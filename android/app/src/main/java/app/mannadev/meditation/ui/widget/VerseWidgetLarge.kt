@@ -23,17 +23,19 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import app.mannadev.meditation.MainActivity
 import app.mannadev.meditation.R
-import app.mannadev.meditation.data.Verse
-import app.mannadev.meditation.di.Injection
+import app.mannadev.meditation.di.getWidgetDependencies
+import app.mannadev.meditation.model.Verse
 import app.mannadev.meditation.ui.widget.theme.Typography
 
 class VerseWidgetLarge : GlanceAppWidget(
     errorUiLayout = R.layout.verse_widget_large_error,
 ) {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val verse = Injection.provideGetDisplaySermonUseCase(context).invoke()
+        val widgetDependencies = getWidgetDependencies(context)
+        val getDisplaySermonUseCase = widgetDependencies.getDisplaySermonUseCase()
+        val verse = getDisplaySermonUseCase()
             ?: throw IllegalStateException("Verse data is null")
-        
+
         provideContent {
             VerseWidgetLargeContent(verse)
         }

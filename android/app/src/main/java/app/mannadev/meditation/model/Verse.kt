@@ -1,4 +1,4 @@
-package app.mannadev.meditation.data
+package app.mannadev.meditation.model
 
 import app.mannadev.meditation.dto.VerseDto
 
