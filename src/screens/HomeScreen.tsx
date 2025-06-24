@@ -7,6 +7,7 @@ import { RootStackParamList } from '../types/navigation';
 import { Sermon, SermonMetadata, STORAGE_KEY, METADATA_KEY, DISPLAY_SERMON_KEY } from '../types/Sermon';
 import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import WidgetUpdateModule from '../types/WidgetUpdateModule';
 
 
 type Props = NativeStackScreenProps<RootStackParamList, 'HomeScreen'>;
@@ -205,6 +206,14 @@ const HomeScreen = ({navigation}: Props) => {
         const displaySermon = mergedSermons.filter(sermon => sermon.date === newLatestDate);
         await AsyncStorage.setItem(DISPLAY_SERMON_KEY, JSON.stringify(displaySermon));        
         console.log('Display sermon saved:', displaySermon);
+        
+        // 위젯 업데이트
+        try {
+          await WidgetUpdateModule.onSermonUpdated(JSON.stringify(displaySermon));
+          console.log('Sermon data saved');
+        } catch (error) {
+          console.error('Failed to update widgets:', error);
+        }
       }
       setSermons([...mergedSermons]);
     } catch (error) {
