@@ -27,15 +27,17 @@ import androidx.glance.layout.padding
 import androidx.glance.text.Text
 import app.mannadev.meditation.MainActivity
 import app.mannadev.meditation.R
-import app.mannadev.meditation.data.Verse
-import app.mannadev.meditation.di.Injection
+import app.mannadev.meditation.di.getWidgetDependencies
+import app.mannadev.meditation.model.Verse
 import app.mannadev.meditation.ui.widget.theme.Typography
 
 class VerseWidgetSmall : GlanceAppWidget(
     errorUiLayout = R.layout.verse_widget_small_error,
 ) {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val verse = Injection.provideGetDisplaySermonUseCase(context).invoke()
+        val widgetDependencies = getWidgetDependencies(context)
+        val getDisplaySermonUseCase = widgetDependencies.getDisplaySermonUseCase()
+        val verse = getDisplaySermonUseCase()
             ?: throw IllegalStateException("Verse data is null")
 
         provideContent {
@@ -43,7 +45,6 @@ class VerseWidgetSmall : GlanceAppWidget(
         }
     }
 }
-
 
 private object VerseSmallWidgetDimens {
     val appBarHeight = 56.dp

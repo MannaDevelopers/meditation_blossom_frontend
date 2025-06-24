@@ -1,4 +1,4 @@
-package app.mannadev.meditation.data
+package app.mannadev.meditation.model
 
 sealed class VerseParseException(message: String) : Exception(message) {
     class NoPrefixException : VerseParseException("본문 : 접두사가 없습니다.")
