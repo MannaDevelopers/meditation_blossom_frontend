@@ -1,7 +1,8 @@
-package app.mannadev.meditation.data
+package app.mannadev.meditation.model
 
 import app.mannadev.meditation.dto.VerseDto
 import com.google.common.annotations.VisibleForTesting
+import kotlin.text.get
 
 object VerseParser {
 

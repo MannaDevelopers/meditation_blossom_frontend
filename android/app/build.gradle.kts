@@ -23,6 +23,8 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.google.services) // Google Services 플러그인 추가
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt.android)
     id("com.facebook.react")
 }
 
@@ -143,6 +145,10 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
+
+    // Hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler) // Use ksp instead of kapt
 
     // Debug dependencies
     testImplementation(libs.junit)

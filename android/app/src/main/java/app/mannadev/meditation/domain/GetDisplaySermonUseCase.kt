@@ -1,9 +1,9 @@
 package app.mannadev.meditation.domain
 
-import app.mannadev.meditation.data.SermonRepository
-import app.mannadev.meditation.data.Verse
+import app.mannadev.meditation.model.Verse
+import javax.inject.Inject
 
-class GetDisplaySermonUseCase(
+class GetDisplaySermonUseCase @Inject constructor(
     private val sermonRepository: SermonRepository
 ) {
     suspend operator fun invoke(): Verse? {
