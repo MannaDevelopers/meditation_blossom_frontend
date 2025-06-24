@@ -6,28 +6,23 @@ kotlin = "2.0.21"
 googleServices = "4.4.2"
 firebaseBom = "33.12.0"
 glance = "1.2.0-alpha01"
-glanceAppwidget = "1.2.0-alpha01"
-glanceAppwidgetPreview = "1.2.0-alpha01"
-glanceMaterial3 = "1.2.0-alpha01"
-glancePreview = "1.2.0-alpha01"
 junit = "4.13.2"
 coreKtx = "1.16.0"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
-kotlinGradlePlugin = "2.0.21"
+kotlinxSerialization = "1.6.3"
 lifecycleRuntimeKtx = "2.9.1"
 activityCompose = "1.10.1"
 composeBom = "2024.09.00"
 workRuntimeKtx = "2.10.0"
 
 [libraries]
-activity-compose = { module = "androidx.activity:activity-compose" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glanceAppwidget" }
+androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
 androidx-glance = { module = "androidx.glance:glance", version.ref = "glance" }
-androidx-glance-appwidget-preview = { module = "androidx.glance:glance-appwidget-preview", version.ref = "glanceAppwidgetPreview" }
-androidx-glance-preview = { module = "androidx.glance:glance-preview", version.ref = "glancePreview" }
-androidx-glance-material3 = { module = "androidx.glance:glance-material3", version.ref = "glanceMaterial3" }
+androidx-glance-appwidget-preview = { module = "androidx.glance:glance-appwidget-preview", version.ref = "glance" }
+androidx-glance-preview = { module = "androidx.glance:glance-preview", version.ref = "glance" }
+androidx-glance-material3 = { module = "androidx.glance:glance-material3", version.ref = "glance" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workRuntimeKtx" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
@@ -46,17 +41,14 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
-kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlinGradlePlugin" }
-material3 = { module = "androidx.compose.material3:material3" }
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 react-android = { module = "com.facebook.react:react-android" }
 react-native-gradle-plugin = { module = "com.facebook.react:react-native-gradle-plugin" }
-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
-ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
-ui = { module = "androidx.compose.ui:ui" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 
 [plugins]
-android-application = { id = "com.android.application"}
-kotlin-android = { id = "org.jetbrains.kotlin.android"}
+android-application = { id = "com.android.application" }
+kotlin-android = { id = "org.jetbrains.kotlin.android" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-google-services = { id = "com.google.gms.google-services"}
-
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services" }

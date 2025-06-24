@@ -28,21 +28,18 @@ import androidx.glance.text.Text
 import app.mannadev.meditation.MainActivity
 import app.mannadev.meditation.R
 import app.mannadev.meditation.data.Verse
-import app.mannadev.meditation.dto.VerseDto
+import app.mannadev.meditation.di.Injection
 import app.mannadev.meditation.ui.widget.theme.Typography
 
 class VerseWidgetSmall : GlanceAppWidget(
     errorUiLayout = R.layout.verse_widget_small_error,
 ) {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val verseDto = VerseDto(
-            title = "기도하면 응답되나요?",
-            content = "본문 : 로마서 8:28 28 우리가 알거니와 하나님을 사랑하는 자 곧 그의 뜻대로 부르심을 입은 자들에게는 모든 것이 합력하여 선을 이루느니라",
-            date = "2025-05-25",
-            dayOfWeek = "SUN"
-        )
+        val verse = Injection.provideGetDisplaySermonUseCase(context).invoke()
+            ?: throw IllegalStateException("Verse data is null")
+
         provideContent {
-            VerseWidgetSmallContent(Verse.fromDto(verseDto))
+            VerseWidgetSmallContent(verse)
         }
     }
 }
@@ -70,13 +67,13 @@ private fun VerseWidgetSmallContent(verse: Verse) {
     ) {
         Row(
             GlanceModifier.height(VerseSmallWidgetDimens.appBarHeight)
-                .padding(start = VerseSmallWidgetDimens.horizontalPadding),
+                .padding(horizontal = VerseSmallWidgetDimens.horizontalPadding),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 verse.title,
                 style = Typography.titleMedium,
-                maxLines = 1
+                maxLines = 2
             )
         }
         Box(

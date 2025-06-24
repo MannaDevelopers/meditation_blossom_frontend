@@ -21,6 +21,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.google.services) // Google Services 플러그인 추가
     id("com.facebook.react")
 }
@@ -50,8 +51,8 @@ android {
         applicationId = "app.mannadev.meditation"
         minSdk = rootProject.extra["minSdkVersion"].toString().toInt()
         targetSdk = rootProject.extra["targetSdkVersion"].toString().toInt()
-        versionCode = 1
-        versionName = "0.0.1"  // 버전 업데이트
+        versionCode = 2
+        versionName = "0.2.1"  // 버전 업데이트
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -125,11 +126,11 @@ dependencies {
 
     // Compose
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.ui)
-    implementation(libs.activity.compose)
-    implementation(libs.ui.graphics)
-    implementation(libs.material3)
-    debugImplementation(libs.ui.tooling.preview)
+    implementation(libs.androidx.ui)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.ui.graphics)
+    implementation(libs.androidx.material3)
+    debugImplementation(libs.androidx.ui.tooling.preview)
 
     // Glance (Widget)
     implementation(libs.androidx.glance)
@@ -138,6 +139,8 @@ dependencies {
     debugImplementation(libs.androidx.glance.preview)
     debugImplementation(libs.androidx.glance.appwidget.preview)
 
+    // Kotlinx
+    implementation(libs.kotlinx.serialization.json)
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
 

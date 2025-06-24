@@ -1,1 +1,2 @@
-app/secrets.properties 
+app/secrets.properties
+/app/release/*
