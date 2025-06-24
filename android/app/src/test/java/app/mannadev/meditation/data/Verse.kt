@@ -1,6 +1,9 @@
 package app.mannadev.meditation.data
 
 import app.mannadev.meditation.dto.VerseDto
+import app.mannadev.meditation.model.Verse
+import app.mannadev.meditation.model.VerseParseException
+import app.mannadev.meditation.model.VerseParser
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Test
