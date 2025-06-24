@@ -1,7 +1,6 @@
 package app.mannadev.meditation.data
 
 import app.mannadev.meditation.dto.VerseDto
-import com.google.common.annotations.VisibleForTesting
 
 data class Verse(
     val verses: List<String>, // 말씀 내용 (예: "또 비유로 말씀하시되...")
@@ -9,7 +8,7 @@ data class Verse(
     val title: String //설교 제목
 ) {
     companion object {
-        @VisibleForTesting
+
         val errorVerse = Verse(
             verses = listOf("내용을 불러올 수 없습니다."),
             title = "",
