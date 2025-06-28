@@ -24,8 +24,9 @@ import androidx.glance.text.Text
 import app.mannadev.meditation.MainActivity
 import app.mannadev.meditation.R
 import app.mannadev.meditation.di.getWidgetDependencies
-import app.mannadev.meditation.model.Verse
+import app.mannadev.meditation.model.Sermon
 import app.mannadev.meditation.ui.widget.theme.Typography
+import java.time.LocalDateTime
 
 class VerseWidgetLarge : GlanceAppWidget(
     errorUiLayout = R.layout.verse_widget_large_error,
@@ -33,7 +34,7 @@ class VerseWidgetLarge : GlanceAppWidget(
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val widgetDependencies = getWidgetDependencies(context)
         val getDisplaySermonUseCase = widgetDependencies.getDisplaySermonUseCase()
-        val verse = getDisplaySermonUseCase()
+        val verse = getDisplaySermonUseCase(LocalDateTime.now())
             ?: throw IllegalStateException("Verse data is null")
 
         provideContent {
@@ -55,10 +56,10 @@ private object VerseLargeWidgetDimens {
  * It displays the verse title, content (scrollable if it exceeds the available space), and book name.
  * The widget has a gradient background and is clickable to open the MainActivity.
  *
- * @param verse The [Verse] object containing the data to be displayed.
+ * @param sermon The [Sermon] object containing the data to be displayed.
  */
 @Composable
-private fun VerseWidgetLargeContent(verse: Verse) {
+private fun VerseWidgetLargeContent(sermon: Sermon) {
 
     Column(
         modifier = GlanceModifier
@@ -79,7 +80,7 @@ private fun VerseWidgetLargeContent(verse: Verse) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = verse.title,
+                text = sermon.title,
                 style = Typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 maxLines = 2
             )
@@ -89,7 +90,7 @@ private fun VerseWidgetLargeContent(verse: Verse) {
             GlanceModifier.fillMaxWidth()
                 .defaultWeight()
         ) {
-            items(verse.verses) { verse ->
+            items(sermon.verses) { verse ->
                 Text(
                     modifier = GlanceModifier
                         .fillMaxWidth()
@@ -109,7 +110,7 @@ private fun VerseWidgetLargeContent(verse: Verse) {
                 top = VerseLargeWidgetDimens.bookNameTopSpacer,
                 bottom = VerseLargeWidgetDimens.bottomPadding
             ),
-            text = verse.bookName,
+            text = sermon.bookName,
             style = Typography.labelMedium
         )
     }

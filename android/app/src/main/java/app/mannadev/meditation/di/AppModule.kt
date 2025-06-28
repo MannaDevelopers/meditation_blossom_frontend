@@ -1,13 +1,16 @@
 package app.mannadev.meditation.di
 
 import app.mannadev.meditation.data.SermonDataSource
+import app.mannadev.meditation.data.SermonFirestoreDataSource
 import app.mannadev.meditation.data.SermonLocalDataSource
+import app.mannadev.meditation.data.SermonPrefsDataSource
 import app.mannadev.meditation.data.SermonRepositoryImpl
 import app.mannadev.meditation.domain.SermonRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Qualifier
 import javax.inject.Singleton
 
 @Module
@@ -20,10 +23,37 @@ abstract class RepositoryModule {
         sermonRepositoryImpl: SermonRepositoryImpl
     ): SermonRepository
 
+
     @Binds
     @Singleton
+    @LocalDataSource
     abstract fun bindSermonLocalDataSource(
-        sermonLocalDataSourceImpl: SermonLocalDataSource
+        impl: SermonLocalDataSource
+    ): SermonDataSource
+
+    @Binds
+    @Singleton
+    @RemoteDataSource
+    abstract fun bindSermonFirestoreDataSource(
+        impl: SermonFirestoreDataSource
+    ): SermonDataSource
+
+    @Binds
+    @Singleton
+    @PrefsDataSource
+    abstract fun bindSermonPrefsDataSource(
+        impl: SermonPrefsDataSource
     ): SermonDataSource
 }
 
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class LocalDataSource
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class RemoteDataSource // Or FirestoreDataSource if you prefer more specificity
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class PrefsDataSource

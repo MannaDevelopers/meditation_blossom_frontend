@@ -3,6 +3,7 @@
 agp = "8.8.0"
 #noinspection NewerVersionAvailable. check libs.versions.toml on @react-native/gradle-plugin
 kotlin = "2.0.21"
+ksp = "2.0.21-1.0.27"
 googleServices = "4.4.2"
 #noinspection GradleDependency. react-native-firebase 22.2.1 (2025-06-10) 사용중.
 firebaseBom = "33.14.0"
@@ -12,12 +13,12 @@ coreKtx = "1.16.0"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 kotlinxSerialization = "1.8.1"
+kotlinxDatetime = "0.7.0"
 lifecycleRuntimeKtx = "2.9.1"
 activityCompose = "1.10.1"
 composeBom = "2025.06.01"
 workRuntimeKtx = "2.10.2"
 hilt = "2.56.2"
-ksp = "2.0.21-1.0.27"
 firebaseCrashlyticsPlugin = "3.0.4"
 
 [libraries]
@@ -32,6 +33,7 @@ androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics-ktx" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore-ktx" }
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics-ktx" }
 firebase-crashlytics-gradle-plugin = { group = "com.google.firebase", name = "firebase-crashlytics-gradle", version.ref = "firebaseCrashlyticsPlugin" }
 
@@ -53,7 +55,9 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 react-android = { module = "com.facebook.react:react-android" }
 react-native-gradle-plugin = { module = "com.facebook.react:react-native-gradle-plugin" }
-kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinxDatetime" }
+
 # Hilt
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
@@ -66,4 +70,4 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 google-services = { id = "com.google.gms.google-services" }
 hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-firebase-crashlytics = { id = "com.google.firebase.crashlytics"}
+firebase-crashlytics = { id = "com.google.firebase.crashlytics" }

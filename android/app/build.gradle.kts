@@ -120,6 +120,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.firestore)
     implementation(libs.firebase.messaging)
 
     // Hermes
@@ -146,6 +147,7 @@ dependencies {
 
     // Kotlinx
     implementation(libs.kotlinx.serialization.json)
+
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
 

@@ -27,8 +27,9 @@ import androidx.glance.text.Text
 import app.mannadev.meditation.MainActivity
 import app.mannadev.meditation.R
 import app.mannadev.meditation.di.getWidgetDependencies
-import app.mannadev.meditation.model.Verse
+import app.mannadev.meditation.model.Sermon
 import app.mannadev.meditation.ui.widget.theme.Typography
+import java.time.LocalDateTime
 
 class VerseWidgetSmall : GlanceAppWidget(
     errorUiLayout = R.layout.verse_widget_small_error,
@@ -36,7 +37,7 @@ class VerseWidgetSmall : GlanceAppWidget(
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val widgetDependencies = getWidgetDependencies(context)
         val getDisplaySermonUseCase = widgetDependencies.getDisplaySermonUseCase()
-        val verse = getDisplaySermonUseCase()
+        val verse = getDisplaySermonUseCase(LocalDateTime.now())
             ?: throw IllegalStateException("Verse data is null")
 
         provideContent {
@@ -55,7 +56,7 @@ private object VerseSmallWidgetDimens {
 }
 
 @Composable
-private fun VerseWidgetSmallContent(verse: Verse) {
+private fun VerseWidgetSmallContent(sermon: Sermon) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -71,7 +72,7 @@ private fun VerseWidgetSmallContent(verse: Verse) {
                     horizontal = VerseSmallWidgetDimens.horizontalPadding,
                     vertical = VerseSmallWidgetDimens.appBarVerticalPadding
                 ),
-            text = verse.title,
+            text = sermon.title,
             style = Typography.titleMedium,
             maxLines = 2
         )
@@ -94,7 +95,7 @@ private fun VerseWidgetSmallContent(verse: Verse) {
                     item {
                         Spacer(GlanceModifier.height(VerseSmallWidgetDimens.contentPadding))
                     }
-                    items(verse.verses) { verse ->
+                    items(sermon.verses) { verse ->
                         Text(
                             modifier = GlanceModifier
                                 .fillMaxWidth()
@@ -114,7 +115,7 @@ private fun VerseWidgetSmallContent(verse: Verse) {
                         start = VerseSmallWidgetDimens.contentPadding,
                         bottom = VerseSmallWidgetDimens.contentPadding
                     ),
-                    text = verse.bookName,
+                    text = sermon.bookName,
                     style = Typography.labelSmall,
                 )
             }
