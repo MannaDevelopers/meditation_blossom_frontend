@@ -43,7 +43,7 @@ class VerseWidgetLarge : GlanceAppWidget(
 }
 
 private object VerseLargeWidgetDimens {
-    val appBarHeight = 56.dp
+    val appBarVerticalPadding = 24.dp
     val horizontalPadding = 24.dp
     val bottomPadding = 24.dp
     val verseContentBottomSpacer = 16.dp
@@ -71,8 +71,11 @@ private fun VerseWidgetLargeContent(verse: Verse) {
     ) {
         // Title Section
         Column(
-            modifier = GlanceModifier.height(VerseLargeWidgetDimens.appBarHeight)
-                .padding(horizontal = VerseLargeWidgetDimens.horizontalPadding),
+            modifier = GlanceModifier
+                .padding(
+                    horizontal = VerseLargeWidgetDimens.horizontalPadding,
+                    vertical = VerseLargeWidgetDimens.appBarVerticalPadding
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -83,7 +86,8 @@ private fun VerseWidgetLargeContent(verse: Verse) {
         }
         // Content and Book Name Section
         LazyColumn(
-            GlanceModifier.fillMaxWidth().defaultWeight()
+            GlanceModifier.fillMaxWidth()
+                .defaultWeight()
         ) {
             items(verse.verses) { verse ->
                 Text(

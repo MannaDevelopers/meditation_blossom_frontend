@@ -18,7 +18,6 @@ import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
-import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
@@ -47,7 +46,7 @@ class VerseWidgetSmall : GlanceAppWidget(
 }
 
 private object VerseSmallWidgetDimens {
-    val appBarHeight = 56.dp
+    val appBarVerticalPadding = 20.dp
     val horizontalPadding = 24.dp
     val bookNameTopSpacer = 8.dp
     val contentBackgroundRadius = 16.dp
@@ -66,21 +65,22 @@ private fun VerseWidgetSmallContent(verse: Verse) {
         horizontalAlignment = Alignment.Start,
         verticalAlignment = Alignment.Top
     ) {
-        Row(
-            GlanceModifier.height(VerseSmallWidgetDimens.appBarHeight)
-                .padding(horizontal = VerseSmallWidgetDimens.horizontalPadding),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                verse.title,
-                style = Typography.titleMedium,
-                maxLines = 2
-            )
-        }
+        Text(
+            modifier = GlanceModifier
+                .padding(
+                    horizontal = VerseSmallWidgetDimens.horizontalPadding,
+                    vertical = VerseSmallWidgetDimens.appBarVerticalPadding
+                ),
+            text = verse.title,
+            style = Typography.titleMedium,
+            maxLines = 2
+        )
         Box(
             GlanceModifier
                 .padding(horizontal = VerseSmallWidgetDimens.widgetPadding)
                 .padding(bottom = VerseSmallWidgetDimens.widgetPadding)
+                .defaultWeight()
+                .fillMaxWidth()
         ) {
             Column(
                 GlanceModifier
