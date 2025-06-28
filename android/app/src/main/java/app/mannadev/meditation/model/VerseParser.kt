@@ -2,7 +2,6 @@ package app.mannadev.meditation.model
 
 import app.mannadev.meditation.dto.SermonDto
 import com.google.common.annotations.VisibleForTesting
-import kotlin.text.get
 
 object VerseParser {
 
@@ -65,13 +64,22 @@ object VerseParser {
             verses.size
         )
 
-        val versesWithNumber =
-            verses.mapIndexed { index, string -> "${verseNumbers[index]} $string" }
-        return Sermon(
-            verses = versesWithNumber,
-            bookName = bookName,
-            title = dto.title
-        )
+        //구절이 하나만 있으면 앞에 번호 붙이지 않기.
+        if (verses.size == 1) {
+            return Sermon(
+                verses = verses,
+                bookName = bookName,
+                title = dto.title
+            )
+        } else {
+            val versesWithNumber =
+                verses.mapIndexed { index, string -> "${verseNumbers[index]} $string" }
+            return Sermon(
+                verses = versesWithNumber,
+                bookName = bookName,
+                title = dto.title
+            )
+        }
     }
 
     @VisibleForTesting

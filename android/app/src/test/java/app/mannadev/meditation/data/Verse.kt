@@ -180,7 +180,7 @@ class VerseTest {
 
         assertEquals("요한복음 3:16", actualVerse.bookName)
         assertEquals(1, actualVerse.verses.size)
-        assertEquals("16 하나님이 세상을 이처럼 사랑하사 독생자를 주셨으니", actualVerse.verses[0])
+        assertEquals("하나님이 세상을 이처럼 사랑하사 독생자를 주셨으니", actualVerse.verses[0])
         assertEquals(sermonDto.title, actualVerse.title)
     }
 
@@ -360,7 +360,7 @@ class VerseTest {
 
         assertEquals("역대하 1:1", actualVerse.bookName)
         assertEquals(1, actualVerse.verses.size)
-        assertEquals("1 솔로몬이 여호와를 의지하고", actualVerse.verses[0])
+        assertEquals("솔로몬이 여호와를 의지하고", actualVerse.verses[0])
         assertEquals(sermonDto.title, actualVerse.title)
     }
 
