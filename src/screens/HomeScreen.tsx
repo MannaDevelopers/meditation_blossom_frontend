@@ -8,6 +8,7 @@ import { Sermon, SermonMetadata, STORAGE_KEY, METADATA_KEY, DISPLAY_SERMON_KEY }
 import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
 
 type Props = NativeStackScreenProps<RootStackParamList, 'HomeScreen'>;
@@ -288,21 +289,21 @@ const HomeScreen = ({navigation}: Props) => {
 
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'transparent', marginHorizontal: 35, marginVertical: 35, justifyContent: 'center', alignItems: 'center' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent', marginHorizontal: 35, marginVertical: 35, justifyContent: 'center', alignItems: 'center' }}>
       <View style={{ backgroundColor: 'transparent', flex: 1 }}>
         <View style={{ backgroundColor: 'transparent', flexDirection: 'row', width: 305, height: 30, marginBottom: 35, alignItems: 'center'}}>
           <Image source={require('../assets/image/20250416_meditation_icon.png')} style={{ backgroundColor: 'transparent', borderRadius: 15, width: 20, height: 20 }} />
-          <Text style={{ color: '#49454F', fontSize: 20, letterSpacing: -1, fontFamily: "Pretendard-Medium", marginLeft: 8}}>묵상만개</Text>
+          <Text style={{ color: '#49454F', fontSize: 20, fontFamily: "Pretendard-Medium", marginLeft: 8}}>묵상만개</Text>
           {/* <Icon name="setting" size={20} color="#49454F" style={{ marginLeft: 'auto' }} /> */}
           <TouchableOpacity onPress={() => navigation.navigate('SettingsScreen', { setSermons, setLatestDate, setMetadata, setDisplaySermon, onRefresh })} style={{ marginLeft: 'auto' }}>
             <Image source={require('../assets/image/Settings.png')} style={{ backgroundColor: 'transparent', borderRadius: 15, width: 20, height: 20 }} />
           </TouchableOpacity>
         </View>
         <View style={{ backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', width: 305, height: 25 }}>
-          <Text style={{ color: "#A59EAE", fontSize: 20, letterSpacing: -3, fontFamily: "Pretendard-SemiBold" }}>{displaySermon?.date}</Text>
+          <Text style={{ color: "#A59EAE", fontSize: 20, fontFamily: "Pretendard-SemiBold" }}>{displaySermon?.date}</Text>
         </View>
         <View style={{ backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', width: 305, minHeight: 30, paddingVertical: 5 }}>
-          <Text style={{ color: "#A59EAE", fontSize: 24, letterSpacing: -3, fontFamily: "Pretendard-Bold", textAlign: 'center', flexWrap: 'wrap' }} numberOfLines={0}>{processTitleText(displaySermon?.title)}</Text>
+          <Text style={{ color: "#A59EAE", fontSize: 24, fontFamily: "Pretendard-Bold", textAlign: 'center', flexWrap: 'wrap' }} numberOfLines={0}>{processTitleText(displaySermon?.title)}</Text>
         </View>
         <View style={{ backgroundColor: 'transparent', width: 305, height: 300, justifyContent: 'center', alignItems: 'center' }}>
           <WidgetPreview content={displaySermon?.content} />
@@ -319,7 +320,7 @@ const HomeScreen = ({navigation}: Props) => {
             </TouchableOpacity>
         </View> */}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
