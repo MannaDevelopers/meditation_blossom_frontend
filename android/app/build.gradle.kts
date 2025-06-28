@@ -155,6 +155,8 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler) // Use ksp instead of kapt
 
+    implementation(libs.timber) // Or the latest version
+
     // Debug dependencies
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
