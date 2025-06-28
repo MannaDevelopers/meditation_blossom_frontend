@@ -1,7 +1,7 @@
 package app.mannadev.meditation.di
 
 import android.content.Context
-import app.mannadev.meditation.domain.GetDisplaySermonUseCase
+import app.mannadev.meditation.usecase.GetDisplaySermonUseCase
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors

@@ -1,6 +1,6 @@
 package app.mannadev.meditation.di
 
-import app.mannadev.meditation.domain.GetDisplaySermonUseCase
+import app.mannadev.meditation.usecase.GetDisplaySermonUseCase
 import app.mannadev.meditation.domain.SermonRepository
 import dagger.Module
 import dagger.Provides

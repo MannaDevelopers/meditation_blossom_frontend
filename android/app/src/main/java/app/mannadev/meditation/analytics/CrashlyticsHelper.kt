@@ -1,12 +1,11 @@
-package app.mannadev.meditation
+package app.mannadev.meditation.analytics
 
-import android.util.Log
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import timber.log.Timber
 
 object CrashlyticsHelper {
     fun recordException(exception: Throwable, message: String? = null) {
-        Timber.e(exception, "Recording exception: $message")
+        Timber.Forest.e(exception, "Recording exception: $message")
         if (message != null) {
             FirebaseCrashlytics.getInstance().recordException(RuntimeException(message, exception))
         } else {

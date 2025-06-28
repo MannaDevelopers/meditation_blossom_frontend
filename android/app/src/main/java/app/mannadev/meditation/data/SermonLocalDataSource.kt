@@ -2,7 +2,7 @@ package app.mannadev.meditation.data
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import app.mannadev.meditation.CrashlyticsHelper
+import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.dto.SermonDto
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers

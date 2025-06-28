@@ -1,6 +1,8 @@
 package app.mannadev.meditation.data
 
-import app.mannadev.meditation.CrashlyticsHelper
+import app.mannadev.meditation.analytics.AnalyticsHelper
+import app.mannadev.meditation.analytics.CrashlyticsHelper
+import app.mannadev.meditation.analytics.SermonEventSource
 import app.mannadev.meditation.di.LocalDataSource
 import app.mannadev.meditation.di.PrefsDataSource
 import app.mannadev.meditation.di.RemoteDataSource
@@ -52,12 +54,14 @@ class SermonRepositoryImpl @Inject constructor(
                     targetDate != null && !isSermonAfterTargetDate(dto, targetDate)
                 }?.also { dto ->
                     prefsDataSource.saveDisplaySermonSafe(dto) // Cache to prefs
+                    AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.RN_ASYNCSTORAGE)
                 }
             },
             // Source 3: Remote
             {
                 remoteDataSource.getDisplaySermonSafe()?.also { dto ->
                     prefsDataSource.saveDisplaySermonSafe(dto) // Cache to prefs
+                    AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.FIRESTORE)
                 }
             }
         )

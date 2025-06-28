@@ -1,6 +1,7 @@
 package app.mannadev.meditation
 
 import android.app.Application
+import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.rnmodule.WidgetUpdatePackage
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication

@@ -1,5 +1,6 @@
-package app.mannadev.meditation.domain
+package app.mannadev.meditation.usecase
 
+import app.mannadev.meditation.domain.SermonRepository
 import app.mannadev.meditation.model.Sermon
 import java.time.LocalDateTime
 import javax.inject.Inject

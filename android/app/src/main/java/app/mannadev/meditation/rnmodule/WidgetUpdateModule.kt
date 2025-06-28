@@ -1,9 +1,10 @@
 package app.mannadev.meditation.rnmodule
 
 import androidx.annotation.Keep
-import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetManager
-import app.mannadev.meditation.CrashlyticsHelper
+import androidx.glance.appwidget.updateAll
+import app.mannadev.meditation.analytics.AnalyticsHelper
+import app.mannadev.meditation.analytics.CrashlyticsHelper
+import app.mannadev.meditation.analytics.SermonEventSource
 import app.mannadev.meditation.di.getRNModuleDependencies
 import app.mannadev.meditation.dto.SermonDto
 import app.mannadev.meditation.ui.widget.VerseWidgetLarge
@@ -59,6 +60,7 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
             runCatching {
                 val getSaveSermonUseCase = moduleDependencies.getSaveDisplaySermonUseCase()
                 getSaveSermonUseCase(json.decodeFromString<SermonDto>(sermonData))
+                AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.RN_MODULE)
             }.onFailure { error ->
                 CrashlyticsHelper.recordException(
                     error,
@@ -68,38 +70,14 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
 
             try {
                 val context = reactApplicationContext
-                val glanceAppWidgetManager = GlanceAppWidgetManager(context)
 
-                updateWidgets(
-                    context,
-                    glanceAppWidgetManager,
-                    VerseWidgetLarge(),
-                    VerseWidgetLarge::class.java
-                )
-                updateWidgets(
-                    context,
-                    glanceAppWidgetManager,
-                    VerseWidgetSmall(),
-                    VerseWidgetSmall::class.java
-                )
+                VerseWidgetLarge().updateAll(context)
+                VerseWidgetSmall().updateAll(context)
 
                 promise.resolve(true)
             } catch (e: Exception) {
                 promise.reject("WIDGET_UPDATE_ERROR", e.message, e)
             }
         }
-
-    private suspend fun <T : GlanceAppWidget> updateWidgets(
-        context: ReactApplicationContext,
-        glanceAppWidgetManager: GlanceAppWidgetManager,
-        widget: T,
-        widgetClass: Class<T>
-    ) {
-        // Update large widgets
-        val largeWidgetIds = glanceAppWidgetManager.getGlanceIds(widgetClass)
-        largeWidgetIds.forEach { glanceId ->
-            widget.update(context, glanceId)
-        }
-    }
 
 }
