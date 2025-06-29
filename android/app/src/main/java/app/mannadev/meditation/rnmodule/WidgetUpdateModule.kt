@@ -16,6 +16,8 @@ import com.facebook.react.bridge.ReactMethod
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
@@ -30,24 +32,22 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
         }
     }
 
-    private lateinit var moduleJob: Job
     private lateinit var moduleScope: CoroutineScope
 
-    val moduleDependencies = getRNModuleDependencies(context = reactApplicationContext)
+    val moduleDependencies by lazy { getRNModuleDependencies(context = reactApplicationContext) }
 
 
     override fun getName(): String = "WidgetUpdateModule"
 
     override fun initialize() {
         super.initialize()
-        moduleJob = Job()
-        moduleScope = CoroutineScope(Dispatchers.Main + moduleJob)
+        moduleScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     }
 
     override fun invalidate() {
         super.invalidate()
-        if (::moduleJob.isInitialized) {
-            moduleJob.cancel()
+        if (::moduleScope.isInitialized) {
+            moduleScope.cancel()
         }
     }
 
