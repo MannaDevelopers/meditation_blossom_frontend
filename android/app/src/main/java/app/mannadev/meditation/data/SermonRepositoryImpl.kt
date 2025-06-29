@@ -45,13 +45,13 @@ class SermonRepositoryImpl @Inject constructor(
             // Source 1: Prefs
             {
                 prefsDataSource.getDisplaySermonSafe()?.takeIf { dto ->
-                    targetDate != null && !isSermonAfterTargetDate(dto, targetDate)
+                    targetDate == null || !isSermonAfterTargetDate(dto, targetDate)
                 }
             },
             // Source 2: Local
             {
                 localDataSource.getDisplaySermonSafe()?.takeIf { dto ->
-                    targetDate != null && !isSermonAfterTargetDate(dto, targetDate)
+                    targetDate == null || !isSermonAfterTargetDate(dto, targetDate)
                 }?.also { dto ->
                     prefsDataSource.saveDisplaySermonSafe(dto) // Cache to prefs
                     AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.RN_ASYNCSTORAGE)
