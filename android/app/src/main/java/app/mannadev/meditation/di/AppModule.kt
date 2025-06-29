@@ -1,5 +1,8 @@
+@file:Suppress("unused")
+
 package app.mannadev.meditation.di
 
+import androidx.annotation.Keep
 import app.mannadev.meditation.data.SermonDataSource
 import app.mannadev.meditation.data.SermonFirestoreDataSource
 import app.mannadev.meditation.data.SermonLocalDataSource
@@ -13,6 +16,7 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Qualifier
 import javax.inject.Singleton
 
+@Keep
 @Module
 @InstallIn(SingletonComponent::class) // Application-level dependencies
 abstract class RepositoryModule {

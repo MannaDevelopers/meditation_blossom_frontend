@@ -49,7 +49,7 @@ object VerseParser {
 
         val verseNumbers = try {
             extractVerseNumbersFromReferenceString(bookName)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             throw VerseParseException.InvalidVerseFormatException()
         }
 
