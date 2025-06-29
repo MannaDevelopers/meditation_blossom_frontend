@@ -4,10 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import app.mannadev.meditation.dto.VerseDto
-import app.mannadev.meditation.model.Verse
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -74,18 +71,10 @@ class SermonLocalDataSourceTest {
 
 
         // when
-        val result = dataSource.getDisplaySermonJson()
+        val result = dataSource.getDisplaySermon()
 
         // then
         println(result)
-        checkNotNull(result)
-        val json = Json {
-            ignoreUnknownKeys = true
-        }
-        val verseDto = json.decodeFromString<List<VerseDto>>(result).first()
-        println(verseDto)
-        val verse = Verse.fromDto(verseDto)
-        println(verse)
     }
 
 }

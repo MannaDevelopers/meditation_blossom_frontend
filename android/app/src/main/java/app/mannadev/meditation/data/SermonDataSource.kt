@@ -1,5 +1,10 @@
 package app.mannadev.meditation.data
 
+import app.mannadev.meditation.dto.SermonDto
+
 interface SermonDataSource {
-    fun getDisplaySermonJson(): String?
+
+    suspend fun getDisplaySermon(): SermonDto?
+
+    suspend fun saveDisplaySermon(sermon: SermonDto)
 }
