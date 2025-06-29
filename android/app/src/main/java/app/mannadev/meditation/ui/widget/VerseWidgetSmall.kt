@@ -18,7 +18,6 @@ import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
-import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
@@ -28,8 +27,9 @@ import androidx.glance.text.Text
 import app.mannadev.meditation.MainActivity
 import app.mannadev.meditation.R
 import app.mannadev.meditation.di.getWidgetDependencies
-import app.mannadev.meditation.model.Verse
+import app.mannadev.meditation.model.Sermon
 import app.mannadev.meditation.ui.widget.theme.Typography
+import java.time.LocalDateTime
 
 class VerseWidgetSmall : GlanceAppWidget(
     errorUiLayout = R.layout.verse_widget_small_error,
@@ -37,7 +37,7 @@ class VerseWidgetSmall : GlanceAppWidget(
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val widgetDependencies = getWidgetDependencies(context)
         val getDisplaySermonUseCase = widgetDependencies.getDisplaySermonUseCase()
-        val verse = getDisplaySermonUseCase()
+        val verse = getDisplaySermonUseCase(LocalDateTime.now())
             ?: throw IllegalStateException("Verse data is null")
 
         provideContent {
@@ -47,7 +47,7 @@ class VerseWidgetSmall : GlanceAppWidget(
 }
 
 private object VerseSmallWidgetDimens {
-    val appBarHeight = 56.dp
+    val appBarVerticalPadding = 20.dp
     val horizontalPadding = 24.dp
     val bookNameTopSpacer = 8.dp
     val contentBackgroundRadius = 16.dp
@@ -56,7 +56,7 @@ private object VerseSmallWidgetDimens {
 }
 
 @Composable
-private fun VerseWidgetSmallContent(verse: Verse) {
+private fun VerseWidgetSmallContent(sermon: Sermon) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -66,21 +66,22 @@ private fun VerseWidgetSmallContent(verse: Verse) {
         horizontalAlignment = Alignment.Start,
         verticalAlignment = Alignment.Top
     ) {
-        Row(
-            GlanceModifier.height(VerseSmallWidgetDimens.appBarHeight)
-                .padding(horizontal = VerseSmallWidgetDimens.horizontalPadding),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                verse.title,
-                style = Typography.titleMedium,
-                maxLines = 2
-            )
-        }
+        Text(
+            modifier = GlanceModifier
+                .padding(
+                    horizontal = VerseSmallWidgetDimens.horizontalPadding,
+                    vertical = VerseSmallWidgetDimens.appBarVerticalPadding
+                ),
+            text = sermon.title,
+            style = Typography.titleMedium,
+            maxLines = 2
+        )
         Box(
             GlanceModifier
                 .padding(horizontal = VerseSmallWidgetDimens.widgetPadding)
                 .padding(bottom = VerseSmallWidgetDimens.widgetPadding)
+                .defaultWeight()
+                .fillMaxWidth()
         ) {
             Column(
                 GlanceModifier
@@ -94,7 +95,7 @@ private fun VerseWidgetSmallContent(verse: Verse) {
                     item {
                         Spacer(GlanceModifier.height(VerseSmallWidgetDimens.contentPadding))
                     }
-                    items(verse.verses) { verse ->
+                    items(sermon.verses) { verse ->
                         Text(
                             modifier = GlanceModifier
                                 .fillMaxWidth()
@@ -114,7 +115,7 @@ private fun VerseWidgetSmallContent(verse: Verse) {
                         start = VerseSmallWidgetDimens.contentPadding,
                         bottom = VerseSmallWidgetDimens.contentPadding
                     ),
-                    text = verse.bookName,
+                    text = sermon.bookName,
                     style = Typography.labelSmall,
                 )
             }

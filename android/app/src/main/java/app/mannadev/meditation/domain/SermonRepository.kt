@@ -1,7 +1,9 @@
 package app.mannadev.meditation.domain
 
-import app.mannadev.meditation.model.Verse
+import app.mannadev.meditation.model.Sermon
+import java.time.LocalDate
 
 interface SermonRepository {
-    suspend fun getDisplaySermon(): Verse?
+    suspend fun getDisplaySermon(): Sermon?
+    suspend fun getDisplaySermonForDate(date: LocalDate): Sermon?
 }

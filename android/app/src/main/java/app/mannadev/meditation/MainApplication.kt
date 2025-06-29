@@ -1,6 +1,8 @@
 package app.mannadev.meditation
 
 import android.app.Application
+import app.mannadev.meditation.analytics.CrashlyticsHelper
+import app.mannadev.meditation.rnmodule.WidgetUpdatePackage
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -11,7 +13,9 @@ import com.facebook.react.defaults.DefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
+import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.HiltAndroidApp
+import timber.log.Timber
 
 @HiltAndroidApp
 class MainApplication : Application(), ReactApplication {
@@ -43,6 +47,21 @@ class MainApplication : Application(), ReactApplication {
             // If you opted-in for the New Architecture, we load the native entry point for this app.
             DefaultNewArchitectureEntryPoint.load()
         }
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
+
+        //Subject 구독
+        FirebaseMessaging.getInstance()
+            .subscribeToTopic(Constants.SERMON_SUBJECT)
+            .addOnCompleteListener { task ->
+                task.exception?.let { exception ->
+                    CrashlyticsHelper.recordException(
+                        exception,
+                        "FirebaseMessaging subscribeToTopic failed"
+                    )
+                }
+            }
 
     }
 }
