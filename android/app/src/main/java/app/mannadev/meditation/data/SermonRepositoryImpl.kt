@@ -57,13 +57,13 @@ class SermonRepositoryImpl @Inject constructor(
                     AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.RN_ASYNCSTORAGE)
                 }
             },
-            // Source 3: Remote
-            {
-                remoteDataSource.getDisplaySermonSafe()?.also { dto ->
-                    prefsDataSource.saveDisplaySermonSafe(dto) // Cache to prefs
-                    AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.FIRESTORE)
-                }
-            }
+//            // Source 3: Remote
+//            {
+//                remoteDataSource.getDisplaySermonSafe()?.also { dto ->
+//                    prefsDataSource.saveDisplaySermonSafe(dto) // Cache to prefs
+//                    AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.FIRESTORE)
+//                }
+//            }
         )
 
         for (sourceFetcher in sources) {
