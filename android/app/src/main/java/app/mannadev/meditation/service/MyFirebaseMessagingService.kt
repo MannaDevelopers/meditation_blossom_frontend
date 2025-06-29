@@ -11,14 +11,17 @@ import app.mannadev.meditation.ui.widget.VerseWidgetSmall
 import app.mannadev.meditation.usecase.SaveDisplaySermonUseCase
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 @SuppressLint("MissingFirebaseInstanceTokenRefresh") //subject 를 통한 구독만 사용할 예정.
+@AndroidEntryPoint
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     companion object {
@@ -41,6 +44,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
+        Timber.d("onMessageReceived: ${message.from}")
         // sermon_events 주제에서 온 메시지인지 확인 (선택 사항, from 필드로 확인 가능)
         if (message.from == TOPIC_SERMON_EVENTS) {
             serviceScope.launch {
@@ -61,6 +65,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             .getOrNull() ?: return
         // 여기서 sermon 객체를 사용하여 필요한 작업을 수행
         runCatching {
+            Timber.d(sermonDto.toString())
             saveDisplaySermonUseCase(sermonDto)
             AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.FCM_TOPIC)
         }.onFailure { e ->
