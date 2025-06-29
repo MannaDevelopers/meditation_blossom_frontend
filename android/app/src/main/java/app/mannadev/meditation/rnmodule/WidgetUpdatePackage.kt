@@ -1,4 +1,4 @@
-package app.mannadev.meditation
+package app.mannadev.meditation.rnmodule
 
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule

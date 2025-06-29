@@ -1,8 +1,7 @@
 package app.mannadev.meditation.model
 
-import app.mannadev.meditation.dto.VerseDto
+import app.mannadev.meditation.dto.SermonDto
 import com.google.common.annotations.VisibleForTesting
-import kotlin.text.get
 
 object VerseParser {
 
@@ -15,7 +14,7 @@ object VerseParser {
     private const val VERSE_SPLIT_REGEX_PATTERN = """\d+"""
     private val VERSE_SPLIT_REGEX = Regex(VERSE_SPLIT_REGEX_PATTERN)
 
-    fun parse(dto: VerseDto): Verse = verseDtoToVerse(dto)
+    fun parse(dto: SermonDto): Sermon = verseDtoToVerse(dto)
 
     /**
      *  val verseDto = VerseDto(
@@ -36,7 +35,7 @@ object VerseParser {
      *  )
      */
     @VisibleForTesting
-    fun verseDtoToVerse(dto: VerseDto): Verse {
+    fun verseDtoToVerse(dto: SermonDto): Sermon {
         // 1. 책 이름과 장:절을 추출
         val matchResult =
             BOOK_NAME_REGEX.find(dto.content) ?: throw VerseParseException.NoPrefixException()
@@ -50,7 +49,7 @@ object VerseParser {
 
         val verseNumbers = try {
             extractVerseNumbersFromReferenceString(bookName)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             throw VerseParseException.InvalidVerseFormatException()
         }
 
@@ -65,13 +64,22 @@ object VerseParser {
             verses.size
         )
 
-        val versesWithNumber =
-            verses.mapIndexed { index, string -> "${verseNumbers[index]} $string" }
-        return Verse(
-            verses = versesWithNumber,
-            bookName = bookName,
-            title = dto.title
-        )
+        //구절이 하나만 있으면 앞에 번호 붙이지 않기.
+        if (verses.size == 1) {
+            return Sermon(
+                verses = verses,
+                bookName = bookName,
+                title = dto.title
+            )
+        } else {
+            val versesWithNumber =
+                verses.mapIndexed { index, string -> "${verseNumbers[index]} $string" }
+            return Sermon(
+                verses = versesWithNumber,
+                bookName = bookName,
+                title = dto.title
+            )
+        }
     }
 
     @VisibleForTesting
