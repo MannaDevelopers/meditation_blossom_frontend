@@ -2679,7 +2679,7 @@ PODS:
     - React-jsiexecutor
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
-  - react-native-safe-area-context (5.4.1):
+  - react-native-safe-area-context (5.5.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2692,8 +2692,8 @@ PODS:
     - React-featureflags
     - React-graphics
     - React-ImageManager
-    - react-native-safe-area-context/common (= 5.4.1)
-    - react-native-safe-area-context/fabric (= 5.4.1)
+    - react-native-safe-area-context/common (= 5.5.0)
+    - react-native-safe-area-context/fabric (= 5.5.0)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-rendererdebug
@@ -2702,7 +2702,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-safe-area-context/common (5.4.1):
+  - react-native-safe-area-context/common (5.5.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2723,7 +2723,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-safe-area-context/fabric (5.4.1):
+  - react-native-safe-area-context/fabric (5.5.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -3561,7 +3561,7 @@ SPEC CHECKSUMS:
   React-logger: 74ddb793d36b48bba176328c7af75e5e656fd405
   React-Mapbuffer: 9089a8ef738526aa31bb993debfaff214c2bef5d
   React-microtasksnativemodule: d4fd1d752f04965cd989beb8d28e896fa7f58605
-  react-native-safe-area-context: 0472f170cbc594668dc7923724f679b066ac75b7
+  react-native-safe-area-context: a767e65acb962f0c2517926a6fbdd373a33d3126
   React-NativeModulesApple: ce75ed8f1188483be3620bf9dbb3b1286dd39bab
   React-perflogger: 26d07766b033f84559bd520e949453dba8bf1cd8
   React-performancetimeline: 24eb0a6a341a1b0d48bc75a961ee480db0bad47e
@@ -3590,11 +3590,13 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: 5da0393968ce2767e79f9fda7caa108592b9b63e
   ReactCodegen: 5e0e4a579d3492d4cb81ed7caadbaae66a619b7e
   ReactCommon: 00e8f55183ce1358c920a954cd588831ccf0c397
-  RNCAsyncStorage: 5321442ed26760d7581b26effab82399ea5ff18b
+  RNCAsyncStorage: 6a8127b6987dc9fbce778669b252b14c8355c7ce
   RNCMaskedView: f1d7a375655e54d0aca367a16692a04a8cb69a71
   RNDefaultPreference: ee13d69e6693d193cd223d10e15e5b3c012d31ba
-  RNFBApp: 4105e54d9ca4a1c10893a032268470f670181110
-  RNFBFirestore: 80b3fb2371c3289343766b8bb5a72a4abf4cc052
+  RNFBApp: 557f15b87d602ed5879a1cbd6dc574481bccb278
+  RNFBCrashlytics: 8e3b32fc78ccb9568a93baeaa7b81d0f243b506a
+  RNFBFirestore: fee34ad8da067036f0ca21617fac4106c9f37f77
+  RNFBMessaging: e6480aaf434826565d5a40b01c422fb0f58fc8a9
   RNGestureHandler: 96fc2de36a25cf6bece93e030c2ed9a5e95d33dd
   RNScreens: 12b6d4363803cd49fa651c081d9910d300d8474d
   RNSVG: 8d7f4c865bb5eba4fbd097249b227b315b3d81f5
@@ -3604,4 +3606,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: b4605b19737b3bf6a50d0862dd45bccda158b0e3
 
-COCOAPODS: 1.15.2
+COCOAPODS: 1.16.2
