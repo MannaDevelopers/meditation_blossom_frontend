@@ -93,7 +93,7 @@ struct MeditationBlossomWidgetEntryView : View {
           Spacer().frame(height: 20)
           
           Text(entry.quote)
-            .font(.system(size:18, weight: .bold))
+            .font(.system(size:18, weight: .semibold))
             .foregroundColor(.black)
             .padding(.leading)
             .padding(.trailing)
@@ -113,12 +113,12 @@ struct MeditationBlossomWidgetEntryView : View {
           .resizable()
           .frame(width:364, height:170);
         VStack{
-          Text("또 비유로 말씀하시되 천국은 마치 여자가 가루 서 말 속에 갖다 넣어 전부 부풀게 한 누룩과 같으니라")
+          Text(entry.quote)
             .font(.system(size:22, weight: .bold))
             .foregroundColor(.black)
             .frame(width:300, height:100)
             .offset(y:3)
-          Text("마태복음 13:33")
+          Text(entry.verse)
             .font(.system(size:15))
             .foregroundColor(.black)
             .frame(width:180, height:20, alignment:.trailing)
@@ -131,7 +131,7 @@ struct MeditationBlossomWidgetEntryView : View {
   }
 }
 
-#Preview(as: .systemLarge) {
+#Preview(as: .systemMedium) {
   MeditationBlossomWidget()
 } timeline: {
   SimpleEntry(date: Date(), title: " ", quote: "등록된 설교가 없습니다", verse: " ")
