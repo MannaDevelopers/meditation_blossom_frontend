@@ -3,7 +3,7 @@ buildscript {
         set("minSdkVersion", 28)
         set("compileSdkVersion", 35)
         set("targetSdkVersion", 35)
-        set("ndkVersion", "26.1.10909125")
+        set("ndkVersion", "28.1.13356709")
     }
 
     repositories {
@@ -12,10 +12,11 @@ buildscript {
     }
 
     dependencies {
-        classpath("com.android.tools.build:gradle:8.2.2")
-        classpath("com.facebook.react:react-native-gradle-plugin")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22")
-        classpath("com.google.gms:google-services:4.4.2")
+        classpath(libs.gradle)
+        classpath(libs.react.native.gradle.plugin)
+        classpath(libs.kotlin.gradle.plugin)
+        classpath(libs.google.services)
+        classpath(libs.firebase.crashlytics.gradle.plugin)
     }
 }
 

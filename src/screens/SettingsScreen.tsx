@@ -1,13 +1,28 @@
-import {View, Text, TouchableOpacity} from 'react-native';
+import {View, Text, TouchableOpacity, Image, ScrollView} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Sermon, SermonMetadata, STORAGE_KEY, METADATA_KEY } from '../types/Sermon';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import SvgIcon from '../components/SvgIcon';
+import { useState } from 'react';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SettingsScreen'>;
 
 const SettingsScreen = ({navigation, route}: Props) => {
+  const [showDeveloperMenu, setShowDeveloperMenu] = useState(false);
+  const [tapCount, setTapCount] = useState(0);
+
+  // 개발자 메뉴 토글 함수
+  const toggleDeveloperMenu = () => {
+    const newTapCount = tapCount + 1;
+    setTapCount(newTapCount);
+    
+    if (newTapCount >= 5) {
+      setShowDeveloperMenu(!showDeveloperMenu);
+      setTapCount(0);
+    }
+  };
+
   // 로컬 스토리지 비우기
   const clearLocalStorage = async () => {
     try {
@@ -50,24 +65,93 @@ const SettingsScreen = ({navigation, route}: Props) => {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'black' }}>
-      {/* 헤더 영역 */}
-    <View style={{ backgroundColor: 'transparent', width: '100%', height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 30 }}>
-      {/* 뒤로가기 버튼 */}
-      <TouchableOpacity onPress={() => {navigation.goBack();}}><SvgIcon name="BackButton" size={20} /></TouchableOpacity>
-    </View>
-    <View style={{ flex: 1, backgroundColor: 'black', marginHorizontal: 35, marginVertical: 60, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Settings Screen</Text>
-      <TouchableOpacity onPress={clearLocalStorage} style={{ backgroundColor: 'blue', padding: 10, borderRadius: 5, marginTop: 20 }}>
-        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 20, textAlign: 'center' }}>Clear Local Storage</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={route.params.onRefresh} style={{ backgroundColor: 'blue', padding: 10, borderRadius: 5, marginTop: 20 }}>
-        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 20, textAlign: 'center' }}>Refresh Data</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={inspectStorage} style={{ backgroundColor: 'blue', padding: 10, borderRadius: 5, marginTop: 20 }}>
-        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 20, textAlign: 'center' }}>Inspect Storage</Text>
-      </TouchableOpacity>
-    </View>
+    <View style={{ flex: 1, backgroundColor: 'transparent', marginHorizontal: 35, marginVertical: 35, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ backgroundColor: 'transparent', flex: 1, justifyContent: 'center', alignItems: 'center', width: 305 }}>
+        {/* 헤더 영역 */}
+        <View style={{ backgroundColor: 'transparent', flexDirection: 'row', width: 305, height: 30, marginBottom: 35, alignItems: 'center'}}>
+          <Image source={require('../assets/image/20250416_meditation_icon.png')} style={{ backgroundColor: 'transparent', borderRadius: 15, width: 20, height: 20 }} />
+          <Text style={{ color: '#49454F', fontSize: 20, letterSpacing: -1, fontFamily: "Pretendard-Medium", marginLeft: 8}}>설정</Text>
+          <TouchableOpacity onPress={() => {navigation.goBack();}} style={{ marginLeft: 'auto' }}>
+            <Text style={{ color: '#49454F', fontSize: 24, fontFamily: "Pretendard-Bold" }}>‹</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 메인 컨텐츠 영역 */}
+        <ScrollView style={{ flex: 1, width: 305 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center' }}>
+          {/* 제목 영역 */}
+          <TouchableOpacity onPress={toggleDeveloperMenu} style={{ backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', width: 305, height: 25, marginBottom: 20 }}>
+            <Text style={{ color: "#A59EAE", fontSize: 20, letterSpacing: -3, fontFamily: "Pretendard-SemiBold" }}>앱 관리</Text>
+          </TouchableOpacity>
+          
+          {/* 버튼 컨테이너 */}
+          <View style={{ backgroundColor: 'transparent', width: 305, gap: 15 }}>
+            {/* 데이터 새로고침 버튼 */}
+            <TouchableOpacity 
+              onPress={route.params.onRefresh} 
+              style={{ 
+                backgroundColor: 'transparent',
+                width: 305, 
+                height: 50, 
+                borderRadius: 10, 
+                justifyContent: 'center', 
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: '#A59EAE',
+                borderStyle: 'solid'
+              }}
+            >
+              <Text style={{ color: '#A59EAE', fontWeight: 'bold', fontSize: 18, textAlign: 'center', fontFamily: "Pretendard-Bold", letterSpacing: -1 }}>데이터 새로고침</Text>
+            </TouchableOpacity>
+
+            {/* 로컬 스토리지 비우기 버튼 */}
+            <TouchableOpacity 
+              onPress={clearLocalStorage} 
+              style={{ 
+                backgroundColor: 'transparent',
+                width: 305, 
+                height: 50, 
+                borderRadius: 10, 
+                justifyContent: 'center', 
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: '#FF6B6B',
+                borderStyle: 'solid'
+              }}
+            >
+              <Text style={{ color: '#FF6B6B', fontWeight: 'bold', fontSize: 18, textAlign: 'center', fontFamily: "Pretendard-Bold", letterSpacing: -1 }}>로컬 데이터 초기화</Text>
+            </TouchableOpacity>
+
+            {/* 스토리지 검사 버튼 (개발자 히든 메뉴) */}
+            {showDeveloperMenu && (
+              <TouchableOpacity 
+                onPress={inspectStorage} 
+                style={{ 
+                  backgroundColor: 'transparent',
+                  width: 305, 
+                  height: 50, 
+                  borderRadius: 10, 
+                  justifyContent: 'center', 
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: '#49454F',
+                  borderStyle: 'solid'
+                }}
+              >
+                <Text style={{ color: '#49454F', fontWeight: 'bold', fontSize: 18, textAlign: 'center', fontFamily: "Pretendard-Bold", letterSpacing: -1 }}>스토리지 검사</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* 정보 영역 */}
+          <View style={{ backgroundColor: 'transparent', width: 305, marginTop: 40, padding: 20, borderRadius: 10, borderWidth: 1, borderColor: '#A59EAE', borderStyle: 'dashed' }}>
+            <Text style={{ color: '#A59EAE', fontSize: 14, textAlign: 'center', fontFamily: "Pretendard-Regular", lineHeight: 20 }}>
+              데이터 새로고침: 서버에서 최신 설교 데이터를 가져옵니다.{'\n'}
+              로컬 데이터 초기화: 저장된 모든 데이터를 삭제합니다.{'\n'}
+              {showDeveloperMenu && '스토리지 검사: 저장된 데이터를 콘솔에서 확인합니다.'}
+            </Text>
+          </View>
+        </ScrollView>
+      </View>
     </View>
   );
 }   
