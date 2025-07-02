@@ -6,8 +6,8 @@ export interface Sermon {
   date: string; // 설교 날짜 (YYYY-MM-DD)
   category?: string; // 설교 카테고리
   day_of_week?: string; // 요일 (예: "SUN")
-  created_at: number; // Firestore 타임스탬프 (초 단위)
-  updated_at: number; // Firestore 타임스탬프 (초 단위)
+  created_at: {seconds: number, nanoseconds: number}; // Firestore 타임스탬프 (초 단위)
+  updated_at: {seconds: number, nanoseconds: number}; // Firestore 타임스탬프 (초 단위)
 }
 
 // 메타데이터 타입 정의
