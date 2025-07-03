@@ -114,7 +114,7 @@ struct MeditationBlossomWidgetEntryView : View {
           .frame(width:364, height:170);
         VStack{
           Text(entry.quote)
-            .font(.system(size:22, weight: .bold))
+            .font(.system(size:22, weight: .semibold))
             .foregroundColor(.black)
             .frame(width:300, height:100)
             .offset(y:3)
