@@ -41,6 +41,7 @@ const SettingsScreen = ({navigation, route}: Props) => {
       route.params.setDisplaySermon(undefined);
       
       console.log('Local storage and metadata cleared');
+      route.params.onRefresh();
     } catch (error) {
       console.error('Error clearing local storage:', error);
     }
