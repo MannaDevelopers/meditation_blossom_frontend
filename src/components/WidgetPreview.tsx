@@ -25,6 +25,8 @@ const WidgetPreview = ({content}: {content: string | undefined}) => {
     if (content) {
       const { index, content: extractedContent } = extractContent(content);
       setExtractedContent({ index, content: extractedContent });
+    } else {
+      setExtractedContent({ index: '', content: '' });
     }
   }, [content]);
 
