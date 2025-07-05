@@ -2,6 +2,7 @@
 #noinspection AndroidGradlePluginVersion. check libs.versions.toml on @react-native/gradle-plugin
 agp = "8.8.0"
 #noinspection NewerVersionAvailable. check libs.versions.toml on @react-native/gradle-plugin
+datastorePreferences = "1.1.7"
 kotlin = "2.0.21"
 ksp = "2.0.21-1.0.27"
 googleServices = "4.4.2"
@@ -25,6 +26,7 @@ firebaseCrashlyticsPlugin = "3.0.4"
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 # Glance
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
 androidx-glance = { module = "androidx.glance:glance", version.ref = "glance" }
 androidx-glance-appwidget-preview = { module = "androidx.glance:glance-appwidget-preview", version.ref = "glance" }

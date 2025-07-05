@@ -2,6 +2,7 @@ package app.mannadev.meditation.data
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
+import androidx.compose.runtime.withFrameNanos
 import app.mannadev.meditation.dto.SermonDto
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +26,6 @@ class SermonLocalDataSource @Inject constructor(
         if (!dbFile.exists()) {
             return null
         }
-
         var db: SQLiteDatabase? = null
         return try {
             db = SQLiteDatabase.openDatabase(dbFile.path, null, SQLiteDatabase.OPEN_READONLY)

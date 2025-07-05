@@ -9,7 +9,7 @@ import app.mannadev.meditation.di.RemoteDataSource
 import app.mannadev.meditation.domain.SermonRepository
 import app.mannadev.meditation.dto.SermonDto
 import app.mannadev.meditation.model.Sermon
-import java.time.DayOfWeek
+import app.mannadev.meditation.utils.getPreviousOrCurrentSaturday
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -31,7 +31,7 @@ class SermonRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getDisplaySermonForDate(date: LocalDate): Sermon? {
-        val targetDate = getPreviousOrCurrentSaturday(date)
+        val targetDate = date.getPreviousOrCurrentSaturday()
         return fetchAndCacheSermon(targetDate)?.let { Sermon.fromDto(it) }
     }
 
@@ -70,18 +70,6 @@ class SermonRepositoryImpl @Inject constructor(
             sourceFetcher()?.let { return it }
         }
         return null
-    }
-
-    /**
-     * 오늘 날짜를 기준으로 과거의 가장 최근 토요일 날짜를 반환합니다.
-     */
-    fun getPreviousOrCurrentSaturday(date: LocalDate): LocalDate {
-        var targetDate = date
-        // 오늘이 토요일이 아닌 경우, 가장 가까운 과거의 토요일로 설정
-        if (date.dayOfWeek != DayOfWeek.SATURDAY) {
-            targetDate = date.minusDays(date.dayOfWeek.value.toLong() % 7)
-        }
-        return targetDate
     }
 
     /**

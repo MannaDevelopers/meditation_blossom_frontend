@@ -150,6 +150,7 @@ dependencies {
 
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.datastore.preferences)
 
     // Hilt
     implementation(libs.hilt.android)

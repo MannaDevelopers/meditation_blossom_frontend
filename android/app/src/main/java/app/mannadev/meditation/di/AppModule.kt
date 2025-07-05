@@ -61,3 +61,12 @@ annotation class RemoteDataSource // Or FirestoreDataSource if you prefer more s
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class PrefsDataSource
+
+/**
+ * Entry point for accessing DataSources from non-Hilt classes.
+ * Used in [app.mannadev.meditation.service.RefreshActionCallback]
+ */
+interface DataSourceEntryPoint {
+    @LocalDataSource
+    fun getSermonLocalDataSource(): SermonDataSource
+}
