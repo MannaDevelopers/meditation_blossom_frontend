@@ -1,9 +1,9 @@
 import Foundation
 import WidgetKit
+import React
 
 @objc(WidgetUpdateModule)
 class WidgetUpdateModule: NSObject {
-  
   @objc
   func onSermonUpdated(_ sermonData: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     // AppGroup에 접근
