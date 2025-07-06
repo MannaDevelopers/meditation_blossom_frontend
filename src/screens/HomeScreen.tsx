@@ -1,5 +1,5 @@
 import React, { use, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Button, TouchableOpacity, ImageBackground, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, Button, TouchableOpacity, ImageBackground } from 'react-native';
 import WidgetPreview from '../components/WidgetPreview';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 // import Icon from 'react-native-vector-icons/AntDesign';
@@ -7,10 +7,10 @@ import { RootStackParamList } from '../types/navigation';
 import { Sermon, SermonMetadata, STORAGE_KEY, METADATA_KEY, DISPLAY_SERMON_KEY } from '../types/Sermon';
 import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Preference from 'react-native-default-preference';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import SvgIcon from '../components/SvgIcon';
+import messaging from '@react-native-firebase/messaging';
 
 
 type Props = NativeStackScreenProps<RootStackParamList, 'HomeScreen'>;
@@ -287,17 +287,96 @@ const HomeScreen = ({navigation}: Props) => {
     // console.log('sermons changed:', sermons);
     setDisplaySermon(findLatestSermon(sermons) || undefined);    
   }, [sermons])
-  
-  // ios AppGroup으로 위젯에 전시될 말씀만 전달
-  if (Platform.OS === 'ios') {
-    Preference.setName('group.com.Blossom.MeditationBlossom');
-    Preference.clear('displaySermon').then(() => {
-      console.log('데이터 초기화')
+
+  // FCM 메시지 이벤트 처리
+  useEffect(() => {
+    // FCM 권한 요청
+    const requestUserPermission = async () => {
+      const authStatus = await messaging().requestPermission();
+      const enabled =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+      if (enabled) {
+        console.log('Authorization status:', authStatus);
+        
+        // FCM 토큰 가져오기
+        const token = await messaging().getToken();
+        console.log('FCM Token:', token);
+        
+        // sermon_events 토픽 구독
+        await messaging().subscribeToTopic('sermon_events');
+        console.log('Subscribed to sermon_events topic');
+      }
+    };
+
+    requestUserPermission();
+
+    const unsubscribe = messaging().onMessage(async remoteMessage => {
+      console.log('FCM message received in foreground:', remoteMessage);
+      
+      // sermon_events 토픽에서 온 메시지인지 확인
+      if (remoteMessage.from === '/topics/sermon_events') {
+        console.log('Sermon event received via FCM, updating data...');
+        
+        // FCM 메시지에서 받은 데이터로 새로운 설교 생성
+        const sermonData = remoteMessage.data as Record<string, string>;
+        if (sermonData && sermonData.date && sermonData.title && sermonData.content) {
+          const newSermon: Sermon = {
+            id: `fcm_${Date.now()}`, // 임시 ID 생성
+            title: sermonData.title,
+            content: sermonData.content,
+            date: sermonData.date,
+            category: sermonData.category || '',
+            day_of_week: sermonData.day_of_week || '',
+            created_at: { seconds: Date.now() / 1000, nanoseconds: 0 },
+            updated_at: { seconds: Date.now() / 1000, nanoseconds: 0 }
+          };
+          
+          console.log('New sermon from FCM:', newSermon);
+          
+          // 기존 설교 목록에 새 설교 추가
+          const updatedSermons = [newSermon, ...sermons];
+          setSermons(updatedSermons);
+          
+          // AsyncStorage에 저장
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSermons));
+          
+          // 메타데이터 업데이트
+          const newLatestDate = newSermon.date;
+          const newMetadata: SermonMetadata = {
+            latestDate: newLatestDate,
+            lastUpdated: new Date().toISOString(),
+            totalCount: updatedSermons.length
+          };
+          await saveMetadata(newMetadata);
+          
+          // 위젯 업데이트
+          try {
+            await WidgetUpdateModule.onSermonUpdated(JSON.stringify(newSermon));
+            console.log('Widget updated via FCM');
+          } catch (error) {
+            console.error('Failed to update widgets via FCM:', error);
+          }
+        }
+      }
     });
-    Preference.set('displaySermon', JSON.stringify(displaySermon)).then(() => {
-      console.log('데이터 저장 성공, ', JSON.stringify(displaySermon));
-    });
-  }
+
+    // 백그라운드에서 앱이 열렸을 때 처리
+    messaging()
+      .getInitialNotification()
+      .then(remoteMessage => {
+        if (remoteMessage) {
+          console.log('App opened from background via FCM:', remoteMessage);
+          if (remoteMessage.from === '/topics/sermon_events') {
+            // 앱이 백그라운드에서 열렸을 때도 데이터 업데이트
+            fetchDataFromServer();
+          }
+        }
+      });
+
+    return unsubscribe;
+  }, [sermons]); // sermons 의존성 추가
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent', marginHorizontal: 35, marginVertical: 35, justifyContent: 'center', alignItems: 'center' }}>
