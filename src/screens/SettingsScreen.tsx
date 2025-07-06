@@ -90,7 +90,7 @@ const SettingsScreen = ({navigation, route}: Props) => {
             <View style={{ backgroundColor: 'transparent', width: 305, gap: 15 }}>
               {/* 데이터 새로고침 버튼 */}
               <TouchableOpacity 
-                onPress={route.params.onRefresh} 
+                onPress={clearLocalStorage} 
                 style={{ 
                   backgroundColor: 'transparent',
                   width: 305, 
@@ -104,24 +104,6 @@ const SettingsScreen = ({navigation, route}: Props) => {
                 }}
               >
                 <Text style={{ color: '#A59EAE', fontWeight: 'bold', fontSize: 18, textAlign: 'center', fontFamily: "Pretendard-Bold", letterSpacing: -1 }}>데이터 새로고침</Text>
-              </TouchableOpacity>
-
-              {/* 로컬 스토리지 비우기 버튼 */}
-              <TouchableOpacity 
-                onPress={clearLocalStorage} 
-                style={{ 
-                  backgroundColor: 'transparent',
-                  width: 305, 
-                  height: 50, 
-                  borderRadius: 10, 
-                  justifyContent: 'center', 
-                  alignItems: 'center',
-                  borderWidth: 1,
-                  borderColor: '#FF6B6B',
-                  borderStyle: 'solid'
-                }}
-              >
-                <Text style={{ color: '#FF6B6B', fontWeight: 'bold', fontSize: 18, textAlign: 'center', fontFamily: "Pretendard-Bold", letterSpacing: -1 }}>로컬 데이터 초기화</Text>
               </TouchableOpacity>
 
               {/* 스토리지 검사 버튼 (개발자 히든 메뉴) */}
@@ -146,10 +128,9 @@ const SettingsScreen = ({navigation, route}: Props) => {
             </View>
 
             {/* 정보 영역 */}
-            <View style={{ backgroundColor: 'transparent', width: 305, marginTop: 40, padding: 20, borderRadius: 10, borderWidth: 1, borderColor: '#A59EAE', borderStyle: 'dashed' }}>
+            <View style={{ backgroundColor: 'transparent', width: 305, marginTop: 20, padding: 20, borderRadius: 10, borderWidth: 1, borderColor: '#A59EAE', borderStyle: 'dashed' }}>
               <Text style={{ color: '#A59EAE', fontSize: 14, textAlign: 'center', fontFamily: "Pretendard-Regular", lineHeight: 20 }}>
-                데이터 새로고침: 서버에서 최신 설교 데이터를 가져옵니다.{'\n'}
-                로컬 데이터 초기화: 저장된 모든 데이터를 삭제합니다.{'\n'}
+                데이터 새로고침: 교회 홈페이지에서 최신 설교 말씀을 받아옵니다.{/*'\n'*/}
                 {showDeveloperMenu && '스토리지 검사: 저장된 데이터를 콘솔에서 확인합니다.'}
               </Text>
             </View>
