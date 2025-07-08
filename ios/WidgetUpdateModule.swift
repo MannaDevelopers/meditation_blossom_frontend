@@ -11,7 +11,7 @@ class WidgetUpdateModule: NSObject {
       reject("APP_GROUP_ERROR", "App Group을 찾을 수 없습니다.", nil)
       return
     }
-    sharedDefaults.set(sermonData, forKey: "latestSermonData")
+    sharedDefaults.set(sermonData, forKey: "displaySermon")
     WidgetCenter.shared.reloadAllTimelines()
   }
   

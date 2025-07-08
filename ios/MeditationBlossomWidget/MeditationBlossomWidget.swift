@@ -29,14 +29,13 @@ struct Provider: TimelineProvider {
   
   func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> ()) {
     let entry = createSermonEntry()
-    let nextUpdate = Calendar.current.date(byAdding: .hour, value: 1, to: Date())!
+    let nextUpdate = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
     let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
     completion(timeline)
   }
   
   private func createSermonEntry() -> SimpleEntry {
     let sharedDefaults = UserDefaults(suiteName: "group.com.Blossom.MeditationBlossom")
-    
     if let sermon = sharedDefaults?.getObjectFromString(forKey: "displaySermon", castTo: Sermon.self) {
       var verse: String?
       var quote: String?
@@ -50,7 +49,6 @@ struct Provider: TimelineProvider {
       if let match = sermon.content.firstMatch(of: quoteRegex) {
           quote = String(match.output.1)
       }
-      print(quote, verse)
       return SimpleEntry(date: Date(), title: sermon.title, quote: quote ?? "설교 본문을 가져오는 중 문제가 발생했습니다", verse: verse ?? " ")
     } else {
       return SimpleEntry(date: Date(), title: " ", quote: "등록된 설교가 없습니다", verse: " ")

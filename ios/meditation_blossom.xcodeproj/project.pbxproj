@@ -19,11 +19,8 @@
 		3578DB082DEA121C0046B6A0 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3578DB072DEA121C0046B6A0 /* SwiftUI.framework */; };
 		3578DB192DEA121D0046B6A0 /* MeditationBlossomWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3578DB042DEA121C0046B6A0 /* MeditationBlossomWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		3595A30B2DEBF76F006716D8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3595A3042DEBF76F006716D8 /* Assets.xcassets */; };
-		3595A30D2DEBF76F006716D8 /* AppIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3032DEBF76F006716D8 /* AppIntent.swift */; };
 		3595A30E2DEBF76F006716D8 /* MeditationBlossomWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3062DEBF76F006716D8 /* MeditationBlossomWidget.swift */; };
 		3595A30F2DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3072DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift */; };
-		3595A3102DEBF76F006716D8 /* MeditationBlossomWidgetControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3082DEBF76F006716D8 /* MeditationBlossomWidgetControl.swift */; };
-		3595A3112DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3092DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift */; };
 		35B6CFCF2E01AC0E004A13DD /* Sermon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35B6CFCE2E01AC0A004A13DD /* Sermon.swift */; };
 		36D0ABAEB660494094DD9C97 /* Pretendard-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = F7AF6C1D72CD4A66B58C33B8 /* Pretendard-Bold.otf */; };
 		3C0090A2347247CC84AEF51C /* Pretendard-Thin.otf in Resources */ = {isa = PBXBuildFile; fileRef = FA817E704269452E9C720D87 /* Pretendard-Thin.otf */; };
@@ -89,13 +86,10 @@
 		3578DB072DEA121C0046B6A0 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		358368DC2E01985900AC2237 /* MeditationBlossomWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MeditationBlossomWidgetExtension.entitlements; sourceTree = "<group>"; };
 		358368DD2E01989500AC2237 /* meditation_blossom.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = meditation_blossom.entitlements; path = meditation_blossom/meditation_blossom.entitlements; sourceTree = "<group>"; };
-		3595A3032DEBF76F006716D8 /* AppIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIntent.swift; sourceTree = "<group>"; };
 		3595A3042DEBF76F006716D8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3595A3052DEBF76F006716D8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		3595A3062DEBF76F006716D8 /* MeditationBlossomWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeditationBlossomWidget.swift; sourceTree = "<group>"; };
 		3595A3072DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeditationBlossomWidgetBundle.swift; sourceTree = "<group>"; };
-		3595A3082DEBF76F006716D8 /* MeditationBlossomWidgetControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeditationBlossomWidgetControl.swift; sourceTree = "<group>"; };
-		3595A3092DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeditationBlossomWidgetLiveActivity.swift; sourceTree = "<group>"; };
 		35B6CFCE2E01AC0A004A13DD /* Sermon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sermon.swift; sourceTree = "<group>"; };
 		5154F34FB0A9F0FF9E2372B2 /* Pods_meditation_blossom.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_meditation_blossom.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		5D0299F92947F705922BDCEC /* Pods_meditation_blossom_meditation_blossomTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_meditation_blossom_meditation_blossomTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -196,13 +190,10 @@
 			isa = PBXGroup;
 			children = (
 				35B6CFCE2E01AC0A004A13DD /* Sermon.swift */,
-				3595A3032DEBF76F006716D8 /* AppIntent.swift */,
 				3595A3042DEBF76F006716D8 /* Assets.xcassets */,
 				3595A3052DEBF76F006716D8 /* Info.plist */,
 				3595A3062DEBF76F006716D8 /* MeditationBlossomWidget.swift */,
 				3595A3072DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift */,
-				3595A3082DEBF76F006716D8 /* MeditationBlossomWidgetControl.swift */,
-				3595A3092DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift */,
 			);
 			path = MeditationBlossomWidget;
 			sourceTree = "<group>";
@@ -599,11 +590,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3595A30D2DEBF76F006716D8 /* AppIntent.swift in Sources */,
 				3595A30E2DEBF76F006716D8 /* MeditationBlossomWidget.swift in Sources */,
 				3595A30F2DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift in Sources */,
-				3595A3102DEBF76F006716D8 /* MeditationBlossomWidgetControl.swift in Sources */,
-				3595A3112DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift in Sources */,
 				35B6CFCF2E01AC0E004A13DD /* Sermon.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

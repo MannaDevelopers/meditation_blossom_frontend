@@ -12,7 +12,5 @@ import SwiftUI
 struct MeditationBlossomWidgetBundle: WidgetBundle {
     var body: some Widget {
         MeditationBlossomWidget()
-        MeditationBlossomWidgetControl()
-        MeditationBlossomWidgetLiveActivity()
     }
 }
