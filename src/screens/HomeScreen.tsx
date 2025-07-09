@@ -66,9 +66,12 @@ const HomeScreen = ({navigation}: Props) => {
   };
 
   // 최신 날짜 찾기
-  const findLatestDate = (sermonList: Sermon[]): string => {
-    if (sermonList.length === 0) return '';
-    return [...new Set(sermonList.map(sermon => sermon.date))].sort().reverse()[0];
+  const findLatestSermon = (sermonList: Sermon[]): Sermon | null => {
+    if (sermonList.length === 0) return null;
+    // created_at 기준 내림차순 정렬 후 첫 번째 sermon의 date 반환
+    const latestSermon = [...sermonList].sort((a, b) => b.created_at.seconds - a.created_at.seconds)[0];
+    console.log('Latest sermon:', latestSermon);
+    return latestSermon;
   };
 
   // 로컬 데이터 로드
@@ -85,7 +88,7 @@ const HomeScreen = ({navigation}: Props) => {
         
         // 메타데이터의 최신 날짜 정보가 없으면 계산
         if (!currentMetadata.latestDate && parsedData.length > 0) {
-          const newLatestDate = findLatestDate(parsedData);
+          const newLatestDate = findLatestSermon(parsedData)?.date;
           
           if (newLatestDate) {
             await saveMetadata({
@@ -191,7 +194,9 @@ const HomeScreen = ({navigation}: Props) => {
       console.log('Saved merged data to local storage');
       
       // 가장 최신 날짜 찾기
-      const newLatestDate = findLatestDate(mergedSermons);
+      const latestSermon = findLatestSermon(mergedSermons);
+      console.log('Latest sermon:', latestSermon);
+      const newLatestDate = latestSermon?.date;
       if (newLatestDate) {
         console.log(`New latest date: ${newLatestDate}`);
         
@@ -206,19 +211,19 @@ const HomeScreen = ({navigation}: Props) => {
         console.log(`Updated metadata with latest date: ${newLatestDate}`);
         
         // 화면에 표시할 설교는 따로 저장 (가장 최신 설교)
-        const displaySermon = mergedSermons.filter(sermon => sermon.date === newLatestDate);
-        await AsyncStorage.setItem(DISPLAY_SERMON_KEY, JSON.stringify(displaySermon));        
-        console.log('Display sermon saved:', displaySermon);
+        setDisplaySermon(latestSermon);
+        await AsyncStorage.setItem(DISPLAY_SERMON_KEY, JSON.stringify(latestSermon));        
+        console.log('Display sermon saved:', latestSermon);
         
         // 위젯 업데이트
         try {
-          await WidgetUpdateModule.onSermonUpdated(JSON.stringify(displaySermon));
+          await WidgetUpdateModule.onSermonUpdated(JSON.stringify(latestSermon));
           console.log('Sermon data saved');
         } catch (error) {
           console.error('Failed to update widgets:', error);
         }
+        setSermons([...mergedSermons]);
       }
-      setSermons([...mergedSermons]);
     } catch (error) {
       console.error('Error fetching sermons:', error);
     } finally {
@@ -233,13 +238,6 @@ const HomeScreen = ({navigation}: Props) => {
     fetchDataFromServer();
   };
 
-  // 최신 날짜의 설교만 표시
-  const getLatestSermons = () => {
-    if (!latestDate || sermons.length === 0) return [];
-    
-    // 가장 최근 날짜를 가진 설교만 필터링
-    return sermons.filter(sermon => sermon.date === latestDate);
-  };
 
   // 제목 텍스트 처리 - 소괄호 부분을 줄바꿈
   const processTitleText = (title: string | undefined): string => {
@@ -266,26 +264,28 @@ const HomeScreen = ({navigation}: Props) => {
     console.log('Latest Sermon Date:', latestSermonDate.toISOString());
 
     // 최신 날짜가 1주일 전보다 이전이면 서버에서 데이터 요청
-    if (latestSermonDate < oneWeekAgo) {
+    if (latestSermonDate <= oneWeekAgo) {
       console.log('Fetching data from server due to outdated latest date');
       onRefresh();
     }
     return true;
   }
-
-  useEffect(() => {
-    AutoRequest();
-  }
-  , [latestDate]);
-
+  
   // 초기 데이터 로드
   useEffect(() => {
     loadLocalData();
   }, []);
 
   useEffect(() => {
+    AutoRequest();
+  }
+  , [latestDate]);
+
+
+  useEffect(() => {
     // 설교가 변경되면 보여줄 설교를 업데이트
-    setDisplaySermon(getLatestSermons()[0] || undefined);    
+    // console.log('sermons changed:', sermons);
+    setDisplaySermon(findLatestSermon(sermons) || undefined);    
   }, [sermons])
   
   // ios AppGroup으로 위젯에 전시될 말씀만 전달
@@ -305,9 +305,7 @@ const HomeScreen = ({navigation}: Props) => {
         <View style={{ backgroundColor: 'transparent', flexDirection: 'row', width: 305, height: 30, marginBottom: 35, alignItems: 'center'}}>
           <Image source={require('../assets/image/20250416_meditation_icon.png')} style={{ backgroundColor: 'transparent', borderRadius: 15, width: 20, height: 20 }} />
           <Text style={{ color: '#49454F', fontSize: 20, fontFamily: "Pretendard-Medium", marginLeft: 8}}>묵상만개</Text>
-          {/* <Icon name="setting" size={20} color="#49454F" style={{ marginLeft: 'auto' }} /> */}
           <TouchableOpacity onPress={() => navigation.navigate('SettingsScreen', { setSermons, setLatestDate, setMetadata, setDisplaySermon, onRefresh })} style={{ marginLeft: 'auto'}}>
-            {/* <Image source={require('../assets/image/Settings.png')} style={{ backgroundColor: 'transparent', borderRadius: 15, width: 27, height: 27 }} /> */}
             <SvgIcon name="SettingButton" size={20} color='black'/>
           </TouchableOpacity>
         </View>
@@ -320,17 +318,6 @@ const HomeScreen = ({navigation}: Props) => {
         <View style={{ backgroundColor: 'transparent', width: 305, height: 300, justifyContent: 'center', alignItems: 'center' }}>
           <WidgetPreview content={displaySermon?.content} />
         </View>
-        {/* <View style={{ backgroundColor: 'transparent', width: 305, height: 38, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
-            <TouchableOpacity onPress={() => navigation.navigate('EditScreen', { sermon: displaySermon })}>
-            <ImageBackground
-              source={require('../assets/image/EditButton.png')}
-              style={{ width: 62, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }}
-              imageStyle={{ borderRadius: 10 }}
-            >
-              <Text style={{ color: 'white', fontSize: 20, fontFamily: "Pretendard-Bold", textAlign: 'center', letterSpacing: -1 }}>편집</Text>
-            </ImageBackground>
-            </TouchableOpacity>
-        </View> */}
       </View>
     </SafeAreaView>
   );
