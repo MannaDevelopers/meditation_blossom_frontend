@@ -39,9 +39,10 @@ struct Provider: TimelineProvider {
     if let sermon = sharedDefaults?.getObjectFromString(forKey: "displaySermon", castTo: Sermon.self) {
       var verse: String?
       var quote: String?
+      print(sermon)
       
       let verseRegex = /([가-힣]+\s?\d+:\d+)/
-      let quoteRegex = /\r\n\s*(.*)/
+      let quoteRegex = /\r\n\s*([\s\S]*)/
       
       if let match = sermon.content.firstMatch(of: verseRegex) {
           verse = String(match.output.1)
