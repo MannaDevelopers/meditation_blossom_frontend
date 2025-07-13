@@ -2,15 +2,28 @@ import { useEffect, useState } from 'react';
 import {View, Text, ImageBackground} from 'react-native';
 import { ScrollView, GestureHandlerRootView } from 'react-native-gesture-handler';
 
-const regex = /본문\s*[:：]?\s*([^\d\s]+ ?\d+:\d+(?:-\d+)?)/;
+const regex = /본문\s*[:：]?\s*([^\n]+?\d+:\d+(?:-\d+)?)/;
 const extractContent = (text: string) : { index: string; content: string } => {
-  const match = text.match(regex);
+  // 전처리: 개행이 없는 텍스트에 적절한 개행 추가
+  let processedText = text;
+  if (!text.includes('\n')) {
+    // 성경 구절 번호 다음에 개행 추가
+    processedText = text.replace(/(\d+:\d+(?:-\d+)?)\s+/, '$1\n');
+    
+    // 문장 단위로 개행 추가 (마침표, 느낌표, 물음표 다음에)
+    processedText = processedText.replace(/([.!?])\s+/g, '$1\n');
+    
+    // "아멘" 다음에 개행 추가
+    processedText = processedText.replace(/(아멘)\s*$/, '$1\n');
+  }
+
+  const match = processedText.match(regex);
   if (!match) {
     return { index: '본문을 찾을 수 없습니다.', content: '' };
   }
   const verse = match[1].trim();
-  const contentStartIndex = text.indexOf(verse) + verse.length;
-  const content = text.slice(contentStartIndex).trim();
+  const contentStartIndex = processedText.indexOf(verse) + verse.length;
+  const content = processedText.slice(contentStartIndex).trim();
 
   return {
     index: verse,
