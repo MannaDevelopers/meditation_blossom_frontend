@@ -1,6 +1,7 @@
 package app.mannadev.meditation.service
 
 import android.annotation.SuppressLint
+import android.content.Context
 import androidx.glance.appwidget.updateAll
 import app.mannadev.meditation.analytics.AnalyticsHelper
 import app.mannadev.meditation.analytics.CrashlyticsHelper
@@ -44,47 +45,84 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
-        Timber.d("onMessageReceived: ${message.from}")
+        Timber.d("=== FCM BACKGROUND MESSAGE RECEIVED ===")
+        Timber.d("From: ${message.from}")
+        Timber.d("Data: ${message.data}")
+        Timber.d("Notification: ${message.notification}")
+        Timber.d("MessageId: ${message.messageId}")
+        Timber.d("SentTime: ${message.sentTime}")
+        
         // sermon_events 주제에서 온 메시지인지 확인 (선택 사항, from 필드로 확인 가능)
         if (message.from == TOPIC_SERMON_EVENTS) {
+            Timber.d("Processing sermon_events message")
             serviceScope.launch {
                 consumeSermonEvent(message)
             }
+        } else {
+            Timber.d("Message not from sermon_events topic, ignoring")
         }
     }
 
     private suspend fun consumeSermonEvent(message: RemoteMessage) {
-        if (message.data.isEmpty()) return
+        Timber.d("=== CONSUMING SERMON EVENT ===")
+        Timber.d("Message data: ${message.data}")
+        
+        if (message.data.isEmpty()) {
+            Timber.d("Message data is empty, returning")
+            return
+        }
+        
         val sermonDto = runCatching { messageToSermon(message.data) }
             .onFailure { e ->
+                Timber.e("Failed to parse sermon data: ${message.data}, error: ${e.message}")
                 CrashlyticsHelper.recordException(
                     exception = e,
                     message = "Failed to parse sermon data: ${message.data}"
                 )
             }
             .getOrNull() ?: return
+            
+        Timber.d("Parsed sermon DTO: $sermonDto")
+        
         // 여기서 sermon 객체를 사용하여 필요한 작업을 수행
         runCatching {
-            Timber.d(sermonDto.toString())
+            Timber.d("Saving sermon to local storage")
             saveDisplaySermonUseCase(sermonDto)
             AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.FCM_TOPIC)
+            Timber.d("Sermon saved successfully")
         }.onFailure { e ->
+            Timber.e("Failed to save sermon: $sermonDto, error: ${e.message}")
             CrashlyticsHelper.recordException(
                 exception = e,
                 message = "Failed to save sermon: $sermonDto"
             )
         }
+        
         //widget 업데이트
         runCatching {
+            Timber.d("Updating widgets")
             VerseWidgetLarge().updateAll(applicationContext)
             VerseWidgetSmall().updateAll(applicationContext)
+            Timber.d("Widgets updated successfully")
         }.onFailure { e ->
+            Timber.e("Failed to update widgets: ${e.message}")
             CrashlyticsHelper.recordException(
                 exception = e,
                 message = "Failed to update widgets after sermon update"
             )
         }
-
+        
+        // FCM 수신 플래그 설정 (React Native에서 확인용)
+        runCatching {
+            val sharedPrefs = applicationContext.getSharedPreferences("fcm_prefs", Context.MODE_PRIVATE)
+            sharedPrefs.edit()
+                .putBoolean("fcm_received", true)
+                .putLong("fcm_timestamp", System.currentTimeMillis())
+                .apply()
+            Timber.d("FCM received flag set")
+        }.onFailure { e ->
+            Timber.e("Failed to set FCM flag: ${e.message}")
+        }
     }
 
     private fun messageToSermon(data: Map<String, String>): SermonDto {

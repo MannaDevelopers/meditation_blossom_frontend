@@ -1,5 +1,5 @@
 import React, { use, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Button, TouchableOpacity, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, Button, TouchableOpacity, ImageBackground, AppState } from 'react-native';
 import WidgetPreview from '../components/WidgetPreview';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 // import Icon from 'react-native-vector-icons/AntDesign';
@@ -7,7 +7,7 @@ import { RootStackParamList } from '../types/navigation';
 import { Sermon, SermonMetadata, STORAGE_KEY, METADATA_KEY, DISPLAY_SERMON_KEY } from '../types/Sermon';
 import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import WidgetUpdateModule from '../types/WidgetUpdateModule';
+import WidgetUpdateModule, { FCMCheckModuleInterface } from '../types/WidgetUpdateModule';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import SvgIcon from '../components/SvgIcon';
 import messaging from '@react-native-firebase/messaging';
@@ -168,7 +168,8 @@ const HomeScreen = ({navigation}: Props) => {
         };
       });
       
-      console.log('Sample of new sermon data:', newSermonsData.length > 0 ? JSON.stringify(newSermonsData[0], null, 2) : 'No data');
+      // console.log('Sample of new sermon data:', newSermonsData.length > 0 ? JSON.stringify(newSermonsData[0], null, 2) : 'No data');
+      console.log('Sample of new sermon data:', newSermonsData.length > 0 ? JSON.stringify(newSermonsData, null, 2) : 'No data');
       
       // 기존 데이터와 새 데이터를 병합
       const mergedSermons = [...existingSermons];
@@ -281,6 +282,32 @@ const HomeScreen = ({navigation}: Props) => {
   }
   , [latestDate]);
 
+  // 앱 시작 시 FCM 수신 여부 확인
+  useEffect(() => {
+    const checkFCMReceived = async () => {
+      try {
+        console.log('=== CHECKING FCM RECEIVED STATUS ===');
+        const fcmCheckResult = await FCMCheckModuleInterface.checkFCMReceived();
+        
+        if (fcmCheckResult.fcmReceived) {
+          console.log('=== FCM WAS RECEIVED WHILE APP WAS CLOSED ===');
+          console.log('FCM timestamp:', new Date(fcmCheckResult.fcmTimestamp));
+          console.log('Fetching latest data from server...');
+          fetchDataFromServer();
+        } else {
+          console.log('=== NO FCM RECEIVED WHILE APP WAS CLOSED ===');
+        }
+      } catch (error) {
+        console.error('Error checking FCM received status:', error);
+      }
+    };
+
+    // 로컬 데이터 로드 후 FCM 확인
+    if (sermons.length > 0) {
+      checkFCMReceived();
+    }
+  }, [sermons.length]); // sermons가 로드된 후 실행
+
 
   useEffect(() => {
     // 설교가 변경되면 보여줄 설교를 업데이트
@@ -361,19 +388,6 @@ const HomeScreen = ({navigation}: Props) => {
         }
       }
     });
-
-    // 백그라운드에서 앱이 열렸을 때 처리
-    messaging()
-      .getInitialNotification()
-      .then(remoteMessage => {
-        if (remoteMessage) {
-          console.log('App opened from background via FCM:', remoteMessage);
-          if (remoteMessage.from === '/topics/sermon_events') {
-            // 앱이 백그라운드에서 열렸을 때도 데이터 업데이트
-            fetchDataFromServer();
-          }
-        }
-      });
 
     return unsubscribe;
   }, [sermons]); // sermons 의존성 추가
