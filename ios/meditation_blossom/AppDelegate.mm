@@ -80,7 +80,11 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
          withCompletionHandler:(void(^)(void))completionHandler {
   // 알림을 탭했을 때 처리
   NSDictionary *userInfo = response.notification.request.content.userInfo;
-  NSLog(@"Notification tapped: %@", userInfo);
+  NSLog(@"=== FCM BACKGROUND NOTIFICATION TAPPED ===");
+  NSLog(@"UserInfo: %@", userInfo);
+  NSLog(@"Notification title: %@", response.notification.request.content.title);
+  NSLog(@"Notification body: %@", response.notification.request.content.body);
+  NSLog(@"Notification identifier: %@", response.notification.request.identifier);
   completionHandler();
 }
 

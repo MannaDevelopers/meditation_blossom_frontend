@@ -4,6 +4,14 @@ interface WidgetUpdateModuleInterface {
   onSermonUpdated(sermonData: string): Promise<boolean>;
 }
 
-const { WidgetUpdateModule } = NativeModules;
+interface FCMCheckModuleInterface {
+  checkFCMReceived(): Promise<{
+    fcmReceived: boolean;
+    fcmTimestamp: number;
+  }>;
+}
 
-export default WidgetUpdateModule as WidgetUpdateModuleInterface; 
+const { WidgetUpdateModule, FCMCheckModule } = NativeModules;
+
+export default WidgetUpdateModule as WidgetUpdateModuleInterface;
+export { FCMCheckModule as FCMCheckModuleInterface }; 
