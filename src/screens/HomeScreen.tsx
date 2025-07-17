@@ -80,6 +80,7 @@ const HomeScreen = ({navigation}: Props) => {
     try {
       const currentMetadata = await loadMetadata();
       const data = await AsyncStorage.getItem(STORAGE_KEY);
+      console.log("data: ", data)
       
       if (data) {
         const parsedData = JSON.parse(data) as Sermon[];
@@ -282,36 +283,10 @@ const HomeScreen = ({navigation}: Props) => {
   }
   , [latestDate]);
 
-  // 앱 시작 시 FCM 수신 여부 확인
-  useEffect(() => {
-    const checkFCMReceived = async () => {
-      try {
-        console.log('=== CHECKING FCM RECEIVED STATUS ===');
-        const fcmCheckResult = await FCMCheckModuleInterface.checkFCMReceived();
-        
-        if (fcmCheckResult.fcmReceived) {
-          console.log('=== FCM WAS RECEIVED WHILE APP WAS CLOSED ===');
-          console.log('FCM timestamp:', new Date(fcmCheckResult.fcmTimestamp));
-          console.log('Fetching latest data from server...');
-          fetchDataFromServer();
-        } else {
-          console.log('=== NO FCM RECEIVED WHILE APP WAS CLOSED ===');
-        }
-      } catch (error) {
-        console.error('Error checking FCM received status:', error);
-      }
-    };
-
-    // 로컬 데이터 로드 후 FCM 확인
-    if (sermons.length > 0) {
-      checkFCMReceived();
-    }
-  }, [sermons.length]); // sermons가 로드된 후 실행
-
 
   useEffect(() => {
     // 설교가 변경되면 보여줄 설교를 업데이트
-    // console.log('sermons changed:', sermons);
+    console.log('sermons changed:', sermons);
     setDisplaySermon(findLatestSermon(sermons) || undefined);    
   }, [sermons])
 
@@ -390,7 +365,7 @@ const HomeScreen = ({navigation}: Props) => {
     });
 
     return unsubscribe;
-  }, [sermons]); // sermons 의존성 추가
+  }, []);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent', marginHorizontal: 35, marginVertical: 35, justifyContent: 'center', alignItems: 'center' }}>

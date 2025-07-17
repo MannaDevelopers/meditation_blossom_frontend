@@ -54,7 +54,7 @@ android {
         applicationId = "app.mannadev.meditation"
         minSdk = rootProject.extra["minSdkVersion"].toString().toInt()
         targetSdk = rootProject.extra["targetSdkVersion"].toString().toInt()
-        versionCode = 1
+        versionCode = 2
         versionName = "0.4.2"  // 버전 업데이트
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
