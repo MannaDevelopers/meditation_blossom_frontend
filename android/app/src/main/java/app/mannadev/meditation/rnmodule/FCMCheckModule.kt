@@ -44,4 +44,24 @@ class FCMCheckModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
             promise.reject("FCM_CHECK_ERROR", e.message, e)
         }
     }
+
+    @ReactMethod
+    fun getLatestSermonFromNative(promise: Promise) {
+        try {
+            val sharedPrefs = reactApplicationContext.getSharedPreferences("rn_storage", Context.MODE_PRIVATE)
+            val sermonData = sharedPrefs.getString("latest_sermon_from_native", null)
+            
+            Timber.d("=== GETTING LATEST SERMON FROM NATIVE ===")
+            Timber.d("Sermon data: $sermonData")
+            
+            val result: WritableMap = Arguments.createMap()
+            result.putString("sermonData", sermonData)
+            result.putBoolean("hasData", sermonData != null)
+            
+            promise.resolve(result)
+        } catch (e: Exception) {
+            Timber.e("Error getting latest sermon from native: ${e.message}")
+            promise.reject("SERMON_GET_ERROR", e.message, e)
+        }
+    }
 } 

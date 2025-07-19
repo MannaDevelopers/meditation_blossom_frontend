@@ -1,4 +1,4 @@
-import {View, Text, TouchableOpacity, Image, ScrollView, Linking} from 'react-native';
+import {View, Text, TouchableOpacity, Image, ScrollView, Linking, Alert} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Sermon, SermonMetadata, STORAGE_KEY, METADATA_KEY } from '../types/Sermon';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -6,6 +6,7 @@ import { RootStackParamList } from '../types/navigation';
 import SvgIcon from '../components/SvgIcon';
 import { useState } from 'react';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import messaging from '@react-native-firebase/messaging';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SettingsScreen'>;
 
@@ -54,15 +55,53 @@ const SettingsScreen = ({navigation, route}: Props) => {
       const keys = await AsyncStorage.getAllKeys();
       
       // 모든 키를 로그로 출력
-      console.log(keys);
+      console.log('AsyncStorage keys:', keys);
       
       // 각 키에 대한 데이터 검사
       for (const key of keys) {
         const value = await AsyncStorage.getItem(key);
-        console.log([JSON.parse(value || '{}')]);
+        console.log(`Key: ${key}`, JSON.parse(value || '{}'));
       }
     } catch (error) {
       console.error('Error inspecting AsyncStorage:', JSON.stringify(error, null, 2));
+    }
+  };
+
+  // FCM 상태 확인
+  const checkFCMStatus = async () => {
+    try {
+      console.log('=== FCM STATUS CHECK ===');
+      
+      // FCM 권한 상태 확인
+      const authStatus = await messaging().hasPermission();
+      console.log('FCM Permission status:', authStatus);
+      
+      // FCM 토큰 확인
+      const token = await messaging().getToken();
+      console.log('FCM Token:', token);
+      
+      // 백그라운드 FCM 메시지 로그 확인
+      const backgroundMessages = await AsyncStorage.getItem('backgroundFCMMessages');
+      if (backgroundMessages) {
+        const messages = JSON.parse(backgroundMessages);
+        console.log('Background FCM messages:', messages);
+        console.log('Total background messages received:', messages.length);
+        
+        // 최근 메시지들만 표시
+        const recentMessages = messages.slice(-5);
+        console.log('Recent background messages:', recentMessages);
+      } else {
+        console.log('No background FCM messages found');
+      }
+      
+      Alert.alert(
+        'FCM 상태',
+        `권한: ${authStatus}\n토큰: ${token ? '있음' : '없음'}\n백그라운드 메시지: ${backgroundMessages ? JSON.parse(backgroundMessages).length : 0}개`
+      );
+      
+    } catch (error) {
+      console.error('Error checking FCM status:', error);
+      Alert.alert('오류', 'FCM 상태 확인 중 오류가 발생했습니다.');
     }
   };
 
@@ -108,22 +147,41 @@ const SettingsScreen = ({navigation, route}: Props) => {
 
               {/* 스토리지 검사 버튼 (개발자 히든 메뉴) */}
               {showDeveloperMenu && (
-                <TouchableOpacity 
-                  onPress={inspectStorage} 
-                  style={{ 
-                    backgroundColor: 'transparent',
-                    width: 305, 
-                    height: 50, 
-                    borderRadius: 10, 
-                    justifyContent: 'center', 
-                    alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: '#49454F',
-                    borderStyle: 'solid'
-                  }}
-                >
-                  <Text style={{ color: '#49454F', fontWeight: 'bold', fontSize: 18, textAlign: 'center', fontFamily: "Pretendard-Bold", letterSpacing: -1 }}>스토리지 검사</Text>
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity 
+                    onPress={inspectStorage} 
+                    style={{ 
+                      backgroundColor: 'transparent',
+                      width: 305, 
+                      height: 50, 
+                      borderRadius: 10, 
+                      justifyContent: 'center', 
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      borderColor: '#49454F',
+                      borderStyle: 'solid'
+                    }}
+                  >
+                    <Text style={{ color: '#49454F', fontWeight: 'bold', fontSize: 18, textAlign: 'center', fontFamily: "Pretendard-Bold", letterSpacing: -1 }}>스토리지 검사</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    onPress={checkFCMStatus} 
+                    style={{ 
+                      backgroundColor: 'transparent',
+                      width: 305, 
+                      height: 50, 
+                      borderRadius: 10, 
+                      justifyContent: 'center', 
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      borderColor: '#49454F',
+                      borderStyle: 'solid'
+                    }}
+                  >
+                    <Text style={{ color: '#49454F', fontWeight: 'bold', fontSize: 18, textAlign: 'center', fontFamily: "Pretendard-Bold", letterSpacing: -1 }}>FCM 상태 확인</Text>
+                  </TouchableOpacity>
+                </>
               )}
             </View>
 

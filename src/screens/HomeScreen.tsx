@@ -1,5 +1,5 @@
-import React, { use, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Button, TouchableOpacity, ImageBackground, AppState } from 'react-native';
+import React, { use, useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, Button, TouchableOpacity, ImageBackground, AppState, AppStateStatus } from 'react-native';
 import WidgetPreview from '../components/WidgetPreview';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 // import Icon from 'react-native-vector-icons/AntDesign';
@@ -8,6 +8,7 @@ import { Sermon, SermonMetadata, STORAGE_KEY, METADATA_KEY, DISPLAY_SERMON_KEY }
 import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WidgetUpdateModule, { FCMCheckModuleInterface } from '../types/WidgetUpdateModule';
+import { NativeModules } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import SvgIcon from '../components/SvgIcon';
 import messaging from '@react-native-firebase/messaging';
@@ -26,6 +27,8 @@ const HomeScreen = ({navigation}: Props) => {
     totalCount: 0
   });
   const [displaySermon, setDisplaySermon] = useState<Sermon | undefined>(undefined);
+  
+  const appState = useRef<AppStateStatus>(AppState.currentState);
 
   // 메타데이터 로드
   const loadMetadata = async (): Promise<SermonMetadata> => {
@@ -219,8 +222,17 @@ const HomeScreen = ({navigation}: Props) => {
         
         // 위젯 업데이트
         try {
-          await WidgetUpdateModule.onSermonUpdated(JSON.stringify(latestSermon));
-          console.log('Sermon data saved');
+          await new Promise<void>((resolve, reject) => {
+            WidgetUpdateModule.onSermonUpdated(JSON.stringify(latestSermon))
+              .then(() => {
+                console.log('Widget updated successfully');
+                resolve();
+              })
+              .catch((error) => {
+                console.error('Failed to update widgets:', error);
+                reject(error);
+              });
+          });
         } catch (error) {
           console.error('Failed to update widgets:', error);
         }
@@ -294,27 +306,60 @@ const HomeScreen = ({navigation}: Props) => {
   useEffect(() => {
     // FCM 권한 요청
     const requestUserPermission = async () => {
-      const authStatus = await messaging().requestPermission();
-      const enabled =
-        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      try {
+        const authStatus = await messaging().requestPermission();
+        const enabled =
+          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
-      if (enabled) {
-        console.log('Authorization status:', authStatus);
-        
-        // FCM 토큰 가져오기
-        const token = await messaging().getToken();
-        console.log('FCM Token:', token);
-        
-        // sermon_events 토픽 구독
-        await messaging().subscribeToTopic('sermon_events');
-        console.log('Subscribed to sermon_events topic');
+        console.log('FCM Authorization status:', authStatus);
+        console.log('FCM enabled:', enabled);
+
+        if (enabled) {
+          // FCM 토큰 가져오기
+          const token = await messaging().getToken();
+          console.log('FCM Token:', token);
+          
+          // sermon_events 토픽 구독
+          await messaging().subscribeToTopic('sermon_events');
+          console.log('Subscribed to sermon_events topic');
+          
+          // 백그라운드 FCM 메시지 로그 확인 (AsyncStorage)
+          try {
+            const backgroundMessages = await AsyncStorage.getItem('backgroundFCMMessages');
+            if (backgroundMessages) {
+              const messages = JSON.parse(backgroundMessages);
+              console.log('[AsyncStorage] Background FCM messages log:', messages);
+            }
+          } catch (error) {
+            console.log('[AsyncStorage] No background FCM messages log found');
+          }
+          
+          // 네이티브 FCM 로그 확인 (SharedPreferences)
+          try {
+            const fcmCheckResult = await NativeModules.FCMCheckModule.checkFCMReceived();
+            console.log('[Native] FCM check result:', fcmCheckResult);
+            
+            // FCM으로 받은 새로운 설교가 있으면 처리
+            if (fcmCheckResult.fcmReceived) {
+              console.log('[Native] New FCM sermon received, processing...');
+              await processNativeFCMSermon();
+            }
+          } catch (error) {
+            console.log('[Native] FCM check failed:', error);
+          }
+        } else {
+          console.log('FCM permission denied');
+        }
+      } catch (error) {
+        console.error('Error requesting FCM permission:', error);
       }
     };
 
     requestUserPermission();
 
     const unsubscribe = messaging().onMessage(async remoteMessage => {
+      console.log('=== FCM FOREGROUND MESSAGE RECEIVED ===');
       console.log('FCM message received in foreground:', remoteMessage);
       
       // sermon_events 토픽에서 온 메시지인지 확인
@@ -355,8 +400,17 @@ const HomeScreen = ({navigation}: Props) => {
           
           // 위젯 업데이트
           try {
-            await WidgetUpdateModule.onSermonUpdated(JSON.stringify(newSermon));
-            console.log('Widget updated via FCM');
+            await new Promise<void>((resolve, reject) => {
+              WidgetUpdateModule.onSermonUpdated(JSON.stringify(newSermon))
+                .then(() => {
+                  console.log('Widget updated via FCM successfully');
+                  resolve();
+                })
+                .catch((error) => {
+                  console.error('Failed to update widgets via FCM:', error);
+                  reject(error);
+                });
+            });
           } catch (error) {
             console.error('Failed to update widgets via FCM:', error);
           }
@@ -366,6 +420,93 @@ const HomeScreen = ({navigation}: Props) => {
 
     return unsubscribe;
   }, []);
+
+  // 앱 상태 변경 감지 (백그라운드에서 포그라운드로 돌아올 때)
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      console.log('[AppState] App state changed from', appState.current, 'to', nextAppState);
+      
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        console.log('[AppState] App has come to the foreground!');
+        
+        // 앱이 포그라운드로 돌아왔을 때 FCM 데이터 확인
+        try {
+          const fcmCheckResult = await NativeModules.FCMCheckModule.checkFCMReceived();
+          console.log('[AppState] FCM check result:', fcmCheckResult);
+          
+          if (fcmCheckResult.fcmReceived) {
+            console.log('[AppState] New FCM sermon received while app was in background');
+            await processNativeFCMSermon();
+          }
+        } catch (error) {
+          console.log('[AppState] FCM check failed:', error);
+        }
+      }
+      
+      appState.current = nextAppState;
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription?.remove();
+    };
+  }, []);
+
+  // 네이티브 FCM에서 받은 설교 데이터 처리
+  const processNativeFCMSermon = async () => {
+    try {
+      console.log('[React Native] Processing native FCM sermon...');
+      
+      // 네이티브에서 저장한 최신 설교 데이터 가져오기
+      const sermonResult = await NativeModules.FCMCheckModule.getLatestSermonFromNative();
+      console.log('[React Native] Sermon result from native:', sermonResult);
+      
+      if (sermonResult.hasData && sermonResult.sermonData) {
+        const newSermon: Sermon = JSON.parse(sermonResult.sermonData);
+        console.log('[React Native] New sermon from native FCM:', newSermon);
+        
+        // 기존 설교 목록에 새 설교 추가
+        const updatedSermons = [newSermon, ...sermons];
+        setSermons(updatedSermons);
+        
+        // AsyncStorage에 저장
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSermons));
+        
+        // 메타데이터 업데이트
+        const newLatestDate = newSermon.date;
+        const newMetadata: SermonMetadata = {
+          latestDate: newLatestDate,
+          lastUpdated: new Date().toISOString(),
+          totalCount: updatedSermons.length
+        };
+        await saveMetadata(newMetadata);
+        
+        // 위젯 업데이트
+        try {
+          await new Promise<void>((resolve, reject) => {
+            WidgetUpdateModule.onSermonUpdated(JSON.stringify(newSermon))
+              .then(() => {
+                console.log('[React Native] Widget updated via native FCM successfully');
+                resolve();
+              })
+              .catch((error) => {
+                console.error('[React Native] Failed to update widgets via native FCM:', error);
+                reject(error);
+              });
+          });
+        } catch (error) {
+          console.error('[React Native] Failed to update widgets via native FCM:', error);
+        }
+        
+        console.log('[React Native] Native FCM sermon processed successfully');
+      } else {
+        console.log('[React Native] No native FCM sermon data found');
+      }
+    } catch (error) {
+      console.error('[React Native] Error processing native FCM sermon:', error);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent', marginHorizontal: 35, marginVertical: 35, justifyContent: 'center', alignItems: 'center' }}>

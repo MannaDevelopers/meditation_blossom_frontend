@@ -52,6 +52,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         Timber.d("MessageId: ${message.messageId}")
         Timber.d("SentTime: ${message.sentTime}")
         
+        
         // sermon_events 주제에서 온 메시지인지 확인 (선택 사항, from 필드로 확인 가능)
         if (message.from == TOPIC_SERMON_EVENTS) {
             Timber.d("Processing sermon_events message")
@@ -98,6 +99,40 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             )
         }
         
+        // React Native로 새로운 설교 데이터 전달 (SharedPreferences 사용)
+        runCatching {
+            Timber.d("Saving sermon data for React Native")
+            val sermonJson = org.json.JSONObject().apply {
+                put("id", "fcm_${System.currentTimeMillis()}")
+                put("title", sermonDto.title)
+                put("content", sermonDto.content)
+                put("date", sermonDto.date)
+                put("category", "")
+                put("day_of_week", sermonDto.dayOfWeek)
+                put("created_at", org.json.JSONObject().apply {
+                    put("seconds", System.currentTimeMillis() / 1000)
+                    put("nanoseconds", 0)
+                })
+                put("updated_at", org.json.JSONObject().apply {
+                    put("seconds", System.currentTimeMillis() / 1000)
+                    put("nanoseconds", 0)
+                })
+            }
+            
+            // SharedPreferences에 설교 데이터 저장
+            val sharedPrefs = applicationContext.getSharedPreferences("rn_storage", Context.MODE_PRIVATE)
+            sharedPrefs.edit()
+                .putString("latest_sermon_from_native", sermonJson.toString())
+                .apply()
+            Timber.d("Sermon data saved for React Native successfully")
+        }.onFailure { e ->
+            Timber.e("Failed to save sermon data for React Native: ${e.message}")
+            CrashlyticsHelper.recordException(
+                exception = e,
+                message = "Failed to save sermon data for React Native"
+            )
+        }
+        
         //widget 업데이트
         runCatching {
             Timber.d("Updating widgets")
@@ -118,10 +153,41 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             sharedPrefs.edit()
                 .putBoolean("fcm_received", true)
                 .putLong("fcm_timestamp", System.currentTimeMillis())
+                .putString("fcm_sermon_data", sermonDto.toString())
                 .apply()
-            Timber.d("FCM received flag set")
+            Timber.d("FCM received flag set with sermon data")
         }.onFailure { e ->
             Timber.e("Failed to set FCM flag: ${e.message}")
+        }
+        
+        // FCM 메시지 로그 저장 (React Native AsyncStorage와 동기화)
+        runCatching {
+            val fcmLogPrefs = applicationContext.getSharedPreferences("fcm_log_prefs", Context.MODE_PRIVATE)
+            val existingLog = fcmLogPrefs.getString("background_fcm_messages", "[]")
+            val messages = try {
+                org.json.JSONArray(existingLog).toString()
+            } catch (e: Exception) {
+                "[]"
+            }
+            
+            val newMessage = org.json.JSONObject().apply {
+                put("receivedAt", java.time.Instant.now().toString())
+                put("data", org.json.JSONObject(message.data))
+                put("sermonId", "fcm_${System.currentTimeMillis()}")
+                put("processed", true)
+                put("source", "native_service")
+            }
+            
+            val updatedMessages = org.json.JSONArray(messages).apply {
+                put(newMessage)
+            }
+            
+            fcmLogPrefs.edit()
+                .putString("background_fcm_messages", updatedMessages.toString())
+                .apply()
+            Timber.d("FCM message log saved to SharedPreferences")
+        }.onFailure { e ->
+            Timber.e("Failed to save FCM log: ${e.message}")
         }
     }
 
