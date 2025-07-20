@@ -68,8 +68,13 @@ const HomeScreen = ({navigation}: Props) => {
   // 최신 날짜 찾기
   const findLatestSermon = (sermonList: Sermon[]): Sermon | null => {
     if (sermonList.length === 0) return null;
-    // created_at 기준 내림차순 정렬 후 첫 번째 sermon의 date 반환
-    const latestSermon = [...sermonList].sort((a, b) => b.created_at.seconds - a.created_at.seconds)[0];
+    // date 기준 내림차순, date가 같으면 updated_at.seconds 기준 내림차순 정렬
+    const latestSermon = [...sermonList].sort((a, b) => {
+      if (a.date < b.date) return 1;
+      if (a.date > b.date) return -1;
+      // date가 같으면 updated_at.seconds로 내림차순
+      return b.updated_at.seconds - a.updated_at.seconds;
+    })[0];
     console.log('Latest sermon:', latestSermon);
     return latestSermon;
   };
