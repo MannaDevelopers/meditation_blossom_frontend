@@ -400,19 +400,40 @@ const HomeScreen = ({navigation}: Props) => {
           
           // 위젯 업데이트
           try {
-            await new Promise<void>((resolve, reject) => {
-              WidgetUpdateModule.onSermonUpdated(JSON.stringify(newSermon))
-                .then(() => {
-                  console.log('Widget updated via FCM successfully');
-                  resolve();
-                })
-                .catch((error) => {
-                  console.error('Failed to update widgets via FCM:', error);
-                  reject(error);
-                });
-            });
+            console.log('[React Native] Calling WidgetUpdateModule.onSermonUpdated...');
+            console.log('[React Native] Sermon data to send:', JSON.stringify(newSermon));
+            WidgetUpdateModule.onSermonUpdated(JSON.stringify(newSermon))
+            // // 방법 1: 기존 네이티브 모듈 호출
+            // await new Promise<void>((resolve, reject) => {
+            //   console.log('[React Native] Promise created, calling native module...');
+            //   WidgetUpdateModule.onSermonUpdated(JSON.stringify(newSermon))
+            //     .then(() => {
+            //       console.log('[React Native] Widget updated via FCM successfully');
+            //       resolve();
+            //     })
+            //     .catch((error) => {
+            //       console.error('[React Native] Failed to update widgets via FCM:', error);
+            //       reject(error);
+            //     });
+            // });
+            // console.log('[React Native] Promise resolved successfully');
+            
+            // // 방법 2: 직접 위젯 업데이트 시도 (백업)
+            // try {
+            //   console.log('[React Native] Trying direct widget update as backup...');
+            //   const { NativeModules } = require('react-native');
+            //   if (NativeModules.WidgetUpdateModule) {
+            //     console.log('[React Native] WidgetUpdateModule found, calling directly...');
+            //     await NativeModules.WidgetUpdateModule.onSermonUpdated(JSON.stringify(newSermon));
+            //     console.log('[React Native] Direct widget update completed');
+            //   } else {
+            //     console.log('[React Native] WidgetUpdateModule not found in NativeModules');
+            //   }
+            // } catch (directError) {
+            //   console.error('[React Native] Direct widget update failed:', directError);
+            // }
           } catch (error) {
-            console.error('Failed to update widgets via FCM:', error);
+            console.error('[React Native] Failed to update widgets via FCM:', error);
           }
         }
       }
