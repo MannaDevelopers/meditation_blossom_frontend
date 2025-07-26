@@ -26,20 +26,20 @@ import app.mannadev.meditation.R
 import app.mannadev.meditation.di.getWidgetDependencies
 import app.mannadev.meditation.model.Sermon
 import app.mannadev.meditation.ui.widget.theme.Typography
+import timber.log.Timber
 import java.time.LocalDateTime
-import android.util.Log
 
 class VerseWidgetLarge : GlanceAppWidget(
     errorUiLayout = R.layout.verse_widget_large_error,
 ) {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        Log.d("VerseWidgetLarge", "provideGlance called")
+        Timber.d("provideGlance called")
         val widgetDependencies = getWidgetDependencies(context)
         val getDisplaySermonUseCase = widgetDependencies.getDisplaySermonUseCase()
-        Log.d("VerseWidgetLarge", "Getting sermon data...")
-        val verse = getDisplaySermonUseCase(LocalDateTime.now())
-        Log.d("VerseWidgetLarge", "Sermon data: $verse")
-        
+        Timber.d("Getting sermon data...")
+        val verse = getDisplaySermonUseCase()
+        Timber.d("Sermon data: $verse")
+
         if (verse == null) {
             throw IllegalStateException("Verse data is null")
         }

@@ -13,7 +13,7 @@ import javax.inject.Singleton
 @Singleton
 class SermonPrefsDataSource @Inject constructor(
     @ApplicationContext context: Context
-) : SermonDataSource {
+) : EditableSermonDataSource {
 
     companion object {
         private const val PREFS_NAME = "sermon_prefs"
@@ -42,6 +42,12 @@ class SermonPrefsDataSource @Inject constructor(
     override suspend fun saveDisplaySermon(sermon: SermonDto) = withContext(Dispatchers.IO) {
         prefs.edit(commit = true) {
             putString(KEY_DISPLAY_SERMON_JSON, json.encodeToString(sermon))
+        }
+    }
+
+    override suspend fun clearDisplaySermon() = withContext(Dispatchers.IO) {
+        prefs.edit(commit = true) {
+            remove(KEY_DISPLAY_SERMON_JSON)
         }
     }
 }

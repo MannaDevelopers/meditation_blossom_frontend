@@ -9,7 +9,7 @@ import app.mannadev.meditation.analytics.SermonEventSource
 import app.mannadev.meditation.dto.SermonDto
 import app.mannadev.meditation.ui.widget.VerseWidgetLarge
 import app.mannadev.meditation.ui.widget.VerseWidgetSmall
-import app.mannadev.meditation.usecase.SaveDisplaySermonUseCase
+import app.mannadev.meditation.domain.usecase.SaveDisplaySermonUseCase
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import dagger.hilt.android.AndroidEntryPoint

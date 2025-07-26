@@ -18,11 +18,6 @@ class SermonFirestoreDataSource @Inject constructor(
     private val firestore: FirebaseFirestore
 ) : SermonDataSource {
 
-    override suspend fun saveDisplaySermon(sermon: SermonDto) {
-        // This method is not implemented for Firestore data source
-        throw NotImplementedError("Saving sermons is not supported in Firestore data source")
-    }
-
     override suspend fun getDisplaySermon(): SermonDto? = withContext(Dispatchers.IO) {
         fetchFromRemote()
     }

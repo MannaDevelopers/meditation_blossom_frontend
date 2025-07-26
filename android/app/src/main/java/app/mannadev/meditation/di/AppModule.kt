@@ -3,12 +3,13 @@
 package app.mannadev.meditation.di
 
 import androidx.annotation.Keep
+import app.mannadev.meditation.data.EditableSermonDataSource
 import app.mannadev.meditation.data.SermonDataSource
 import app.mannadev.meditation.data.SermonFirestoreDataSource
 import app.mannadev.meditation.data.SermonLocalDataSource
 import app.mannadev.meditation.data.SermonPrefsDataSource
 import app.mannadev.meditation.data.SermonRepositoryImpl
-import app.mannadev.meditation.domain.SermonRepository
+import app.mannadev.meditation.domain.repository.SermonRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -47,7 +48,7 @@ abstract class RepositoryModule {
     @PrefsDataSource
     abstract fun bindSermonPrefsDataSource(
         impl: SermonPrefsDataSource
-    ): SermonDataSource
+    ): EditableSermonDataSource
 }
 
 @Qualifier

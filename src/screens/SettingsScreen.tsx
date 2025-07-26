@@ -1,12 +1,13 @@
 import {View, Text, TouchableOpacity, Image, ScrollView, Linking, Alert} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Sermon, SermonMetadata, STORAGE_KEY, METADATA_KEY } from '../types/Sermon';
+import { Sermon, SermonMetadata, STORAGE_KEY, METADATA_KEY, DISPLAY_SERMON_KEY } from '../types/Sermon';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import SvgIcon from '../components/SvgIcon';
 import { useState } from 'react';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import messaging from '@react-native-firebase/messaging';
+import WidgetUpdateModule from '../types/WidgetUpdateModule';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SettingsScreen'>;
 
@@ -30,8 +31,11 @@ const SettingsScreen = ({navigation, route}: Props) => {
     try {
       await AsyncStorage.removeItem(STORAGE_KEY);
       await AsyncStorage.removeItem(METADATA_KEY);
-      await AsyncStorage.removeItem('dispaly_sermon');
+      await AsyncStorage.removeItem(DISPLAY_SERMON_KEY);
 
+      console.log('Widget Prefernces cleared');
+      await WidgetUpdateModule.onClear();
+      
       route.params.setSermons([]);
       route.params.setLatestDate(null);
       route.params.setMetadata({

@@ -2,6 +2,7 @@ import { NativeModules } from 'react-native';
 
 interface WidgetUpdateModuleInterface {
   onSermonUpdated(sermonData: string): Promise<boolean>;
+  onClear(): Promise<void>;
 }
 
 interface FCMCheckModuleInterface {

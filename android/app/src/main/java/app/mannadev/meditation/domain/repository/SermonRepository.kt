@@ -1,4 +1,4 @@
-package app.mannadev.meditation.domain
+package app.mannadev.meditation.domain.repository
 
 import app.mannadev.meditation.model.Sermon
 import java.time.LocalDate

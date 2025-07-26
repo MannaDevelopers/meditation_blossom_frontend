@@ -6,7 +6,7 @@ import app.mannadev.meditation.analytics.SermonEventSource
 import app.mannadev.meditation.di.LocalDataSource
 import app.mannadev.meditation.di.PrefsDataSource
 import app.mannadev.meditation.di.RemoteDataSource
-import app.mannadev.meditation.domain.SermonRepository
+import app.mannadev.meditation.domain.repository.SermonRepository
 import app.mannadev.meditation.dto.SermonDto
 import app.mannadev.meditation.model.Sermon
 import java.time.DayOfWeek
@@ -18,7 +18,7 @@ import javax.inject.Singleton
 class SermonRepositoryImpl @Inject constructor(
     @LocalDataSource private val localDataSource: SermonDataSource,
     @RemoteDataSource private val remoteDataSource: SermonDataSource,
-    @PrefsDataSource private val prefsDataSource: SermonDataSource
+    @PrefsDataSource private val prefsDataSource: EditableSermonDataSource
 ) : SermonRepository {
 
     /**
@@ -100,7 +100,7 @@ class SermonRepositoryImpl @Inject constructor(
             .getOrNull()
     }
 
-    private suspend fun SermonDataSource.saveDisplaySermonSafe(sermonDto: SermonDto) {
+    private suspend fun EditableSermonDataSource.saveDisplaySermonSafe(sermonDto: SermonDto) {
         runCatching { saveDisplaySermon(sermonDto) }
             .onFailure { CrashlyticsHelper.recordException(it) }
     }
