@@ -58,14 +58,10 @@ class SermonLocalDataSource @Inject constructor(
         if (sermonJsonString.isNullOrBlank()) return@withContext null
 
         try {
-            json.decodeFromString<List<SermonDto>>(sermonJsonString).first()
+            json.decodeFromString<SermonDto>(sermonJsonString)
         } catch (e: Exception) {
             throw RuntimeException("Error decoding sermon JSON", e)
         }
-    }
-
-    override suspend fun saveDisplaySermon(sermon: SermonDto) {
-        throw NotImplementedError("Saving sermons is not supported in Sqlite data source")
     }
 
 }
