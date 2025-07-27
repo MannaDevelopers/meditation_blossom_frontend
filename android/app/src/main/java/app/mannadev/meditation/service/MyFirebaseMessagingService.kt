@@ -1,7 +1,11 @@
 package app.mannadev.meditation.service
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import androidx.glance.appwidget.updateAll
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import app.mannadev.meditation.Constants.ACTION_SERMON_UPDATE_EVENT
+import app.mannadev.meditation.Constants.ASYNC_STORAGE_FCM_SERMON
 import app.mannadev.meditation.analytics.AnalyticsHelper
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.analytics.SermonEventSource
@@ -23,10 +27,9 @@ import kotlinx.serialization.json.Json
 import timber.log.Timber
 import javax.inject.Inject
 
-@SuppressLint("MissingFirebaseInstanceTokenRefresh") //subject 를 통한 구독만 사용할 예정.
+@SuppressLint("MissingFirebaseInstanceTokenRefresh") // subject 를 통한 구독만 사용할 예정.
 @AndroidEntryPoint
 class MyFirebaseMessagingService : FirebaseMessagingService() {
-
     companion object {
         private const val TOPIC_SERMON_EVENTS = "/topics/sermon_events"
         private const val KEY_DATE = "date"
@@ -57,7 +60,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         Timber.d("MessageId: ${message.messageId}")
         Timber.d("SentTime: ${message.sentTime}")
 
-
         // sermon_events 주제에서 온 메시지인지 확인 (선택 사항, from 필드로 확인 가능)
         if (message.from == TOPIC_SERMON_EVENTS) {
             Timber.d("Processing sermon_events message")
@@ -78,15 +80,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             return
         }
 
-        val sermonDto = runCatching { messageToSermon(message.data) }
-            .onFailure { e ->
-                Timber.e("Failed to parse sermon data: ${message.data}, error: ${e.message}")
-                CrashlyticsHelper.recordException(
-                    exception = e,
-                    message = "Failed to parse sermon data: ${message.data}"
-                )
-            }
-            .getOrNull() ?: return
+        val sermonDto =
+            runCatching { messageToSermon(message.data) }
+                .onFailure { e ->
+                    Timber.e("Failed to parse sermon data: ${message.data}, error: ${e.message}")
+                    CrashlyticsHelper.recordException(
+                        exception = e,
+                        message = "Failed to parse sermon data: ${message.data}",
+                    )
+                }.getOrNull() ?: return
 
         Timber.d("Parsed sermon DTO: $sermonDto")
 
@@ -101,23 +103,27 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }.onFailure { e ->
             CrashlyticsHelper.recordException(
                 exception = e,
-                message = "Failed to save sermon: $sermonDto"
+                message = "Failed to save sermon: $sermonDto",
             )
         }
 
         runCatching {
-            //ReactNative에서 보여줄 수 있도록 async-storage 업데이트
+            // ReactNative에서 보여줄 수 있도록 async-storage 업데이트
             withContext(Dispatchers.IO) {
-                asyncStorage.set(key = "fcm_sermon", value = Json.encodeToString(message.data))
+                asyncStorage.set(key = ASYNC_STORAGE_FCM_SERMON, value = Json.encodeToString(message.data))
             }
-
+            Timber.d("AsyncStorage updated successfully")
+            LocalBroadcastManager
+                .getInstance(this@MyFirebaseMessagingService)
+                .sendBroadcast(
+                    Intent(ACTION_SERMON_UPDATE_EVENT)
+                )
         }.onFailure { e ->
             CrashlyticsHelper.recordException(
                 exception = e,
-                message = "Failed to asyncStorage"
+                message = "Failed to asyncStorage",
             )
         }
-
     }
 
     private fun messageToSermon(data: Map<String, String>): SermonDto {
@@ -126,14 +132,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             data[KEY_TITLE] ?: throw IllegalArgumentException("Missing 'title' in sermon data")
         val content =
             data[KEY_CONTENT] ?: throw IllegalArgumentException("Missing 'content' in sermon data")
-        val dayOfWeek = data[KEY_DAY_OF_WEEK]
-            ?: throw IllegalArgumentException("Missing 'day_of_week' in sermon data")
+        val dayOfWeek =
+            data[KEY_DAY_OF_WEEK]
+                ?: throw IllegalArgumentException("Missing 'day_of_week' in sermon data")
 
         return SermonDto(
             date = date,
             title = title,
             content = content,
-            dayOfWeek = dayOfWeek
+            dayOfWeek = dayOfWeek,
         )
     }
 }

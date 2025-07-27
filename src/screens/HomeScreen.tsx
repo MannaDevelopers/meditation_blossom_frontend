@@ -1,6 +1,6 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Image, Text, TouchableOpacity, View } from 'react-native';
+import { Image, NativeEventEmitter, NativeModules, Text, TouchableOpacity, View } from 'react-native';
 import WidgetPreview from '../components/WidgetPreview';
 // import Icon from 'react-native-vector-icons/AntDesign';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -169,6 +169,23 @@ const HomeScreen = ({ navigation }: Props) => {
 
     updateWidget();
   }, [sermon]);
+
+  useEffect(() => {
+    const { MyEventModule } = NativeModules;
+    const eventEmitter = new NativeEventEmitter(MyEventModule);
+
+    // 'onMessageReceived' 이름으로 이벤트를 기다립니다.
+    const subscription = eventEmitter.addListener('ON_SERMON_UPDATE', (event) => {
+      console.log('🎉 Event received!', event);
+      loadLocalData();
+    });
+
+    // 컴포넌트가 사라질 때 이벤트 리스너를 정리합니다.
+    // 이렇게 하지 않으면 메모리 누수가 발생할 수 있습니다.
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent', marginHorizontal: 35, marginVertical: 35, justifyContent: 'center', alignItems: 'center' }}>
