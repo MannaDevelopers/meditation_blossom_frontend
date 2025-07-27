@@ -5,5 +5,4 @@ import java.time.LocalDate
 
 interface SermonRepository {
     suspend fun getDisplaySermon(): Sermon?
-    suspend fun getDisplaySermonForDate(date: LocalDate): Sermon?
 }

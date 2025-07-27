@@ -1,12 +1,13 @@
 package app.mannadev.meditation.domain.usecase
 
-import app.mannadev.meditation.data.EditableSermonDataSource
-import app.mannadev.meditation.di.PrefsDataSource
+import app.mannadev.meditation.data.SermonPrefsDataSource
 import javax.inject.Inject
 
 class ClearWidgetPreferenceUseCase @Inject constructor(
-    @PrefsDataSource private val prefsDataSource: EditableSermonDataSource
+    private val prefsDataSource: SermonPrefsDataSource
 ) {
 
-    operator fun invoke() = prefsDataSource::clearDisplaySermon
+    suspend operator fun invoke() {
+        prefsDataSource.clearDisplaySermon()
+    }
 }
