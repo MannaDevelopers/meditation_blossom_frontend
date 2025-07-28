@@ -8,7 +8,7 @@ import { collection, getDocsFromCache, getDocsFromServer, getFirestore, limit, o
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SvgIcon from '../components/SvgIcon';
 import { RootStackParamList } from '../types/navigation';
-import { FCM_SERMON_KEY, firestoreDocToSermon, Sermon } from '../types/Sermon';
+import { compareSermon, FCM_SERMON_KEY, firestoreDocToSermon, Sermon } from '../types/Sermon';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
 
 
@@ -59,23 +59,22 @@ const HomeScreen = ({ navigation }: Props) => {
     const firestoreCache: Sermon | null = await latestSermonFromFirestoreCache();
     const asyncStorageCache: Sermon | null = await latestSermonFromAsyncStorage();
 
-    let selectedSermon: Sermon | null = null;
-    if (asyncStorageCache == null && firestoreCache == null) {
+    if (firestoreCache == null && asyncStorageCache == null) {
       console.log('No local data found');
-    } else if (asyncStorageCache == null) {
-      selectedSermon = firestoreCache;
-      console.log('Selected Firestore cache (AsyncStorage is null)');
-    } else if (firestoreCache == null) {
-      selectedSermon = asyncStorageCache;
-      console.log('Selected AsyncStorage cache (Firestore is null)');
-    } else if (firestoreCache.date >= asyncStorageCache.date) {
-      selectedSermon = firestoreCache;
-      console.log('Selected Firestore cache (newer or same date)');
-    } else {
-      selectedSermon = asyncStorageCache;
-      console.log('Selected AsyncStorage cache (newer date)');
+      setSermon(null);
+      return null;
     }
 
+    const compareResult = compareSermon(firestoreCache, asyncStorageCache);
+    let selectedSermon: Sermon | null = null;
+
+    if (compareResult >= 0) {
+      selectedSermon = firestoreCache;
+      console.log('Selected Firestore cache');
+    } else {
+      selectedSermon = asyncStorageCache;
+      console.log('Selected AsyncStorage');
+    }
     setSermon(selectedSermon);
     return selectedSermon;
   }, []);

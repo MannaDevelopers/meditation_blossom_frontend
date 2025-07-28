@@ -36,3 +36,21 @@ export const firestoreDocToSermon = (doc: FirebaseFirestoreTypes.QueryDocumentSn
     updated_at: firestoreData.updated_at || { seconds: 0, nanoseconds: 0 }
   };
 }
+
+// Sermon을 date, updatedAt 순서로 비교하는 함수
+export function compareSermon(a: Sermon | null, b: Sermon | null): number {
+  if (a === null && b === null) return 0;
+  if (a === null) return -1;
+  if (b === null) return 1;
+
+  // date가 더 큰 쪽이 최신
+  if (a.date > b.date) return 1;
+  if (a.date < b.date) return -1;
+
+  // date가 같으면 updatedAt 비교
+  if (a.updated_at > b.updated_at) return 1;
+  if (a.updated_at < b.updated_at) return -1;
+
+  // 완전히 같으면 0
+  return 0;
+}
