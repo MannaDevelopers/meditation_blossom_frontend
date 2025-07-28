@@ -40,7 +40,7 @@ class NativeEventModule(reactContext: ReactApplicationContext) :
 
     fun sendEventToJS(eventName: String, params: WritableMap? = null) {
         // 앱이 현재 포그라운드(Resumed) 상태인지 확인합니다.
-        if (reactApplicationContext.lifecycleState == LifecycleState.BEFORE_RESUME) {
+        if (reactApplicationContext.lifecycleState == LifecycleState.BEFORE_RESUME || reactApplicationContext.lifecycleState == LifecycleState.RESUMED) {
             reactApplicationContext
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
                 .emit(eventName, params)
