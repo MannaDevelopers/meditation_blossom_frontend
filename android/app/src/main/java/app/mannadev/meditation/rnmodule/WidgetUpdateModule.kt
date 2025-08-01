@@ -19,7 +19,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import android.util.Log
+import timber.log.Timber
 
 @Keep
 class WidgetUpdateModule(reactContext: ReactApplicationContext) :
@@ -30,6 +30,9 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
                 ignoreUnknownKeys = true
             }
         }
+
+        private const val TAG = "WidgetUpdateModule"
+        private val log = Timber.tag(TAG)
     }
 
     private lateinit var moduleScope: CoroutineScope
@@ -54,69 +57,88 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
     @Suppress("unused")
     @Keep
     @ReactMethod
+    fun onClear(promise: Promise) =
+        moduleScope.launch {
+            //clear widget preferences
+            val result = runCatching {
+                log.d("Clear Widget Preferences...")
+                moduleDependencies.getClearWidgetPreferences().invoke()
+            }.onFailure { e ->
+                CrashlyticsHelper.recordException(
+                    e,
+                    "Error clear Widget Preferences: ${e.message}",
+                    tag = TAG
+                )
+            }
+            runCatching { updateWidgets() }
+                .onFailure {
+                    CrashlyticsHelper.recordException(
+                        it,
+                        "Error updating widgets after clearing preferences: ${it.message}",
+                        tag = TAG
+                    )
+                }
+
+            result
+                .onSuccess { promise.resolve(null) }
+                .onFailure { e ->
+                    CrashlyticsHelper.recordException(
+                        e,
+                        "Error in WidgetUpdateModule: ${e.message}",
+                        tag = TAG
+                    )
+                    promise.reject("WIDGET_UPDATE_ERROR", e.message, e)
+                }
+        }
+
+    @Suppress("unused")
+    @Keep
+    @ReactMethod
     fun onSermonUpdated(sermonData: String, promise: Promise) =
         moduleScope.launch {
-            println("=========onSermonUpdated Launched=================")
-            println("SermonData: $sermonData")
-            println("Thread: ${Thread.currentThread().name}")
-            println("ModuleScope: ${moduleScope}")
-            
             //optional: save sermon to prefs
-            runCatching {
-                Log.d("WidgetUpdateModule", "Saving sermon to prefs...")
-                val getSaveSermonUseCase = moduleDependencies.getSaveDisplaySermonUseCase()
+            val saveSermonToPrefs = runCatching {
+                log.d("Saving sermon to Widget Preference...")
+                val saveSermonUseCase = moduleDependencies.getSaveDisplaySermonUseCase()
                 val sermonDto = json.decodeFromString<SermonDto>(sermonData)
-                Log.d("WidgetUpdateModule", "SermonDto: $sermonDto")
-                getSaveSermonUseCase(sermonDto)
+                log.d("SermonDto: $sermonDto")
+                saveSermonUseCase(sermonDto)
                 AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.RN_MODULE)
-                Log.d("WidgetUpdateModule", "Sermon saved to prefs successfully")
-            }.onFailure { error ->
-                Log.e("WidgetUpdateModule", "Failed to save sermon to prefs: ${error.message}")
+                log.d("Sermon saved to prefs successfully")
+            }.onFailure { e ->
                 CrashlyticsHelper.recordException(
-                    error,
-                    "Error saving sermon data: ${error.localizedMessage}"
+                    e,
+                    "Error saving sermon data: ${e.message}",
+                    tag = TAG
                 )
             }
 
-            // AsyncStorage에 설교 데이터 저장 (React Native에서 접근 가능)
-            runCatching {
-                val sharedPrefs = reactApplicationContext.getSharedPreferences("rn_storage", android.content.Context.MODE_PRIVATE)
-                sharedPrefs.edit()
-                    .putString("latest_sermon_from_native", sermonData)
-                    .apply()
-                // println("Sermon data saved to AsyncStorage equivalent: $sermonData")
-                Log.d("WidgetUpdateModule", "Sermon data saved to AsyncStorage equivalent: $sermonData")
-            }.onFailure { error ->
-                // println("Failed to save sermon data to AsyncStorage: ${error.message}")
-                Log.d("WidgetUpdateModule", "Failed to save sermon data to AsyncStorage: ${error.message}")
-            }
+            runCatching { updateWidgets() }
+                .onFailure {
+                    CrashlyticsHelper.recordException(
+                        it,
+                        "Error updating widgets after clearing preferences: ${it.message}",
+                        tag = TAG
+                    )
+                }
 
-            try {
-                val context = reactApplicationContext
-                
-                Log.d("WidgetUpdateModule", "Waiting for data to be fully saved...")
-                Thread.sleep(500) // 데이터 저장 완료 대기
-                
-                Log.d("WidgetUpdateModule", "Updating widgets...")
-                // 위젯 강제 업데이트
-                VerseWidgetLarge().updateAll(context)
-                VerseWidgetSmall().updateAll(context)
-                
-                Log.d("WidgetUpdateModule", "First widget update completed, waiting...")
-                Thread.sleep(200) // 위젯 업데이트 완료 대기
-                
-                // 위젯이 즉시 새 데이터를 사용하도록 강제 새로고침
-                Log.d("WidgetUpdateModule", "Second widget update...")
-                VerseWidgetLarge().updateAll(context)
-                VerseWidgetSmall().updateAll(context)
-                
-                Log.d("WidgetUpdateModule", "All widget updates completed successfully")
-                Log.d("WidgetUpdateModule", "context: $context")
-                promise.resolve(true)
-            } catch (e: Exception) {
-                Log.e("WidgetUpdateModule", "Widget update failed: ${e.message}")
-                promise.reject("WIDGET_UPDATE_ERROR", e.message, e)
-            }
+            saveSermonToPrefs
+                .onSuccess { promise.resolve(true) }
+                .onFailure { e ->
+                    CrashlyticsHelper.recordException(
+                        e,
+                        "Error in WidgetUpdateModule: ${e.message}",
+                        tag = TAG
+                    )
+                    promise.reject("WIDGET_UPDATE_ERROR", e.message, e)
+                }
         }
+
+    private suspend fun updateWidgets() {
+        val context = reactApplicationContext
+        log.d("Updating widgets...")
+        VerseWidgetLarge().updateAll(context)
+        VerseWidgetSmall().updateAll(context)
+    }
 
 }
