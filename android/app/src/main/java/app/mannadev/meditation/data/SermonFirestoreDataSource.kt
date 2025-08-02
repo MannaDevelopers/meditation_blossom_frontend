@@ -4,6 +4,7 @@ import app.mannadev.meditation.dto.SermonDto
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
+import com.google.firebase.firestore.Source
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -16,23 +17,18 @@ class FirestoreFetchException(message: String, cause: Throwable? = null) : Excep
 @Singleton
 class SermonFirestoreDataSource @Inject constructor(
     private val firestore: FirebaseFirestore
-) : SermonDataSource {
+) {
 
-    override suspend fun saveDisplaySermon(sermon: SermonDto) {
-        // This method is not implemented for Firestore data source
-        throw NotImplementedError("Saving sermons is not supported in Firestore data source")
+    suspend fun getDisplaySermonFromCache(): SermonDto? = withContext(Dispatchers.IO) {
+        fetchFromRemote(source = Source.CACHE)
     }
 
-    override suspend fun getDisplaySermon(): SermonDto? = withContext(Dispatchers.IO) {
-        fetchFromRemote()
-    }
-
-    private suspend fun fetchFromRemote(): SermonDto {
+    private suspend fun fetchFromRemote(source: Source): SermonDto {
         return try {
             val querySnapshot = firestore.collection("sermons")
                 .orderBy("created_at", Query.Direction.DESCENDING)
                 .limit(1)
-                .get()
+                .get(source)
                 .await() // Use await() here
 
             snapshotToSermonDto(querySnapshot)

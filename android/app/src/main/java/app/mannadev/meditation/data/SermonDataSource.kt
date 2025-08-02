@@ -6,5 +6,4 @@ interface SermonDataSource {
 
     suspend fun getDisplaySermon(): SermonDto?
 
-    suspend fun saveDisplaySermon(sermon: SermonDto)
 }

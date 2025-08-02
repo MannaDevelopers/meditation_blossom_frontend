@@ -37,7 +37,7 @@ class VerseWidgetSmall : GlanceAppWidget(
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val widgetDependencies = getWidgetDependencies(context)
         val getDisplaySermonUseCase = widgetDependencies.getDisplaySermonUseCase()
-        val verse = getDisplaySermonUseCase(LocalDateTime.now())
+        val verse = getDisplaySermonUseCase()
             ?: throw IllegalStateException("Verse data is null")
 
         provideContent {
