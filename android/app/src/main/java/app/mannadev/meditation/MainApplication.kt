@@ -2,7 +2,7 @@ package app.mannadev.meditation
 
 import android.app.Application
 import app.mannadev.meditation.analytics.CrashlyticsHelper
-import app.mannadev.meditation.rnmodule.WidgetUpdatePackage
+import app.mannadev.meditation.rnmodule.MyReactPackage
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -26,7 +26,7 @@ class MainApplication : Application(), ReactApplication {
                 PackageList(this).packages.apply {
                     // Packages that cannot be autolinked yet can be added manually here, for example:
                     // add(MyReactNativePackage())
-                    add(WidgetUpdatePackage())
+                    add(MyReactPackage())
                 }
 
             override fun getJSMainModuleName(): String = "index"

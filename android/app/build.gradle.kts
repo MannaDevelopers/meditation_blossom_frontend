@@ -55,7 +55,7 @@ android {
         minSdk = rootProject.extra["minSdkVersion"].toString().toInt()
         targetSdk = rootProject.extra["targetSdkVersion"].toString().toInt()
         versionCode = 2
-        versionName = "0.2.1"  // 버전 업데이트
+        versionName = "0.4.3"  // 버전 업데이트
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
