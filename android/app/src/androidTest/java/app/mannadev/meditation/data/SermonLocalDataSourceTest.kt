@@ -21,7 +21,7 @@ class SermonLocalDataSourceTest {
         private const val ORIGINAL_DB_NAME = "RKStorage" // SermonLocalDataSource가 사용하는 DB 이름
     }
 
-    private var dataSource: SermonLocalDataSource? = null
+    private var asyncStorage: AsyncStorage? = null
     private var testDbFile: File? = null
 
 
@@ -50,7 +50,7 @@ class SermonLocalDataSourceTest {
             e.printStackTrace()
             throw RuntimeException("Error copying database from assets", e)
         }
-        dataSource = SermonLocalDataSource(context)
+        asyncStorage = AsyncStorage(context)
     }
 
     @After
@@ -63,7 +63,7 @@ class SermonLocalDataSourceTest {
 
     @Test
     fun getDisplaySermonJson_whenDataExists_returnsJsonString() = runTest {
-        val dataSource = checkNotNull(dataSource)
+        val asyncStorage = checkNotNull(this@SermonLocalDataSourceTest.asyncStorage)
         // given: 테스트 DB 파일에 "display_sermon" 키와 특정 JSON 문자열 값이 있다고 가정
         // (이 데이터는 assets/RKStorage_test.db 파일에 미리 준비되어 있어야 함)
         // 예를 들어, assets/RKStorage_test.db에는 다음 데이터가 삽입되어 있다고 가정:
@@ -71,7 +71,7 @@ class SermonLocalDataSourceTest {
 
 
         // when
-        val result = dataSource.getDisplaySermon()
+        val result = asyncStorage.get("display_sermon")
 
         // then
         println(result)

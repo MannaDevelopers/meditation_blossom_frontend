@@ -1,3 +1,5 @@
+import { FirebaseFirestoreTypes } from "@react-native-firebase/firestore";
+
 // 타입 정의
 export interface Sermon {
   id: string;
@@ -6,18 +8,49 @@ export interface Sermon {
   date: string; // 설교 날짜 (YYYY-MM-DD)
   category?: string; // 설교 카테고리
   day_of_week?: string; // 요일 (예: "SUN")
-  created_at: {seconds: number, nanoseconds: number}; // Firestore 타임스탬프 (초 단위)
-  updated_at: {seconds: number, nanoseconds: number}; // Firestore 타임스탬프 (초 단위)
+  created_at: { seconds: number, nanoseconds: number }; // Firestore 타임스탬프 (초 단위)
+  updated_at: { seconds: number, nanoseconds: number }; // Firestore 타임스탬프 (초 단위)
 }
 
 // 메타데이터 타입 정의
 export interface SermonMetadata {
   latestDate: string; // 가장 최근 날짜 (YYYY-MM-DD)
   lastUpdated: string;
-  totalCount: number;
 }
 
 // 스토리지 키
-export const STORAGE_KEY = 'sermons_data';
-export const METADATA_KEY = 'sermons_metadata';
-export const DISPLAY_SERMON_KEY = 'display_sermon';
+export const FCM_SERMON_KEY = 'fcm_sermon';
+
+
+export const firestoreDocToSermon = (doc: FirebaseFirestoreTypes.QueryDocumentSnapshot): Sermon => {
+  const firestoreData = doc.data();
+
+  return {
+    id: doc.id,
+    title: firestoreData.title || '',
+    content: firestoreData.content || '',
+    date: firestoreData.date || new Date().toISOString().split('T')[0],
+    category: firestoreData.category || '',
+    day_of_week: firestoreData.day_of_week || '',
+    created_at: firestoreData.created_at || { seconds: 0, nanoseconds: 0 },
+    updated_at: firestoreData.updated_at || { seconds: 0, nanoseconds: 0 }
+  };
+}
+
+// Sermon을 date, updatedAt 순서로 비교하는 함수
+export function compareSermon(a: Sermon | null, b: Sermon | null): number {
+  if (a === null && b === null) return 0;
+  if (a === null) return -1;
+  if (b === null) return 1;
+
+  // date가 더 큰 쪽이 최신
+  if (a.date > b.date) return 1;
+  if (a.date < b.date) return -1;
+
+  // date가 같으면 updatedAt 비교
+  if (a.updated_at > b.updated_at) return 1;
+  if (a.updated_at < b.updated_at) return -1;
+
+  // 완전히 같으면 0
+  return 0;
+}
