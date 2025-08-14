@@ -169,6 +169,7 @@ const HomeScreen = ({ navigation }: Props) => {
   }, [sermon]);
 
   useEffect(() => {
+    //TODO: iOS 추가 필요.
     if (Platform.OS === 'android') {
       const { MyEventModule } = NativeModules;
       const eventEmitter = new NativeEventEmitter(MyEventModule);
