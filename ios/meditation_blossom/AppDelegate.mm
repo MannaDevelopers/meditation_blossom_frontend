@@ -66,24 +66,6 @@
   [FIRMessaging messaging].APNSToken = deviceToken;
 }
 
-// Data-only FCM 메시지 처리 (앱이 포그라운드에 있을 때)
-- (void)messaging:(FIRMessaging *)messaging didReceiveMessage:(FIRMessagingRemoteMessage *)remoteMessage {
-  NSLog(@"=== FCM DATA-ONLY MESSAGE RECEIVED (FOREGROUND) ===");
-  NSLog(@"Message data: %@", remoteMessage.appData);
-  
-  // sermon_events 토픽에서 온 메시지인지 확인
-  NSString *topic = remoteMessage.appData[@"topic"];
-  NSString *from = remoteMessage.appData[@"from"];
-  
-  if ([topic isEqualToString:@"sermon_events"] || [from containsString:@"sermon_events"]) {
-    NSLog(@"Processing sermon_events data-only message");
-    [self saveFcmSermon:remoteMessage.appData];
-    [self sendSermonUpdateEvent];
-  } else {
-    NSLog(@"Message not from sermon_events topic, ignoring");
-  }
-}
-
 // Data-only FCM 메시지 처리 (앱이 백그라운드에 있을 때)
 - (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo
 fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
