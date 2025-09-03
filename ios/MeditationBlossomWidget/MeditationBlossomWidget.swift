@@ -35,7 +35,7 @@ struct Provider: TimelineProvider {
   }
   
   private func createSermonEntry() -> SimpleEntry {
-    let sharedDefaults = UserDefaults(suiteName: "group.com.Blossom.MeditationBlossom")
+    let sharedDefaults = UserDefaults(suiteName: "group.com.MannaDev.MeditationBlossom")
     
     if let sermon = sharedDefaults?.getObjectFromString(forKey: "displaySermon", castTo: Sermon.self) {
       var verse: String?

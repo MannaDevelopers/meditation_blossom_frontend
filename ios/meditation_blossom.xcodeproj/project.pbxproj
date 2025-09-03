@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -14,17 +14,20 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		2647D55AA12EA8C2255BAA6A /* Pods_meditation_blossom_meditation_blossomTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D9C5591CF2564102D7B83A93 /* Pods_meditation_blossom_meditation_blossomTests.framework */; };
+		35449F6D2E5EF66F005824B9 /* PushNotificationService.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 35449F662E5EF66F005824B9 /* PushNotificationService.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		354EC78E2E13D06F00E2A018 /* WidgetUpdateModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 354EC78C2E13D06F00E2A018 /* WidgetUpdateModule.m */; };
 		354EC78F2E13D06F00E2A018 /* WidgetUpdateModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 354EC78D2E13D06F00E2A018 /* WidgetUpdateModule.swift */; };
 		3578DB062DEA121C0046B6A0 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3578DB052DEA121C0046B6A0 /* WidgetKit.framework */; };
 		3578DB082DEA121C0046B6A0 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3578DB072DEA121C0046B6A0 /* SwiftUI.framework */; };
 		3578DB192DEA121D0046B6A0 /* MeditationBlossomWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3578DB042DEA121C0046B6A0 /* MeditationBlossomWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3586FEA32E66DC780003ADE5 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3586FEA22E66DC780003ADE5 /* GoogleService-Info.plist */; };
 		3595A30B2DEBF76F006716D8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3595A3042DEBF76F006716D8 /* Assets.xcassets */; };
 		3595A30D2DEBF76F006716D8 /* AppIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3032DEBF76F006716D8 /* AppIntent.swift */; };
 		3595A30E2DEBF76F006716D8 /* MeditationBlossomWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3062DEBF76F006716D8 /* MeditationBlossomWidget.swift */; };
 		3595A30F2DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3072DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift */; };
 		3595A3102DEBF76F006716D8 /* MeditationBlossomWidgetControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3082DEBF76F006716D8 /* MeditationBlossomWidgetControl.swift */; };
 		3595A3112DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3092DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift */; };
+		35A99CA72E5F502B0087CB5B /* Sermon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35B6CFCE2E01AC0A004A13DD /* Sermon.swift */; };
 		35B6CFCF2E01AC0E004A13DD /* Sermon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35B6CFCE2E01AC0A004A13DD /* Sermon.swift */; };
 		35D57CC72E4E12CF006A8872 /* MyEventModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 35D57CC62E4E12C1006A8872 /* MyEventModule.m */; };
 		36D0ABAEB660494094DD9C97 /* Pretendard-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = F7AF6C1D72CD4A66B58C33B8 /* Pretendard-Bold.otf */; };
@@ -36,7 +39,6 @@
 		648990BED925AB88A487D541 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		9EDCE558FDA7A1C9FB0E601C /* Pods_meditation_blossom.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A8A81E4873C17AAB62EFB7C8 /* Pods_meditation_blossom.framework */; };
-		B0D2D1A82DAA1BD000CEBD31 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = B0D2D1A72DAA1BD000CEBD31 /* GoogleService-Info.plist */; };
 		BF8AB1B43579418E9CD3C825 /* Pretendard-Black.otf in Resources */ = {isa = PBXBuildFile; fileRef = CA374A4D4D014BAEA21D5B01 /* Pretendard-Black.otf */; };
 /* End PBXBuildFile section */
 
@@ -47,6 +49,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 13B07F861A680F5B00A75B9A;
 			remoteInfo = meditation_blossom;
+		};
+		35449F6B2E5EF66F005824B9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 35449F652E5EF66F005824B9;
+			remoteInfo = PushNotificationService;
 		};
 		3578DB172DEA121D0046B6A0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -65,6 +74,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				3578DB192DEA121D0046B6A0 /* MeditationBlossomWidgetExtension.appex in Embed Foundation Extensions */,
+				35449F6D2E5EF66F005824B9 /* PushNotificationService.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -83,6 +93,7 @@
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = meditation_blossom/main.m; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = meditation_blossom/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		24B4574C15E64071AE2213F2 /* Pretendard-Light.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Pretendard-Light.otf"; path = "../src/assets/fonts/Pretendard-Light.otf"; sourceTree = "<group>"; };
+		35449F662E5EF66F005824B9 /* PushNotificationService.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PushNotificationService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		354EC78C2E13D06F00E2A018 /* WidgetUpdateModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WidgetUpdateModule.m; sourceTree = "<group>"; };
 		354EC78D2E13D06F00E2A018 /* WidgetUpdateModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetUpdateModule.swift; sourceTree = "<group>"; };
 		3578DB042DEA121C0046B6A0 /* MeditationBlossomWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MeditationBlossomWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -90,6 +101,7 @@
 		3578DB072DEA121C0046B6A0 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		358368DC2E01985900AC2237 /* MeditationBlossomWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MeditationBlossomWidgetExtension.entitlements; sourceTree = "<group>"; };
 		358368DD2E01989500AC2237 /* meditation_blossom.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = meditation_blossom.entitlements; path = meditation_blossom/meditation_blossom.entitlements; sourceTree = "<group>"; };
+		3586FEA22E66DC780003ADE5 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		3595A3032DEBF76F006716D8 /* AppIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIntent.swift; sourceTree = "<group>"; };
 		3595A3042DEBF76F006716D8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3595A3052DEBF76F006716D8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -106,7 +118,6 @@
 		9DDBC33AF57F48DA99EBFD26 /* Pretendard-ExtraBold.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Pretendard-ExtraBold.otf"; path = "../src/assets/fonts/Pretendard-ExtraBold.otf"; sourceTree = "<group>"; };
 		9F509B09ACD6E4C78CA52C86 /* Pods-meditation_blossom-meditation_blossomTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-meditation_blossom-meditation_blossomTests.release.xcconfig"; path = "Target Support Files/Pods-meditation_blossom-meditation_blossomTests/Pods-meditation_blossom-meditation_blossomTests.release.xcconfig"; sourceTree = "<group>"; };
 		A8A81E4873C17AAB62EFB7C8 /* Pods_meditation_blossom.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_meditation_blossom.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		B0D2D1A72DAA1BD000CEBD31 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "meditation_blossom/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		CA374A4D4D014BAEA21D5B01 /* Pretendard-Black.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Pretendard-Black.otf"; path = "../src/assets/fonts/Pretendard-Black.otf"; sourceTree = "<group>"; };
 		CB14C5323D6A4E0CBAA87359 /* Pretendard-Regular.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Pretendard-Regular.otf"; path = "../src/assets/fonts/Pretendard-Regular.otf"; sourceTree = "<group>"; };
 		D9C5591CF2564102D7B83A93 /* Pods_meditation_blossom_meditation_blossomTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_meditation_blossom_meditation_blossomTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -117,6 +128,20 @@
 		F7AF6C1D72CD4A66B58C33B8 /* Pretendard-Bold.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Pretendard-Bold.otf"; path = "../src/assets/fonts/Pretendard-Bold.otf"; sourceTree = "<group>"; };
 		FA817E704269452E9C720D87 /* Pretendard-Thin.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Pretendard-Thin.otf"; path = "../src/assets/fonts/Pretendard-Thin.otf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		35449F6E2E5EF66F005824B9 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 35449F652E5EF66F005824B9 /* PushNotificationService */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		35449F672E5EF66F005824B9 /* PushNotificationService */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (35449F6E2E5EF66F005824B9 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = PushNotificationService; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		00E356EB1AD99517003FC87E /* Frameworks */ = {
@@ -132,6 +157,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				9EDCE558FDA7A1C9FB0E601C /* Pods_meditation_blossom.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		35449F632E5EF66F005824B9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -167,11 +199,11 @@
 		13B07FAE1A68108700A75B9A /* meditation_blossom */ = {
 			isa = PBXGroup;
 			children = (
+				3586FEA22E66DC780003ADE5 /* GoogleService-Info.plist */,
 				35D57CC62E4E12C1006A8872 /* MyEventModule.m */,
 				354EC78C2E13D06F00E2A018 /* WidgetUpdateModule.m */,
 				354EC78D2E13D06F00E2A018 /* WidgetUpdateModule.swift */,
 				358368DD2E01989500AC2237 /* meditation_blossom.entitlements */,
-				B0D2D1A72DAA1BD000CEBD31 /* GoogleService-Info.plist */,
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
@@ -241,6 +273,7 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				00E356EF1AD99517003FC87E /* meditation_blossomTests */,
 				3595A30A2DEBF76F006716D8 /* MeditationBlossomWidget */,
+				35449F672E5EF66F005824B9 /* PushNotificationService */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
@@ -257,6 +290,7 @@
 				13B07F961A680F5B00A75B9A /* meditation_blossom.app */,
 				00E356EE1AD99517003FC87E /* meditation_blossomTests.xctest */,
 				3578DB042DEA121C0046B6A0 /* MeditationBlossomWidgetExtension.appex */,
+				35449F662E5EF66F005824B9 /* PushNotificationService.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -315,11 +349,34 @@
 			);
 			dependencies = (
 				3578DB182DEA121D0046B6A0 /* PBXTargetDependency */,
+				35449F6C2E5EF66F005824B9 /* PBXTargetDependency */,
 			);
 			name = meditation_blossom;
 			productName = meditation_blossom;
 			productReference = 13B07F961A680F5B00A75B9A /* meditation_blossom.app */;
 			productType = "com.apple.product-type.application";
+		};
+		35449F652E5EF66F005824B9 /* PushNotificationService */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 35449F6F2E5EF66F005824B9 /* Build configuration list for PBXNativeTarget "PushNotificationService" */;
+			buildPhases = (
+				35449F622E5EF66F005824B9 /* Sources */,
+				35449F632E5EF66F005824B9 /* Frameworks */,
+				35449F642E5EF66F005824B9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				35449F672E5EF66F005824B9 /* PushNotificationService */,
+			);
+			name = PushNotificationService;
+			packageProductDependencies = (
+			);
+			productName = PushNotificationService;
+			productReference = 35449F662E5EF66F005824B9 /* PushNotificationService.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		3578DB032DEA121C0046B6A0 /* MeditationBlossomWidgetExtension */ = {
 			isa = PBXNativeTarget;
@@ -354,6 +411,9 @@
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1620;
 					};
+					35449F652E5EF66F005824B9 = {
+						CreatedOnToolsVersion = 16.2;
+					};
 					3578DB032DEA121C0046B6A0 = {
 						CreatedOnToolsVersion = 16.2;
 					};
@@ -378,6 +438,7 @@
 				13B07F861A680F5B00A75B9A /* meditation_blossom */,
 				00E356ED1AD99517003FC87E /* meditation_blossomTests */,
 				3578DB032DEA121C0046B6A0 /* MeditationBlossomWidgetExtension */,
+				35449F652E5EF66F005824B9 /* PushNotificationService */,
 			);
 		};
 /* End PBXProject section */
@@ -395,18 +456,25 @@
 			buildActionMask = 2147483647;
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
-				B0D2D1A82DAA1BD000CEBD31 /* GoogleService-Info.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				648990BED925AB88A487D541 /* PrivacyInfo.xcprivacy in Resources */,
 				BF8AB1B43579418E9CD3C825 /* Pretendard-Black.otf in Resources */,
 				36D0ABAEB660494094DD9C97 /* Pretendard-Bold.otf in Resources */,
 				55CC77BCBC3D467B81B47C62 /* Pretendard-ExtraBold.otf in Resources */,
+				3586FEA32E66DC780003ADE5 /* GoogleService-Info.plist in Resources */,
 				5329F3BA751046928CF6521F /* Pretendard-ExtraLight.otf in Resources */,
 				5FFA7AF4CB71498989F6EAC3 /* Pretendard-Light.otf in Resources */,
 				09392194228A4ED7A98675B6 /* Pretendard-Medium.otf in Resources */,
 				0808055756EF48E1AA2DF5FA /* Pretendard-Regular.otf in Resources */,
 				4BF67687D54E4D26AF6361BE /* Pretendard-SemiBold.otf in Resources */,
 				3C0090A2347247CC84AEF51C /* Pretendard-Thin.otf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		35449F642E5EF66F005824B9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -599,6 +667,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		35449F622E5EF66F005824B9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				35A99CA72E5F502B0087CB5B /* Sermon.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		3578DB002DEA121C0046B6A0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -620,6 +696,11 @@
 			target = 13B07F861A680F5B00A75B9A /* meditation_blossom */;
 			targetProxy = 00E356F41AD99517003FC87E /* PBXContainerItemProxy */;
 		};
+		35449F6C2E5EF66F005824B9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 35449F652E5EF66F005824B9 /* PushNotificationService */;
+			targetProxy = 35449F6B2E5EF66F005824B9 /* PBXContainerItemProxy */;
+		};
 		3578DB182DEA121D0046B6A0 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 3578DB032DEA121C0046B6A0 /* MeditationBlossomWidgetExtension */;
@@ -633,7 +714,7 @@
 			baseConfigurationReference = 7362688CBA452C7BF0DDFE59 /* Pods-meditation_blossom-meditation_blossomTests.debug.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				DEVELOPMENT_TEAM = MUNXMHWP78;
+				DEVELOPMENT_TEAM = 869LKR26H8;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
@@ -650,7 +731,7 @@
 					"-lc++",
 					"$(inherited)",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = org.mannamethodistchurch.mannadev.meditationblossom.meditationBlossomTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/meditation_blossom.app/meditation_blossom";
 			};
@@ -662,7 +743,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				COPY_PHASE_STRIP = NO;
-				DEVELOPMENT_TEAM = MUNXMHWP78;
+				DEVELOPMENT_TEAM = 869LKR26H8;
 				INFOPLIST_FILE = meditation_blossomTests/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.4;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -675,7 +756,7 @@
 					"-lc++",
 					"$(inherited)",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = org.mannamethodistchurch.mannadev.meditationblossom.meditationBlossomTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/meditation_blossom.app/meditation_blossom";
 			};
@@ -689,7 +770,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = meditation_blossom/meditation_blossom.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = MUNXMHWP78;
+				DEVELOPMENT_TEAM = 869LKR26H8;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = meditation_blossom/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
@@ -703,7 +784,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = org.mannamethodistchurch.mannadev.meditationblossom;
 				PRODUCT_NAME = meditation_blossom;
 				SWIFT_OBJC_BRIDGING_HEADER = "meditation_blossom-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -720,7 +801,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = meditation_blossom/meditation_blossom.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = MUNXMHWP78;
+				DEVELOPMENT_TEAM = 869LKR26H8;
 				INFOPLIST_FILE = meditation_blossom/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -733,11 +814,94 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = org.mannamethodistchurch.mannadev.meditationblossom;
 				PRODUCT_NAME = meditation_blossom;
 				SWIFT_OBJC_BRIDGING_HEADER = "meditation_blossom-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Release;
+		};
+		35449F702E5EF66F005824B9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_ENTITLEMENTS = PushNotificationService/PushNotificationService.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 869LKR26H8;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PushNotificationService/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PushNotificationService;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = org.mannamethodistchurch.mannadev.meditationblossom.PushNotificationService;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		35449F712E5EF66F005824B9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_ENTITLEMENTS = PushNotificationService/PushNotificationService.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 869LKR26H8;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PushNotificationService/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PushNotificationService;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = org.mannamethodistchurch.mannadev.meditationblossom.PushNotificationService;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -757,7 +921,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = MUNXMHWP78;
+				DEVELOPMENT_TEAM = 869LKR26H8;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -774,7 +938,7 @@
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.meditation-blossom.MeditationBlossomWidget";
+				PRODUCT_BUNDLE_IDENTIFIER = org.mannamethodistchurch.mannadev.meditationblossom.MeditationBlossomWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
@@ -802,7 +966,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = MUNXMHWP78;
+				DEVELOPMENT_TEAM = 869LKR26H8;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -818,7 +982,7 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 1.0;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.meditation-blossom.MeditationBlossomWidget";
+				PRODUCT_BUNDLE_IDENTIFIER = org.mannamethodistchurch.mannadev.meditationblossom.MeditationBlossomWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -1013,6 +1177,15 @@
 			buildConfigurations = (
 				13B07F941A680F5B00A75B9A /* Debug */,
 				13B07F951A680F5B00A75B9A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		35449F6F2E5EF66F005824B9 /* Build configuration list for PBXNativeTarget "PushNotificationService" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				35449F702E5EF66F005824B9 /* Debug */,
+				35449F712E5EF66F005824B9 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
