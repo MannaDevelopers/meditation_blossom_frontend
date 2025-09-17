@@ -7,37 +7,52 @@ class NotificationService: UNNotificationServiceExtension {
     var bestAttemptContent: UNMutableNotificationContent?
 
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
-        print("fcm 발생")
         self.contentHandler = contentHandler
         bestAttemptContent = (request.content.mutableCopy() as? UNMutableNotificationContent)
 
         if let bestAttemptContent = bestAttemptContent {
             let userInfo = request.content.userInfo
-            
-            // 1. userInfo([AnyHashable: Any])를 Data 타입으로 변환
-            guard let data = try? JSONSerialization.data(withJSONObject: userInfo, options: []) else {
+            print("Received notification userInfo: \(userInfo)")
+
+            // 수동으로 userInfo에서 데이터를 파싱합니다.
+            // FCM 메시지의 'data' 페이로드에 포함된 키들입니다.
+            guard let id = userInfo["id"] as? String,
+                  let title = userInfo["title"] as? String,
+                  let content = userInfo["content"] as? String,
+                  let date = userInfo["date"] as? String,
+                  let dayOfWeek = userInfo["day_of_week"] as? String else {
+                
+                print("Sermon data parsing failed: required fields are missing.")
                 contentHandler(bestAttemptContent)
-                print("타입변환 실패")
                 return
             }
+            
+            let category = userInfo["category"] as? String // Optional
 
-            // 2. Data를 Sermon 객체로 디코딩
-            do {
-                let sermon = try JSONDecoder().decode(Sermon.self, from: data)
-                print("FCM 데이터를 Sermon 객체로 파싱 성공: \(sermon.title)")
+            // test_fcm.js 페이로드에는 createdAt/updatedAt이 없으므로 nil로 처리합니다.
+            // Sermon 구조체의 해당 프로퍼티가 Optional이므로 문제 없습니다.
+            let sermon = Sermon(
+                id: id,
+                title: title,
+                content: content,
+                date: date,
+                category: category,
+                dayOfWeek: dayOfWeek,
+                createdAt: nil,
+                updatedAt: nil
+            )
 
-                if let userDefaults = UserDefaults(suiteName: "group.com.MannaDev.MeditationBlossom") {
-                    // 3. 파싱된 Sermon 객체를 다시 Data 형태로 인코딩하여 저장
-                    let encoder = JSONEncoder()
-                    if let encodedSermon = try? encoder.encode(sermon) {
-                        userDefaults.set(encodedSermon, forKey: "displaySermon")
-                        print("인코딩된 Sermon 데이터를 App Group에 저장했습니다.")
-                        
-                        WidgetCenter.shared.reloadAllTimelines()
-                    }
+            print("SUCCESS: Manually parsed Sermon object: \(sermon.title)")
+
+            if let userDefaults = UserDefaults(suiteName: "group.com.MannaDev.MeditationBlossom") {
+                let encoder = JSONEncoder()
+                if let encodedData = try? encoder.encode(sermon),
+                   let jsonString = String(data: encodedData, encoding: .utf8) {
+                    userDefaults.set(jsonString, forKey: "displaySermon")
+                    print("Successfully stored sermon for widget")
+                    WidgetCenter.shared.reloadTimelines(ofKind: "MeditationBlossomWidget")
+                    print("Widget timeline reloaded.")
                 }
-            } catch {
-                print("Sermon 객체 디코딩 실패: \(error.localizedDescription)")
             }
             
             contentHandler(bestAttemptContent)

@@ -18,8 +18,8 @@ struct Sermon: Codable {
     let date: String
     let category: String? // Optional
     let dayOfWeek: String? // Optional + 이름 변경
-    let createdAt: FirestoreTimeStamp // 이름 변경
-    let updatedAt: FirestoreTimeStamp // 이름 변경
+    let createdAt: FirestoreTimeStamp? // 이름 변경
+    let updatedAt: FirestoreTimeStamp? // 이름 변경
 
     // JSON의 키 이름과 Swift 구조체의 프로퍼티 이름을 매핑합니다.
     // 이름이 동일한 경우는 생략해도 되지만, 명시적으로 모두 작성하는 것이 좋습니다.
