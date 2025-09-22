@@ -1,9 +1,9 @@
 <resources>
     <string name="app_name">meditation blossom</string>
-    <string name="verse_widget_small_name">Weekly Verse (Small)</string>
-    <string name="verse_widget_small_description">Display this week\'s Bible verse in a compact size.</string>
-    <string name="verse_widget_large_name">Weekly Verse (Large)</string>
-    <string name="verse_widget_large_description">Display this week\'s Bible verse in a larger size.</string>
+    <string name="verse_widget_small_name">Weekly Verse (Card)</string>
+    <string name="verse_widget_small_description">Display this week\'s Bible verse in a card type.</string>
+    <string name="verse_widget_large_name">Weekly Verse (Banner)</string>
+    <string name="verse_widget_large_description">Display this week\'s Bible verse in a banner type.</string>
     <string name="widget_error_message">Unable to load verse content.</string>
     <string name="widget_error_title">Meditation blossom</string>
 
