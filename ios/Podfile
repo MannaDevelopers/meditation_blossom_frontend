@@ -31,6 +31,18 @@ target 'meditation_blossom' do
     # Pods for testing
   end
 
+ # 위젯 타겟 설정 (search paths와 필요한 추가적인 네이티브 라이브러리만 상속/포함)
+  target 'MeditationBlossomWidgetExtension' do
+    inherit! :search_paths # 이 명령어만으로 충분해야 합니다.
+    # 필요한 경우에만 위젯에서 사용하는 RN 라이브러리(e.g., react-native-firebase) Pods를 추가합니다.
+  end
+
+  # 푸시 서비스 타겟 설정
+  target 'PushNotificationService' do
+    inherit! :search_paths
+    # ...
+  end
+
   post_install do |installer|
     # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
     react_native_post_install(
