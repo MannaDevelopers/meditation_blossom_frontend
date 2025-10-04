@@ -44,7 +44,7 @@ class NotificationService: UNNotificationServiceExtension {
 
             print("SUCCESS: Manually parsed Sermon object: \(sermon.title)")
 
-            if let userDefaults = UserDefaults(suiteName: "group.com.MannaDev.MeditationBlossom") {
+            if let userDefaults = UserDefaults(suiteName: "group.mannachurch.meditationblossom") {
                 let encoder = JSONEncoder()
                 if let encodedData = try? encoder.encode(sermon),
                    let jsonString = String(data: encodedData, encoding: .utf8) {
