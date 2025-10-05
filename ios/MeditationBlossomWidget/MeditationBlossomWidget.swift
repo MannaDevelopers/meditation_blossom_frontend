@@ -64,7 +64,7 @@ struct MeditationBlossomWidget: Widget {
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: Provider()) { entry in
       MeditationBlossomWidgetEntryView(entry: entry)
-        .containerBackground(.fill.tertiary, for: .widget)
+        // .containerBackground(.fill.tertiary, for: .widget) - iOS 17.0+ 기능이므로 주석 처리
     }
     .supportedFamilies([.systemMedium, .systemLarge])
   }
@@ -130,8 +130,11 @@ struct MeditationBlossomWidgetEntryView : View {
   }
 }
 
+// iOS 16.6과 호환성을 위해 Preview 주석 처리
+/*
 #Preview(as: .systemMedium) {
   MeditationBlossomWidget()
 } timeline: {
   SimpleEntry(date: Date(), title: " ", quote: "등록된 설교가 없습니다", verse: " ")
 }
+*/
