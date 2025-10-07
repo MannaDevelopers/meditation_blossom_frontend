@@ -6,6 +6,11 @@
 #import <UserNotifications/UserNotifications.h>
 #import <UserNotifications/UserNotifications.h>
 
+// MyEventModule 클래스 선언
+@interface MyEventModule : NSObject
+- (void)trigger:(NSString *)message;
+@end
+
 @interface AppDelegate () <UNUserNotificationCenterDelegate, FIRMessagingDelegate>
 @end
 
@@ -58,8 +63,14 @@
 
 - (void)messaging:(FIRMessaging *)messaging didReceiveRegistrationToken:(NSString *)fcmToken {
   NSLog(@"FCM registration token: %@", fcmToken);
+  // 토픽 구독은 APNS 토큰을 받은 후 didRegisterForRemoteNotificationsWithDeviceToken에서 수행
+}
+
+- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
+  NSLog(@"APNS device token received");
+  [FIRMessaging messaging].APNSToken = deviceToken;
   
-  // sermon_events 토픽 구독
+  // APNS 토큰을 받은 후 토픽 구독
   [[FIRMessaging messaging] subscribeToTopic:@"sermon_events" completion:^(NSError * _Nullable error) {
     if (error) {
       NSLog(@"Failed to subscribe to sermon_events topic: %@", error);
@@ -67,10 +78,14 @@
       NSLog(@"Successfully subscribed to sermon_events topic");
     }
   }];
-}
-
-- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
-  [FIRMessaging messaging].APNSToken = deviceToken;
+  
+  [[FIRMessaging messaging] subscribeToTopic:@"sermon_events_test" completion:^(NSError * _Nullable error) {
+    if (error) {
+      NSLog(@"Failed to subscribe to sermon_events_test topic: %@", error);
+    } else {
+      NSLog(@"Successfully subscribed to sermon_events_test topic");
+    }
+  }];
 }
 
 // Data-only FCM 메시지 처리 (앱이 백그라운드에 있을 때)
@@ -79,16 +94,45 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   NSLog(@"=== FCM DATA-ONLY MESSAGE RECEIVED (BACKGROUND) ===");
   NSLog(@"UserInfo: %@", userInfo);
   
-  // sermon_events 토픽에서 온 메시지인지 확인
-  NSString *topic = userInfo[@"topic"];
+  // sermon_events 또는 sermon_events_test 토픽에서 온 메시지인지 확인
+  NSString *topic = userInfo[@"topic"]; // data 필드에 포함된 topic
   NSString *from = userInfo[@"from"];
+  NSString *gcmMessageId = userInfo[@"gcm.message_id"];
   
-  if ([topic isEqualToString:@"sermon_events"] || [from containsString:@"sermon_events"]) {
-    NSLog(@"Processing sermon_events data-only message in background");
+  NSLog(@"Topic from data: %@", topic);
+  NSLog(@"From: %@", from);
+  NSLog(@"GCM Message ID: %@", gcmMessageId);
+  
+  BOOL isSermonEventsTopic = NO;
+  BOOL isTestTopic = NO;
+  
+  // data 필드의 topic을 먼저 확인
+  if (topic) {
+    if ([topic isEqualToString:@"sermon_events_test"]) {
+      isTestTopic = YES;
+    } else if ([topic isEqualToString:@"sermon_events"]) {
+      isSermonEventsTopic = YES;
+    }
+  }
+  
+  // topic이 없으면 from 필드 확인
+  if (!isSermonEventsTopic && !isTestTopic && from) {
+    if ([from containsString:@"sermon_events_test"]) {
+      isTestTopic = YES;
+    } else if ([from containsString:@"sermon_events"]) {
+      isSermonEventsTopic = YES;
+    }
+  }
+  
+  if (isSermonEventsTopic || isTestTopic) {
+    NSString *topicName = isTestTopic ? @"sermon_events_test" : @"sermon_events";
+    NSLog(@"✅ Processing %@ data-only message in background", topicName);
     [self saveFcmSermon:userInfo];
     completionHandler(UIBackgroundFetchResultNewData);
   } else {
-    NSLog(@"Message not from sermon_events topic, ignoring");
+    NSLog(@"❌ Message not from sermon_events or sermon_events_test topic");
+    NSLog(@"Topic field: %@", topic);
+    NSLog(@"From field: %@", from);
     completionHandler(UIBackgroundFetchResultNoData);
   }
 }
@@ -98,14 +142,71 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   NSLog(@"=== PROCESSING SERMON EVENT ===");
   NSLog(@"Event data: %@", data);
   
-  // TODO: AsyncStorage에 새로운 설교 데이터 저장 key 값은 "fcm_sermon" 으로 저장.
+  // id가 없으면 gcm.message_id를 사용
+  NSString *sermonId = data[@"id"];
+  if (!sermonId) {
+    id messageId = data[@"gcm.message_id"];
+    sermonId = [NSString stringWithFormat:@"%@", messageId];
+  }
   
+  // AsyncStorage에 새로운 설교 데이터 저장
+  NSDictionary *sermonData = @{
+    @"id": sermonId ?: @"",
+    @"title": data[@"title"] ?: @"",
+    @"content": data[@"content"] ?: @"",
+    @"date": data[@"date"] ?: @"",
+    @"category": data[@"category"] ?: [NSNull null],
+    @"dayOfWeek": data[@"day_of_week"] ?: @"",
+    @"createdAt": data[@"created_at"] ?: [NSNull null],
+    @"updatedAt": data[@"updated_at"] ?: [NSNull null]
+  };
+  
+  NSError *error;
+  NSData *jsonData = [NSJSONSerialization dataWithJSONObject:sermonData options:0 error:&error];
+  if (jsonData) {
+    NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+    
+    // 1. App Group에 저장 (위젯용)
+    NSUserDefaults *sharedDefaults = [[NSUserDefaults alloc] initWithSuiteName:@"group.org.mannamethodistchurch.mannadev.meditationblossom"];
+    [sharedDefaults setObject:jsonString forKey:@"fcm_sermon"];
+    [sharedDefaults setObject:jsonString forKey:@"displaySermon"];
+    [sharedDefaults synchronize];
+    
+    NSLog(@"✅ Successfully saved FCM sermon to App Group");
+    
+    // React Native로 이벤트 전송
+    [self sendSermonUpdateEvent];
+  } else {
+    NSLog(@"Failed to serialize sermon data: %@", error);
+  }
 }
 
 - (void)sendSermonUpdateEvent {
   NSLog(@"=== SENDING SERMON UPDATE EVENT ===");
-  // TODO: React Native로 이벤트 전송 (앱이 포그라운드에 있을 때)
-  // https://reactnative.dev/docs/legacy/native-modules-ios#sending-events-to-javascript
+  
+  // 앱 상태 확인
+  UIApplicationState state = [[UIApplication sharedApplication] applicationState];
+  
+  if (state == UIApplicationStateActive) {
+    // 앱이 포그라운드에 있을 때만 이벤트 전송
+    NSLog(@"App is in foreground, sending event to React Native");
+    
+    if (self.bridge) {
+      MyEventModule *eventModule = [self.bridge moduleForClass:[MyEventModule class]];
+      if (eventModule) {
+        [eventModule trigger:@"New sermon received from FCM"];
+        NSLog(@"✅ Successfully sent ON_SERMON_UPDATE event to React Native");
+      } else {
+        NSLog(@"❌ MyEventModule not found");
+      }
+    } else {
+      NSLog(@"❌ Bridge not available");
+    }
+  } else {
+    // 앱이 백그라운드에 있을 때는 이벤트를 저장만 하고 전송하지 않음
+    // React Native 앱이 다시 시작될 때 자동으로 로컬 데이터를 로드함
+    NSLog(@"ℹ️ App is in background, event will be processed when app becomes active");
+  }
 }
 
 #pragma mark - UNUserNotificationCenterDelegate

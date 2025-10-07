@@ -20,6 +20,20 @@ class WidgetUpdateModule: NSObject {
   }
   
   @objc
+  func getAppGroupData(_ key: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    guard let sharedDefaults = UserDefaults(suiteName: "group.org.mannamethodistchurch.mannadev.meditationblossom") else {
+      reject("APP_GROUP_ERROR", "App Group을 찾을 수 없습니다.", nil)
+      return
+    }
+    
+    if let value = sharedDefaults.string(forKey: key) {
+      resolve(value)
+    } else {
+      resolve(nil)
+    }
+  }
+  
+  @objc
   static func requiresMainQueueSetup() -> Bool {
     return true
   }
