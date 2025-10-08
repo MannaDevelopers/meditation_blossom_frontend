@@ -34,6 +34,24 @@ class WidgetUpdateModule: NSObject {
   }
   
   @objc
+  func onClear(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    guard let sharedDefaults = UserDefaults(suiteName: "group.org.mannamethodistchurch.mannadev.meditationblossom") else {
+      reject("APP_GROUP_ERROR", "App Group을 찾을 수 없습니다.", nil)
+      return
+    }
+    
+    // App Group의 모든 설교 데이터 삭제
+    sharedDefaults.removeObject(forKey: "displaySermon")
+    sharedDefaults.removeObject(forKey: "fcm_sermon")
+    sharedDefaults.synchronize()
+    
+    // 위젯 업데이트
+    WidgetCenter.shared.reloadAllTimelines()
+    
+    resolve("Cleared successfully")
+  }
+  
+  @objc
   static func requiresMainQueueSetup() -> Bool {
     return true
   }
