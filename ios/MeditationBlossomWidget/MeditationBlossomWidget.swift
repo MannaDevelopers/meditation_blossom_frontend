@@ -38,19 +38,55 @@ struct Provider: TimelineProvider {
     let sharedDefaults = UserDefaults(suiteName: "group.org.mannamethodistchurch.mannadev.meditationblossom")
     
     if let sermon = sharedDefaults?.getObjectFromString(forKey: "displaySermon", castTo: Sermon.self) {
-      var verse: String?
-      var quote: String?
+      var verse: String = " "
+      var quote: String = "설교 본문을 가져오는 중 문제가 발생했습니다"
       
-      let verseRegex = /([가-힣]+\s?\d+:\d+)/
-      let quoteRegex = /\r\n\s*(.*)/
+      // Android와 동일한 파싱 로직
+      // 1. 책 이름과 장:절 추출 (예: "본문 : 로마서 13:11-14")
+      let bookNamePattern = #"(본문\s*[:：]?\s*)?([^\d\s]+ ?\d+:\d+(?:-\d+)?(?:,\s*[^\d\s]+ ?\d+:\d+(?:-\d+)?)*)"#
       
-      if let match = sermon.content.firstMatch(of: verseRegex) {
-          verse = String(match.output.1)
+      if let bookNameRegex = try? NSRegularExpression(pattern: bookNamePattern, options: []),
+         let match = bookNameRegex.firstMatch(in: sermon.content, options: [], range: NSRange(sermon.content.startIndex..., in: sermon.content)) {
+        
+        // 책 이름 추출
+        if let bookNameRange = Range(match.range(at: 2), in: sermon.content) {
+          verse = String(sermon.content[bookNameRange]).trimmingCharacters(in: .whitespaces)
+        }
+        
+        // 본문 내용 추출 (책 이름 이후의 텍스트)
+        let contentStartIndex = sermon.content.index(sermon.content.startIndex, offsetBy: match.range.location + match.range.length)
+        let contentAfterBookName = String(sermon.content[contentStartIndex...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if !contentAfterBookName.isEmpty {
+          // 구절 번호로 분리 (예: "11 텍스트 12 텍스트" -> ["텍스트", "텍스트"])
+          let versePattern = #"\d+"#
+          if let verseRegex = try? NSRegularExpression(pattern: versePattern, options: []) {
+            let verses = verseRegex.matches(in: contentAfterBookName, options: [], range: NSRange(contentAfterBookName.startIndex..., in: contentAfterBookName))
+            
+            if !verses.isEmpty {
+              // 첫 번째 구절만 추출 (위젯에 표시)
+              if let firstVerseRange = Range(verses[0].range, in: contentAfterBookName) {
+                let firstVerseEndIndex = contentAfterBookName.index(firstVerseRange.upperBound, offsetBy: 0)
+                
+                // 첫 번째 구절 번호 다음부터 두 번째 구절 번호 전까지 추출
+                if verses.count > 1, let secondVerseRange = Range(verses[1].range, in: contentAfterBookName) {
+                  let quoteText = String(contentAfterBookName[firstVerseEndIndex..<secondVerseRange.lowerBound])
+                  quote = quoteText.trimmingCharacters(in: .whitespacesAndNewlines)
+                } else {
+                  // 구절이 하나만 있으면 전체 텍스트 사용
+                  let quoteText = String(contentAfterBookName[firstVerseEndIndex...])
+                  quote = quoteText.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+              }
+            } else {
+              // 구절 번호가 없으면 전체 텍스트 사용
+              quote = contentAfterBookName
+            }
+          }
+        }
       }
-      if let match = sermon.content.firstMatch(of: quoteRegex) {
-          quote = String(match.output.1)
-      }
-      return SimpleEntry(date: Date(), title: sermon.title, quote: quote ?? "설교 본문을 가져오는 중 문제가 발생했습니다", verse: verse ?? " ")
+      
+      return SimpleEntry(date: Date(), title: sermon.title, quote: quote, verse: verse)
     } else {
       return SimpleEntry(date: Date(), title: " ", quote: "등록된 설교가 없습니다", verse: " ")
     }
