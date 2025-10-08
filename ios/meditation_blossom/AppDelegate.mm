@@ -66,6 +66,48 @@
   // 토픽 구독은 APNS 토큰을 받은 후 didRegisterForRemoteNotificationsWithDeviceToken에서 수행
 }
 
+// 앱이 포그라운드에 있을 때 FCM 메시지 수신
+- (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo {
+  NSLog(@"=== FCM MESSAGE RECEIVED (FOREGROUND) ===");
+  NSLog(@"UserInfo: %@", userInfo);
+  
+  // sermon_events 또는 sermon_events_test 토픽에서 온 메시지인지 확인
+  NSString *topic = userInfo[@"topic"];
+  NSString *from = userInfo[@"from"];
+  
+  NSLog(@"Topic from data: %@", topic);
+  NSLog(@"From: %@", from);
+  
+  BOOL isSermonEventsTopic = NO;
+  BOOL isTestTopic = NO;
+  
+  // data 필드의 topic을 먼저 확인
+  if (topic) {
+    if ([topic isEqualToString:@"sermon_events_test"]) {
+      isTestTopic = YES;
+    } else if ([topic isEqualToString:@"sermon_events"]) {
+      isSermonEventsTopic = YES;
+    }
+  }
+  
+  // topic이 없으면 from 필드 확인
+  if (!isSermonEventsTopic && !isTestTopic && from) {
+    if ([from containsString:@"sermon_events_test"]) {
+      isTestTopic = YES;
+    } else if ([from containsString:@"sermon_events"]) {
+      isSermonEventsTopic = YES;
+    }
+  }
+  
+  if (isSermonEventsTopic || isTestTopic) {
+    NSString *topicName = isTestTopic ? @"sermon_events_test" : @"sermon_events";
+    NSLog(@"✅ Processing %@ message in foreground", topicName);
+    [self saveFcmSermon:userInfo];
+  } else {
+    NSLog(@"❌ Message not from sermon_events or sermon_events_test topic");
+  }
+}
+
 - (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
   NSLog(@"APNS device token received");
   [FIRMessaging messaging].APNSToken = deviceToken;
@@ -188,20 +230,26 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   UIApplicationState state = [[UIApplication sharedApplication] applicationState];
   
   if (state == UIApplicationStateActive) {
-    // 앱이 포그라운드에 있을 때만 이벤트 전송
+    // 앱이 포그라운드에 있을 때 이벤트 전송
     NSLog(@"App is in foreground, sending event to React Native");
     
+    // 방법 1: MyEventModule 사용 (Bridge가 있을 때)
     if (self.bridge) {
       MyEventModule *eventModule = [self.bridge moduleForClass:[MyEventModule class]];
       if (eventModule) {
         [eventModule trigger:@"New sermon received from FCM"];
-        NSLog(@"✅ Successfully sent ON_SERMON_UPDATE event to React Native");
+        NSLog(@"✅ Successfully sent ON_SERMON_UPDATE event to React Native via MyEventModule");
+        return;
       } else {
-        NSLog(@"❌ MyEventModule not found");
+        NSLog(@"⚠️ MyEventModule not found, trying NSNotificationCenter");
       }
     } else {
-      NSLog(@"❌ Bridge not available");
+      NSLog(@"⚠️ Bridge not available, trying NSNotificationCenter");
     }
+    
+    // 방법 2: NSNotificationCenter 사용 (Bridge가 없을 때)
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"FCM_SERMON_UPDATE" object:nil];
+    NSLog(@"✅ Posted FCM_SERMON_UPDATE notification via NSNotificationCenter");
   } else {
     // 앱이 백그라운드에 있을 때는 이벤트를 저장만 하고 전송하지 않음
     // React Native 앱이 다시 시작될 때 자동으로 로컬 데이터를 로드함

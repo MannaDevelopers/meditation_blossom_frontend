@@ -15,6 +15,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'HomeScreen'>;
 
 const HomeScreen = ({ navigation }: Props) => {
   const [sermon, setSermon] = useState<Sermon | null>(null);
+  const [lastSyncedData, setLastSyncedData] = useState<string | null>(null);
 
 
   const latestSermonFromFirestoreCache = async (): Promise<Sermon | null> => {
@@ -212,10 +213,16 @@ const HomeScreen = ({ navigation }: Props) => {
           const appGroupData = await WidgetUpdateModule.getAppGroupData('fcm_sermon');
           
           if (appGroupData) {
-            console.log('📦 Found data in App Group, copying to AsyncStorage...');
-            // AsyncStorage에 복사
-            await AsyncStorage.setItem(FCM_SERMON_KEY, appGroupData);
-            console.log('✅ Successfully synced App Group data to AsyncStorage');
+            // 데이터가 변경되었는지 확인
+            if (appGroupData !== lastSyncedData) {
+              console.log('📦 Found new data in App Group, copying to AsyncStorage...');
+              // AsyncStorage에 복사
+              await AsyncStorage.setItem(FCM_SERMON_KEY, appGroupData);
+              setLastSyncedData(appGroupData);
+              console.log('✅ Successfully synced App Group data to AsyncStorage');
+            } else {
+              console.log('ℹ️ App Group data unchanged');
+            }
           } else {
             console.log('ℹ️ No FCM data in App Group');
           }
@@ -231,6 +238,7 @@ const HomeScreen = ({ navigation }: Props) => {
       }
     };
     
+    // AppState 변경 감지
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {
         console.log('📱 App came to foreground, checking for updates...');
@@ -238,10 +246,37 @@ const HomeScreen = ({ navigation }: Props) => {
       }
     });
 
+    // iOS 포그라운드에서 주기적으로 App Group 체크 (5초마다)
+    let intervalId: NodeJS.Timeout | null = null;
+    if (Platform.OS === 'ios') {
+      intervalId = setInterval(async () => {
+        const appState = AppState.currentState;
+        if (appState === 'active') {
+          try {
+            // App Group에서 데이터 읽기
+            const appGroupData = await WidgetUpdateModule.getAppGroupData('fcm_sermon');
+            
+            // 데이터가 변경되었는지 확인
+            if (appGroupData && appGroupData !== lastSyncedData) {
+              console.log('⏰ New data detected in App Group, syncing...');
+              await AsyncStorage.setItem(FCM_SERMON_KEY, appGroupData);
+              setLastSyncedData(appGroupData);
+              await loadLocalData();
+            }
+          } catch (error) {
+            console.error('Error in periodic check:', error);
+          }
+        }
+      }, 5000); // 5초마다 체크
+    }
+
     return () => {
       subscription?.remove();
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
     };
-  }, []);
+  }, [lastSyncedData]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent', marginHorizontal: 35, marginVertical: 35, justifyContent: 'center', alignItems: 'center' }}>
