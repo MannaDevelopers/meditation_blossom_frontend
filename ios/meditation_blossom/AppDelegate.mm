@@ -5,10 +5,16 @@
 #import <FirebaseMessaging/FirebaseMessaging.h>
 #import <UserNotifications/UserNotifications.h>
 #import <UserNotifications/UserNotifications.h>
+#import <WidgetKit/WidgetKit.h>
 
 // MyEventModule 클래스 선언
 @interface MyEventModule : NSObject
 - (void)trigger:(NSString *)message;
+@end
+
+// WidgetUpdateModule 클래스 선언
+@interface WidgetUpdateModule : NSObject
++ (void)reloadWidgets;
 @end
 
 @interface AppDelegate () <UNUserNotificationCenterDelegate, FIRMessagingDelegate>
@@ -216,7 +222,10 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
     
     NSLog(@"✅ Successfully saved FCM sermon to App Group");
     
-    // React Native로 이벤트 전송
+    // 2. 위젯 즉시 업데이트 (Swift 모듈 사용)
+    [WidgetUpdateModule reloadWidgets];
+    
+    // 3. React Native로 이벤트 전송
     [self sendSermonUpdateEvent];
   } else {
     NSLog(@"Failed to serialize sermon data: %@", error);

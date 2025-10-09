@@ -52,6 +52,12 @@ class WidgetUpdateModule: NSObject {
   }
   
   @objc
+  static func reloadWidgets() {
+    WidgetCenter.shared.reloadAllTimelines()
+    NSLog("✅ Widget timelines reloaded via WidgetUpdateModule")
+  }
+  
+  @objc
   static func requiresMainQueueSetup() -> Bool {
     return true
   }
