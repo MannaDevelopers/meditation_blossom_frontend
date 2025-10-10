@@ -89,20 +89,28 @@
   
   // data 필드의 topic을 먼저 확인
   if (topic) {
-    if ([topic isEqualToString:@"sermon_events_test"]) {
-      isTestTopic = YES;
-    } else if ([topic isEqualToString:@"sermon_events"]) {
+    if ([topic isEqualToString:@"sermon_events"]) {
       isSermonEventsTopic = YES;
     }
+#ifdef DEBUG
+    // DEBUG 모드에서만 sermon_events_test 처리
+    else if ([topic isEqualToString:@"sermon_events_test"]) {
+      isTestTopic = YES;
+    }
+#endif
   }
   
   // topic이 없으면 from 필드 확인
   if (!isSermonEventsTopic && !isTestTopic && from) {
-    if ([from containsString:@"sermon_events_test"]) {
-      isTestTopic = YES;
-    } else if ([from containsString:@"sermon_events"]) {
+    if ([from containsString:@"sermon_events"]) {
       isSermonEventsTopic = YES;
     }
+#ifdef DEBUG
+    // DEBUG 모드에서만 sermon_events_test 처리
+    else if ([from containsString:@"sermon_events_test"]) {
+      isTestTopic = YES;
+    }
+#endif
   }
   
   if (isSermonEventsTopic || isTestTopic) {
@@ -110,7 +118,11 @@
     NSLog(@"✅ Processing %@ message in foreground", topicName);
     [self saveFcmSermon:userInfo];
   } else {
-    NSLog(@"❌ Message not from sermon_events or sermon_events_test topic");
+    NSLog(@"❌ Message not from sermon_events%@ topic", @""
+#ifdef DEBUG
+          @" or sermon_events_test"
+#endif
+    );
   }
 }
 
@@ -127,13 +139,16 @@
     }
   }];
   
+  // DEBUG 모드에서만 sermon_events_test 토픽 구독
+#ifdef DEBUG
   [[FIRMessaging messaging] subscribeToTopic:@"sermon_events_test" completion:^(NSError * _Nullable error) {
     if (error) {
-      NSLog(@"Failed to subscribe to sermon_events_test topic: %@", error);
+      NSLog(@"[DEBUG] Failed to subscribe to sermon_events_test topic: %@", error);
     } else {
-      NSLog(@"Successfully subscribed to sermon_events_test topic");
+      NSLog(@"[DEBUG] Successfully subscribed to sermon_events_test topic");
     }
   }];
+#endif
 }
 
 // Data-only FCM 메시지 처리 (앱이 백그라운드에 있을 때)
@@ -156,20 +171,28 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   
   // data 필드의 topic을 먼저 확인
   if (topic) {
-    if ([topic isEqualToString:@"sermon_events_test"]) {
-      isTestTopic = YES;
-    } else if ([topic isEqualToString:@"sermon_events"]) {
+    if ([topic isEqualToString:@"sermon_events"]) {
       isSermonEventsTopic = YES;
     }
+#ifdef DEBUG
+    // DEBUG 모드에서만 sermon_events_test 처리
+    else if ([topic isEqualToString:@"sermon_events_test"]) {
+      isTestTopic = YES;
+    }
+#endif
   }
   
   // topic이 없으면 from 필드 확인
   if (!isSermonEventsTopic && !isTestTopic && from) {
-    if ([from containsString:@"sermon_events_test"]) {
-      isTestTopic = YES;
-    } else if ([from containsString:@"sermon_events"]) {
+    if ([from containsString:@"sermon_events"]) {
       isSermonEventsTopic = YES;
     }
+#ifdef DEBUG
+    // DEBUG 모드에서만 sermon_events_test 처리
+    else if ([from containsString:@"sermon_events_test"]) {
+      isTestTopic = YES;
+    }
+#endif
   }
   
   if (isSermonEventsTopic || isTestTopic) {
@@ -178,7 +201,11 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
     [self saveFcmSermon:userInfo];
     completionHandler(UIBackgroundFetchResultNewData);
   } else {
-    NSLog(@"❌ Message not from sermon_events or sermon_events_test topic");
+    NSLog(@"❌ Message not from sermon_events%@ topic", @""
+#ifdef DEBUG
+          @" or sermon_events_test"
+#endif
+    );
     NSLog(@"Topic field: %@", topic);
     NSLog(@"From field: %@", from);
     completionHandler(UIBackgroundFetchResultNoData);
