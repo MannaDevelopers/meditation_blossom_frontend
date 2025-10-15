@@ -5,9 +5,6 @@
 //  Created by 최상준 on 8/14/25.
 //
 
-#import <React/RCTEventEmitter.h>
-#import <React/RCTBridgeModule.h>
-
 // MyEventModule.m
 #import <React/RCTEventEmitter.h>
 #import <React/RCTBridgeModule.h>

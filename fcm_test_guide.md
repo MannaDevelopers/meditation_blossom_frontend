@@ -192,7 +192,168 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 - 다양한 iOS 기기
 - 에뮬레이터/시뮬레이터
 
-## 8. 로그 확인 체크리스트
+## 8. iOS DEBUG vs RELEASE 빌드 차이점
+
+### 8.1 DEBUG 빌드 (개발/테스트용)
+- ✅ `sermon_events` 토픽 구독 및 처리
+- ✅ `sermon_events_test` 토픽 구독 및 처리 (테스트 전용)
+- ✅ 상세한 디버그 로그 출력
+- ⚠️ 성능 최적화 비활성화
+
+### 8.2 RELEASE 빌드 (프로덕션용)
+- ✅ `sermon_events` 토픽 구독 및 처리
+- ❌ `sermon_events_test` 토픽 무시 (구독하지 않음)
+- ⚠️ 최소한의 로그만 출력
+- ✅ 성능 최적화 활성화
+
+### 8.3 iOS 빌드 모드별 테스트 방법
+
+#### **방법 1: React Native CLI 사용** (권장)
+
+**DEBUG 모드**:
+```bash
+# 실기기에서 DEBUG 빌드
+npx react-native run-ios --device "기기이름"
+
+# 시뮬레이터에서 DEBUG 빌드
+npx react-native run-ios --simulator "iPhone 15"
+```
+
+**RELEASE 모드**:
+```bash
+# 실기기에서 RELEASE 빌드
+npx react-native run-ios --device "기기이름" --configuration Release
+
+# 시뮬레이터에서 RELEASE 빌드
+npx react-native run-ios --simulator "iPhone 15" --configuration Release
+```
+
+#### **방법 2: Xcode 사용**
+
+1. **Scheme 설정 변경**:
+   - Xcode에서 `meditation_blossom.xcworkspace` 열기
+   - 상단 메뉴: `Product` → `Scheme` → `Edit Scheme...`
+   - 왼쪽에서 `Run` 선택
+   - `Build Configuration` 변경:
+     - `Debug` → 개발/테스트용
+     - `Release` → 프로덕션용
+   - Close
+
+2. **빌드 및 실행**:
+   - 디바이스 선택 (상단에서 기기 선택)
+   - `⌘ + R` 또는 `Product` → `Run`
+
+#### **방법 3: 명령줄에서 직접 빌드**
+
+**DEBUG 빌드**:
+```bash
+cd ios
+xcodebuild -workspace meditation_blossom.xcworkspace \
+  -scheme meditation_blossom \
+  -configuration Debug \
+  -destination 'name=기기이름' \
+  -allowProvisioningUpdates
+```
+
+**RELEASE 빌드**:
+```bash
+cd ios
+xcodebuild -workspace meditation_blossom.xcworkspace \
+  -scheme meditation_blossom \
+  -configuration Release \
+  -destination 'name=기기이름' \
+  -allowProvisioningUpdates
+```
+
+### 8.4 빌드 모드별 테스트 시나리오
+
+#### **DEBUG 모드 테스트**:
+
+1. **sermon_events_test 토픽 테스트**:
+   ```bash
+   node test_fcm.js sendDataOnly sermon_events_test
+   ```
+   
+   **예상 로그**:
+   ```
+   [DEBUG] Successfully subscribed to sermon_events_test topic
+   === FCM DATA-ONLY MESSAGE RECEIVED (BACKGROUND) ===
+   Topic from data: sermon_events_test
+   ✅ Processing sermon_events_test data-only message in background
+   ✅ Successfully saved FCM sermon to App Group
+   ✅ Widget timelines reloaded via WidgetUpdateModule
+   ```
+
+2. **sermon_events 토픽 테스트**:
+   ```bash
+   node test_fcm.js sendDataOnly sermon_events
+   ```
+   
+   **예상 로그**:
+   ```
+   Successfully subscribed to sermon_events topic
+   === FCM DATA-ONLY MESSAGE RECEIVED (BACKGROUND) ===
+   Topic from data: sermon_events
+   ✅ Processing sermon_events data-only message in background
+   ```
+
+#### **RELEASE 모드 테스트**:
+
+1. **sermon_events_test 토픽 테스트** (무시되어야 함):
+   ```bash
+   node test_fcm.js sendDataOnly sermon_events_test
+   ```
+   
+   **예상 로그**:
+   ```
+   === FCM DATA-ONLY MESSAGE RECEIVED (BACKGROUND) ===
+   Topic from data: sermon_events_test
+   ❌ Message not from sermon_events topic
+   ```
+   ⚠️ **sermon_events_test는 구독조차 하지 않으므로 메시지가 오지 않을 수 있음**
+
+2. **sermon_events 토픽 테스트** (정상 작동해야 함):
+   ```bash
+   node test_fcm.js sendDataOnly sermon_events
+   ```
+   
+   **예상 로그**:
+   ```
+   Successfully subscribed to sermon_events topic
+   === FCM DATA-ONLY MESSAGE RECEIVED (BACKGROUND) ===
+   Topic from data: sermon_events
+   ✅ Processing sermon_events data-only message in background
+   ✅ Successfully saved FCM sermon to App Group
+   ✅ Widget timelines reloaded via WidgetUpdateModule
+   ```
+
+### 8.5 빌드 모드 확인 방법
+
+**로그에서 확인**:
+```
+# DEBUG 모드
+[DEBUG] Successfully subscribed to sermon_events_test topic
+
+# RELEASE 모드
+sermon_events_test 관련 로그 없음
+```
+
+**Xcode에서 확인**:
+- 상단 바에서 현재 Scheme 확인
+- `meditation_blossom > 기기이름` 옆에 현재 Configuration 표시
+
+### 8.6 토픽별 사용 용도
+
+| 토픽 | 용도 | DEBUG | RELEASE |
+|------|------|-------|---------|
+| `sermon_events` | 프로덕션 설교 업데이트 | ✅ | ✅ |
+| `sermon_events_test` | iOS 개발/테스트 전용 | ✅ | ❌ |
+
+⚠️ **중요**: 
+- `sermon_events_test`는 DEBUG 모드에서만 작동하므로 Android 사용자에게 영향을 주지 않습니다.
+- RELEASE 빌드는 App Store 배포 전 테스트용으로 사용하세요.
+
+## 9. 로그 확인 체크리스트
 
 ### 앱이 꺼져있을 때 (백그라운드 FCM)
 - [ ] Android: `adb logcat | findstr "=== FCM"`에서 로그 확인
@@ -203,4 +364,9 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 ### 앱을 다시 열었을 때 (React Native)
 - [ ] Metro bundler 로그에서 `=== APP OPENED FROM BACKGROUND VIA FCM ===` 확인
 - [ ] 앱 데이터가 업데이트되었는지 확인
-- [ ] 위젯이 업데이트되었는지 확인 
+- [ ] 위젯이 업데이트되었는지 확인
+
+### iOS 빌드 모드별 테스트
+- [ ] DEBUG: sermon_events_test 토픽이 정상 작동하는지 확인
+- [ ] RELEASE: sermon_events_test 토픽이 무시되는지 확인
+- [ ] RELEASE: sermon_events 토픽은 정상 작동하는지 확인 

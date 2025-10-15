@@ -1,8 +1,7 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Image, NativeEventEmitter, NativeModules, Text, TouchableOpacity, View } from 'react-native';
+import { AppState, Image, NativeEventEmitter, NativeModules, Platform, Text, TouchableOpacity, View } from 'react-native';
 import WidgetPreview from '../components/WidgetPreview';
-// import Icon from 'react-native-vector-icons/AntDesign';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { collection, getDocsFromCache, getDocsFromServer, getFirestore, limit, orderBy, query } from '@react-native-firebase/firestore';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +15,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'HomeScreen'>;
 
 const HomeScreen = ({ navigation }: Props) => {
   const [sermon, setSermon] = useState<Sermon | null>(null);
+  const [lastSyncedData, setLastSyncedData] = useState<string | null>(null);
 
 
   const latestSermonFromFirestoreCache = async (): Promise<Sermon | null> => {
@@ -54,28 +54,38 @@ const HomeScreen = ({ navigation }: Props) => {
 
   // 로컬 데이터 로드
   const loadLocalData = useCallback(async (): Promise<Sermon | null> => {
-    console.log('Loading local data...');
+    console.log('📥 Loading local data...');
 
     const firestoreCache: Sermon | null = await latestSermonFromFirestoreCache();
     const asyncStorageCache: Sermon | null = await latestSermonFromAsyncStorage();
+    
+    // 데이터 출력
+    console.log('📊 Data sources:');
+    console.log('  - Firestore cache:', firestoreCache ? `${firestoreCache.title} (${firestoreCache.date})` : 'null');
+    console.log('  - AsyncStorage:', asyncStorageCache ? `${asyncStorageCache.title} (${asyncStorageCache.date})` : 'null');
 
     if (firestoreCache == null && asyncStorageCache == null) {
-      console.log('No local data found');
+      console.log('❌ No local data found');
       setSermon(null);
       return null;
     }
 
+    // 2개 데이터 중 가장 최신 선택
     const compareResult = compareSermon(firestoreCache, asyncStorageCache);
+    console.log(`🔍 Compare result (firestoreCache vs asyncStorageCache): ${compareResult}`);
+    
     let selectedSermon: Sermon | null = null;
 
     if (compareResult >= 0) {
       selectedSermon = firestoreCache;
-      console.log('Selected Firestore cache');
+      console.log('✅ Selected Firestore cache');
     } else {
       selectedSermon = asyncStorageCache;
-      console.log('Selected AsyncStorage');
+      console.log('✅ Selected AsyncStorage');
     }
+    
     setSermon(selectedSermon);
+    console.log(`📌 Final selected sermon: ${selectedSermon?.title} (${selectedSermon?.date})`);
     return selectedSermon;
   }, []);
 
@@ -170,21 +180,103 @@ const HomeScreen = ({ navigation }: Props) => {
   }, [sermon]);
 
   useEffect(() => {
+    // Android와 iOS 모두에서 FCM 이벤트 처리
     const { MyEventModule } = NativeModules;
+    
+    if (!MyEventModule) {
+      console.log('MyEventModule not available');
+      return;
+    }
+    
     const eventEmitter = new NativeEventEmitter(MyEventModule);
-
-    // 'onMessageReceived' 이름으로 이벤트를 기다립니다.
+    
+    // 'ON_SERMON_UPDATE' 이벤트를 기다립니다.
     const subscription = eventEmitter.addListener('ON_SERMON_UPDATE', (event) => {
-      console.log('🎉 Event received!', event);
+      console.log(`🎉 ${Platform.OS} Event received!`, event);
       loadLocalData();
     });
 
-    // 컴포넌트가 사라질 때 이벤트 리스너를 정리합니다.
-    // 이렇게 하지 않으면 메모리 누수가 발생할 수 있습니다.
     return () => {
       subscription.remove();
     };
   }, []);
+
+  // 앱이 포그라운드로 돌아올 때 로컬 데이터 확인
+  useEffect(() => {
+    const syncAppGroupData = async () => {
+      // iOS: App Group에서 FCM 데이터를 AsyncStorage로 복사
+      if (Platform.OS === 'ios') {
+        try {
+          console.log('🔄 Syncing App Group data to AsyncStorage...');
+          
+          // App Group에서 FCM 데이터 읽기
+          const appGroupData = await WidgetUpdateModule.getAppGroupData('fcm_sermon');
+          
+          if (appGroupData) {
+            // 데이터가 변경되었는지 확인
+            if (appGroupData !== lastSyncedData) {
+              console.log('📦 Found new data in App Group, copying to AsyncStorage...');
+              // AsyncStorage에 복사
+              await AsyncStorage.setItem(FCM_SERMON_KEY, appGroupData);
+              setLastSyncedData(appGroupData);
+              console.log('✅ Successfully synced App Group data to AsyncStorage');
+            } else {
+              console.log('ℹ️ App Group data unchanged');
+            }
+          } else {
+            console.log('ℹ️ No FCM data in App Group');
+          }
+          
+          // 로컬 데이터 로드
+          await loadLocalData();
+        } catch (error) {
+          console.error('❌ Error syncing app group data:', error);
+          await loadLocalData();
+        }
+      } else {
+        await loadLocalData();
+      }
+    };
+    
+    // AppState 변경 감지
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        console.log('📱 App came to foreground, checking for updates...');
+        syncAppGroupData();
+      }
+    });
+
+    // iOS 포그라운드에서 주기적으로 App Group 체크 (5초마다)
+    let intervalId: NodeJS.Timeout | null = null;
+    if (Platform.OS === 'ios') {
+      intervalId = setInterval(async () => {
+        const appState = AppState.currentState;
+        if (appState === 'active') {
+          try {
+            // App Group에서 데이터 읽기
+            const appGroupData = await WidgetUpdateModule.getAppGroupData('fcm_sermon');
+            
+            // 데이터가 변경되었는지 확인
+            if (appGroupData && appGroupData !== lastSyncedData) {
+              console.log('⏰ New data detected in App Group, syncing...');
+              await AsyncStorage.setItem(FCM_SERMON_KEY, appGroupData);
+              setLastSyncedData(appGroupData);
+              await loadLocalData();
+            }
+          } catch (error) {
+            console.error('Error in periodic check:', error);
+          }
+        }
+      }, 5000); // 5초마다 체크
+    }
+
+    return () => {
+      subscription?.remove();
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [lastSyncedData]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent', marginHorizontal: 35, marginVertical: 35, justifyContent: 'center', alignItems: 'center' }}>

@@ -55,15 +55,16 @@ async function sendTestMessage() {
 }
 
 // 토픽으로 메시지 전송 함수
-async function sendTopicMessage() {
+async function sendTopicMessage(topicName = 'sermon_events') {
   try {
     const message = {
-      topic: 'sermon_events',
+      topic: topicName,
       notification: {
         title: '새로운 설교',
         body: '새로운 설교가 업데이트되었습니다.'
       },
       data: {
+        topic: topicName, // 토픽 정보를 data에 포함
         date: '2024-01-15',
         title: '토픽 테스트 설교',
         content: '토픽을 통한 FCM 테스트입니다. 모든 구독자에게 전송됩니다.',
@@ -89,10 +90,53 @@ async function sendTopicMessage() {
 
     const response = await admin.messaging().send(message);
     console.log('✅ 토픽 메시지 전송 성공:', response);
-    console.log('📱 sermon_events 토픽 구독자들에게 전송되었습니다.');
+    console.log(`📱 ${topicName} 토픽 구독자들에게 전송되었습니다.`);
     
   } catch (error) {
     console.error('❌ 토픽 메시지 전송 실패:', error);
+  }
+}
+
+// Data-only 메시지 전송 함수 (알림 없이 백그라운드 처리)
+async function sendDataOnlyMessage(topicName = 'sermon_events') {
+  try {
+    const message = {
+      topic: topicName,
+      data: {
+        topic: topicName, // 토픽 정보를 data에 포함
+        id: Date.now().toString(),
+        title: '교회된 우리에게 없어선 안 될 두 가지 / 김종윤 목사(이천만나교회)',
+        category: '성령안에서',
+        content: '본문 : 요한계시록 2:1-4, 요한계시록 3:14-20\n\n1 에베소 교회의 사자에게 편지하라 오른손에 있는 일곱 별을 붙잡고 일곱 금 촛대 사이를 거니시는 이가 이르시되',
+        // content: '본문 : 요한계시록 2:1-4 \n\n1 에베소 교회의 사자에게 편지하라 오른손에 있는 일곱 별을 붙잡고 일곱 금 촛대 사이를 거니시는 이가 이르시되',
+        date: '2025-10-07',
+        day_of_week: 'SAT',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        operation: ''
+      },
+      android: {
+        priority: 'high'
+      },
+      apns: {
+        payload: {
+          aps: {
+            'content-available': 1
+          }
+        },
+        headers: {
+          'apns-priority': '5',
+          'apns-push-type': 'background'
+        }
+      }
+    };
+
+    const response = await admin.messaging().send(message);
+    console.log('✅ Data-only 메시지 전송 성공:', response);
+    console.log(`📱 ${topicName} 토픽 구독자들에게 백그라운드로 전송되었습니다.`);
+    
+  } catch (error) {
+    console.error('❌ Data-only 메시지 전송 실패:', error);
   }
 }
 
@@ -103,18 +147,30 @@ console.log('사용법:');
 console.log('1. firebase-service-account.json 파일을 프로젝트 루트에 추가');
 console.log('2. FCM_TOKEN 변수에 실제 토큰 입력');
 console.log('3. 다음 명령어 실행:');
-console.log('   - node test_fcm.js sendTest');
-console.log('   - node test_fcm.js sendTopic');
+console.log('   - node test_fcm.js sendTest (개별 디바이스)');
+console.log('   - node test_fcm.js sendTopic [토픽이름] (알림 포함)');
+console.log('   - node test_fcm.js sendDataOnly [토픽이름] (백그라운드 data-only)');
+console.log('');
+console.log('예시:');
+console.log('   - node test_fcm.js sendTopic sermon_events_test');
+console.log('   - node test_fcm.js sendDataOnly sermon_events_test');
 console.log('');
 
 // 명령행 인수 처리
 const command = process.argv[2];
+const topicArg = process.argv[3];
 
 if (command === 'sendTest') {
   sendTestMessage();
 } else if (command === 'sendTopic') {
-  sendTopicMessage();
+  const topic = topicArg || 'sermon_events';
+  console.log(`📤 ${topic} 토픽으로 메시지 전송 중... (알림 포함)`);
+  sendTopicMessage(topic);
+} else if (command === 'sendDataOnly') {
+  const topic = topicArg || 'sermon_events';
+  console.log(`📤 ${topic} 토픽으로 Data-only 메시지 전송 중... (백그라운드)`);
+  sendDataOnlyMessage(topic);
 } else {
   console.log('❌ 잘못된 명령어입니다.');
-  console.log('사용 가능한 명령어: sendTest, sendTopic');
+  console.log('사용 가능한 명령어: sendTest, sendTopic [토픽이름], sendDataOnly [토픽이름]');
 } 

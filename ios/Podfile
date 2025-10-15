@@ -5,7 +5,7 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
-platform :ios, min_ios_version_supported
+platform :ios, '16.6'
 prepare_react_native_project!
 
 # linkage = ENV['USE_FRAMEWORKS']
@@ -29,6 +29,18 @@ target 'meditation_blossom' do
   target 'meditation_blossomTests' do
     inherit! :complete
     # Pods for testing
+  end
+
+ # 위젯 타겟 설정 (search paths와 필요한 추가적인 네이티브 라이브러리만 상속/포함)
+  target 'MeditationBlossomWidgetExtension' do
+    inherit! :search_paths # 이 명령어만으로 충분해야 합니다.
+    # 필요한 경우에만 위젯에서 사용하는 RN 라이브러리(e.g., react-native-firebase) Pods를 추가합니다.
+  end
+
+  # 푸시 서비스 타겟 설정
+  target 'PushNotificationService' do
+    inherit! :search_paths
+    # ...
   end
 
   post_install do |installer|
