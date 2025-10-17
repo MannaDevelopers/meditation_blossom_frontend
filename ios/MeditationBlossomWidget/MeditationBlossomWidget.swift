@@ -99,8 +99,13 @@ struct MeditationBlossomWidget: Widget {
   
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: Provider()) { entry in
-      MeditationBlossomWidgetEntryView(entry: entry)
-        // .containerBackground(.fill.tertiary, for: .widget) - iOS 17.0+ 기능이므로 주석 처리
+      if #available(iOS 17.0, *) {
+        MeditationBlossomWidgetEntryView(entry: entry)
+          .containerBackground(.fill.tertiary, for: .widget)
+      } else {
+        // iOS 16에서는 View 자체에 배경 적용
+        MeditationBlossomWidgetEntryView(entry: entry)
+      }
     }
     .supportedFamilies([.systemMedium, .systemLarge])
   }
@@ -111,57 +116,76 @@ struct MeditationBlossomWidgetEntryView : View {
   @Environment(\.widgetFamily) var family
   
   var body: some View {
-    switch family {
-    case .systemLarge:
-      ZStack(alignment: .topLeading) {
-        Image("background_364_382")
-          .resizable()
-          .frame(width:364, height:382)
-        
-        VStack (alignment: .leading) {
-          Text(entry.title)
-            .font(.system(size:20, weight: .bold))
-            .foregroundColor(.black)
-            .padding(.top)
-            .padding(.leading)
+    Group {
+      switch family {
+      case .systemLarge:
+        ZStack(alignment: .topLeading) {
+          Image("background_364_382")
+            .resizable()
+            .frame(width:364, height:382)
           
-          Spacer().frame(height: 20)
-          
-          Text(entry.quote)
-            .font(.system(size:18, weight: .semibold))
-            .foregroundColor(.black)
-            .padding(.leading)
-            .padding(.trailing)
-          
-          Spacer().frame(height: 20)
-          
-          Text(entry.verse)
-            .font(.system(size:16))
-            .foregroundColor(.black)
-            .padding(.leading)
+          VStack (alignment: .leading) {
+            Text(entry.title)
+              .font(.system(size:20, weight: .bold))
+              .foregroundColor(.black)
+              .padding(.top)
+              .padding(.leading)
+            
+            Spacer().frame(height: 20)
+            
+            Text(entry.quote)
+              .font(.system(size:18, weight: .semibold))
+              .foregroundColor(.black)
+              .padding(.leading)
+              .padding(.trailing)
+            
+            Spacer().frame(height: 20)
+            
+            Text(entry.verse)
+              .font(.system(size:16))
+              .foregroundColor(.black)
+              .padding(.leading)
+          }
+          .padding(EdgeInsets(top: 30, leading: 30, bottom: 30, trailing: 30))
         }
-        .padding(EdgeInsets(top: 30, leading: 30, bottom: 30, trailing: 30))
-      }
-    case .systemMedium:
-      ZStack {
-        Image("background_364_170")
-          .resizable()
-          .frame(width:364, height:170);
-        VStack{
-          Text(entry.quote)
-            .font(.system(size:22, weight: .semibold))
-            .foregroundColor(.black)
-            .frame(width:300, height:100)
-            .offset(y:3)
-          Text(entry.verse)
-            .font(.system(size:15))
-            .foregroundColor(.black)
-            .frame(width:180, height:20, alignment:.trailing)
-            .offset(x:69)
+      case .systemMedium:
+        ZStack {
+          Image("background_364_170")
+            .resizable()
+            .frame(width:364, height:170);
+          VStack{
+            Text(entry.quote)
+              .font(.system(size:22, weight: .semibold))
+              .foregroundColor(.black)
+              .frame(width:300, height:100)
+              .offset(y:3)
+            Text(entry.verse)
+              .font(.system(size:15))
+              .foregroundColor(.black)
+              .frame(width:180, height:20, alignment:.trailing)
+              .offset(x:69)
+          }
+        }
+      default:
+        ZStack {
+          Color.white
+          Text("Error occured")
         }
       }
-    default:
-      Text("Error occured")
+    }
+    .widgetBackground(Color.clear)
+  }
+}
+
+// iOS 16 호환을 위한 커스텀 modifier
+extension View {
+  func widgetBackground(_ color: Color) -> some View {
+    if #available(iOS 17.0, *) {
+      return AnyView(self.containerBackground(for: .widget) {
+        color
+      })
+    } else {
+      return AnyView(self.background(color))
     }
   }
 }
