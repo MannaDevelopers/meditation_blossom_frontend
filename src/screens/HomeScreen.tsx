@@ -84,6 +84,12 @@ const HomeScreen = ({ navigation }: Props) => {
       console.log('✅ Selected AsyncStorage');
     }
     
+    // content 확인
+    if (selectedSermon) {
+      console.log(`📝 Content length: ${selectedSermon.content?.length || 0} characters`);
+      console.log(`📝 Content preview (first 200 chars): ${selectedSermon.content?.substring(0, 200) || 'N/A'}`);
+    }
+    
     setSermon(selectedSermon);
     console.log(`📌 Final selected sermon: ${selectedSermon?.title} (${selectedSermon?.date})`);
     return selectedSermon;
@@ -213,6 +219,17 @@ const HomeScreen = ({ navigation }: Props) => {
           const appGroupData = await WidgetUpdateModule.getAppGroupData('fcm_sermon');
           
           if (appGroupData) {
+            console.log(`📦 App Group data length: ${appGroupData.length} characters`);
+            
+            // JSON 파싱해서 content 확인
+            try {
+              const parsedData = JSON.parse(appGroupData);
+              console.log(`📝 Content length in App Group: ${parsedData.content?.length || 0} characters`);
+              console.log(`📝 Content preview: ${parsedData.content?.substring(0, 200) || 'N/A'}`);
+            } catch (e) {
+              console.error('Failed to parse App Group data:', e);
+            }
+            
             // 데이터가 변경되었는지 확인
             if (appGroupData !== lastSyncedData) {
               console.log('📦 Found new data in App Group, copying to AsyncStorage...');
