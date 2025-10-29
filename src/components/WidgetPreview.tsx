@@ -32,23 +32,32 @@ const extractContent = (text: string) : { index: string; content: string } => {
     return { index: bookName, content: contentAfterBookName };
   }
   
-  // 4. 첫 번째 구절만 추출
-  const firstVerseMatch = verseMatches[0];
-  const firstVerseNumber = firstVerseMatch[0];
-  const firstVerseEndIndex = firstVerseMatch.index! + firstVerseNumber.length;
+  // 4. 모든 구절 추출
+  const verseTexts: string[] = [];
   
-  let quote: string;
-  if (verseMatches.length > 1) {
-    // 두 번째 구절이 있으면 첫 번째 구절 번호 다음부터 두 번째 구절 번호 전까지
-    const secondVerseStartIndex = verseMatches[1].index!;
-    quote = contentAfterBookName.slice(firstVerseEndIndex, secondVerseStartIndex).trim();
-  } else {
-    // 구절이 하나만 있으면 첫 번째 구절 번호 다음부터 끝까지
-    quote = contentAfterBookName.slice(firstVerseEndIndex).trim();
+  for (let i = 0; i < verseMatches.length; i++) {
+    const currentMatch = verseMatches[i];
+    const verseNumber = currentMatch[0];
+    const verseStartIndex = currentMatch.index!;
+    const verseEndIndex = verseStartIndex + verseNumber.length;
+    
+    let verseText: string;
+    
+    if (i < verseMatches.length - 1) {
+      // 다음 구절이 있으면 현재 구절 번호 다음부터 다음 구절 번호 전까지
+      const nextVerseStartIndex = verseMatches[i + 1].index!;
+      verseText = contentAfterBookName.slice(verseEndIndex, nextVerseStartIndex).trim();
+    } else {
+      // 마지막 구절이면 구절 번호 다음부터 끝까지
+      verseText = contentAfterBookName.slice(verseEndIndex).trim();
+    }
+    
+    // 구절 번호와 텍스트를 함께 저장
+    verseTexts.push(`${verseNumber} ${verseText}`);
   }
   
-  // 구절 번호와 함께 반환
-  const fullContent = `${firstVerseNumber} ${quote}`;
+  // 모든 구절을 합쳐서 반환
+  const fullContent = verseTexts.join('\n\n');
 
   return {
     index: bookName,

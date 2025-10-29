@@ -224,6 +224,11 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
     sermonId = [NSString stringWithFormat:@"%@", messageId];
   }
   
+  // content 필드 확인 및 로깅
+  NSString *contentValue = data[@"content"];
+  NSLog(@"📝 Content length: %lu characters", (unsigned long)[contentValue length]);
+  NSLog(@"📝 Content preview (first 200 chars): %@", [contentValue substringToIndex:MIN(200, [contentValue length])]);
+  
   // AsyncStorage에 새로운 설교 데이터 저장
   NSDictionary *sermonData = @{
     @"id": sermonId ?: @"",
@@ -241,12 +246,18 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   if (jsonData) {
     NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
     
+    // JSON 문자열의 content 확인
+    NSLog(@"📝 JSON string length: %lu characters", (unsigned long)[jsonString length]);
+    
     // 1. App Group에 저장 (위젯용)
     NSUserDefaults *sharedDefaults = [[NSUserDefaults alloc] initWithSuiteName:@"group.org.mannamethodistchurch.mannadev.meditationblossom"];
     [sharedDefaults setObject:jsonString forKey:@"fcm_sermon"];
     [sharedDefaults setObject:jsonString forKey:@"displaySermon"];
     [sharedDefaults synchronize];
     
+    // 저장된 데이터 확인
+    NSString *savedData = [sharedDefaults stringForKey:@"fcm_sermon"];
+    NSLog(@"📝 Saved data length in UserDefaults: %lu characters", (unsigned long)[savedData length]);
     NSLog(@"✅ Successfully saved FCM sermon to App Group");
     
     // 2. 위젯 즉시 업데이트 (Swift 모듈 사용)

@@ -64,20 +64,34 @@ struct Provider: TimelineProvider {
             let verses = verseRegex.matches(in: contentAfterBookName, options: [], range: NSRange(contentAfterBookName.startIndex..., in: contentAfterBookName))
             
             if !verses.isEmpty {
-              // 첫 번째 구절만 추출 (위젯에 표시)
-              if let firstVerseRange = Range(verses[0].range, in: contentAfterBookName) {
-                let firstVerseEndIndex = contentAfterBookName.index(firstVerseRange.upperBound, offsetBy: 0)
+              // 모든 구절 추출
+              var verseTexts: [String] = []
+              
+              for i in 0..<verses.count {
+                let currentMatch = verses[i]
                 
-                // 첫 번째 구절 번호 다음부터 두 번째 구절 번호 전까지 추출
-                if verses.count > 1, let secondVerseRange = Range(verses[1].range, in: contentAfterBookName) {
-                  let quoteText = String(contentAfterBookName[firstVerseEndIndex..<secondVerseRange.lowerBound])
-                  quote = quoteText.trimmingCharacters(in: .whitespacesAndNewlines)
-                } else {
-                  // 구절이 하나만 있으면 전체 텍스트 사용
-                  let quoteText = String(contentAfterBookName[firstVerseEndIndex...])
-                  quote = quoteText.trimmingCharacters(in: .whitespacesAndNewlines)
+                if let currentVerseRange = Range(currentMatch.range, in: contentAfterBookName) {
+                  let currentVerseEndIndex = contentAfterBookName.index(currentVerseRange.upperBound, offsetBy: 0)
+                  
+                  var verseText: String
+                  
+                  if i < verses.count - 1, let nextVerseRange = Range(verses[i + 1].range, in: contentAfterBookName) {
+                    // 다음 구절이 있으면 현재 구절 번호 다음부터 다음 구절 번호 전까지
+                    let nextVerseStartIndex = nextVerseRange.lowerBound
+                    verseText = String(contentAfterBookName[currentVerseEndIndex..<nextVerseStartIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+                  } else {
+                    // 마지막 구절이면 구절 번호 다음부터 끝까지
+                    verseText = String(contentAfterBookName[currentVerseEndIndex...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                  }
+                  
+                  // 구절 번호와 텍스트를 함께 저장
+                  let verseNumber = String(contentAfterBookName[currentVerseRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                  verseTexts.append("\(verseNumber) \(verseText)")
                 }
               }
+              
+              // 모든 구절을 합쳐서 반환
+              quote = verseTexts.joined(separator: "\n\n")
             } else {
               // 구절 번호가 없으면 전체 텍스트 사용
               quote = contentAfterBookName

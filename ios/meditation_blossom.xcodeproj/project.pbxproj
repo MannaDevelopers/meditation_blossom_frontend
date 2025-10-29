@@ -366,6 +366,7 @@
 				40868C37AE9BEA69C2140A22 /* [CP-User] [RNFB] Core Configuration */,
 				0B5456CAD530C424E4126F9B /* [CP-User] [RNFB] Crashlytics Configuration */,
 				AA8A6F65EDE905DD68676D0F /* [CP] Embed Pods Frameworks */,
+				B0F769F22EAF1AA800308B3B /* Copy Hermes dSYM */,
 			);
 			buildRules = (
 			);
@@ -665,6 +666,24 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-meditation_blossom/Pods-meditation_blossom-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
+		};
+		B0F769F22EAF1AA800308B3B /* Copy Hermes dSYM */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 8;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy Hermes dSYM";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+			shellPath = /bin/sh;
+			shellScript = "# Copy Hermes dSYM to app dSYM folder\nHERMES_DSYM_SOURCE=\"${PODS_CONFIGURATION_BUILD_DIR}/hermes-engine/hermes.framework.dSYM\"\n\nif [ -d \"$HERMES_DSYM_SOURCE\" ]; then\n    echo \"Copying Hermes dSYM...\"\n    ditto \"$HERMES_DSYM_SOURCE\" \"${DWARF_DSYM_FOLDER_PATH}/hermes.framework.dSYM\"\n    echo \"Hermes dSYM copied successfully\"\nfi\n";
 		};
 		CE5E2E0FC6D5F53A1880485B /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;

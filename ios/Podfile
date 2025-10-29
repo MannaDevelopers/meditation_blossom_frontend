@@ -51,5 +51,14 @@ target 'meditation_blossom' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+    
+    # Hermes dSYM 복사를 위한 스크립트
+    installer.pods_project.targets.each do |target|
+      if target.name == 'hermes-engine'
+        target.build_configurations.each do |config|
+          config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
+        end
+      end
+    end
   end
 end
