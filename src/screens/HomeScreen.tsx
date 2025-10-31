@@ -216,7 +216,7 @@ const HomeScreen = ({ navigation }: Props) => {
           console.log('🔄 Syncing App Group data to AsyncStorage...');
           
           // App Group에서 FCM 데이터 읽기
-          const appGroupData = await WidgetUpdateModule.getAppGroupData('fcm_sermon');
+          const appGroupData = await WidgetUpdateModule.getAppGroupData('displaySermon');
           
           if (appGroupData) {
             console.log(`📦 App Group data length: ${appGroupData.length} characters`);
@@ -271,7 +271,7 @@ const HomeScreen = ({ navigation }: Props) => {
         if (appState === 'active') {
           try {
             // App Group에서 데이터 읽기
-            const appGroupData = await WidgetUpdateModule.getAppGroupData('fcm_sermon');
+            const appGroupData = await WidgetUpdateModule.getAppGroupData('displaySermon');
             
             // 데이터가 변경되었는지 확인
             if (appGroupData && appGroupData !== lastSyncedData) {
