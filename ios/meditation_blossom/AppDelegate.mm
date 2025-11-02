@@ -3,6 +3,7 @@
 #import <React/RCTBundleURLProvider.h>
 #import <FirebaseCore/FirebaseCore.h>
 #import <FirebaseMessaging/FirebaseMessaging.h>
+#import <FirebaseInAppMessaging/FirebaseInAppMessaging.h>
 #import <UserNotifications/UserNotifications.h>
 #import <UserNotifications/UserNotifications.h>
 #import <WidgetKit/WidgetKit.h>
@@ -24,12 +25,19 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+  // Network connection logging 억제
+  [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"NSURLSessionVerboseLogging"];
+  
   [FIRApp configure];
   self.moduleName = @"meditation_blossom";
   // You can add your custom initial props in the dictionary below.
   // They will be passed down to the ViewController used by React Native.
   self.initialProps = @{};
 
+  // Firebase In-App Messaging 설정
+  // In-App Messaging은 자동으로 초기화되며, 별도의 delegate 설정이 필요 없습니다
+  [FIRInAppMessaging inAppMessaging].messageDisplaySuppressed = NO;
+  
   // FCM 설정
   [FIRMessaging messaging].delegate = self;
   
@@ -74,8 +82,9 @@
 
 // 앱이 포그라운드에 있을 때 FCM 메시지 수신
 - (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo {
-  NSLog(@"=== FCM MESSAGE RECEIVED (FOREGROUND) ===");
+  NSLog(@"=== FCM MESSAGE RECEIVED (FOREGROUND) - didReceiveRemoteNotification ===");
   NSLog(@"UserInfo: %@", userInfo);
+  NSLog(@"All keys in UserInfo: %@", [userInfo allKeys]);
   
   // sermon_events 또는 sermon_events_test 토픽에서 온 메시지인지 확인
   NSString *topic = userInfo[@"topic"];
@@ -154,8 +163,9 @@
 // Data-only FCM 메시지 처리 (앱이 백그라운드에 있을 때)
 - (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo
 fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
-  NSLog(@"=== FCM DATA-ONLY MESSAGE RECEIVED (BACKGROUND) ===");
+  NSLog(@"=== FCM MESSAGE RECEIVED (BACKGROUND) - didReceiveRemoteNotification:fetchCompletionHandler ===");
   NSLog(@"UserInfo: %@", userInfo);
+  NSLog(@"All keys in UserInfo: %@", [userInfo allKeys]);
   
   // sermon_events 또는 sermon_events_test 토픽에서 온 메시지인지 확인
   NSString *topic = userInfo[@"topic"]; // data 필드에 포함된 topic
