@@ -38,6 +38,7 @@ struct Provider: TimelineProvider {
     let sharedDefaults = UserDefaults(suiteName: "group.mannachurch.meditationblossom")
     
     if let sermon = sharedDefaults?.getObjectFromString(forKey: "displaySermon", castTo: Sermon.self) {
+      print("✅ Widget: Found sermon data - \(sermon.title)")
       var verse: String = " "
       var quote: String = "설교 본문을 가져오는 중 문제가 발생했습니다"
       
@@ -102,6 +103,7 @@ struct Provider: TimelineProvider {
       
       return SimpleEntry(date: Date(), title: sermon.title, quote: quote, verse: verse)
     } else {
+      print("❌ Widget: No sermon data found in App Group")
       return SimpleEntry(date: Date(), title: " ", quote: "등록된 설교가 없습니다", verse: " ")
     }
   }

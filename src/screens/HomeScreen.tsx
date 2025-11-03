@@ -7,7 +7,7 @@ import { collection, getDocsFromCache, getDocsFromServer, getFirestore, limit, o
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SvgIcon from '../components/SvgIcon';
 import { RootStackParamList } from '../types/navigation';
-import { compareSermon, FCM_SERMON_KEY, firestoreDocToSermon, Sermon } from '../types/Sermon';
+import { compareSermon, FCM_SERMON_KEY, fcmDataToSermon, firestoreDocToSermon, Sermon } from '../types/Sermon';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
 
 
@@ -43,7 +43,8 @@ const HomeScreen = ({ navigation }: Props) => {
     try {
       const latestSermon = await AsyncStorage.getItem(FCM_SERMON_KEY);
       if (latestSermon) {
-        return JSON.parse(latestSermon) as Sermon;
+        const rawData = JSON.parse(latestSermon);
+        return fcmDataToSermon(rawData);
       }
     } catch (error) {
       console.error('failed to load latest sermon from async storage', error);
@@ -175,8 +176,10 @@ const HomeScreen = ({ navigation }: Props) => {
       try {
         if (sermon != null) {
           await WidgetUpdateModule.onSermonUpdated(JSON.stringify(sermon));
+          console.log('✅ Widget updated successfully via onSermonUpdated');
+        } else {
+          console.log('⚠️ No sermon data to update widget');
         }
-        console.log('Widget updated successfully');
       } catch (error) {
         console.error('Failed to update widgets:', error);
       }

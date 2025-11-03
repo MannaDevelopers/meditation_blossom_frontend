@@ -33,7 +33,7 @@ RCT_EXPORT_MODULE(MyEventModule);
 // JS에서 구독할 이벤트 이름 목록
 - (NSArray<NSString *> *)supportedEvents
 {
-  return @[@"MyEvent"];
+  return @[@"MyEvent", @"ON_SERMON_UPDATE"];
 }
 
 // RN 0.65+ 규약: 리스너 카운트 관리 (없어도 동작은 하지만 경고 방지)
@@ -57,6 +57,7 @@ RCT_EXPORT_METHOD(trigger:(NSString *)message)
   if (!hasListeners) { return; }
   if (message == nil) { message = @""; }
   [self sendEventWithName:@"MyEvent" body:@{ @"message": message }];
+  [self sendEventWithName:@"ON_SERMON_UPDATE" body:@{ @"message": message }];
 }
 
 @end
