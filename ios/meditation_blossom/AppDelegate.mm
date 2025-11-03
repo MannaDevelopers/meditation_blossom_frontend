@@ -5,8 +5,10 @@
 #import <FirebaseMessaging/FirebaseMessaging.h>
 #import <FirebaseInAppMessaging/FirebaseInAppMessaging.h>
 #import <UserNotifications/UserNotifications.h>
-#import <UserNotifications/UserNotifications.h>
 #import <WidgetKit/WidgetKit.h>
+// 디버깅용 imports (테스트 완료 후 주석 처리)
+// #import <FirebaseAnalytics/FirebaseAnalytics.h>
+// #import <FirebaseInstallations/FirebaseInstallations.h>
 
 // MyEventModule 클래스 선언
 @interface MyEventModule : NSObject
@@ -37,9 +39,42 @@
   // Firebase In-App Messaging 설정
   // In-App Messaging은 자동으로 초기화되며, 별도의 delegate 설정이 필요 없습니다
   [FIRInAppMessaging inAppMessaging].messageDisplaySuppressed = NO;
+  // Enable debug mode for In-App Messaging
+  [FIRInAppMessaging inAppMessaging].automaticDataCollectionEnabled = YES;
   
   // FCM 설정
   [FIRMessaging messaging].delegate = self;
+  
+  /* 디버깅용 로그 (테스트 완료 후 주석 처리)
+  NSLog(@"Firebase In-App Messaging initialized");
+  NSLog(@"AppDelegate initialization complete");
+  
+  // Installation ID 로그 출력
+  [[FIRInstallations installations] installationIDWithCompletion:^(NSString * _Nullable identifier, NSError * _Nullable error) {
+    if (error) {
+      NSLog(@"❌ Failed to get installation ID: %@", error);
+    } else {
+      NSLog(@"✅ Installation ID: %@", identifier);
+    }
+  }];
+  
+  // 추가 디버깅 로그
+  NSLog(@"In-App Messaging settings: suppressed=%@, dataCollection=%@", 
+        @([FIRInAppMessaging inAppMessaging].messageDisplaySuppressed), 
+        @([FIRInAppMessaging inAppMessaging].automaticDataCollectionEnabled));
+  
+  // 앱 시작 시 이벤트 트리거 (5초 후 재시도 포함)
+  NSLog(@"🔥 Triggering app_foreground event...");
+  [[FIRInAppMessaging inAppMessaging] triggerEvent:@"app_foreground"];
+  NSLog(@"✅ app_foreground event triggered");
+  
+  // 5초 후 재시도 (네트워크 지연 대응)
+  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+    NSLog(@"🔥 Retrying app_foreground event trigger (5 seconds later)...");
+    [[FIRInAppMessaging inAppMessaging] triggerEvent:@"app_foreground"];
+    NSLog(@"✅ app_foreground retry complete");
+  });
+  */
   
   UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
   center.delegate = self;

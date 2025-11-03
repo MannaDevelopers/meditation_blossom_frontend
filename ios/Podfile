@@ -17,6 +17,7 @@ use_frameworks!
 
 target 'meditation_blossom' do
   pod 'Firebase/Core'
+  pod 'Firebase/Analytics'
   pod 'Firebase/Messaging'
   pod 'Firebase/InAppMessaging'
   config = use_native_modules!
