@@ -13,9 +13,44 @@ import WidgetUpdateModule from '../types/WidgetUpdateModule';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'HomeScreen'>;
 
+const sortJsonKeys = (value: any): any => {
+  if (Array.isArray(value)) {
+    return value.map(sortJsonKeys);
+  }
+  if (value && typeof value === 'object') {
+    return Object.keys(value)
+      .sort()
+      .reduce<Record<string, any>>((acc, key) => {
+        acc[key] = sortJsonKeys(value[key]);
+        return acc;
+      }, {});
+  }
+  return value;
+};
+
+const normalizeJsonString = (jsonString: string | null | undefined): string => {
+  try {
+    if (!jsonString) {
+      return '';
+    }
+    const parsed = JSON.parse(jsonString);
+    const sorted = sortJsonKeys(parsed);
+    return JSON.stringify(sorted);
+  } catch (error) {
+    console.error('Failed to normalize JSON string:', error);
+    return '';
+  }
+};
+
 const HomeScreen = ({ navigation }: Props) => {
   const [sermon, setSermon] = useState<Sermon | null>(null);
-  const [lastSyncedData, setLastSyncedData] = useState<string | null>(null);
+  const [lastSyncedSignature, setLastSyncedSignature] = useState<string | null>(null);
+  const lastSyncedSignatureRef = React.useRef<string | null>(null);
+
+  const updateLastSyncedSignature = useCallback((signature: string | null) => {
+    setLastSyncedSignature(signature);
+    lastSyncedSignatureRef.current = signature;
+  }, []);
 
 
   const latestSermonFromFirestoreCache = async (): Promise<Sermon | null> => {
@@ -234,11 +269,12 @@ const HomeScreen = ({ navigation }: Props) => {
             }
             
             // 데이터가 변경되었는지 확인
-            if (appGroupData !== lastSyncedData) {
+            const normalized = normalizeJsonString(appGroupData);
+            if (normalized !== lastSyncedSignature) {
               console.log('📦 Found new data in App Group, copying to AsyncStorage...');
               // AsyncStorage에 복사
               await AsyncStorage.setItem(FCM_SERMON_KEY, appGroupData);
-              setLastSyncedData(appGroupData);
+              updateLastSyncedSignature(normalized);
               console.log('✅ Successfully synced App Group data to AsyncStorage');
             } else {
               console.log('ℹ️ App Group data unchanged');
@@ -277,11 +313,16 @@ const HomeScreen = ({ navigation }: Props) => {
             const appGroupData = await WidgetUpdateModule.getAppGroupData('displaySermon');
             
             // 데이터가 변경되었는지 확인
-            if (appGroupData && appGroupData !== lastSyncedData) {
-              console.log('⏰ New data detected in App Group, syncing...');
-              await AsyncStorage.setItem(FCM_SERMON_KEY, appGroupData);
-              setLastSyncedData(appGroupData);
-              await loadLocalData();
+            if (appGroupData) {
+              const normalized = normalizeJsonString(appGroupData);
+              if (normalized !== lastSyncedSignatureRef.current) {
+                console.log('⏰ New data detected in App Group, syncing...');
+                console.log('   last signature:', lastSyncedSignatureRef.current?.slice(0, 80));
+                console.log('   new signature  :', normalized.slice(0, 80));
+                await AsyncStorage.setItem(FCM_SERMON_KEY, appGroupData);
+                updateLastSyncedSignature(normalized);
+                await loadLocalData();
+              }
             }
           } catch (error) {
             console.error('Error in periodic check:', error);
@@ -296,7 +337,7 @@ const HomeScreen = ({ navigation }: Props) => {
         clearInterval(intervalId);
       }
     };
-  }, [lastSyncedData]);
+  }, [loadLocalData, updateLastSyncedSignature]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent', marginHorizontal: 35, marginVertical: 35, justifyContent: 'center', alignItems: 'center' }}>

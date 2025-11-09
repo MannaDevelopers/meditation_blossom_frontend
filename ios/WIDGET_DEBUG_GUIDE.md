@@ -71,7 +71,7 @@ JSON 디코딩 실패: ...  // JSON 파싱 오류 시
 
 1. 디버그 콘솔에서 다음 명령어 실행:
    ```lldb
-   po UserDefaults(suiteName: "group.org.mannamethodistchurch.mannadev.meditationblossom")
+   po UserDefaults(suiteName: "group.mannachurch.meditationblossom")
    ```
 
 2. 또는 `Sermon.swift`의 `getObjectFromString()` 메서드에 있는 `print(jsonString)` 로그 확인

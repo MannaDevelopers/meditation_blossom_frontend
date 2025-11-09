@@ -45,6 +45,8 @@
   // FCM 설정
   [FIRMessaging messaging].delegate = self;
   
+  NSLog(@"🔥 FCM delegate set");
+  
   /* 디버깅용 로그 (테스트 완료 후 주석 처리)
   NSLog(@"Firebase In-App Messaging initialized");
   NSLog(@"AppDelegate initialization complete");
@@ -111,7 +113,7 @@
 #pragma mark - Firebase Messaging
 
 - (void)messaging:(FIRMessaging *)messaging didReceiveRegistrationToken:(NSString *)fcmToken {
-  NSLog(@"FCM registration token: %@", fcmToken);
+  NSLog(@"🔥 FCM registration token: %@", fcmToken);
   // 토픽 구독은 APNS 토큰을 받은 후 didRegisterForRemoteNotificationsWithDeviceToken에서 수행
 }
 
@@ -171,8 +173,9 @@
 }
 
 - (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
-  NSLog(@"APNS device token received");
+  NSLog(@"🔥 APNS device token received");
   [FIRMessaging messaging].APNSToken = deviceToken;
+  NSLog(@"🔥 FCM APNS token set");
   
   // APNS 토큰을 받은 후 토픽 구독
   [[FIRMessaging messaging] subscribeToTopic:@"sermon_events" completion:^(NSError * _Nullable error) {
@@ -295,7 +298,7 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
     NSLog(@"📝 JSON string length: %lu characters", (unsigned long)[jsonString length]);
     
     // 1. App Group에 저장 (위젯용)
-    NSUserDefaults *sharedDefaults = [[NSUserDefaults alloc] initWithSuiteName:@"group.org.mannamethodistchurch.mannadev.meditationblossom"];
+    NSUserDefaults *sharedDefaults = [[NSUserDefaults alloc] initWithSuiteName:@"group.mannachurch.meditationblossom"];
     [sharedDefaults setObject:jsonString forKey:@"fcm_sermon"];
     [sharedDefaults setObject:jsonString forKey:@"displaySermon"];
     [sharedDefaults synchronize];
