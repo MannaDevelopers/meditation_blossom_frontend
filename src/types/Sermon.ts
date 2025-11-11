@@ -34,21 +34,56 @@ export interface SermonMetadata {
 export const FCM_SERMON_KEY = 'fcm_sermon';
 
 
-// ISO 문자열을 Firestore 타임스탬프로 변환하는 함수
-function convertIsoToTimestamp(isoString: string | null | undefined): { seconds: number, nanoseconds: number } {
+// 문자열을 Firestore 타임스탬프로 변환하는 함수
+function convertStringToTimestamp(isoString: string | null | undefined): { seconds: number, nanoseconds: number } {
   if (!isoString || typeof isoString !== 'string') {
     return { seconds: 0, nanoseconds: 0 };
   }
-  
+
   try {
-    const date = new Date(isoString);
-    const seconds = Math.floor(date.getTime() / 1000);
-    const nanoseconds = (date.getTime() % 1000) * 1000000;
-    return { seconds, nanoseconds };
+    const normalized = isoString.replace(/\s+/g, ' ').trim();
+
+    // 먼저 JavaScript Date가 이해할 수 있는 문자열인지 확인
+    const directDate = new Date(normalized);
+    if (!isNaN(directDate.getTime())) {
+      const seconds = Math.floor(directDate.getTime() / 1000);
+      const nanoseconds = (directDate.getTime() % 1000) * 1_000_000;
+      return { seconds, nanoseconds };
+    }
+
+    // 한국어 로케일 형식: 2025년 11월 11일 오전 5시 18분 46초 UTC+9
+    const koreanLocaleRegex = /(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일\s*(오전|오후)\s*(\d{1,2})시\s*(\d{1,2})분\s*(\d{1,2})초\s*UTC([+-]\d{1,2})/;
+    const match = normalized.match(koreanLocaleRegex);
+    if (match) {
+      const year = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10) - 1; // Date.UTC는 0부터 시작
+      const day = parseInt(match[3], 10);
+      const meridiem = match[4];
+      let hour = parseInt(match[5], 10);
+      const minute = parseInt(match[6], 10);
+      const second = parseInt(match[7], 10);
+      const offsetHours = parseInt(match[8], 10);
+
+      if (meridiem === '오전') {
+        if (hour === 12) {
+          hour = 0;
+        }
+      } else if (meridiem === '오후') {
+        if (hour < 12) {
+          hour += 12;
+        }
+      }
+
+      const utcMillis = Date.UTC(year, month, day, hour - offsetHours, minute, second);
+      const seconds = Math.floor(utcMillis / 1000);
+      const nanoseconds = (utcMillis % 1000) * 1_000_000;
+      return { seconds, nanoseconds };
+    }
   } catch (e) {
-    console.error('Failed to parse ISO string:', isoString, e);
-    return { seconds: 0, nanoseconds: 0 };
+    console.error('Failed to parse timestamp string:', isoString, e);
   }
+
+  return { seconds: 0, nanoseconds: 0 };
 }
 
 // FCM 원시 데이터를 Sermon으로 변환하는 함수
@@ -61,10 +96,10 @@ export function fcmDataToSermon(raw: any): Sermon {
     category: raw.category,
     day_of_week: raw.day_of_week || raw.dayOfWeek,
     created_at: typeof raw.created_at === 'string' 
-      ? convertIsoToTimestamp(raw.created_at) 
+      ? convertStringToTimestamp(raw.created_at) 
       : (raw.created_at || raw.createdAt || { seconds: 0, nanoseconds: 0 }),
     updated_at: typeof raw.updated_at === 'string' 
-      ? convertIsoToTimestamp(raw.updated_at) 
+      ? convertStringToTimestamp(raw.updated_at) 
       : (raw.updated_at || raw.updatedAt || { seconds: 0, nanoseconds: 0 })
   };
 }
@@ -90,7 +125,8 @@ function convertToComparableTimestamp(timestamp: { seconds: number, nanoseconds:
   
   // 문자열이면 ISO 문자열로 간주
   if (typeof timestamp === 'string') {
-    return new Date(timestamp).getTime();
+    const parsed = convertStringToTimestamp(timestamp);
+    return parsed.seconds * 1000 + Math.floor(parsed.nanoseconds / 1_000_000);
   }
   
   // Firestore 타임스탬프

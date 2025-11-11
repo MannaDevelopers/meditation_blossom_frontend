@@ -13,15 +13,18 @@ import WidgetUpdateModule from '../types/WidgetUpdateModule';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'HomeScreen'>;
 
-const sortJsonKeys = (value: any): any => {
+const normalizeValueForSignature = (value: any): any => {
+  if (typeof value === 'string') {
+    return value.replace(/\r\n/g, '\n');
+  }
   if (Array.isArray(value)) {
-    return value.map(sortJsonKeys);
+    return value.map(normalizeValueForSignature);
   }
   if (value && typeof value === 'object') {
     return Object.keys(value)
       .sort()
       .reduce<Record<string, any>>((acc, key) => {
-        acc[key] = sortJsonKeys(value[key]);
+        acc[key] = normalizeValueForSignature(value[key]);
         return acc;
       }, {});
   }
@@ -34,7 +37,7 @@ const normalizeJsonString = (jsonString: string | null | undefined): string => {
       return '';
     }
     const parsed = JSON.parse(jsonString);
-    const sorted = sortJsonKeys(parsed);
+    const sorted = normalizeValueForSignature(parsed);
     return JSON.stringify(sorted);
   } catch (error) {
     console.error('Failed to normalize JSON string:', error);
@@ -151,7 +154,12 @@ const HomeScreen = ({ navigation }: Props) => {
         return;
       }
 
-      const latestSermon = firestoreDocToSermon(snapshot.docs[0]);
+      const latestDoc = snapshot.docs[0];
+      console.log('🔥 Latest sermon from Firestore (raw doc data):', latestDoc.data());
+      console.log('🔥 Firestore doc id:', latestDoc.id);
+
+      const latestSermon = firestoreDocToSermon(latestDoc);
+      console.log('🔥 Converted Firestore sermon:', latestSermon);
       setSermon(latestSermon);
     } catch (error) {
       console.error('Error fetching sermons:', error);
