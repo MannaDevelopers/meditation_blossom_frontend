@@ -306,6 +306,8 @@ const HomeScreen = ({ navigation }: Props) => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {
         console.log('📱 App came to foreground, checking for updates...');
+        // App Group 데이터 동기화 (WidgetKit Push로 받은 내용)
+        // Firestore에서 최신 데이터를 가져오지 않음 - 기존 로컬 데이터(Firestore 캐시, AsyncStorage) 사용
         syncAppGroupData();
       }
     });

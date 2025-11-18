@@ -93,6 +93,18 @@
     }
   }];
 
+  // 푸시 알림으로 앱이 실행된 경우 처리
+  NSDictionary *remoteNotification = launchOptions[UIApplicationLaunchOptionsRemoteNotificationKey];
+  if (remoteNotification) {
+    NSLog(@"📱 App launched from remote notification");
+    NSLog(@"📱 Launch notification userInfo: %@", remoteNotification);
+    // 약간의 지연 후 처리 (Firebase 초기화 완료 대기)
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+      NSLog(@"📱 Processing launch notification...");
+      [self saveFcmSermon:remoteNotification];
+    });
+  }
+
   return [super application:application didFinishLaunchingWithOptions:launchOptions];
 }
 
@@ -122,6 +134,19 @@
   NSLog(@"=== FCM MESSAGE RECEIVED (FOREGROUND) - didReceiveRemoteNotification ===");
   NSLog(@"UserInfo: %@", userInfo);
   NSLog(@"All keys in UserInfo: %@", [userInfo allKeys]);
+  
+  // WidgetKit Push Notifications 확인
+  NSDictionary *widgetkit = userInfo[@"widgetkit"];
+  if (widgetkit && [widgetkit[@"kind"] isEqualToString:@"MeditationBlossomWidget"]) {
+    NSLog(@"🎯 WidgetKit Push Notification detected in AppDelegate (foreground)");
+    NSDictionary *widgetkitData = widgetkit[@"data"];
+    if (widgetkitData) {
+      NSLog(@"✅ Using widgetkit.data for WidgetKit Push");
+      // widgetkit.data를 사용하여 저장 (일반 userInfo 대신)
+      [self saveFcmSermon:widgetkitData];
+      return;
+    }
+  }
   
   // sermon_events 또는 sermon_events_test 토픽에서 온 메시지인지 확인
   NSString *topic = userInfo[@"topic"];
@@ -204,6 +229,20 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   NSLog(@"=== FCM MESSAGE RECEIVED (BACKGROUND) - didReceiveRemoteNotification:fetchCompletionHandler ===");
   NSLog(@"UserInfo: %@", userInfo);
   NSLog(@"All keys in UserInfo: %@", [userInfo allKeys]);
+  
+  // WidgetKit Push Notifications 확인
+  NSDictionary *widgetkit = userInfo[@"widgetkit"];
+  if (widgetkit && [widgetkit[@"kind"] isEqualToString:@"MeditationBlossomWidget"]) {
+    NSLog(@"🎯 WidgetKit Push Notification detected in AppDelegate");
+    NSDictionary *widgetkitData = widgetkit[@"data"];
+    if (widgetkitData) {
+      NSLog(@"✅ Using widgetkit.data for WidgetKit Push");
+      // widgetkit.data를 사용하여 저장 (일반 userInfo 대신)
+      [self saveFcmSermon:widgetkitData];
+      completionHandler(UIBackgroundFetchResultNewData);
+      return;
+    }
+  }
   
   // sermon_events 또는 sermon_events_test 토픽에서 온 메시지인지 확인
   NSString *topic = userInfo[@"topic"]; // data 필드에 포함된 topic
@@ -371,6 +410,20 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
   NSLog(@"Notification title: %@", response.notification.request.content.title);
   NSLog(@"Notification body: %@", response.notification.request.content.body);
   NSLog(@"Notification identifier: %@", response.notification.request.identifier);
+  
+  // sermon_events 토픽인지 확인하고 데이터 처리
+  NSString *topic = userInfo[@"topic"];
+  if (topic && ([topic isEqualToString:@"sermon_events"]
+#ifdef DEBUG
+                || [topic isEqualToString:@"sermon_events_test"]
+#endif
+                )) {
+    NSLog(@"✅ Processing sermon_events notification tap");
+    [self saveFcmSermon:userInfo];
+  } else {
+    NSLog(@"ℹ️ Notification not from sermon_events topic, skipping");
+  }
+  
   completionHandler();
 }
 

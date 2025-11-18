@@ -17,6 +17,7 @@ struct SimpleEntry: TimelineEntry {
   let verse: String;
 }
 
+@available(iOS 16.0, *)
 struct Provider: TimelineProvider {
   func placeholder(in context: Context) -> SimpleEntry {
     SimpleEntry(date: Date(), title: " ", quote: "등록된 설교가 없습니다", verse: " ")
@@ -32,6 +33,14 @@ struct Provider: TimelineProvider {
     let entry = createSermonEntry()
     let timeline = Timeline(entries: [entry], policy: .never)
     completion(timeline)
+  }
+  
+  // WidgetKit Push Notifications를 위한 메서드
+  // iOS 16+에서 푸시 알림으로 위젯이 업데이트될 때 호출됨
+  func reloadTimelines(ofKind kind: String, in completion: @escaping () -> Void) {
+    print("🔄 Widget timeline reload requested via push notification")
+    WidgetCenter.shared.reloadTimelines(ofKind: kind)
+    completion()
   }
   
   private func createSermonEntry() -> SimpleEntry {
