@@ -8,11 +8,8 @@ require Pod::Executable.execute_command('node', ['-p',
 platform :ios, '16.6'
 prepare_react_native_project!
 
-# linkage = ENV['USE_FRAMEWORKS']
-# if linkage != nil
-#   Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
-#   use_frameworks!
-# end
+# use_frameworks!만 사용하여 JavaScript 실행 보장
+# Firebase Analytics 링커 에러는 post_install에서 해결
 use_frameworks!
 
 target 'meditation_blossom' do
@@ -23,7 +20,7 @@ target 'meditation_blossom' do
   config = use_native_modules!
 
   use_react_native!(
-    :path => config[:reactNativePath] ,
+    :path => config[:reactNativePath],
     # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
@@ -54,11 +51,27 @@ target 'meditation_blossom' do
       # :ccache_enabled => true
     )
     
-    # Hermes dSYM 복사를 위한 스크립트
+    # Firebase Analytics 링커 에러 해결을 위한 설정
     installer.pods_project.targets.each do |target|
-      if target.name == 'hermes-engine'
-        target.build_configurations.each do |config|
-          config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
+      target.build_configurations.each do |config|
+        # 모든 타겟에 기본 설정 적용
+        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        config.build_settings['DEFINES_MODULE'] = 'YES'
+        config.build_settings['ENABLE_BITCODE'] = 'NO'
+        
+        # RNFBAnalytics 타겟에 Firebase Analytics 프레임워크 링크 추가
+        if target.name == 'RNFBAnalytics'
+          config.build_settings['OTHER_LDFLAGS'] ||= ['$(inherited)']
+          config.build_settings['OTHER_LDFLAGS'] << '-ObjC'
+          # Firebase Analytics 프레임워크를 명시적으로 링크
+          config.build_settings['OTHER_LDFLAGS'] << '-framework'
+          config.build_settings['OTHER_LDFLAGS'] << 'FirebaseAnalytics'
+        end
+        
+        # Firebase 관련 타겟에 대한 추가 설정
+        if target.name.include?('Firebase') || target.name.include?('RNFB')
+          config.build_settings['OTHER_LDFLAGS'] ||= ['$(inherited)']
+          config.build_settings['OTHER_LDFLAGS'] << '-ObjC'
         end
       end
     end

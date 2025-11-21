@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
-    "@react-native-firebase/analytics": "22.2.1",
     "@react-native-firebase/app": "22.2.1",
     "@react-native-firebase/crashlytics": "22.2.1",
     "@react-native-firebase/firestore": "22.2.1",

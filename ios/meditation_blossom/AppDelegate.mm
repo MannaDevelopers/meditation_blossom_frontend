@@ -1,13 +1,26 @@
 #import "AppDelegate.h"
 
 #import <React/RCTBundleURLProvider.h>
+#import <React/RCTBridge.h>
+#import <React/RCTRootView.h>
+#import <React/RCTLog.h>
 #import <FirebaseCore/FirebaseCore.h>
 #import <FirebaseMessaging/FirebaseMessaging.h>
 #import <FirebaseInAppMessaging/FirebaseInAppMessaging.h>
+#import <FirebaseAnalytics/FirebaseAnalytics.h>
 #import <UserNotifications/UserNotifications.h>
 #import <WidgetKit/WidgetKit.h>
+#import <ifaddrs.h>
+#import <arpa/inet.h>
+
+// Hermes 엔진 확인을 위한 헤더
+#if __has_include(<hermes/hermes.h>)
+#import <hermes/hermes.h>
+#define HERMES_AVAILABLE 1
+#else
+#define HERMES_AVAILABLE 0
+#endif
 // 디버깅용 imports (테스트 완료 후 주석 처리)
-// #import <FirebaseAnalytics/FirebaseAnalytics.h>
 // #import <FirebaseInstallations/FirebaseInstallations.h>
 
 // MyEventModule 클래스 선언
@@ -27,8 +40,27 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-  // Network connection logging 억제
-  [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"NSURLSessionVerboseLogging"];
+  // Network connection logging 활성화 (디버깅용)
+  [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"NSURLSessionVerboseLogging"];
+  
+  // Metro 서버 연결 테스트 (디버깅용)
+  #if DEBUG
+  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+    NSURL *testURL = [NSURL URLWithString:@"http://172.30.1.25:8081/status"];
+    if (testURL) {
+      NSURLSession *session = [NSURLSession sharedSession];
+      NSURLSessionDataTask *task = [session dataTaskWithURL:testURL completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        if (error) {
+          NSLog(@"❌ Metro server connection test failed: %@", error);
+        } else {
+          NSLog(@"✅ Metro server connection test successful: %@", response);
+        }
+      }];
+      [task resume];
+      NSLog(@"🔍 Testing Metro server connection to: %@", testURL);
+    }
+  });
+  #endif
   
   [FIRApp configure];
   self.moduleName = @"meditation_blossom";
@@ -93,34 +125,352 @@
     }
   }];
 
-  // 푸시 알림으로 앱이 실행된 경우 처리
-  NSDictionary *remoteNotification = launchOptions[UIApplicationLaunchOptionsRemoteNotificationKey];
-  if (remoteNotification) {
-    NSLog(@"📱 App launched from remote notification");
-    NSLog(@"📱 Launch notification userInfo: %@", remoteNotification);
-    // 약간의 지연 후 처리 (Firebase 초기화 완료 대기)
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-      NSLog(@"📱 Processing launch notification...");
-      [self saveFcmSermon:remoteNotification];
+  BOOL result = [super application:application didFinishLaunchingWithOptions:launchOptions];
+  
+  // Bridge 초기화 확인
+  if (self.bridge) {
+    NSLog(@"✅ React Native Bridge initialized successfully");
+    
+    // Hermes 엔진 확인
+    #if HERMES_AVAILABLE
+    NSLog(@"✅ Hermes engine is available");
+    #else
+    NSLog(@"❌ Hermes engine is NOT available - JavaScript execution may fail!");
+    #endif
+    
+    // React Native 로그 레벨 설정 (디버깅용)
+    RCTSetLogThreshold(RCTLogLevelInfo);
+    RCTSetLogFunction(^(RCTLogLevel level, RCTLogSource source, NSString *fileName, NSNumber *lineNumber, NSString *message) {
+      if (level >= RCTLogLevelError) {
+        NSLog(@"❌ React Native Error: %@", message);
+      } else if (level >= RCTLogLevelWarning) {
+        NSLog(@"⚠️ React Native Warning: %@", message);
+      } else {
+        NSLog(@"ℹ️ React Native Info: %@", message);
+      }
     });
+    
+    // Bridge의 번들 로딩 상태 확인을 위한 KVO 추가
+    #if DEBUG
+    [self.bridge addObserver:self forKeyPath:@"loading" options:NSKeyValueObservingOptionNew context:nil];
+    [self.bridge addObserver:self forKeyPath:@"valid" options:NSKeyValueObservingOptionNew context:nil];
+    
+    // 루트 뷰 확인
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+      UIViewController *rootViewController = [UIApplication sharedApplication].keyWindow.rootViewController;
+      if (rootViewController) {
+        NSLog(@"🔍 Root view controller found: %@", NSStringFromClass([rootViewController class]));
+        if (rootViewController.view) {
+          NSLog(@"   - Root view exists: YES");
+          NSLog(@"   - Root view frame: %@", NSStringFromCGRect(rootViewController.view.frame));
+          
+          // React Native 루트 뷰 찾기
+          UIView *reactRootView = [self findReactRootView:rootViewController.view];
+          if (reactRootView) {
+            NSLog(@"   - React Native root view found: YES");
+            NSLog(@"   - React root view frame: %@", NSStringFromCGRect(reactRootView.frame));
+            NSLog(@"   - React root view subviews count: %lu", (unsigned long)reactRootView.subviews.count);
+            
+            // 서브뷰 상세 정보
+            for (NSUInteger i = 0; i < reactRootView.subviews.count; i++) {
+              UIView *subview = reactRootView.subviews[i];
+              NSLog(@"   - Subview[%lu]: %@, frame: %@", (unsigned long)i, NSStringFromClass([subview class]), NSStringFromCGRect(subview.frame));
+            }
+          } else {
+            NSLog(@"   - React Native root view found: NO");
+          }
+        }
+      } else {
+        NSLog(@"❌ Root view controller not found");
+      }
+    });
+    
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+      if (self.bridge) {
+        NSLog(@"🔍 Bridge state after 3 seconds:");
+        NSLog(@"   - Bridge exists: YES");
+        NSLog(@"   - Bridge loading: %@", @(self.bridge.loading));
+        NSLog(@"   - Bridge valid: %@", @(self.bridge.valid));
+        NSLog(@"   - Bridge moduleClasses count: %lu", (unsigned long)self.bridge.moduleClasses.count);
+        
+        // Bridge가 번들을 로드하려고 시도하는지 확인
+        NSURL *bundleURL = [self bundleURL];
+        NSLog(@"   - Bundle URL: %@", bundleURL);
+        
+        // 직접 번들 로드 시도 (디버깅용)
+        if (bundleURL && [bundleURL.scheme isEqualToString:@"http"]) {
+          NSLog(@"🔍 Attempting to manually load bundle from: %@", bundleURL);
+          NSURLSession *session = [NSURLSession sharedSession];
+          NSURLSessionDataTask *task = [session dataTaskWithURL:bundleURL completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+            if (error) {
+              NSLog(@"❌ Manual bundle load failed: %@", error);
+            } else {
+              NSLog(@"✅ Manual bundle load successful: %lu bytes", (unsigned long)data.length);
+              if (data.length > 0) {
+                NSLog(@"   - First 100 bytes: %@", [[NSString alloc] initWithData:[data subdataWithRange:NSMakeRange(0, MIN(100, data.length))] encoding:NSUTF8StringEncoding]);
+                
+                // Bridge가 번들을 로드하지 못하는 경우, 직접 로드 시도
+                if (!self.bridge.valid && !self.bridge.loading) {
+                  NSLog(@"⚠️ Bridge is not loading bundle. Attempting to reload bridge...");
+                  dispatch_async(dispatch_get_main_queue(), ^{
+                    [self.bridge reload];
+                  });
+                }
+              }
+            }
+          }];
+          [task resume];
+        }
+        
+        // JavaScript 실행 상태 확인 (5초 후)
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+          [self checkJavaScriptExecution];
+        });
+      }
+    });
+    #endif
+  } else {
+    NSLog(@"❌ React Native Bridge initialization failed");
   }
-
-  return [super application:application didFinishLaunchingWithOptions:launchOptions];
+  
+  return result;
 }
 
 - (NSURL *)sourceURLForBridge:(RCTBridge *)bridge
 {
-  return [self bundleURL];
+  NSURL *url = [self bundleURL];
+  NSLog(@"🌉 Bridge requesting bundle URL: %@", url);
+  NSLog(@"   - Bridge loading state: %@", @(bridge.loading));
+  NSLog(@"   - Bridge valid state: %@", @(bridge.valid));
+  return url;
+}
+
+// Bridge 상태 변경 감지를 위한 KVO
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey,id> *)change context:(void *)context
+{
+  if ([keyPath isEqualToString:@"loading"]) {
+    BOOL loading = [change[NSKeyValueChangeNewKey] boolValue];
+    NSLog(@"🔍 Bridge loading state changed: %@", @(loading));
+    if (!loading) {
+      NSLog(@"   - Bridge finished loading bundle");
+      // JavaScript 실행 확인을 위해 잠시 후 루트 뷰 확인
+      dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self checkReactRootView];
+      });
+    }
+  } else if ([keyPath isEqualToString:@"valid"]) {
+    BOOL valid = [change[NSKeyValueChangeNewKey] boolValue];
+    NSLog(@"🔍 Bridge valid state changed: %@", @(valid));
+    if (valid) {
+      NSLog(@"✅ Bridge is now valid - bundle loaded successfully!");
+      // JavaScript 실행 확인을 위해 잠시 후 루트 뷰 확인
+      dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self checkReactRootView];
+      });
+    } else {
+      NSLog(@"❌ Bridge is now invalid - bundle loading may have failed");
+    }
+  }
+}
+
+// React Native 루트 뷰 찾기 헬퍼 메서드
+- (UIView *)findReactRootView:(UIView *)view
+{
+  if ([view isKindOfClass:NSClassFromString(@"RCTRootView")]) {
+    return view;
+  }
+  for (UIView *subview in view.subviews) {
+    UIView *result = [self findReactRootView:subview];
+    if (result) {
+      return result;
+    }
+  }
+  return nil;
+}
+
+// React Native 루트 뷰 상태 확인
+- (void)checkReactRootView
+{
+  UIViewController *rootViewController = [UIApplication sharedApplication].keyWindow.rootViewController;
+  if (rootViewController && rootViewController.view) {
+    UIView *reactRootView = [self findReactRootView:rootViewController.view];
+    if (reactRootView) {
+      NSLog(@"🔍 React Native root view status:");
+      NSLog(@"   - Frame: %@", NSStringFromCGRect(reactRootView.frame));
+      NSLog(@"   - Bounds: %@", NSStringFromCGRect(reactRootView.bounds));
+      NSLog(@"   - Subviews count: %lu", (unsigned long)reactRootView.subviews.count);
+      NSLog(@"   - Hidden: %@", @(reactRootView.hidden));
+      NSLog(@"   - Alpha: %f", reactRootView.alpha);
+      
+      // 서브뷰 상세 정보
+      for (NSUInteger i = 0; i < reactRootView.subviews.count; i++) {
+        UIView *subview = reactRootView.subviews[i];
+        NSLog(@"   - Subview[%lu]: %@, frame: %@", (unsigned long)i, NSStringFromClass([subview class]), NSStringFromCGRect(subview.frame));
+      }
+      
+      if (reactRootView.subviews.count == 0) {
+        NSLog(@"⚠️ React Native root view has no subviews - JavaScript may not be rendering");
+      }
+    } else {
+      NSLog(@"❌ React Native root view not found");
+    }
+  }
+}
+
+// JavaScript 실행 상태 확인
+- (void)checkJavaScriptExecution
+{
+  NSLog(@"🔍 Checking JavaScript execution status...");
+  
+  if (self.bridge) {
+    NSLog(@"   - Bridge exists: YES");
+    NSLog(@"   - Bridge loading: %@", @(self.bridge.loading));
+    NSLog(@"   - Bridge valid: %@", @(self.bridge.valid));
+    
+    // React Native 루트 뷰 확인
+    UIViewController *rootViewController = [UIApplication sharedApplication].keyWindow.rootViewController;
+    if (rootViewController && rootViewController.view) {
+      UIView *reactRootView = [self findReactRootView:rootViewController.view];
+      if (reactRootView) {
+        NSLog(@"   - React root view exists: YES");
+        NSLog(@"   - React root view subviews count: %lu", (unsigned long)reactRootView.subviews.count);
+        
+        // 서브뷰가 있는지 확인 (JavaScript가 렌더링되었는지)
+        if (reactRootView.subviews.count > 0) {
+          NSLog(@"   - JavaScript appears to be rendering (subviews exist)");
+          for (NSUInteger i = 0; i < reactRootView.subviews.count; i++) {
+            UIView *subview = reactRootView.subviews[i];
+            NSLog(@"   - Subview[%lu]: %@, frame: %@", (unsigned long)i, NSStringFromClass([subview class]), NSStringFromCGRect(subview.frame));
+            
+            // RCTRootContentView의 서브뷰 확인 (실제 React 컴포넌트)
+            if ([NSStringFromClass([subview class]) isEqualToString:@"RCTRootContentView"]) {
+              NSLog(@"   - RCTRootContentView subviews count: %lu", (unsigned long)subview.subviews.count);
+              for (NSUInteger j = 0; j < subview.subviews.count; j++) {
+                UIView *contentSubview = subview.subviews[j];
+                NSLog(@"   - RCTRootContentView.Subview[%lu]: %@, frame: %@", (unsigned long)j, NSStringFromClass([contentSubview class]), NSStringFromCGRect(contentSubview.frame));
+                
+                // 더 깊이 확인 (최대 3단계)
+                if (contentSubview.subviews.count > 0) {
+                  NSLog(@"   - RCTRootContentView.Subview[%lu] has %lu subviews", (unsigned long)j, (unsigned long)contentSubview.subviews.count);
+                  for (NSUInteger k = 0; k < MIN(5, contentSubview.subviews.count); k++) {
+                    UIView *deepSubview = contentSubview.subviews[k];
+                    NSLog(@"   - RCTRootContentView.Subview[%lu].Subview[%lu]: %@", (unsigned long)j, (unsigned long)k, NSStringFromClass([deepSubview class]));
+                  }
+                }
+              }
+              
+              // RCTRootContentView에 서브뷰가 없으면 JavaScript가 렌더링되지 않은 것
+              if (subview.subviews.count == 0) {
+                NSLog(@"⚠️ RCTRootContentView has no subviews - JavaScript is NOT rendering!");
+                NSLog(@"   - This indicates JavaScript execution failed or root component is not rendering");
+                NSLog(@"   - Attempting to reload Bridge to force JavaScript execution...");
+                
+                // Bridge를 강제로 reload하여 JavaScript 실행 시도
+                dispatch_async(dispatch_get_main_queue(), ^{
+                  if (self.bridge) {
+                    NSLog(@"🔄 Reloading Bridge...");
+                    [self.bridge reload];
+                    
+                    // 2초 후 다시 확인
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                      [self checkJavaScriptExecution];
+                    });
+                  }
+                });
+              }
+            }
+          }
+        } else {
+          NSLog(@"⚠️ React root view has no subviews - JavaScript may not be executing");
+          NSLog(@"   - This could indicate:");
+          NSLog(@"     1. JavaScript bundle failed to load");
+          NSLog(@"     2. JavaScript execution error");
+          NSLog(@"     3. Root component not rendering");
+        }
+      } else {
+        NSLog(@"   - React root view exists: NO");
+      }
+    }
+    
+    // JavaScript console.log가 나타나지 않는다면 실행되지 않았을 수 있음
+    NSLog(@"   - Note: If JavaScript console.log messages (🚀) are not appearing in Xcode console,");
+    NSLog(@"     JavaScript may not be executing properly");
+  } else {
+    NSLog(@"   - Bridge exists: NO");
+  }
 }
 
 - (NSURL *)bundleURL
 {
 #if DEBUG
-  return [[RCTBundleURLProvider sharedSettings] jsBundleURLForBundleRoot:@"index"];
+  // 정적 프레임워크 환경에서 Metro 연결을 위해 명시적으로 설정
+  // Metro 서버 IP 주소를 직접 지정하여 URL 생성
+  NSString *jsLocation = @"172.30.1.25";
+  NSNumber *port = @8081;
+  NSString *bundleRoot = @"index";
+  
+  // Metro 서버 URL 직접 구성
+  NSString *urlString = [NSString stringWithFormat:@"http://%@:%@/%@.bundle?platform=ios&dev=true&minify=false", 
+                         jsLocation, port, bundleRoot];
+  NSURL *jsCodeLocation = [NSURL URLWithString:urlString];
+  
+  // 디버깅: bundle URL 로그 출력
+  NSLog(@"🔗 Metro bundle URL: %@", jsCodeLocation);
+  
+  // URL이 유효한지 확인
+  if (jsCodeLocation == nil) {
+    NSLog(@"❌ Metro bundle URL is nil! Trying RCTBundleURLProvider...");
+    // 폴백: RCTBundleURLProvider 사용
+    jsCodeLocation = [[RCTBundleURLProvider sharedSettings] jsBundleURLForBundleRoot:bundleRoot];
+    NSLog(@"🔗 Fallback Metro bundle URL: %@", jsCodeLocation);
+  }
+  
+  if (jsCodeLocation == nil) {
+    NSLog(@"❌ All Metro bundle URL attempts failed! Using local bundle...");
+    // 최종 폴백: 로컬 번들 사용
+    return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
+  }
+  
+  return jsCodeLocation;
 #else
   return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
 #endif
 }
+
+- (NSArray<NSString *> *)getIPAddresses
+{
+  NSMutableArray *addresses = [NSMutableArray array];
+  struct ifaddrs *interfaces = NULL;
+  struct ifaddrs *temp_addr = NULL;
+  int success = 0;
+  
+  // retrieve the current interfaces - returns 0 on success
+  success = getifaddrs(&interfaces);
+  if (success == 0) {
+    // Loop through linked list of interfaces
+    temp_addr = interfaces;
+    while(temp_addr != NULL) {
+      if(temp_addr->ifa_addr->sa_family == AF_INET) {
+        // Check if interface is en0 which is the wifi connection on the iPhone
+        NSString *interfaceName = [NSString stringWithUTF8String:temp_addr->ifa_name];
+        if ([interfaceName isEqualToString:@"en0"] || [interfaceName hasPrefix:@"en"]) {
+          // Get NSString from C String
+          NSString *address = [NSString stringWithUTF8String:inet_ntoa(((struct sockaddr_in *)temp_addr->ifa_addr)->sin_addr)];
+          if (![address isEqualToString:@"127.0.0.1"] && ![address hasPrefix:@"169.254"]) {
+            [addresses addObject:address];
+          }
+        }
+      }
+      temp_addr = temp_addr->ifa_next;
+    }
+  }
+  
+  // Free memory
+  freeifaddrs(interfaces);
+  
+  return addresses;
+}
+
 
 #pragma mark - Firebase Messaging
 
