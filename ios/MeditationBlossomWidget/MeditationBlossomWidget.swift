@@ -29,9 +29,15 @@ struct Provider: TimelineProvider {
   }
   
   func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> ()) {
-    print("타임라인 로딩")
+    print("🔄 Widget: getTimeline called (WidgetKit push or system refresh)")
+    print("🔄 Widget: Context.isPreview = \(context.isPreview)")
+    print("🔄 Widget: Checking App Group data...")
+    
     let entry = createSermonEntry()
-    let timeline = Timeline(entries: [entry], policy: .never)
+    
+    // 위젯킷 푸시를 받은 경우 즉시 업데이트
+    // 시스템이 주기적으로 새로고침할 때도 업데이트
+    let timeline = Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(60 * 60))) // 1시간 후 재시도
     completion(timeline)
   }
   
@@ -46,7 +52,23 @@ struct Provider: TimelineProvider {
   private func createSermonEntry() -> SimpleEntry {
     let sharedDefaults = UserDefaults(suiteName: "group.mannachurch.meditationblossom")
     
-    if let sermon = sharedDefaults?.getObjectFromString(forKey: "displaySermon", castTo: Sermon.self) {
+    // displaySermon을 먼저 확인, 없으면 fcm_sermon 확인
+    var sermon: Sermon? = sharedDefaults?.getObjectFromString(forKey: "displaySermon", castTo: Sermon.self)
+    
+    if sermon == nil {
+      print("🔄 Widget: displaySermon not found, checking fcm_sermon...")
+      sermon = sharedDefaults?.getObjectFromString(forKey: "fcm_sermon", castTo: Sermon.self)
+      if let sermon = sermon {
+        print("✅ Widget: Found sermon data in fcm_sermon - \(sermon.title)")
+        // fcm_sermon을 displaySermon에도 복사 (일관성 유지)
+        if let jsonString = sharedDefaults?.string(forKey: "fcm_sermon") {
+          sharedDefaults?.set(jsonString, forKey: "displaySermon")
+          sharedDefaults?.synchronize()
+        }
+      }
+    }
+    
+    if let sermon = sermon {
       print("✅ Widget: Found sermon data - \(sermon.title)")
       var verse: String = " "
       var quote: String = "설교 본문을 가져오는 중 문제가 발생했습니다"

@@ -486,7 +486,25 @@
   NSLog(@"All keys in UserInfo: %@", [userInfo allKeys]);
   
   // WidgetKit Push Notifications 확인
+  // 여러 위치에서 widgetkit 확인 (Firebase가 구조를 변경할 수 있음)
   NSDictionary *widgetkit = userInfo[@"widgetkit"];
+  
+  // aps 안에서도 확인
+  if (!widgetkit) {
+    NSDictionary *aps = userInfo[@"aps"];
+    if (aps) {
+      widgetkit = aps[@"widgetkit"];
+    }
+  }
+  
+  // data 안에서도 확인
+  if (!widgetkit) {
+    NSDictionary *data = userInfo[@"data"];
+    if (data) {
+      widgetkit = data[@"widgetkit"];
+    }
+  }
+  
   if (widgetkit && [widgetkit[@"kind"] isEqualToString:@"MeditationBlossomWidget"]) {
     NSLog(@"🎯 WidgetKit Push Notification detected in AppDelegate (foreground)");
     NSDictionary *widgetkitData = widgetkit[@"data"];
@@ -581,9 +599,27 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   NSLog(@"All keys in UserInfo: %@", [userInfo allKeys]);
   
   // WidgetKit Push Notifications 확인
+  // 여러 위치에서 widgetkit 확인 (Firebase가 구조를 변경할 수 있음)
   NSDictionary *widgetkit = userInfo[@"widgetkit"];
+  
+  // aps 안에서도 확인
+  if (!widgetkit) {
+    NSDictionary *aps = userInfo[@"aps"];
+    if (aps) {
+      widgetkit = aps[@"widgetkit"];
+    }
+  }
+  
+  // data 안에서도 확인
+  if (!widgetkit) {
+    NSDictionary *data = userInfo[@"data"];
+    if (data) {
+      widgetkit = data[@"widgetkit"];
+    }
+  }
+  
   if (widgetkit && [widgetkit[@"kind"] isEqualToString:@"MeditationBlossomWidget"]) {
-    NSLog(@"🎯 WidgetKit Push Notification detected in AppDelegate");
+    NSLog(@"🎯 WidgetKit Push Notification detected in AppDelegate (background)");
     NSDictionary *widgetkitData = widgetkit[@"data"];
     if (widgetkitData) {
       NSLog(@"✅ Using widgetkit.data for WidgetKit Push");

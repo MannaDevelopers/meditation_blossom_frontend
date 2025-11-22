@@ -31,6 +31,12 @@ class NotificationService: UNNotificationServiceExtension {
                 widgetkit = apsWidgetkit
                 print("📬 Found widgetkit inside aps")
             }
+            // 3. data 필드에서 widgetkit 확인 (Firebase가 data 필드에 넣을 수도 있음)
+            else if let data = userInfo["data"] as? [String: Any],
+                    let dataWidgetkit = data["widgetkit"] as? [String: Any] {
+                widgetkit = dataWidgetkit
+                print("📬 Found widgetkit inside data")
+            }
             
             if let widgetkit = widgetkit,
                let kind = widgetkit["kind"] as? String,
@@ -43,10 +49,59 @@ class NotificationService: UNNotificationServiceExtension {
                 contentHandler(bestAttemptContent)
                 return
             } else {
-                print("ℹ️ No widgetkit found, treating as regular FCM message")
+                print("ℹ️ No widgetkit found, checking if this is a data-only message for widget update")
+                
+                // WidgetKit Push가 아니어도 data-only 메시지이면 위젯 업데이트 시도
+                // content-available: 1이 있으면 data-only 메시지
+                if let aps = userInfo["aps"] as? [String: Any],
+                   let contentAvailable = aps["content-available"] as? Int,
+                   contentAvailable == 1 {
+                    print("📦 Data-only message detected (content-available: 1), processing for widget update")
+                    // data-only 메시지 처리 (위젯 업데이트용)
+                    if let id = userInfo["id"] as? String,
+                       let title = userInfo["title"] as? String,
+                       let content = userInfo["content"] as? String,
+                       let date = userInfo["date"] as? String,
+                       let dayOfWeek = userInfo["day_of_week"] as? String {
+                        let category = userInfo["category"] as? String
+                        let sermon = Sermon(
+                            id: id,
+                            title: title,
+                            content: content,
+                            date: date,
+                            category: category,
+                            dayOfWeek: dayOfWeek,
+                            createdAt: nil,
+                            updatedAt: nil
+                        )
+                        
+                        print("✅ Data-only: Parsed sermon - \(sermon.title)")
+                        
+                        if let userDefaults = UserDefaults(suiteName: "group.mannachurch.meditationblossom") {
+                            let encoder = JSONEncoder()
+                            if let encodedData = try? encoder.encode(sermon),
+                               let jsonString = String(data: encodedData, encoding: .utf8) {
+                                userDefaults.set(jsonString, forKey: "displaySermon")
+                                userDefaults.set(jsonString, forKey: "fcm_sermon")
+                                userDefaults.synchronize()
+                                print("✅ Data-only: Stored sermon in App Group")
+                                WidgetCenter.shared.reloadTimelines(ofKind: "MeditationBlossomWidget")
+                                print("✅ Data-only: Widget timeline reloaded")
+                            }
+                        }
+                        
+                        // Data-only 메시지는 알림 표시하지 않음
+                        bestAttemptContent.sound = nil
+                        bestAttemptContent.badge = nil
+                        contentHandler(bestAttemptContent)
+                        return
+                    }
+                }
+                
+                print("ℹ️ No widgetkit found and not a data-only message, treating as regular FCM message")
             }
             
-            // 일반 FCM 메시지 처리 (WidgetKit Push가 아닌 경우)
+            // 일반 FCM 메시지 처리 (WidgetKit Push가 아니고 data-only도 아닌 경우)
             // 수동으로 userInfo에서 데이터를 파싱합니다.
             // FCM 메시지의 'data' 페이로드에 포함된 키들입니다.
             guard let id = userInfo["id"] as? String,
@@ -81,8 +136,11 @@ class NotificationService: UNNotificationServiceExtension {
                 let encoder = JSONEncoder()
                 if let encodedData = try? encoder.encode(sermon),
                    let jsonString = String(data: encodedData, encoding: .utf8) {
+                    // displaySermon과 fcm_sermon 둘 다 저장 (호환성)
                     userDefaults.set(jsonString, forKey: "displaySermon")
-                    print("Successfully stored sermon for widget")
+                    userDefaults.set(jsonString, forKey: "fcm_sermon")
+                    userDefaults.synchronize() // 즉시 동기화 보장
+                    print("Successfully stored sermon for widget (displaySermon and fcm_sermon)")
                     WidgetCenter.shared.reloadTimelines(ofKind: "MeditationBlossomWidget")
                     print("Widget timeline reloaded.")
                 }
@@ -150,13 +208,16 @@ class NotificationService: UNNotificationServiceExtension {
         
         print("✅ WidgetKit Push: Parsed sermon - \(sermon.title)")
         
-        // App Group에 저장
+        // App Group에 저장 (fcm_sermon과 displaySermon 둘 다 저장)
         if let userDefaults = UserDefaults(suiteName: "group.mannachurch.meditationblossom") {
             let encoder = JSONEncoder()
             if let encodedData = try? encoder.encode(sermon),
                let jsonString = String(data: encodedData, encoding: .utf8) {
+                // displaySermon과 fcm_sermon 둘 다 저장 (호환성)
                 userDefaults.set(jsonString, forKey: "displaySermon")
-                print("✅ WidgetKit Push: Stored sermon in App Group")
+                userDefaults.set(jsonString, forKey: "fcm_sermon")
+                userDefaults.synchronize() // 즉시 동기화 보장
+                print("✅ WidgetKit Push: Stored sermon in App Group (displaySermon and fcm_sermon)")
                 
                 // 위젯 타임라인 업데이트
                 WidgetCenter.shared.reloadTimelines(ofKind: "MeditationBlossomWidget")
