@@ -77,17 +77,41 @@ class NotificationService: UNNotificationServiceExtension {
                         
                         print("✅ Data-only: Parsed sermon - \(sermon.title)")
                         
-                        if let userDefaults = UserDefaults(suiteName: "group.mannachurch.meditationblossom") {
-                            let encoder = JSONEncoder()
-                            if let encodedData = try? encoder.encode(sermon),
-                               let jsonString = String(data: encodedData, encoding: .utf8) {
-                                userDefaults.set(jsonString, forKey: "displaySermon")
-                                userDefaults.set(jsonString, forKey: "fcm_sermon")
-                                userDefaults.synchronize()
-                                print("✅ Data-only: Stored sermon in App Group")
-                                WidgetCenter.shared.reloadTimelines(ofKind: "MeditationBlossomWidget")
-                                print("✅ Data-only: Widget timeline reloaded")
+                        print("📦 Data-only: Attempting to save to App Group...")
+                        guard let userDefaults = UserDefaults(suiteName: "group.mannachurch.meditationblossom") else {
+                            print("❌ Data-only: Failed to access App Group UserDefaults")
+                            return
+                        }
+                        
+                        print("✅ Data-only: App Group UserDefaults accessed successfully")
+                        
+                        let encoder = JSONEncoder()
+                        do {
+                            let encodedData = try encoder.encode(sermon)
+                            guard let jsonString = String(data: encodedData, encoding: .utf8) else {
+                                print("❌ Data-only: Failed to convert encoded data to UTF-8 string")
+                                return
                             }
+                            
+                            print("✅ Data-only: Sermon encoded successfully")
+                            print("   - JSON string length: \(jsonString.count) characters")
+                            
+                            userDefaults.set(jsonString, forKey: "displaySermon")
+                            userDefaults.set(jsonString, forKey: "fcm_sermon")
+                            let syncResult = userDefaults.synchronize()
+                            print("✅ Data-only: Stored sermon in App Group, sync result: \(syncResult)")
+                            
+                            // 저장 후 검증
+                            let savedDisplaySermon = userDefaults.string(forKey: "displaySermon")
+                            let savedFcmSermon = userDefaults.string(forKey: "fcm_sermon")
+                            print("📦 Data-only: Verification after save:")
+                            print("   - displaySermon exists: \(savedDisplaySermon != nil ? "YES (\(savedDisplaySermon?.count ?? 0) chars)" : "NO")")
+                            print("   - fcm_sermon exists: \(savedFcmSermon != nil ? "YES (\(savedFcmSermon?.count ?? 0) chars)" : "NO")")
+                            
+                            WidgetCenter.shared.reloadTimelines(ofKind: "MeditationBlossomWidget")
+                            print("✅ Data-only: Widget timeline reloaded")
+                        } catch {
+                            print("❌ Data-only: Failed to encode sermon: \(error.localizedDescription)")
                         }
                         
                         // Data-only 메시지는 알림 표시하지 않음
@@ -209,20 +233,71 @@ class NotificationService: UNNotificationServiceExtension {
         print("✅ WidgetKit Push: Parsed sermon - \(sermon.title)")
         
         // App Group에 저장 (fcm_sermon과 displaySermon 둘 다 저장)
-        if let userDefaults = UserDefaults(suiteName: "group.mannachurch.meditationblossom") {
-            let encoder = JSONEncoder()
-            if let encodedData = try? encoder.encode(sermon),
-               let jsonString = String(data: encodedData, encoding: .utf8) {
-                // displaySermon과 fcm_sermon 둘 다 저장 (호환성)
-                userDefaults.set(jsonString, forKey: "displaySermon")
-                userDefaults.set(jsonString, forKey: "fcm_sermon")
-                userDefaults.synchronize() // 즉시 동기화 보장
-                print("✅ WidgetKit Push: Stored sermon in App Group (displaySermon and fcm_sermon)")
-                
-                // 위젯 타임라인 업데이트
-                WidgetCenter.shared.reloadTimelines(ofKind: "MeditationBlossomWidget")
-                print("✅ WidgetKit Push: Widget timeline reloaded")
+        print("📦 WidgetKit Push: Attempting to save to App Group...")
+        guard let userDefaults = UserDefaults(suiteName: "group.mannachurch.meditationblossom") else {
+            print("❌ WidgetKit Push: Failed to access App Group UserDefaults")
+            return
+        }
+        
+        print("✅ WidgetKit Push: App Group UserDefaults accessed successfully")
+        
+        let encoder = JSONEncoder()
+        do {
+            let encodedData = try encoder.encode(sermon)
+            guard let jsonString = String(data: encodedData, encoding: .utf8) else {
+                print("❌ WidgetKit Push: Failed to convert encoded data to UTF-8 string")
+                print("   - Encoded data length: \(encodedData.count) bytes")
+                return
             }
+            
+            print("✅ WidgetKit Push: Sermon encoded successfully")
+            print("   - JSON string length: \(jsonString.count) characters")
+            print("   - Content preview (first 200 chars): \(String(jsonString.prefix(200)))")
+            
+            // 저장 전 기존 데이터 확인
+            let existingDisplaySermon = userDefaults.string(forKey: "displaySermon")
+            let existingFcmSermon = userDefaults.string(forKey: "fcm_sermon")
+            print("📦 WidgetKit Push: Existing data in App Group:")
+            print("   - displaySermon exists: \(existingDisplaySermon != nil ? "YES (\(existingDisplaySermon?.count ?? 0) chars)" : "NO")")
+            print("   - fcm_sermon exists: \(existingFcmSermon != nil ? "YES (\(existingFcmSermon?.count ?? 0) chars)" : "NO")")
+            
+            // displaySermon과 fcm_sermon 둘 다 저장 (호환성)
+            print("📦 WidgetKit Push: Setting displaySermon...")
+            userDefaults.set(jsonString, forKey: "displaySermon")
+            print("✅ WidgetKit Push: displaySermon set")
+            
+            print("📦 WidgetKit Push: Setting fcm_sermon...")
+            userDefaults.set(jsonString, forKey: "fcm_sermon")
+            print("✅ WidgetKit Push: fcm_sermon set")
+            
+            print("📦 WidgetKit Push: Synchronizing App Group...")
+            let syncResult = userDefaults.synchronize()
+            print("✅ WidgetKit Push: Synchronize result: \(syncResult)")
+            
+            // 저장 후 검증
+            let savedDisplaySermon = userDefaults.string(forKey: "displaySermon")
+            let savedFcmSermon = userDefaults.string(forKey: "fcm_sermon")
+            print("📦 WidgetKit Push: Verification after save:")
+            print("   - displaySermon exists: \(savedDisplaySermon != nil ? "YES (\(savedDisplaySermon?.count ?? 0) chars)" : "NO")")
+            print("   - fcm_sermon exists: \(savedFcmSermon != nil ? "YES (\(savedFcmSermon?.count ?? 0) chars)" : "NO")")
+            
+            if savedDisplaySermon == jsonString && savedFcmSermon == jsonString {
+                print("✅ WidgetKit Push: Data saved and verified successfully in App Group")
+            } else {
+                print("⚠️ WidgetKit Push: Data verification failed!")
+                print("   - Original length: \(jsonString.count)")
+                print("   - Saved displaySermon length: \(savedDisplaySermon?.count ?? 0)")
+                print("   - Saved fcm_sermon length: \(savedFcmSermon?.count ?? 0)")
+            }
+            
+            // 위젯 타임라인 업데이트
+            print("📦 WidgetKit Push: Reloading widget timeline...")
+            WidgetCenter.shared.reloadTimelines(ofKind: "MeditationBlossomWidget")
+            print("✅ WidgetKit Push: Widget timeline reloaded")
+            
+        } catch {
+            print("❌ WidgetKit Push: Failed to encode sermon: \(error.localizedDescription)")
+            print("   - Error details: \(error)")
         }
     }
     

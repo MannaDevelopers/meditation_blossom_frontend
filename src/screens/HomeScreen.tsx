@@ -204,15 +204,121 @@ const HomeScreen = ({ navigation }: Props) => {
   // 초기 데이터 로드
   useEffect(() => {
     const initializeData = async () => {
-      const sermon = await loadLocalData();
-      const latestDate = sermon?.date ? new Date(sermon.date) : null;
-      if (checkInvalidate(latestDate)) {
-        await fetchDataFromServer();
+      console.log('🚀 initializeData: Starting app initialization...');
+      
+      try {
+        // iOS: 앱 시작 시 App Group 데이터를 먼저 확인하고 AsyncStorage로 복사
+        // React Native Bridge가 초기화될 때까지 약간의 지연 후 실행
+        if (Platform.OS === 'ios') {
+          try {
+            console.log('📱 iOS detected, waiting for Bridge initialization...');
+            
+            // Bridge 초기화 대기 (약 100ms)
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            console.log('🔄 Initial sync: Checking App Group data...');
+            console.log('   - WidgetUpdateModule available:', !!WidgetUpdateModule);
+            console.log('   - WidgetUpdateModule.getAppGroupData available:', !!WidgetUpdateModule?.getAppGroupData);
+            
+            // WidgetUpdateModule이 사용 가능한지 확인
+            if (!WidgetUpdateModule || !WidgetUpdateModule.getAppGroupData) {
+              console.log('⚠️ WidgetUpdateModule not available yet, skipping App Group sync');
+              console.log('   - Will retry after loading local data');
+            } else {
+              console.log('✅ WidgetUpdateModule is available, reading App Group data...');
+              
+              try {
+                // App Group에서 FCM 데이터 읽기
+                console.log('📦 Calling WidgetUpdateModule.getAppGroupData("displaySermon")...');
+                const appGroupData = await WidgetUpdateModule.getAppGroupData('displaySermon');
+                console.log('✅ getAppGroupData returned:', appGroupData ? `YES (${appGroupData.length} chars)` : 'NO');
+                
+                if (appGroupData) {
+                  console.log(`📦 App Group data found: ${appGroupData.length} characters`);
+                  console.log(`   - Preview (first 300 chars): ${appGroupData.substring(0, 300)}`);
+                  
+                  // JSON 파싱해서 content 확인
+                  try {
+                    const parsedData = JSON.parse(appGroupData);
+                    console.log(`📝 Content length in App Group: ${parsedData.content?.length || 0} characters`);
+                    console.log(`📝 Content preview: ${parsedData.content?.substring(0, 200) || 'N/A'}`);
+                    console.log(`   - Title: ${parsedData.title}`);
+                    console.log(`   - Date: ${parsedData.date}`);
+                    console.log(`   - ID: ${parsedData.id}`);
+                  } catch (e) {
+                    console.error('❌ Failed to parse App Group data:', e);
+                    console.error('   - Error details:', e instanceof Error ? e.message : String(e));
+                    console.error('   - Raw data (first 500 chars):', appGroupData.substring(0, 500));
+                  }
+                  
+                  // App Group 데이터를 AsyncStorage로 복사 (앱이 종료된 상태에서 widgetkit push로 받은 데이터)
+                  console.log('📦 Copying App Group data to AsyncStorage (initial sync)...');
+                  try {
+                    await AsyncStorage.setItem(FCM_SERMON_KEY, appGroupData);
+                    console.log('✅ AsyncStorage.setItem completed');
+                    
+                    const normalized = normalizeJsonString(appGroupData);
+                    console.log('✅ JSON normalized, length:', normalized.length);
+                    
+                    updateLastSyncedSignature(normalized);
+                    console.log('✅ Last synced signature updated');
+                    console.log('✅ Successfully synced App Group data to AsyncStorage');
+                  } catch (storageError) {
+                    console.error('❌ Failed to save to AsyncStorage:', storageError);
+                    console.error('   - Error details:', storageError instanceof Error ? storageError.message : String(storageError));
+                  }
+                } else {
+                  console.log('ℹ️ No App Group data found on initial launch');
+                }
+              } catch (readError) {
+                console.error('❌ Error reading App Group data:', readError);
+                console.error('   - Error details:', readError instanceof Error ? readError.message : String(readError));
+                console.error('   - Error stack:', readError instanceof Error ? readError.stack : 'N/A');
+              }
+            }
+          } catch (error) {
+            console.error('❌ Error syncing app group data on initial launch:', error);
+            console.error('   - Error details:', error instanceof Error ? error.message : String(error));
+            console.error('   - Error stack:', error instanceof Error ? error.stack : 'N/A');
+            // 에러가 발생해도 계속 진행 (빈 화면 방지)
+          }
+        }
+        
+        // 로컬 데이터 로드 (App Group 데이터가 AsyncStorage로 복사된 후)
+        console.log('📥 Loading local data...');
+        try {
+          const sermon = await loadLocalData();
+          console.log('✅ Local data loaded:', sermon ? `YES (${sermon.title})` : 'NO');
+          
+          const latestDate = sermon?.date ? new Date(sermon.date) : null;
+          console.log('📅 Latest date:', latestDate ? latestDate.toISOString() : 'null');
+          
+          if (checkInvalidate(latestDate)) {
+            console.log('🔄 Data is invalid, fetching from server...');
+            await fetchDataFromServer();
+            console.log('✅ Server data fetched');
+          } else {
+            console.log('✅ Data is valid, skipping server fetch');
+          }
+        } catch (loadError) {
+          console.error('❌ Error loading local data:', loadError);
+          console.error('   - Error details:', loadError instanceof Error ? loadError.message : String(loadError));
+          console.error('   - Error stack:', loadError instanceof Error ? loadError.stack : 'N/A');
+        }
+        
+        console.log('✅ initializeData: App initialization completed');
+      } catch (error) {
+        console.error('❌ Critical error in initializeData:', error);
+        console.error('   - Error details:', error instanceof Error ? error.message : String(error));
+        console.error('   - Error stack:', error instanceof Error ? error.stack : 'N/A');
       }
     };
 
-    initializeData();
-  }, [loadLocalData, fetchDataFromServer]);
+    console.log('🚀 initializeData: Setting up initialization...');
+    initializeData().catch((error) => {
+      console.error('❌ Unhandled error in initializeData:', error);
+    });
+  }, [loadLocalData, fetchDataFromServer, updateLastSyncedSignature]);
 
 
   useEffect(() => {
@@ -302,6 +408,13 @@ const HomeScreen = ({ navigation }: Props) => {
         await loadLocalData();
       }
     };
+    
+    // 앱 시작 시 즉시 App Group 데이터 동기화 (AppState가 이미 'active'인 경우)
+    const currentAppState = AppState.currentState;
+    if (currentAppState === 'active') {
+      console.log('📱 App is already active on mount, syncing App Group data...');
+      syncAppGroupData();
+    }
     
     // AppState 변경 감지
     const subscription = AppState.addEventListener('change', (nextAppState) => {

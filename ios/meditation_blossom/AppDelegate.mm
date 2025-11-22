@@ -40,6 +40,30 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+  NSLog(@"🎯 ========================================");
+  NSLog(@"🎯 AppDelegate: didFinishLaunchingWithOptions");
+  NSLog(@"🎯 App launch options: %@", launchOptions);
+  
+  // App Group 데이터 확인 (앱이 종료된 상태에서 widgetkit push로 받은 데이터)
+  NSUserDefaults *sharedDefaults = [[NSUserDefaults alloc] initWithSuiteName:@"group.mannachurch.meditationblossom"];
+  if (sharedDefaults) {
+    NSString *displaySermon = [sharedDefaults stringForKey:@"displaySermon"];
+    NSString *fcmSermon = [sharedDefaults stringForKey:@"fcm_sermon"];
+    NSLog(@"🎯 App Group data check on launch:");
+    NSLog(@"   - displaySermon exists: %@ (%lu chars)", displaySermon ? @"YES" : @"NO", (unsigned long)[displaySermon length]);
+    NSLog(@"   - fcm_sermon exists: %@ (%lu chars)", fcmSermon ? @"YES" : @"NO", (unsigned long)[fcmSermon length]);
+    
+    if (displaySermon || fcmSermon) {
+      NSLog(@"🎯 WidgetKit push data found in App Group (app was terminated when push received)");
+      NSLog(@"🎯 This means NotificationService extension saved data while app was terminated");
+      if (displaySermon) {
+        NSLog(@"   - displaySermon preview (first 200 chars): %@", [displaySermon substringToIndex:MIN(200, [displaySermon length])]);
+      }
+    }
+  } else {
+    NSLog(@"❌ Failed to access App Group UserDefaults on launch");
+  }
+  
   // Network connection logging 활성화 (디버깅용)
   [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"NSURLSessionVerboseLogging"];
   
@@ -127,9 +151,68 @@
 
   BOOL result = [super application:application didFinishLaunchingWithOptions:launchOptions];
   
-  // Bridge 초기화 확인
+  NSLog(@"🎯 React Native super application:didFinishLaunchingWithOptions returned: %@", result ? @"YES" : @"NO");
+  
+  // Bridge 초기화 확인 (바로 확인)
+  NSLog(@"🎯 Checking React Native Bridge immediately...");
+  NSLog(@"   - self.bridge exists: %@", self.bridge ? @"YES" : @"NO");
+  
   if (self.bridge) {
     NSLog(@"✅ React Native Bridge initialized successfully");
+    NSLog(@"   - Bridge loading: %@", @(self.bridge.loading));
+    NSLog(@"   - Bridge valid: %@", @(self.bridge.valid));
+    NSLog(@"   - Bridge moduleClasses count: %lu", (unsigned long)self.bridge.moduleClasses.count);
+    
+    // JavaScript 실행 대기 (Bridge가 준비될 때까지)
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+      NSLog(@"🎯 Checking React Native Bridge state after 0.5 seconds...");
+      NSLog(@"   - self.bridge exists: %@", self.bridge ? @"YES" : @"NO");
+      if (self.bridge) {
+        NSLog(@"   - Bridge loading: %@", @(self.bridge.loading));
+        NSLog(@"   - Bridge valid: %@", @(self.bridge.valid));
+        
+        if (self.bridge.loading) {
+          NSLog(@"⚠️ Bridge is still loading JavaScript bundle...");
+        } else if (self.bridge.valid) {
+          NSLog(@"✅ Bridge is valid - JavaScript bundle loaded successfully");
+        } else {
+          NSLog(@"❌ Bridge is NOT valid - JavaScript bundle may have failed to load");
+        }
+      } else {
+        NSLog(@"❌ Bridge is nil - React Native initialization may have failed");
+      }
+      
+      // Root view controller 확인
+      UIWindow *keyWindow = [UIApplication sharedApplication].keyWindow;
+      NSLog(@"   - Key window exists: %@", keyWindow ? @"YES" : @"NO");
+      
+      if (keyWindow) {
+        UIViewController *rootViewController = keyWindow.rootViewController;
+        if (rootViewController) {
+          NSLog(@"✅ Root view controller exists: %@", NSStringFromClass([rootViewController class]));
+          NSLog(@"   - Root view exists: %@", rootViewController.view ? @"YES" : @"NO");
+        } else {
+          NSLog(@"❌ Root view controller is nil - app may show blank screen");
+        }
+      } else {
+        NSLog(@"❌ Key window is nil - app window may not be ready");
+      }
+    });
+    
+    // 2초 후 추가 확인
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+      NSLog(@"🎯 Checking React Native state after 2 seconds...");
+      NSLog(@"   - self.bridge exists: %@", self.bridge ? @"YES" : @"NO");
+      if (self.bridge) {
+        NSLog(@"   - Bridge loading: %@", @(self.bridge.loading));
+        NSLog(@"   - Bridge valid: %@", @(self.bridge.valid));
+        
+        // JavaScript 실행 확인
+        [self checkJavaScriptExecution];
+      } else {
+        NSLog(@"❌ Bridge is still nil after 2 seconds - React Native initialization failed");
+      }
+    });
     
     // Hermes 엔진 확인
     #if HERMES_AVAILABLE
@@ -230,7 +313,22 @@
     });
     #endif
   } else {
-    NSLog(@"❌ React Native Bridge initialization failed");
+    NSLog(@"❌ React Native Bridge initialization failed - self.bridge is nil");
+    NSLog(@"   - This means React Native did not initialize properly");
+    NSLog(@"   - App will show blank screen");
+    
+    // 1초 후 다시 확인
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+      NSLog(@"🎯 Re-checking Bridge after 1 second...");
+      NSLog(@"   - self.bridge exists: %@", self.bridge ? @"YES" : @"NO");
+      if (self.bridge) {
+        NSLog(@"✅ Bridge appeared! It was just delayed.");
+        NSLog(@"   - Bridge loading: %@", @(self.bridge.loading));
+        NSLog(@"   - Bridge valid: %@", @(self.bridge.valid));
+      } else {
+        NSLog(@"❌ Bridge is still nil - React Native initialization definitely failed");
+      }
+    });
   }
   
   return result;

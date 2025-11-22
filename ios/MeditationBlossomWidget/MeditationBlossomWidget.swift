@@ -50,26 +50,66 @@ struct Provider: TimelineProvider {
   }
   
   private func createSermonEntry() -> SimpleEntry {
-    let sharedDefaults = UserDefaults(suiteName: "group.mannachurch.meditationblossom")
+    print("🔄 Widget: createSermonEntry called")
+    
+    guard let sharedDefaults = UserDefaults(suiteName: "group.mannachurch.meditationblossom") else {
+      print("❌ Widget: Failed to access App Group UserDefaults")
+      return SimpleEntry(date: Date(), title: " ", quote: "등록된 설교가 없습니다", verse: " ")
+    }
+    
+    print("✅ Widget: App Group UserDefaults accessed successfully")
+    
+    // App Group에 저장된 모든 키 확인
+    let allKeys = sharedDefaults.dictionaryRepresentation().keys
+    print("🔄 Widget: All keys in App Group: \(Array(allKeys).sorted())")
+    
+    // displaySermon과 fcm_sermon 존재 여부 확인
+    let displaySermonExists = sharedDefaults.string(forKey: "displaySermon") != nil
+    let fcmSermonExists = sharedDefaults.string(forKey: "fcm_sermon") != nil
+    print("🔄 Widget: Key existence check:")
+    print("   - displaySermon exists: \(displaySermonExists)")
+    print("   - fcm_sermon exists: \(fcmSermonExists)")
+    
+    if let displaySermonString = sharedDefaults.string(forKey: "displaySermon") {
+      print("   - displaySermon length: \(displaySermonString.count) characters")
+      print("   - displaySermon preview (first 200 chars): \(String(displaySermonString.prefix(200)))")
+    }
+    
+    if let fcmSermonString = sharedDefaults.string(forKey: "fcm_sermon") {
+      print("   - fcm_sermon length: \(fcmSermonString.count) characters")
+      print("   - fcm_sermon preview (first 200 chars): \(String(fcmSermonString.prefix(200)))")
+    }
     
     // displaySermon을 먼저 확인, 없으면 fcm_sermon 확인
-    var sermon: Sermon? = sharedDefaults?.getObjectFromString(forKey: "displaySermon", castTo: Sermon.self)
+    print("🔄 Widget: Attempting to read displaySermon...")
+    var sermon: Sermon? = sharedDefaults.getObjectFromString(forKey: "displaySermon", castTo: Sermon.self)
     
     if sermon == nil {
-      print("🔄 Widget: displaySermon not found, checking fcm_sermon...")
-      sermon = sharedDefaults?.getObjectFromString(forKey: "fcm_sermon", castTo: Sermon.self)
+      print("⚠️ Widget: displaySermon not found or failed to parse, checking fcm_sermon...")
+      print("🔄 Widget: Attempting to read fcm_sermon...")
+      sermon = sharedDefaults.getObjectFromString(forKey: "fcm_sermon", castTo: Sermon.self)
+      
       if let sermon = sermon {
         print("✅ Widget: Found sermon data in fcm_sermon - \(sermon.title)")
         // fcm_sermon을 displaySermon에도 복사 (일관성 유지)
-        if let jsonString = sharedDefaults?.string(forKey: "fcm_sermon") {
-          sharedDefaults?.set(jsonString, forKey: "displaySermon")
-          sharedDefaults?.synchronize()
+        if let jsonString = sharedDefaults.string(forKey: "fcm_sermon") {
+          print("📦 Widget: Copying fcm_sermon to displaySermon for consistency...")
+          sharedDefaults.set(jsonString, forKey: "displaySermon")
+          let syncResult = sharedDefaults.synchronize()
+          print("✅ Widget: Copied fcm_sermon to displaySermon, sync result: \(syncResult)")
         }
+      } else {
+        print("❌ Widget: fcm_sermon also not found or failed to parse")
       }
+    } else {
+      print("✅ Widget: Successfully read displaySermon")
     }
     
     if let sermon = sermon {
       print("✅ Widget: Found sermon data - \(sermon.title)")
+      print("   - Sermon ID: \(sermon.id)")
+      print("   - Sermon date: \(sermon.date)")
+      print("   - Content length: \(sermon.content.count) characters")
       var verse: String = " "
       var quote: String = "설교 본문을 가져오는 중 문제가 발생했습니다"
       
@@ -132,9 +172,14 @@ struct Provider: TimelineProvider {
         }
       }
       
+      print("✅ Widget: Created SimpleEntry successfully")
       return SimpleEntry(date: Date(), title: sermon.title, quote: quote, verse: verse)
     } else {
       print("❌ Widget: No sermon data found in App Group")
+      print("   - This means either:")
+      print("     1. No data was saved to App Group")
+      print("     2. Data format is invalid")
+      print("     3. JSON parsing failed")
       return SimpleEntry(date: Date(), title: " ", quote: "등록된 설교가 없습니다", verse: " ")
     }
   }
