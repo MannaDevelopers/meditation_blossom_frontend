@@ -86,23 +86,58 @@ struct Sermon: Codable {
 extension UserDefaults {
     // JSON String을 Codable 객체로 변환하여 불러오는 함수
     func getObjectFromString<T: Codable>(forKey key: String, castTo type: T.Type) -> T? {
+        print("🔄 Widget: getObjectFromString called for key: \(key)")
+        
         // UserDefaults에서 저장된 JSON 문자열을 가져옴
         guard let jsonString = self.string(forKey: key) else {
-            print("'\(key)'에 해당하는 문자열을 찾을 수 없습니다.")
+            print("❌ Widget: '\(key)'에 해당하는 문자열을 찾을 수 없습니다.")
             return nil
         }
+        
+        print("✅ Widget: Found string for key '\(key)'")
+        print("   - String length: \(jsonString.count) characters")
+        print("   - String preview (first 300 chars): \(String(jsonString.prefix(300)))")
+        
         guard let data = jsonString.data(using: .utf8) else {
-              print("문자열을 Data로 변환하는 데 실패했습니다.")
-              return nil
+            print("❌ Widget: 문자열을 Data로 변환하는 데 실패했습니다.")
+            print("   - String length: \(jsonString.count)")
+            print("   - String encoding check failed")
+            return nil
         }
-        print(jsonString)
+        
+        print("✅ Widget: String converted to Data successfully")
+        print("   - Data length: \(data.count) bytes")
+        
         // Swift 객체로 디코딩
         do {
-          let decoder = JSONDecoder()
-          let object = try decoder.decode(type, from: data)
+            let decoder = JSONDecoder()
+            print("🔄 Widget: Attempting to decode JSON...")
+            let object = try decoder.decode(type, from: data)
+            print("✅ Widget: JSON decoded successfully for key '\(key)'")
             return object
         } catch {
-            print("JSON 디코딩 실패: \(error.localizedDescription)")
+            print("❌ Widget: JSON 디코딩 실패: \(error.localizedDescription)")
+            print("   - Error details: \(error)")
+            
+            // 디코딩 실패 시 더 상세한 정보 출력
+            if let decodingError = error as? DecodingError {
+                switch decodingError {
+                case .dataCorrupted(let context):
+                    print("   - Data corrupted: \(context.debugDescription)")
+                    print("   - Coding path: \(context.codingPath)")
+                case .keyNotFound(let key, let context):
+                    print("   - Key not found: \(key.stringValue)")
+                    print("   - Coding path: \(context.codingPath)")
+                case .typeMismatch(let type, let context):
+                    print("   - Type mismatch: expected \(type), got \(context.debugDescription)")
+                    print("   - Coding path: \(context.codingPath)")
+                case .valueNotFound(let type, let context):
+                    print("   - Value not found: \(type), at \(context.codingPath)")
+                @unknown default:
+                    print("   - Unknown decoding error")
+                }
+            }
+            
             return nil
         }
     }
