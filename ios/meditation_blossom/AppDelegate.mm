@@ -44,24 +44,38 @@
   NSLog(@"🎯 AppDelegate: didFinishLaunchingWithOptions");
   NSLog(@"🎯 App launch options: %@", launchOptions);
   
-  // App Group 데이터 확인 (앱이 종료된 상태에서 widgetkit push로 받은 데이터)
-  NSUserDefaults *sharedDefaults = [[NSUserDefaults alloc] initWithSuiteName:@"group.mannachurch.meditationblossom"];
-  if (sharedDefaults) {
-    NSString *displaySermon = [sharedDefaults stringForKey:@"displaySermon"];
-    NSString *fcmSermon = [sharedDefaults stringForKey:@"fcm_sermon"];
-    NSLog(@"🎯 App Group data check on launch:");
-    NSLog(@"   - displaySermon exists: %@ (%lu chars)", displaySermon ? @"YES" : @"NO", (unsigned long)[displaySermon length]);
-    NSLog(@"   - fcm_sermon exists: %@ (%lu chars)", fcmSermon ? @"YES" : @"NO", (unsigned long)[fcmSermon length]);
-    
-    if (displaySermon || fcmSermon) {
-      NSLog(@"🎯 WidgetKit push data found in App Group (app was terminated when push received)");
-      NSLog(@"🎯 This means NotificationService extension saved data while app was terminated");
-      if (displaySermon) {
-        NSLog(@"   - displaySermon preview (first 200 chars): %@", [displaySermon substringToIndex:MIN(200, [displaySermon length])]);
+  // App Group 데이터 확인은 React Native Bridge 초기화 완료 후로 지연
+  // Bridge 초기화 전에 실행하면 빈 화면이 나타날 수 있음
+  // WidgetKit Push 데이터 확인은 Bridge가 준비된 후 실행
+  
+  // Extension 설치 확인 (앱 번들에서 확인)
+  NSBundle *mainBundle = [NSBundle mainBundle];
+  NSURL *appBundleURL = [mainBundle bundleURL];
+  NSURL *pluginsURL = [appBundleURL URLByAppendingPathComponent:@"PlugIns" isDirectory:YES];
+  NSFileManager *fileManager = [NSFileManager defaultManager];
+  
+  if ([fileManager fileExistsAtPath:[pluginsURL path]]) {
+    NSLog(@"🔍 Checking installed app extensions...");
+    NSError *error = nil;
+    NSArray *plugins = [fileManager contentsOfDirectoryAtURL:pluginsURL includingPropertiesForKeys:nil options:0 error:&error];
+    if (plugins) {
+      NSLog(@"   - Found %lu extension(s) in PlugIns directory", (unsigned long)[plugins count]);
+      for (NSURL *pluginURL in plugins) {
+        NSString *pluginName = [pluginURL lastPathComponent];
+        NSLog(@"   - Extension: %@", pluginName);
+        if ([pluginName containsString:@"PushNotificationService"]) {
+          NSLog(@"     ✅ PushNotificationService extension is installed!");
+        }
+        if ([pluginName containsString:@"MeditationBlossomWidgetExtension"]) {
+          NSLog(@"     ✅ MeditationBlossomWidgetExtension is installed!");
+        }
       }
+    } else {
+      NSLog(@"   ⚠️ Failed to list PlugIns: %@", error);
     }
   } else {
-    NSLog(@"❌ Failed to access App Group UserDefaults on launch");
+    NSLog(@"❌ PlugIns directory does not exist - no extensions are installed!");
+    NSLog(@"❌ This means app extensions were not embedded during build");
   }
   
   // Network connection logging 활성화 (디버깅용)
@@ -175,6 +189,10 @@
           NSLog(@"⚠️ Bridge is still loading JavaScript bundle...");
         } else if (self.bridge.valid) {
           NSLog(@"✅ Bridge is valid - JavaScript bundle loaded successfully");
+          
+          // Bridge가 준비된 후 App Group 데이터 확인 및 위젯 리로드
+          // 이 시점에서 실행하면 빈 화면 문제를 방지할 수 있음
+          [self checkWidgetKitPushDataAndReloadWidgets];
         } else {
           NSLog(@"❌ Bridge is NOT valid - JavaScript bundle may have failed to load");
         }
@@ -274,6 +292,11 @@
         NSLog(@"   - Bridge exists: YES");
         NSLog(@"   - Bridge loading: %@", @(self.bridge.loading));
         NSLog(@"   - Bridge valid: %@", @(self.bridge.valid));
+        
+        // Bridge가 여전히 valid 상태라면 위젯 데이터 확인 (fallback)
+        if (self.bridge.valid) {
+          [self checkWidgetKitPushDataAndReloadWidgets];
+        }
         NSLog(@"   - Bridge moduleClasses count: %lu", (unsigned long)self.bridge.moduleClasses.count);
         
         // Bridge가 번들을 로드하려고 시도하는지 확인
@@ -501,35 +524,57 @@
 - (NSURL *)bundleURL
 {
 #if DEBUG
-  // 정적 프레임워크 환경에서 Metro 연결을 위해 명시적으로 설정
-  // Metro 서버 IP 주소를 직접 지정하여 URL 생성
-  NSString *jsLocation = @"172.30.1.25";
-  NSNumber *port = @8081;
+  // WidgetKit 메시지 수신 후 앱 실행 시 Metro 연결이 느릴 수 있음
+  // "could not connect to development server" 에러 방지를 위해
+  // WidgetKit 메시지 수신 후 실행이면 로컬 번들을 우선 사용
+  
   NSString *bundleRoot = @"index";
   
-  // Metro 서버 URL 직접 구성
-  NSString *urlString = [NSString stringWithFormat:@"http://%@:%@/%@.bundle?platform=ios&dev=true&minify=false", 
-                         jsLocation, port, bundleRoot];
-  NSURL *jsCodeLocation = [NSURL URLWithString:urlString];
-  
-  // 디버깅: bundle URL 로그 출력
-  NSLog(@"🔗 Metro bundle URL: %@", jsCodeLocation);
-  
-  // URL이 유효한지 확인
-  if (jsCodeLocation == nil) {
-    NSLog(@"❌ Metro bundle URL is nil! Trying RCTBundleURLProvider...");
-    // 폴백: RCTBundleURLProvider 사용
-    jsCodeLocation = [[RCTBundleURLProvider sharedSettings] jsBundleURLForBundleRoot:bundleRoot];
-    NSLog(@"🔗 Fallback Metro bundle URL: %@", jsCodeLocation);
+  // WidgetKit 메시지 수신 후 실행인지 확인 (App Group에 데이터가 있으면)
+  NSUserDefaults *sharedDefaults = [[NSUserDefaults alloc] initWithSuiteName:@"group.mannachurch.meditationblossom"];
+  BOOL hasWidgetKitData = NO;
+  if (sharedDefaults) {
+    NSString *displaySermon = [sharedDefaults stringForKey:@"displaySermon"];
+    NSString *fcmSermon = [sharedDefaults stringForKey:@"fcm_sermon"];
+    hasWidgetKitData = (displaySermon != nil || fcmSermon != nil);
   }
   
-  if (jsCodeLocation == nil) {
+  if (hasWidgetKitData) {
+    // WidgetKit 메시지 수신 후 실행이면 로컬 번들 우선 사용
+    // Metro 연결 실패로 인한 빈 화면 문제 방지
+    NSLog(@"⚠️ WidgetKit push data detected - using local bundle to avoid Metro connection issues");
+    NSURL *localBundle = [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
+    if (localBundle) {
+      NSLog(@"🔗 Using local bundle: %@", localBundle);
+      return localBundle;
+    }
+    // 로컬 번들이 없으면 Metro URL 시도
+    NSLog(@"⚠️ Local bundle not found - falling back to Metro URL");
+  }
+  
+  // 일반 실행이면 Metro URL 사용
+  NSURL *metroURL = [[RCTBundleURLProvider sharedSettings] jsBundleURLForBundleRoot:bundleRoot];
+  NSLog(@"🔗 Metro bundle URL (RCTBundleURLProvider): %@", metroURL);
+  
+  if (metroURL && [metroURL.scheme isEqualToString:@"http"]) {
+    return metroURL;
+  }
+  
+  // 폴백: 하드코딩된 IP 주소 사용
+  NSString *jsLocation = @"172.30.1.25";
+  NSNumber *port = @8081;
+  NSString *urlString = [NSString stringWithFormat:@"http://%@:%@/%@.bundle?platform=ios&dev=true&minify=false", 
+                         jsLocation, port, bundleRoot];
+  NSURL *directURL = [NSURL URLWithString:urlString];
+  NSLog(@"🔗 Fallback Metro bundle URL (hardcoded): %@", directURL);
+  
+  // 최종 폴백: 로컬 번들 사용
+  if (directURL == nil) {
     NSLog(@"❌ All Metro bundle URL attempts failed! Using local bundle...");
-    // 최종 폴백: 로컬 번들 사용
     return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
   }
   
-  return jsCodeLocation;
+  return directURL;
 #else
   return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
 #endif
@@ -909,6 +954,52 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
   }
   
   completionHandler();
+  }
+  
+// App Group 데이터 확인 및 위젯 리로드 (Bridge 초기화 완료 후 호출)
+- (void)checkWidgetKitPushDataAndReloadWidgets {
+  NSLog(@"🔍 Checking App Group data after Bridge initialization...");
+  
+  // App Group 데이터 확인 (앱이 종료된 상태에서 widgetkit push로 받은 데이터)
+  NSUserDefaults *sharedDefaults = [[NSUserDefaults alloc] initWithSuiteName:@"group.mannachurch.meditationblossom"];
+  if (sharedDefaults) {
+    NSString *displaySermon = [sharedDefaults stringForKey:@"displaySermon"];
+    NSString *fcmSermon = [sharedDefaults stringForKey:@"fcm_sermon"];
+    NSLog(@"🎯 App Group data check on launch:");
+    NSLog(@"   - displaySermon exists: %@ (%lu chars)", displaySermon ? @"YES" : @"NO", (unsigned long)[displaySermon length]);
+    NSLog(@"   - fcm_sermon exists: %@ (%lu chars)", fcmSermon ? @"YES" : @"NO", (unsigned long)[fcmSermon length]);
+    
+    if (displaySermon || fcmSermon) {
+      NSLog(@"✅ WidgetKit push data found in App Group (app was terminated when push received)");
+      NSLog(@"✅ This means NotificationService extension saved data while app was terminated");
+      if (displaySermon) {
+        NSLog(@"   - displaySermon preview (first 200 chars): %@", [displaySermon substringToIndex:MIN(200, [displaySermon length])]);
+      }
+      
+      // Bridge가 완전히 준비된 후 위젯 타임라인 리로드
+      // 약간의 지연을 두어 React Native가 완전히 준비될 시간을 줌
+      dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        NSLog(@"🔄 Reloading widget timelines after app restart (WidgetKit push data detected)...");
+        NSLog(@"   - Bridge is ready, safe to reload widgets");
+        [WidgetUpdateModule reloadWidgets];
+        NSLog(@"✅ Widget timelines reload requested");
+        
+        // 약간의 지연 후 한 번 더 리로드 (시스템이 위젯을 업데이트할 시간을 줌)
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+          NSLog(@"🔄 Reloading widget timelines again after 1 second...");
+          [WidgetUpdateModule reloadWidgets];
+        });
+      });
+    } else {
+      NSLog(@"❌ No WidgetKit push data found in App Group on launch");
+      NSLog(@"❌ This could mean:");
+      NSLog(@"   1. NotificationService extension was not executed while app was terminated");
+      NSLog(@"   2. WidgetKit push was not received");
+      NSLog(@"   3. NotificationService extension failed to save data");
+    }
+  } else {
+    NSLog(@"❌ Failed to access App Group UserDefaults on launch");
+  }
 }
-
+  
 @end

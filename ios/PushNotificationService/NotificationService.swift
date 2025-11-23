@@ -7,13 +7,32 @@ class NotificationService: UNNotificationServiceExtension {
     var bestAttemptContent: UNMutableNotificationContent?
 
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
+        // NSLog는 Console.app에서 더 잘 보임
+        NSLog("🚀 NotificationService: Extension started - didReceive called")
+        NSLog("📬 NotificationService: Processing notification request...")
+        NSLog("📬 NotificationService: Notification identifier: %@", request.identifier)
+        // print도 유지 (Xcode 콘솔용)
+        print("🚀 NotificationService: Extension started - didReceive called")
+        print("📬 NotificationService: Processing notification request...")
+        print("📬 NotificationService: Notification identifier: \(request.identifier)")
+        
         self.contentHandler = contentHandler
         bestAttemptContent = (request.content.mutableCopy() as? UNMutableNotificationContent)
 
         if let bestAttemptContent = bestAttemptContent {
             let userInfo = request.content.userInfo
+            NSLog("📬 NotificationService: Received notification userInfo")
+            NSLog("📬 NotificationService: All keys count: %lu", userInfo.keys.count)
+            // print도 유지 (Xcode 콘솔용)
             print("📬 NotificationService: Received notification userInfo: \(userInfo)")
             print("📬 NotificationService: All keys in userInfo: \(userInfo.keys)")
+            
+            // 디버깅: userInfo 구조 전체 출력
+            if let jsonData = try? JSONSerialization.data(withJSONObject: userInfo, options: .prettyPrinted),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                print("📬 NotificationService: Full userInfo JSON structure:")
+                print(jsonString)
+            }
 
             // WidgetKit Push Notifications 확인
             // Firebase를 통해 전송될 때 widgetkit 키가 최상위 레벨에 올 수 있음
@@ -23,40 +42,134 @@ class NotificationService: UNNotificationServiceExtension {
             // 1. 최상위 레벨에서 widgetkit 확인
             if let topLevelWidgetkit = userInfo["widgetkit"] as? [String: Any] {
                 widgetkit = topLevelWidgetkit
-                print("📬 Found widgetkit at top level")
+                NSLog("✅ WidgetKit Push: Found widgetkit at top level of userInfo")
+                NSLog("✅ WidgetKit Push: widgetkit keys: %@", Array(topLevelWidgetkit.keys).description)
+                print("✅ WidgetKit Push: Found widgetkit at top level of userInfo")
+                print("✅ WidgetKit Push: widgetkit keys: \(Array(topLevelWidgetkit.keys))")
+                
+                // reloadTimelines 확인
+                if let reloadTimelines = topLevelWidgetkit["reloadTimelines"] {
+                    NSLog("✅ WidgetKit Push: reloadTimelines found in widgetkit: %@", String(describing: reloadTimelines))
+                    print("✅ WidgetKit Push: reloadTimelines found in widgetkit: \(reloadTimelines)")
+                } else {
+                    NSLog("❌ WidgetKit Push: reloadTimelines NOT found in widgetkit")
+                    print("❌ WidgetKit Push: reloadTimelines NOT found in widgetkit")
+                }
             }
             // 2. aps 안에서 widgetkit 확인 (Firebase가 구조를 변경할 수 있음)
-            else if let aps = userInfo["aps"] as? [String: Any],
-                    let apsWidgetkit = aps["widgetkit"] as? [String: Any] {
-                widgetkit = apsWidgetkit
-                print("📬 Found widgetkit inside aps")
+            else if let aps = userInfo["aps"] as? [String: Any] {
+                print("📬 Checking for widgetkit inside aps...")
+                if let apsWidgetkit = aps["widgetkit"] as? [String: Any] {
+                    widgetkit = apsWidgetkit
+                    print("✅ WidgetKit Push: Found widgetkit inside aps")
+                } else {
+                    print("❌ WidgetKit Push: No widgetkit found inside aps")
+                }
             }
             // 3. data 필드에서 widgetkit 확인 (Firebase가 data 필드에 넣을 수도 있음)
-            else if let data = userInfo["data"] as? [String: Any],
-                    let dataWidgetkit = data["widgetkit"] as? [String: Any] {
-                widgetkit = dataWidgetkit
-                print("📬 Found widgetkit inside data")
+            else if let data = userInfo["data"] as? [String: Any] {
+                print("📬 Checking for widgetkit inside data...")
+                if let dataWidgetkit = data["widgetkit"] as? [String: Any] {
+                    widgetkit = dataWidgetkit
+                    print("✅ WidgetKit Push: Found widgetkit inside data")
+                } else {
+                    print("❌ WidgetKit Push: No widgetkit found inside data")
+                }
             }
             
-            if let widgetkit = widgetkit,
-               let kind = widgetkit["kind"] as? String,
-               kind == "MeditationBlossomWidget" {
+            // 4. payload 안에서 widgetkit 확인 (Firebase가 payload 안에 넣을 수도 있음)
+            if widgetkit == nil {
+                if let payload = userInfo["payload"] as? [String: Any] {
+                    print("📬 Checking for widgetkit inside payload...")
+                    if let payloadWidgetkit = payload["widgetkit"] as? [String: Any] {
+                        widgetkit = payloadWidgetkit
+                        print("✅ WidgetKit Push: Found widgetkit inside payload")
+                    }
+                }
+            }
+            
+            // WidgetKit Push 확인: reloadTimelines 또는 kind 확인
+            var isWidgetKitPush = false
+            var widgetKind: String? = nil
+            
+            // 1. reloadTimelines가 있는지 확인 (WidgetKit Push의 표준 방식)
+            if let reloadTimelines = widgetkit?["reloadTimelines"] as? [String] {
+                isWidgetKitPush = true
+                widgetKind = reloadTimelines.first
+                NSLog("🎯 WidgetKit Push: reloadTimelines found: %@", reloadTimelines.description)
+                print("🎯 WidgetKit Push: reloadTimelines found: \(reloadTimelines)")
+            }
+            // 2. kind가 있는지 확인 (레거시 방식)
+            else if let kind = widgetkit?["kind"] as? String, kind == "MeditationBlossomWidget" {
+                isWidgetKitPush = true
+                widgetKind = kind
+                NSLog("🎯 WidgetKit Push: kind found: %@", kind)
+                print("🎯 WidgetKit Push: kind found: \(kind)")
+            }
+            // 3. widgetkit 키가 있으면 WidgetKit Push로 간주 (Firebase가 reloadTimelines를 제거했을 수 있음)
+            else if widgetkit != nil {
+                isWidgetKitPush = true
+                widgetKind = "MeditationBlossomWidget" // 기본값 사용
+                NSLog("🎯 WidgetKit Push: widgetkit found but reloadTimelines/kind not found - treating as WidgetKit Push")
+                NSLog("⚠️ WidgetKit Push: Firebase may have removed reloadTimelines - will manually trigger widget update")
+                print("🎯 WidgetKit Push: widgetkit found but reloadTimelines/kind not found - treating as WidgetKit Push")
+                print("⚠️ WidgetKit Push: Firebase may have removed reloadTimelines - will manually trigger widget update")
+            }
+            
+            if isWidgetKitPush, let kind = widgetKind, let widgetkitUnwrapped = widgetkit {
+                NSLog("🎯 WidgetKit Push Notification detected for %@", kind)
+                NSLog("🎯 WidgetKit Push: widgetkit structure found")
+                // silent 플래그 확인
+                let isSilent = (userInfo["silent"] as? String) == "true" || (userInfo["widget_update_only"] as? String) == "true"
+                NSLog("🔇 WidgetKit Push: Silent flag = %@", isSilent ? "YES" : "NO")
+                // print도 유지 (Xcode 콘솔용)
                 print("🎯 WidgetKit Push Notification detected for \(kind)")
-                handleWidgetKitPush(userInfo: userInfo, widgetkit: widgetkit)
-                // WidgetKit Push는 silent이므로 알림 표시하지 않음
-                bestAttemptContent.sound = nil
-                bestAttemptContent.badge = nil
+                print("🎯 WidgetKit Push: widgetkit structure:")
+                if let widgetkitJson = try? JSONSerialization.data(withJSONObject: widgetkitUnwrapped, options: .prettyPrinted),
+                   let widgetkitString = String(data: widgetkitJson, encoding: .utf8) {
+                    print(widgetkitString)
+                }
+                print("🔇 WidgetKit Push: Silent flag = \(isSilent ? "YES" : "NO")")
+                
+                handleWidgetKitPush(userInfo: userInfo, widgetkit: widgetkitUnwrapped)
+                print("✅ WidgetKit Push: handleWidgetKitPush completed")
+                
+                // WidgetKit Push는 위젯만 업데이트하므로 알림 표시하지 않음
+                // silent 플래그가 있으면 알림을 완전히 숨김
+                if isSilent {
+                    print("🔇 WidgetKit Push: Suppressing notification display (silent mode)")
+                    bestAttemptContent.title = ""
+                    bestAttemptContent.body = ""
+                    bestAttemptContent.sound = nil
+                    bestAttemptContent.badge = nil
+                    bestAttemptContent.categoryIdentifier = ""
+                    bestAttemptContent.threadIdentifier = ""
+                } else {
+                    // silent 플래그가 없어도 WidgetKit Push는 알림을 최소화
+                    bestAttemptContent.title = ""
+                    bestAttemptContent.body = ""
+                    bestAttemptContent.sound = nil
+                    bestAttemptContent.badge = nil
+                    bestAttemptContent.categoryIdentifier = ""
+                }
+                print("📤 WidgetKit Push: Calling contentHandler to complete notification processing...")
                 contentHandler(bestAttemptContent)
+                print("✅ WidgetKit Push: contentHandler called successfully")
                 return
             } else {
-                print("ℹ️ No widgetkit found, checking if this is a data-only message for widget update")
+                print("❌ WidgetKit Push: No valid widgetkit found in notification")
+                print("ℹ️ Checking if this is a data-only message for widget update...")
                 
                 // WidgetKit Push가 아니어도 data-only 메시지이면 위젯 업데이트 시도
-                // content-available: 1이 있으면 data-only 메시지
+                // silent 플래그가 있으면 위젯 업데이트만 수행하고 알림 표시하지 않음
+                let isSilent = (userInfo["silent"] as? String) == "true" || (userInfo["widget_update_only"] as? String) == "true"
+                
                 if let aps = userInfo["aps"] as? [String: Any],
                    let contentAvailable = aps["content-available"] as? Int,
                    contentAvailable == 1 {
                     print("📦 Data-only message detected (content-available: 1), processing for widget update")
+                    print("📦 Silent flag: \(isSilent ? "YES" : "NO")")
+                    
                     // data-only 메시지 처리 (위젯 업데이트용)
                     if let id = userInfo["id"] as? String,
                        let title = userInfo["title"] as? String,
@@ -114,9 +227,21 @@ class NotificationService: UNNotificationServiceExtension {
                             print("❌ Data-only: Failed to encode sermon: \(error.localizedDescription)")
                         }
                         
-                        // Data-only 메시지는 알림 표시하지 않음
-                        bestAttemptContent.sound = nil
-                        bestAttemptContent.badge = nil
+                        // silent 플래그가 있으면 알림을 완전히 숨김
+                        if isSilent {
+                            print("🔇 Silent mode: Suppressing notification display")
+                            bestAttemptContent.title = ""
+                            bestAttemptContent.body = ""
+                            bestAttemptContent.sound = nil
+                            bestAttemptContent.badge = nil
+                            bestAttemptContent.categoryIdentifier = ""
+                            // threadIdentifier도 제거하여 알림 그룹핑 방지
+                            bestAttemptContent.threadIdentifier = ""
+                        } else {
+                            // silent 플래그가 없으면 일반 알림 표시
+                            bestAttemptContent.sound = nil
+                            bestAttemptContent.badge = nil
+                        }
                         contentHandler(bestAttemptContent)
                         return
                     }
@@ -290,10 +415,35 @@ class NotificationService: UNNotificationServiceExtension {
                 print("   - Saved fcm_sermon length: \(savedFcmSermon?.count ?? 0)")
             }
             
-            // 위젯 타임라인 업데이트
-            print("📦 WidgetKit Push: Reloading widget timeline...")
+            // WidgetKit Push payload에 reloadTimelines가 포함되어 있으면,
+            // iOS 시스템이 자동으로 위젯의 getTimeline()을 호출함
+            // 데이터가 App Group에 저장되었으므로 위젯이 즉시 읽을 수 있음
+            NSLog("📦 WidgetKit Push: Data saved to App Group")
+            NSLog("📦 WidgetKit Push: Data is ready for widget to read")
+            
+            // reloadTimelines가 있는지 확인
+            if let reloadTimelines = widgetkit["reloadTimelines"] as? [String] {
+                NSLog("✅ WidgetKit Push: reloadTimelines found in payload - iOS will automatically call widget's getTimeline()")
+                print("✅ WidgetKit Push: reloadTimelines found in payload - iOS will automatically call widget's getTimeline()")
+            } else {
+                NSLog("⚠️ WidgetKit Push: reloadTimelines NOT found in payload - Firebase may have removed it")
+                NSLog("⚠️ WidgetKit Push: Will manually trigger widget update via WidgetCenter")
+                print("⚠️ WidgetKit Push: reloadTimelines NOT found in payload - Firebase may have removed it")
+                print("⚠️ WidgetKit Push: Will manually trigger widget update via WidgetCenter")
+            }
+            
+            print("📦 WidgetKit Push: Data saved to App Group")
+            print("📦 WidgetKit Push: Data is ready for widget to read")
+            print("📦 WidgetKit Push: iOS will automatically call widget's getTimeline() via WidgetKit Push reloadTimelines")
+            print("✅ WidgetKit Push: Widget should update immediately (even if app is fully terminated)")
+            
+            // Extension에서 수동으로 reloadTimelines를 호출
+            // 앱이 완전히 종료된 상태에서는 작동하지 않을 수 있지만,
+            // reloadTimelines가 없을 때는 수동 리로드가 유일한 방법
+            NSLog("📦 WidgetKit Push: Calling WidgetCenter.shared.reloadTimelines() to trigger widget update")
             WidgetCenter.shared.reloadTimelines(ofKind: "MeditationBlossomWidget")
-            print("✅ WidgetKit Push: Widget timeline reloaded")
+            NSLog("✅ WidgetKit Push: WidgetCenter.shared.reloadTimelines() called")
+            print("📦 WidgetKit Push: Manual reloadTimelines called (backup, may not work if app is fully terminated)")
             
         } catch {
             print("❌ WidgetKit Push: Failed to encode sermon: \(error.localizedDescription)")

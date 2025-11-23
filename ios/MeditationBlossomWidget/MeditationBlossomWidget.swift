@@ -9,6 +9,7 @@ import WidgetKit
 import SwiftUI
 import Foundation
 import RegexBuilder
+import os.log
 
 struct SimpleEntry: TimelineEntry {
   let date: Date;
@@ -24,20 +25,41 @@ struct Provider: TimelineProvider {
   }
   
   func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
+    // 미리보기나 빠른 뷰용 스냅샷 생성
+    // 실제 위젯 데이터를 읽어서 표시
     let entry = createSermonEntry()
+    NSLog("📸 Widget: getSnapshot called - Context.isPreview: %@", context.isPreview ? "YES" : "NO")
+    print("📸 Widget: getSnapshot called - Context.isPreview: \(context.isPreview)")
     completion(entry)
   }
   
   func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> ()) {
+    // NSLog는 Console.app에서 더 잘 보임
+    NSLog("🔄 Widget: getTimeline called (WidgetKit push or system refresh)")
+    NSLog("🔄 Widget: Context.isPreview = %@", context.isPreview ? "YES" : "NO")
+    NSLog("🔄 Widget: Checking App Group data...")
+    // print도 유지 (Xcode 콘솔용)
     print("🔄 Widget: getTimeline called (WidgetKit push or system refresh)")
     print("🔄 Widget: Context.isPreview = \(context.isPreview)")
     print("🔄 Widget: Checking App Group data...")
     
     let entry = createSermonEntry()
     
-    // 위젯킷 푸시를 받은 경우 즉시 업데이트
-    // 시스템이 주기적으로 새로고침할 때도 업데이트
-    let timeline = Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(60 * 60))) // 1시간 후 재시도
+    // WidgetKit Push를 받은 경우 iOS 시스템이 자동으로 위젯의 getTimeline을 호출함
+    // WidgetKit Push payload의 reloadTimelines가 위젯을 즉시 업데이트함
+    // 앱이 완전히 종료된 상태에서도 WidgetKit Push로 위젯이 즉시 업데이트됨
+    // 
+    // 중요: 위젯 예산이 소진되지 않도록 업데이트 빈도를 최소화함
+    // .never는 WidgetKit Push의 reloadTimelines도 제한할 수 있으므로 사용하지 않음
+    // .after(Date().addingTimeInterval(24 * 60 * 60))는 24시간 후에만 자동 업데이트를 요청하므로
+    // 위젯 예산이 거의 소진되지 않음 (일일 예산 75.00, 하루에 1회만 자동 업데이트)
+    // WidgetKit Push는 reloadTimelines를 통해 직접 위젯을 업데이트하므로
+    // .after로 설정해도 WidgetKit Push는 정상 작동함
+    // 위젯 예산: 75.00/일, 위젯 업데이트마다 1.0씩 차감됨
+    // 예산이 음수가 되면 IndividualBalance == -1이 되어 WidgetRefreshPolicy가 차단함
+    // 24시간 간격으로 설정하면 자동 업데이트로 인한 예산 소진을 최소화할 수 있음
+    let nextUpdateDate = Date().addingTimeInterval(24 * 60 * 60) // 24시간 후 재시도 (예산 보존)
+    let timeline = Timeline(entries: [entry], policy: .after(nextUpdateDate))
     completion(timeline)
   }
   
@@ -50,13 +72,16 @@ struct Provider: TimelineProvider {
   }
   
   private func createSermonEntry() -> SimpleEntry {
+    NSLog("🔄 Widget: createSermonEntry called")
     print("🔄 Widget: createSermonEntry called")
     
     guard let sharedDefaults = UserDefaults(suiteName: "group.mannachurch.meditationblossom") else {
+      NSLog("❌ Widget: Failed to access App Group UserDefaults")
       print("❌ Widget: Failed to access App Group UserDefaults")
       return SimpleEntry(date: Date(), title: " ", quote: "등록된 설교가 없습니다", verse: " ")
     }
     
+    NSLog("✅ Widget: App Group UserDefaults accessed successfully")
     print("✅ Widget: App Group UserDefaults accessed successfully")
     
     // App Group에 저장된 모든 키 확인
@@ -66,6 +91,9 @@ struct Provider: TimelineProvider {
     // displaySermon과 fcm_sermon 존재 여부 확인
     let displaySermonExists = sharedDefaults.string(forKey: "displaySermon") != nil
     let fcmSermonExists = sharedDefaults.string(forKey: "fcm_sermon") != nil
+    NSLog("🔄 Widget: Key existence check:")
+    NSLog("   - displaySermon exists: %@", displaySermonExists ? "YES" : "NO")
+    NSLog("   - fcm_sermon exists: %@", fcmSermonExists ? "YES" : "NO")
     print("🔄 Widget: Key existence check:")
     print("   - displaySermon exists: \(displaySermonExists)")
     print("   - fcm_sermon exists: \(fcmSermonExists)")
@@ -81,16 +109,20 @@ struct Provider: TimelineProvider {
     }
     
     // displaySermon을 먼저 확인, 없으면 fcm_sermon 확인
+    NSLog("🔄 Widget: Attempting to read displaySermon...")
     print("🔄 Widget: Attempting to read displaySermon...")
     var sermon: Sermon? = sharedDefaults.getObjectFromString(forKey: "displaySermon", castTo: Sermon.self)
     
     if sermon == nil {
+      NSLog("⚠️ Widget: displaySermon not found or failed to parse, checking fcm_sermon...")
       print("⚠️ Widget: displaySermon not found or failed to parse, checking fcm_sermon...")
+      NSLog("🔄 Widget: Attempting to read fcm_sermon...")
       print("🔄 Widget: Attempting to read fcm_sermon...")
       sermon = sharedDefaults.getObjectFromString(forKey: "fcm_sermon", castTo: Sermon.self)
       
       if let sermon = sermon {
-        print("✅ Widget: Found sermon data in fcm_sermon - \(sermon.title)")
+        NSLog("✅ Widget: Found sermon data in fcm_sermon - %@ (ID: %@)", sermon.title, sermon.id)
+        print("✅ Widget: Found sermon data in fcm_sermon - \(sermon.title) (ID: \(sermon.id))")
         // fcm_sermon을 displaySermon에도 복사 (일관성 유지)
         if let jsonString = sharedDefaults.string(forKey: "fcm_sermon") {
           print("📦 Widget: Copying fcm_sermon to displaySermon for consistency...")
@@ -102,10 +134,13 @@ struct Provider: TimelineProvider {
         print("❌ Widget: fcm_sermon also not found or failed to parse")
       }
     } else {
+      NSLog("✅ Widget: Successfully read displaySermon")
       print("✅ Widget: Successfully read displaySermon")
     }
     
     if let sermon = sermon {
+      NSLog("✅ Widget: Found sermon data - %@ (ID: %@, Date: %@)", sermon.title, sermon.id, sermon.date)
+      NSLog("   - Content length: %lu characters", sermon.content.count)
       print("✅ Widget: Found sermon data - \(sermon.title)")
       print("   - Sermon ID: \(sermon.id)")
       print("   - Sermon date: \(sermon.date)")

@@ -20,6 +20,34 @@
                ReferencedContainer = "container:meditation_blossom.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "35449F652E5EF66F005824B9"
+               BuildableName = "PushNotificationService.appex"
+               BlueprintName = "PushNotificationService"
+               ReferencedContainer = "container:meditation_blossom.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "3578DB032DEA121C0046B6A0"
+               BuildableName = "MeditationBlossomWidgetExtension.appex"
+               BlueprintName = "MeditationBlossomWidgetExtension"
+               ReferencedContainer = "container:meditation_blossom.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction

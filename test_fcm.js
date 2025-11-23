@@ -140,21 +140,41 @@ async function sendDataOnlyMessage(topicName = 'sermon_events') {
 }
 
 // WidgetKit Push Notifications 전송 함수 (위젯만 업데이트, 알림 없음)
+// 중요: 알림 콘텐츠 없이 WidgetKit Push만 사용
+// 위젯의 getTimeline에서 App Group의 데이터를 읽어서 표시
+// 앱이 종료된 상태에서는 Notification Service Extension이 실행되지 않을 수 있으므로
+// 위젯이 직접 App Group에서 마지막 데이터를 읽도록 함
 async function sendWidgetKitPush(topicName = 'sermon_events') {
   try {
-    const message = {
+    const sermonData = {
       topic: topicName,
+      id: Date.now().toString(),
+      title: '[토요설교] 21.밀알로 살아라(닥터 홀의 조선회상)~',
+      category: '주말의 명작',
+      content: '본문 : 요한복음 12:24-26 24   내가 진실로 진실로 너희에게 이르노니 한 알의 밀이 땅에 떨어져 죽지 아니하면 한 알 그대로 있고 죽으면 많은 열매를 맺느니라 25   자기의 생명을 사랑하는 자는 잃어버릴 것이요 이 세상에서 자기의 생명을 미워하는 자는 영생하도록 보전하리라 26   사람이 나를 섬기려면 나를 따르라 나 있는 곳에 나를 섬기는 자도 거기 있으리니 사람이 나를 섬기면 내 아버지께서 그를 귀히 여기시리라',
+      date: '2025-11-22',
+      day_of_week: 'SAT',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    // 먼저 data-only 메시지로 App Group에 데이터 저장
+    // 앱이 완전히 종료된 상태에서도 Notification Service Extension이 실행되도록
+    // 최소한의 알림 콘텐츠를 포함하되, Extension에서 알림을 표시하지 않도록 처리
+    // Extension은 silent 플래그를 확인하고 알림을 최소화함
+    const dataOnlyMessage = {
+      topic: topicName,
+      // Extension이 실행되도록 최소한의 알림 콘텐츠 포함
+      // Extension에서 silent 플래그를 확인하여 알림을 표시하지 않음
+      notification: {
+        title: '', // 빈 문자열 - Extension에서 확인하여 표시하지 않음
+        body: ''   // 빈 문자열
+      },
       data: {
-        topic: topicName,
-        id: Date.now().toString(),
-        title: '20. 우리의 삶은 은혜의 소산이다!',
-        category: '주말의 명작',
-        content: '본문 : 디모데전서 4:4-5 4   하나님께서 지으신 모든 것이 선하매 감사함으로 받으면 버릴 것이 없나니 5   하나님의 말씀과 기도로 거룩하여짐이라',
-        date: '2025-11-16',
-        day_of_week: 'SUN',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        operation: ''
+        ...sermonData,
+        operation: '',
+        'silent': 'true', // Extension이 알림을 표시하지 않도록 플래그
+        'widget_update_only': 'true'
       },
       android: {
         priority: 'high'
@@ -162,39 +182,91 @@ async function sendWidgetKitPush(topicName = 'sermon_events') {
       apns: {
         payload: {
           aps: {
-            'content-available': 1 // Silent push
-          },
-          // WidgetKit Push Notifications: APNs payload의 최상위 레벨에 widgetkit 키 필요
-          // Firebase Admin SDK는 apns.payload 안의 내용을 그대로 전달하므로,
-          // apns.payload.widgetkit이 APNs payload의 최상위 레벨에 widgetkit으로 전달됨
-          widgetkit: {
-            kind: "MeditationBlossomWidget",
-            data: {
-              topic: topicName,
-              id: Date.now().toString(),
-              title: '20. 우리의 삶은 은혜의 소산이다.',
-              category: '주말의 명작',
-              content: '본문 : 디모데전서 4:4-5 4   하나님께서 지으신 모든 것이 선하매 감사함으로 받으면 버릴 것이 없나니 5   하나님의 말씀과 기도로 거룩하여짐이라',
-              date: '2025-11-16',
-              day_of_week: 'SUN',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }
+            'content-available': 1, // Silent push - Notification Service Extension 실행
+            // sound와 badge는 포함하지 않음 (Extension에서 제거할 예정)
+            'badge': 0
           }
         },
         headers: {
-          'apns-push-type': 'background',
-          'apns-priority': '5' // Background push
+          // alert가 있으므로 alert 타입 사용 (하지만 빈 콘텐츠)
+          'apns-push-type': 'alert',
+          'apns-priority': '10' // Alert priority (Extension 실행 보장)
         }
-      },
-      // 참고: Firebase가 widgetkit을 전달하지 못할 경우를 대비해
-      // data 필드에도 동일한 데이터를 포함 (fallback으로 사용)
+      }
     };
 
-    const response = await admin.messaging().send(message);
+    // 그 다음 WidgetKit Push로 위젯 업데이트 트리거
+    // WidgetKit Push는 위젯의 getTimeline을 직접 트리거함
+    // 중요: 앱이 완전히 종료된 상태에서도 Notification Service Extension이 실행되도록
+    // 최소한의 알림 콘텐츠를 포함하되, Extension에서 silent 플래그를 확인하여 알림을 표시하지 않음
+    const widgetKitMessage = {
+      topic: topicName,
+      // Extension이 실행되도록 최소한의 알림 콘텐츠 포함
+      // Extension에서 silent 플래그를 확인하여 알림을 표시하지 않음
+      notification: {
+        title: '', // 빈 문자열 - Extension에서 확인하여 표시하지 않음
+        body: ''   // 빈 문자열
+      },
+      data: {
+        ...sermonData,
+        operation: '',
+        'silent': 'true', // Extension이 알림을 표시하지 않도록 플래그
+        'widget_update_only': 'true'
+      },
+      android: {
+        priority: 'high'
+      },
+      apns: {
+        payload: {
+          aps: {
+            'content-available': 1 // Background push - WidgetKit Push에 필수
+            // badge는 포함하지 않음 (알림 표시 안 함)
+          },
+          // WidgetKit Push Notifications: APNs payload의 최상위 레벨에 widgetkit 키 필요
+          // Firebase Admin SDK는 apns.payload 안의 내용을 APNs payload로 직접 전달함
+          // 따라서 widgetkit을 apns.payload 안에 넣으면 APNs payload의 최상위 레벨에 위치함
+          // 중요: reloadTimelines를 포함해야 위젯이 즉시 업데이트됨
+          // 하지만 Firebase가 reloadTimelines를 제거할 수 있으므로,
+          // Extension에서 reloadTimelines가 없어도 위젯을 업데이트하도록 처리
+          widgetkit: {
+            // 위젯 타임라인 즉시 리로드 트리거 (앱이 완전히 종료된 상태에서도 작동)
+            // Firebase가 reloadTimelines를 제거할 수 있으므로,
+            // Extension에서 reloadTimelines가 없어도 위젯을 업데이트하도록 처리
+            "reloadTimelines": ["MeditationBlossomWidget"],
+            // 위젯이 읽을 수 있도록 데이터도 포함 (App Group에 저장된 후에도 사용 가능)
+            data: sermonData
+          }
+        },
+        headers: {
+          // WidgetKit Push는 background 타입 사용
+          // 앱이 완전히 종료된 상태에서도 위젯을 즉시 업데이트하기 위해 background 타입 필요
+          'apns-push-type': 'background',
+          'apns-priority': '5' // Background priority (위젯 업데이트에 적합)
+        },
+        fcmOptions: {
+          analyticsLabel: 'widgetkit_push'
+        }
+      }
+    };
+
+    // 먼저 데이터 저장 (Notification Service Extension 실행)
+    console.log('📤 Step 1: Sending data-only message to save data in App Group...');
+    await admin.messaging().send(dataOnlyMessage);
+    console.log('✅ Step 1: Data-only message sent');
+    
+    // 약간의 지연 후 WidgetKit Push 전송 (데이터가 저장된 후 위젯 업데이트)
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // 그 다음 WidgetKit Push 전송 (위젯 업데이트 트리거)
+    console.log('📤 Step 2: Sending WidgetKit Push to trigger widget update...');
+    const response = await admin.messaging().send(widgetKitMessage);
+    console.log('✅ Step 2: WidgetKit Push sent');
+    
     console.log('✅ WidgetKit Push 전송 성공:', response);
     console.log(`📱 ${topicName} 토픽 구독자들에게 WidgetKit Push가 전송되었습니다.`);
     console.log('📱 위젯만 업데이트되며 사용자 알림은 표시되지 않습니다.');
+    
+    return response;
     
   } catch (error) {
     console.error('❌ WidgetKit Push 전송 실패:', error);
