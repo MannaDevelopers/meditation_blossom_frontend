@@ -158,18 +158,19 @@ async function sendWidgetKitPush(topicName = 'sermon_events') {
       updated_at: new Date().toISOString()
     };
 
-    // WidgetKit Push는 세 가지 메시지로 구성:
-    // 1. androidDataMessage: Android onMessageReceived 호출을 위한 메시지 (notification 필드 없음)
-    // 2. dataOnlyMessage: iOS Extension 실행을 위한 메시지 (APNs alert 포함, Android에는 무시)
-    // 3. widgetKitMessage: iOS WidgetKit Push로 위젯 업데이트 (background 타입, Android에는 무시)
+    // WidgetKit Push는 두 가지 메시지로 구성:
+    // 1. dataOnlyMessage: iOS Extension 실행을 위한 메시지 (APNs alert 포함, Android에는 무시)
+    // 2. widgetKitMessage: 위젯 업데이트용 메시지 (notification 필드 없음)
+    //    - iOS: WidgetKit Push로 위젯 업데이트 (background 타입)
+    //    - Android: android 설정으로 onMessageReceived 호출하여 위젯 업데이트
     //
     // 최적화된 구조:
-    // - Android: androidDataMessage 하나만으로 위젯 업데이트 (중복 방지)
     // - iOS: dataOnlyMessage로 Extension 실행 + widgetKitMessage로 위젯 업데이트
+    // - Android: widgetKitMessage 하나로 위젯 업데이트 (notification 필드 없으므로 onMessageReceived 호출)
     
     // Step 1: iOS Extension 실행을 위한 메시지
     // iOS: APNs 설정에서 alert를 포함하여 Extension 실행 (alert 타입)
-    // Android: notification 필드가 없으므로 알림이 표시되지 않고, androidDataMessage를 별도로 보냄
+    // Android: notification 필드가 없으므로 알림이 표시되지 않음 (widgetKitMessage에서 처리)
     // 중요: Firebase Admin SDK는 하나의 메시지로 여러 플랫폼에 전송하므로,
     //       최상위 notification 필드를 제거하고 APNs 설정에서만 알림을 포함시킴
     const dataOnlyMessage = {
@@ -205,33 +206,14 @@ async function sendWidgetKitPush(topicName = 'sermon_events') {
       }
     };
 
-    // Step 1.5: Android용 data-only 메시지
-    // Android: notification 필드가 없어야 onMessageReceived가 호출됨 (특히 release 빌드)
-    // iOS: notification 필드가 없으면 Extension이 실행되지 않지만,
-    //      dataOnlyMessage를 별도로 보내므로 문제 없음
-    // 중요: APNs 설정을 완전히 제거하여 Android 전용 메시지로 만듦
-    const androidDataMessage = {
-      topic: topicName,
-      // notification 필드 없음 - Android에서 onMessageReceived 보장
-      data: {
-        ...sermonData,
-        operation: '',
-        'silent': 'true',
-        'widget_update_only': 'true'
-      },
-      android: {
-        priority: 'high'
-      }
-      // APNs 설정 완전히 제거 - Android 전용 메시지
-      // iOS는 dataOnlyMessage와 widgetKitMessage로 처리하므로 문제 없음
-    };
-
-    // Step 2: WidgetKit Push로 위젯 업데이트 트리거 (iOS 전용, background 타입)
-    // Android: notification 필드 없지만, androidDataMessage에서 이미 처리했으므로
-    //         이 메시지는 무시하거나 중복 처리될 수 있음 (Android 코드에서 중복 체크 필요)
+    // Step 2: WidgetKit Push로 위젯 업데이트 트리거
+    // 중요: notification 필드가 없으므로 이 메시지 하나로 Android와 iOS를 모두 처리할 수 있음
+    // - Android: android 설정을 사용하여 onMessageReceived 호출 (notification 필드 없음)
+    // - iOS: apns 설정을 사용하여 WidgetKit Push 처리 (background 타입)
+    // FCM은 플랫폼별로 적절한 설정을 자동으로 적용하므로, 하나의 메시지로 양쪽 모두 처리 가능
     const widgetKitMessage = {
       topic: topicName,
-      // notification 필드 없음 - Android에서 알림 표시 안 함
+      // notification 필드 없음 - Android와 iOS 모두 data-only 메시지로 처리
       data: {
         ...sermonData,
         operation: '',
@@ -239,9 +221,7 @@ async function sendWidgetKitPush(topicName = 'sermon_events') {
         'widget_update_only': 'true'
       },
       android: {
-        priority: 'high'
-        // Android에서는 androidDataMessage에서 이미 처리했으므로,
-        // 이 메시지는 무시하거나 중복 처리될 수 있음
+        priority: 'high'  // Android: onMessageReceived 호출 보장
       },
       apns: {
         payload: {
@@ -257,40 +237,32 @@ async function sendWidgetKitPush(topicName = 'sermon_events') {
         headers: {
           'apns-push-type': 'background', // WidgetKit Push는 background 타입 사용
           'apns-priority': '5' // Background priority (WidgetKit Push에 적합)
-        },
-        fcmOptions: {
-          analyticsLabel: 'widgetkit_push'
         }
+      },
+      fcmOptions: {
+        analyticsLabel: 'widgetkit_push'
       }
     };
 
     // 최적화된 전송 순서:
-    // 1. Android 메시지 먼저 전송 (가장 빠른 위젯 업데이트)
-    // 2. iOS Extension 메시지 전송 (데이터 저장)
-    // 3. iOS WidgetKit Push 전송 (위젯 업데이트)
+    // 1. iOS Extension 메시지 전송 (데이터 저장)
+    // 2. WidgetKit Push 전송 (위젯 업데이트)
+    //    - iOS: WidgetKit Push로 위젯 업데이트
+    //    - Android: widgetKitMessage의 android 설정으로 onMessageReceived 호출하여 위젯 업데이트
     
-    // Step 1: Android용 데이터 메시지 먼저 전송 (가장 빠른 위젯 업데이트)
-    // Android는 notification 필드가 없는 메시지에서만 onMessageReceived가 호출되므로
-    // androidDataMessage 하나만으로 위젯 업데이트를 보장
-    console.log('📤 Step 1: Sending Android data-only message (widget update)...');
-    await admin.messaging().send(androidDataMessage);
-    console.log('✅ Step 1: Android data-only message sent');
-    
-    // Step 2: iOS Extension 메시지 전송 (데이터 저장)
-    // 약간의 지연 후 iOS 메시지 전송 (Android 메시지가 먼저 처리되도록)
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    console.log('📤 Step 2: Sending iOS Extension message (save data)...');
+    // Step 1: iOS Extension 메시지 전송 (데이터 저장)
+    console.log('📤 Step 1: Sending iOS Extension message (save data)...');
     await admin.messaging().send(dataOnlyMessage);
-    console.log('✅ Step 2: iOS Extension message sent');
+    console.log('✅ Step 1: iOS Extension message sent');
     
-    // Step 3: iOS WidgetKit Push 전송 (위젯 업데이트)
+    // Step 2: WidgetKit Push 전송 (위젯 업데이트)
     // Extension이 데이터를 저장한 후 위젯 업데이트 트리거
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // notification 필드가 없으므로 Android와 iOS 모두 처리됨
+    await new Promise(resolve => setTimeout(resolve, 300)); // Extension이 데이터를 저장할 시간 확보
     
-    console.log('📤 Step 3: Sending iOS WidgetKit Push (widget update)...');
+    console.log('📤 Step 2: Sending WidgetKit Push (widget update for both Android & iOS)...');
     const response = await admin.messaging().send(widgetKitMessage);
-    console.log('✅ Step 3: iOS WidgetKit Push sent');
+    console.log('✅ Step 2: WidgetKit Push sent');
     
     console.log('✅ WidgetKit Push 전송 성공:', response);
     console.log(`📱 ${topicName} 토픽 구독자들에게 WidgetKit Push가 전송되었습니다.`);
