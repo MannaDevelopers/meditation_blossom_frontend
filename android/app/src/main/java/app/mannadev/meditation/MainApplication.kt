@@ -60,8 +60,26 @@ class MainApplication : Application(), ReactApplication {
                         exception,
                         "FirebaseMessaging subscribeToTopic failed"
                     )
+                } ?: run {
+                    Timber.d("Successfully subscribed to ${Constants.SERMON_SUBJECT} topic")
                 }
             }
+        
+        // DEBUG 모드에서만 sermon_events_test 토픽 구독 (iOS와 동일)
+        if (BuildConfig.DEBUG) {
+            FirebaseMessaging.getInstance()
+                .subscribeToTopic("sermon_events_test")
+                .addOnCompleteListener { task ->
+                    task.exception?.let { exception ->
+                        CrashlyticsHelper.recordException(
+                            exception,
+                            "FirebaseMessaging subscribeToTopic (sermon_events_test) failed"
+                        )
+                    } ?: run {
+                        Timber.d("[DEBUG] Successfully subscribed to sermon_events_test topic")
+                    }
+                }
+        }
 
     }
 }
