@@ -327,6 +327,63 @@ async function sendNotificationMessage(topicName = 'sermon_events') {
   }
 }
 
+// sermon_event.py의 _send_to_topic() 구조와 동일한 메시지 전송 함수
+async function sendSermonEventMessage(topicName = 'sermon_events') {
+  try {
+    const sermonData = {
+      topic: topicName,
+      source_id: Date.now().toString(),
+      title: '[토요설교] 21.밀알로 살아라(닥터 홀의 조선회상)3',
+      category: '주말의 명작',
+      content: '본문 : 요한복음 12:24-26 24   내가 진실로 진실로 너희에게 이르노니 한 알의 밀이 땅에 떨어져 죽지 아니하면 한 알 그대로 있고 죽으면 많은 열매를 맺느니라 25   자기의 생명을 사랑하는 자는 잃어버릴 것이요 이 세상에서 자기의 생명을 미워하는 자는 영생하도록 보전하리라 26   사람이 나를 섬기려면 나를 따르라 나 있는 곳에 나를 섬기는 자도 거기 있으리니 사람이 나를 섬기면 내 아버지께서 그를 귀히 여기시리라',
+      date: '2025-11-22',
+      year: '2025',
+      day_of_week: 'SAT',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      operation: 'CREATED'
+    };
+
+    // 모든 data 필드를 문자열로 변환 (FCM data 필드는 모두 문자열이어야 함)
+    const dataFields = {};
+    for (const [key, value] of Object.entries(sermonData)) {
+      dataFields[key] = String(value);
+    }
+
+    const message = {
+      topic: topicName,
+      android: {
+        priority: 'normal',
+        data: dataFields
+      },
+      apns: {
+        headers: {
+          'apns-push-type': 'alert',
+          'apns-priority': '10'
+        },
+        payload: {
+          aps: {
+            alert: {
+              body: '말씀이 업데이트되었어요'
+            },
+            'content-available': true
+          },
+          // data 필드들을 APNs payload에도 포함 (Python의 **data와 동일)
+          ...dataFields
+        }
+      }
+    };
+
+    const response = await admin.messaging().send(message);
+    console.log('✅ Sermon Event 메시지 전송 성공:', response);
+    console.log(`📱 ${topicName} 토픽 구독자들에게 전송되었습니다.`);
+    console.log('📋 sermon_event.py의 _send_to_topic() 구조와 동일합니다.');
+    
+  } catch (error) {
+    console.error('❌ Sermon Event 메시지 전송 실패:', error);
+  }
+}
+
 // 사용법 안내
 console.log('🚀 FCM 테스트 스크립트');
 console.log('');
@@ -339,12 +396,14 @@ console.log('   - node test_fcm.js sendTopic [토픽이름] (알림 포함)');
 console.log('   - node test_fcm.js sendDataOnly [토픽이름] (백그라운드 data-only)');
 console.log('   - node test_fcm.js sendNotification [토픽이름] (알림 포함, 앱 종료 상태에서도 수신 가능)');
 console.log('   - node test_fcm.js sendWidgetKitPush [토픽이름] (WidgetKit Push, 위젯만 업데이트, 알림 없음)');
+console.log('   - node test_fcm.js sendSermonEvent [토픽이름] (sermon_event.py의 _send_to_topic() 구조와 동일)');
 console.log('');
 console.log('예시:');
 console.log('   - node test_fcm.js sendTopic sermon_events_test');
 console.log('   - node test_fcm.js sendDataOnly sermon_events_test');
 console.log('   - node test_fcm.js sendNotification sermon_events_test');
 console.log('   - node test_fcm.js sendWidgetKitPush sermon_events_test');
+console.log('   - node test_fcm.js sendSermonEvent sermon_events');
 console.log('');
 
 // 명령행 인수 처리
@@ -369,7 +428,11 @@ if (command === 'sendTest') {
   const topic = topicArg || 'sermon_events';
   console.log(`📤 ${topic} 토픽으로 WidgetKit Push 전송 중... (위젯만 업데이트, 알림 없음)`);
   sendWidgetKitPush(topic);
+} else if (command === 'sendSermonEvent') {
+  const topic = topicArg || 'sermon_events';
+  console.log(`📤 ${topic} 토픽으로 Sermon Event 메시지 전송 중... (sermon_event.py의 _send_to_topic() 구조와 동일)`);
+  sendSermonEventMessage(topic);
 } else {
   console.log('❌ 잘못된 명령어입니다.');
-  console.log('사용 가능한 명령어: sendTest, sendTopic [토픽이름], sendDataOnly [토픽이름], sendNotification [토픽이름], sendWidgetKitPush [토픽이름]');
+  console.log('사용 가능한 명령어: sendTest, sendTopic [토픽이름], sendDataOnly [토픽이름], sendNotification [토픽이름], sendWidgetKitPush [토픽이름], sendSermonEvent [토픽이름]');
 } 
