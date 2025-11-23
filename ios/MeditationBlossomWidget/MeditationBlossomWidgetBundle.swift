@@ -12,7 +12,7 @@ import SwiftUI
 struct MeditationBlossomWidgetBundle: WidgetBundle {
     var body: some Widget {
         MeditationBlossomWidget()
-        MeditationBlossomWidgetControl()
+        // MeditationBlossomWidgetControl() - iOS 18.0+ 전용 기능이므로 주석 처리
         MeditationBlossomWidgetLiveActivity()
     }
 }
