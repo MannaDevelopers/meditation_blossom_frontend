@@ -172,10 +172,10 @@ class NotificationService: UNNotificationServiceExtension {
                     
                     // data-only 메시지 처리 (위젯 업데이트용)
                     // source_id를 id로 매핑 (sermon_event.py는 source_id를 사용하지만 Sermon 구조체는 id를 사용)
-                    let id = (userInfo["source_id"] as? String) ?? (userInfo["id"] as? String)
+                    // source_id나 id가 없으면 자동 생성
+                    let id = (userInfo["source_id"] as? String) ?? (userInfo["id"] as? String) ?? generateSermonId(from: userInfo)
                     
-                    if let sermonId = id,
-                       let title = userInfo["title"] as? String,
+                    if let title = userInfo["title"] as? String,
                        let content = userInfo["content"] as? String,
                        let date = userInfo["date"] as? String,
                        let dayOfWeek = userInfo["day_of_week"] as? String {
@@ -193,7 +193,7 @@ class NotificationService: UNNotificationServiceExtension {
                         }
                         
                         let sermon = Sermon(
-                            id: sermonId,
+                            id: id,
                             title: title,
                             content: content,
                             date: date,
@@ -274,14 +274,14 @@ class NotificationService: UNNotificationServiceExtension {
                     print("📦 Processing sermon_event.py format message...")
                     
                     // source_id를 id로 매핑 (sermon_event.py는 source_id를 사용하지만 Sermon 구조체는 id를 사용)
-                    let id = (userInfo["source_id"] as? String) ?? (userInfo["id"] as? String)
+                    // source_id나 id가 없으면 자동 생성
+                    let id = (userInfo["source_id"] as? String) ?? (userInfo["id"] as? String) ?? generateSermonId(from: userInfo)
                     
-                    guard let sermonId = id,
-                          let title = userInfo["title"] as? String,
+                    guard let title = userInfo["title"] as? String,
                           let content = userInfo["content"] as? String,
                           let date = userInfo["date"] as? String,
                           let dayOfWeek = userInfo["day_of_week"] as? String else {
-                        print("❌ Sermon Event: Required fields missing (source_id/id, title, content, date, day_of_week)")
+                        print("❌ Sermon Event: Required fields missing (title, content, date, day_of_week)")
                         contentHandler(bestAttemptContent)
                         return
                     }
@@ -300,7 +300,7 @@ class NotificationService: UNNotificationServiceExtension {
                     }
                     
                     let sermon = Sermon(
-                        id: sermonId,
+                        id: id,
                         title: title,
                         content: content,
                         date: date,
@@ -364,8 +364,10 @@ class NotificationService: UNNotificationServiceExtension {
             // 일반 FCM 메시지 처리 (WidgetKit Push가 아니고 data-only도 아니고 sermon_event도 아닌 경우)
             // 수동으로 userInfo에서 데이터를 파싱합니다.
             // FCM 메시지의 'data' 페이로드에 포함된 키들입니다.
-            guard let id = userInfo["id"] as? String,
-                  let title = userInfo["title"] as? String,
+            // source_id나 id가 없으면 자동 생성
+            let id = (userInfo["source_id"] as? String) ?? (userInfo["id"] as? String) ?? generateSermonId(from: userInfo)
+            
+            guard let title = userInfo["title"] as? String,
                   let content = userInfo["content"] as? String,
                   let date = userInfo["date"] as? String,
                   let dayOfWeek = userInfo["day_of_week"] as? String else {
@@ -433,8 +435,14 @@ class NotificationService: UNNotificationServiceExtension {
         print("📦 WidgetKit Push: Using data = \(data)")
         
         // 데이터 파싱 (widgetkit.data 우선, 없으면 message.data 사용)
-        guard let id = (widgetkit["data"] as? [String: Any])?["id"] as? String ?? (data["id"] as? String),
-              let title = (widgetkit["data"] as? [String: Any])?["title"] as? String ?? (data["title"] as? String),
+        // source_id나 id가 없으면 자동 생성
+        let id = ((widgetkit["data"] as? [String: Any])?["id"] as? String) ?? 
+                 ((widgetkit["data"] as? [String: Any])?["source_id"] as? String) ??
+                 (data["id"] as? String) ?? 
+                 (data["source_id"] as? String) ?? 
+                 generateSermonId(from: data)
+        
+        guard let title = (widgetkit["data"] as? [String: Any])?["title"] as? String ?? (data["title"] as? String),
               let content = (widgetkit["data"] as? [String: Any])?["content"] as? String ?? (data["content"] as? String),
               let date = (widgetkit["data"] as? [String: Any])?["date"] as? String ?? (data["date"] as? String),
               let dayOfWeek = (widgetkit["data"] as? [String: Any])?["day_of_week"] as? String ?? (data["day_of_week"] as? String) else {
@@ -560,6 +568,32 @@ class NotificationService: UNNotificationServiceExtension {
             print("❌ WidgetKit Push: Failed to encode sermon: \(error.localizedDescription)")
             print("   - Error details: \(error)")
         }
+    }
+    
+    // source_id나 id가 없을 때 자동으로 생성하는 함수
+    private func generateSermonId(from userInfo: [AnyHashable: Any]) -> String {
+        // 1. gcm.message_id 사용 (FCM 메시지 ID)
+        if let messageId = userInfo["gcm.message_id"] as? String {
+            print("📝 Generated sermon ID from gcm.message_id: \(messageId)")
+            return messageId
+        }
+        
+        // 2. date와 title을 조합해서 생성
+        if let date = userInfo["date"] as? String,
+           let title = userInfo["title"] as? String {
+            let combined = "\(date)_\(title.prefix(20))"
+            let id = combined.replacingOccurrences(of: " ", with: "_")
+                .replacingOccurrences(of: "/", with: "-")
+                .replacingOccurrences(of: ":", with: "-")
+            print("📝 Generated sermon ID from date and title: \(id)")
+            return id
+        }
+        
+        // 3. 현재 타임스탬프 기반으로 생성
+        let timestamp = Int64(Date().timeIntervalSince1970 * 1000)
+        let generatedId = "fcm_\(timestamp)"
+        print("📝 Generated sermon ID from timestamp: \(generatedId)")
+        return generatedId
     }
     
     // 문자열을 Firestore 타임스탬프로 변환
