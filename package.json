@@ -11,11 +11,13 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-clipboard/clipboard": "^1.16.3",
     "@react-native-firebase/app": "22.2.1",
     "@react-native-firebase/crashlytics": "22.2.1",
     "@react-native-firebase/firestore": "22.2.1",
     "@react-native-firebase/in-app-messaging": "22.2.1",
     "@react-native-firebase/installations": "22.2.1",
+    "@react-native-firebase/messaging": "^22.2.1",
     "@react-native-masked-view/masked-view": "^0.3.2",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",

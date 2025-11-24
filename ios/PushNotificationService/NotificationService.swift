@@ -171,12 +171,27 @@ class NotificationService: UNNotificationServiceExtension {
                     print("📦 Silent flag: \(isSilent ? "YES" : "NO")")
                     
                     // data-only 메시지 처리 (위젯 업데이트용)
-                    if let id = userInfo["id"] as? String,
-                       let title = userInfo["title"] as? String,
+                    // source_id를 id로 매핑 (sermon_event.py는 source_id를 사용하지만 Sermon 구조체는 id를 사용)
+                    // source_id나 id가 없으면 자동 생성
+                    let id = (userInfo["source_id"] as? String) ?? (userInfo["id"] as? String) ?? generateSermonId(from: userInfo)
+                    
+                    if let title = userInfo["title"] as? String,
                        let content = userInfo["content"] as? String,
                        let date = userInfo["date"] as? String,
                        let dayOfWeek = userInfo["day_of_week"] as? String {
                         let category = userInfo["category"] as? String
+                        
+                        // createdAt/updatedAt 처리
+                        var createdAt: FirestoreTimeStamp? = nil
+                        var updatedAt: FirestoreTimeStamp? = nil
+                        
+                        if let createdStr = userInfo["created_at"] as? String {
+                            createdAt = convertStringToTimestamp(createdStr)
+                        }
+                        if let updatedStr = userInfo["updated_at"] as? String {
+                            updatedAt = convertStringToTimestamp(updatedStr)
+                        }
+                        
                         let sermon = Sermon(
                             id: id,
                             title: title,
@@ -184,8 +199,8 @@ class NotificationService: UNNotificationServiceExtension {
                             date: date,
                             category: category,
                             dayOfWeek: dayOfWeek,
-                            createdAt: nil,
-                            updatedAt: nil
+                            createdAt: createdAt,
+                            updatedAt: updatedAt
                         )
                         
                         print("✅ Data-only: Parsed sermon - \(sermon.title)")
@@ -247,14 +262,112 @@ class NotificationService: UNNotificationServiceExtension {
                     }
                 }
                 
-                print("ℹ️ No widgetkit found and not a data-only message, treating as regular FCM message")
+                print("ℹ️ No widgetkit found and not a data-only message, checking for sermon_event message...")
+                
+                // sendSermonEventMessage() 형식 확인 (alert 타입이지만 content-available도 true)
+                // sermon_event.py의 _send_to_topic() 구조와 동일한 메시지
+                if let aps = userInfo["aps"] as? [String: Any],
+                   let alert = aps["alert"] as? [String: Any],
+                   let contentAvailable = aps["content-available"] as? Int,
+                   contentAvailable == 1 {
+                    print("📦 Sermon Event message detected (alert + content-available: 1)")
+                    print("📦 Processing sermon_event.py format message...")
+                    
+                    // source_id를 id로 매핑 (sermon_event.py는 source_id를 사용하지만 Sermon 구조체는 id를 사용)
+                    // source_id나 id가 없으면 자동 생성
+                    let id = (userInfo["source_id"] as? String) ?? (userInfo["id"] as? String) ?? generateSermonId(from: userInfo)
+                    
+                    guard let title = userInfo["title"] as? String,
+                          let content = userInfo["content"] as? String,
+                          let date = userInfo["date"] as? String,
+                          let dayOfWeek = userInfo["day_of_week"] as? String else {
+                        print("❌ Sermon Event: Required fields missing (title, content, date, day_of_week)")
+                        contentHandler(bestAttemptContent)
+                        return
+                    }
+                    
+                    let category = userInfo["category"] as? String
+                    
+                    // createdAt/updatedAt 처리
+                    var createdAt: FirestoreTimeStamp? = nil
+                    var updatedAt: FirestoreTimeStamp? = nil
+                    
+                    if let createdStr = userInfo["created_at"] as? String {
+                        createdAt = convertStringToTimestamp(createdStr)
+                    }
+                    if let updatedStr = userInfo["updated_at"] as? String {
+                        updatedAt = convertStringToTimestamp(updatedStr)
+                    }
+                    
+                    let sermon = Sermon(
+                        id: id,
+                        title: title,
+                        content: content,
+                        date: date,
+                        category: category,
+                        dayOfWeek: dayOfWeek,
+                        createdAt: createdAt,
+                        updatedAt: updatedAt
+                    )
+                    
+                    print("✅ Sermon Event: Parsed sermon - \(sermon.title)")
+                    
+                    // App Group에 저장
+                    print("📦 Sermon Event: Attempting to save to App Group...")
+                    guard let userDefaults = UserDefaults(suiteName: "group.mannachurch.meditationblossom") else {
+                        print("❌ Sermon Event: Failed to access App Group UserDefaults")
+                        contentHandler(bestAttemptContent)
+                        return
+                    }
+                    
+                    print("✅ Sermon Event: App Group UserDefaults accessed successfully")
+                    
+                    let encoder = JSONEncoder()
+                    do {
+                        let encodedData = try encoder.encode(sermon)
+                        guard let jsonString = String(data: encodedData, encoding: .utf8) else {
+                            print("❌ Sermon Event: Failed to convert encoded data to UTF-8 string")
+                            contentHandler(bestAttemptContent)
+                            return
+                        }
+                        
+                        print("✅ Sermon Event: Sermon encoded successfully")
+                        print("   - JSON string length: \(jsonString.count) characters")
+                        
+                        userDefaults.set(jsonString, forKey: "displaySermon")
+                        userDefaults.set(jsonString, forKey: "fcm_sermon")
+                        let syncResult = userDefaults.synchronize()
+                        print("✅ Sermon Event: Stored sermon in App Group, sync result: \(syncResult)")
+                        
+                        // 저장 후 검증
+                        let savedDisplaySermon = userDefaults.string(forKey: "displaySermon")
+                        let savedFcmSermon = userDefaults.string(forKey: "fcm_sermon")
+                        print("📦 Sermon Event: Verification after save:")
+                        print("   - displaySermon exists: \(savedDisplaySermon != nil ? "YES (\(savedDisplaySermon?.count ?? 0) chars)" : "NO")")
+                        print("   - fcm_sermon exists: \(savedFcmSermon != nil ? "YES (\(savedFcmSermon?.count ?? 0) chars)" : "NO")")
+                        
+                        // 위젯 업데이트 트리거
+                        WidgetCenter.shared.reloadTimelines(ofKind: "MeditationBlossomWidget")
+                        print("✅ Sermon Event: Widget timeline reloaded")
+                    } catch {
+                        print("❌ Sermon Event: Failed to encode sermon: \(error.localizedDescription)")
+                    }
+                    
+                    // alert가 있으므로 알림은 표시됨 (bestAttemptContent는 그대로 사용)
+                    contentHandler(bestAttemptContent)
+                    return
+                }
+                
+                print("ℹ️ Not a sermon_event message, treating as regular FCM message")
             }
             
-            // 일반 FCM 메시지 처리 (WidgetKit Push가 아니고 data-only도 아닌 경우)
+            // 일반 FCM 메시지 처리 (WidgetKit Push가 아니고 data-only도 아니고 sermon_event도 아닌 경우)
             // 수동으로 userInfo에서 데이터를 파싱합니다.
             // FCM 메시지의 'data' 페이로드에 포함된 키들입니다.
-            guard let id = userInfo["id"] as? String,
-                  let title = userInfo["title"] as? String,
+            // source_id나 id가 없으면 자동 생성
+            let id = (userInfo["source_id"] as? String) ?? (userInfo["id"] as? String) ?? generateSermonId(from: userInfo)
+            
+            guard let title = userInfo["title"] as? String,
                   let content = userInfo["content"] as? String,
                   let date = userInfo["date"] as? String,
                   let dayOfWeek = userInfo["day_of_week"] as? String else {
@@ -322,8 +435,14 @@ class NotificationService: UNNotificationServiceExtension {
         print("📦 WidgetKit Push: Using data = \(data)")
         
         // 데이터 파싱 (widgetkit.data 우선, 없으면 message.data 사용)
-        guard let id = (widgetkit["data"] as? [String: Any])?["id"] as? String ?? (data["id"] as? String),
-              let title = (widgetkit["data"] as? [String: Any])?["title"] as? String ?? (data["title"] as? String),
+        // source_id나 id가 없으면 자동 생성
+        let id = ((widgetkit["data"] as? [String: Any])?["id"] as? String) ?? 
+                 ((widgetkit["data"] as? [String: Any])?["source_id"] as? String) ??
+                 (data["id"] as? String) ?? 
+                 (data["source_id"] as? String) ?? 
+                 generateSermonId(from: data)
+        
+        guard let title = (widgetkit["data"] as? [String: Any])?["title"] as? String ?? (data["title"] as? String),
               let content = (widgetkit["data"] as? [String: Any])?["content"] as? String ?? (data["content"] as? String),
               let date = (widgetkit["data"] as? [String: Any])?["date"] as? String ?? (data["date"] as? String),
               let dayOfWeek = (widgetkit["data"] as? [String: Any])?["day_of_week"] as? String ?? (data["day_of_week"] as? String) else {
@@ -449,6 +568,32 @@ class NotificationService: UNNotificationServiceExtension {
             print("❌ WidgetKit Push: Failed to encode sermon: \(error.localizedDescription)")
             print("   - Error details: \(error)")
         }
+    }
+    
+    // source_id나 id가 없을 때 자동으로 생성하는 함수
+    private func generateSermonId(from userInfo: [AnyHashable: Any]) -> String {
+        // 1. gcm.message_id 사용 (FCM 메시지 ID)
+        if let messageId = userInfo["gcm.message_id"] as? String {
+            print("📝 Generated sermon ID from gcm.message_id: \(messageId)")
+            return messageId
+        }
+        
+        // 2. date와 title을 조합해서 생성
+        if let date = userInfo["date"] as? String,
+           let title = userInfo["title"] as? String {
+            let combined = "\(date)_\(title.prefix(20))"
+            let id = combined.replacingOccurrences(of: " ", with: "_")
+                .replacingOccurrences(of: "/", with: "-")
+                .replacingOccurrences(of: ":", with: "-")
+            print("📝 Generated sermon ID from date and title: \(id)")
+            return id
+        }
+        
+        // 3. 현재 타임스탬프 기반으로 생성
+        let timestamp = Int64(Date().timeIntervalSince1970 * 1000)
+        let generatedId = "fcm_\(timestamp)"
+        print("📝 Generated sermon ID from timestamp: \(generatedId)")
+        return generatedId
     }
     
     // 문자열을 Firestore 타임스탬프로 변환

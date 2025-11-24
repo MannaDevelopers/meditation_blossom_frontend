@@ -3070,6 +3070,27 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - RNCClipboard (1.16.3):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - RNCMaskedView (0.3.2):
     - DoubleConversion
     - glog
@@ -3109,6 +3130,11 @@ PODS:
     - RNFBApp
   - RNFBInstallations (22.2.1):
     - Firebase/Installations (= 11.13.0)
+    - React-Core
+    - RNFBApp
+  - RNFBMessaging (22.2.1):
+    - Firebase/Messaging (= 11.13.0)
+    - FirebaseCoreExtension
     - React-Core
     - RNFBApp
   - RNGestureHandler (2.28.0):
@@ -3319,12 +3345,14 @@ DEPENDENCIES:
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
+  - "RNCClipboard (from `../node_modules/@react-native-clipboard/clipboard`)"
   - "RNCMaskedView (from `../node_modules/@react-native-masked-view/masked-view`)"
   - "RNFBApp (from `../node_modules/@react-native-firebase/app`)"
   - "RNFBCrashlytics (from `../node_modules/@react-native-firebase/crashlytics`)"
   - "RNFBFirestore (from `../node_modules/@react-native-firebase/firestore`)"
   - "RNFBInAppMessaging (from `../node_modules/@react-native-firebase/in-app-messaging`)"
   - "RNFBInstallations (from `../node_modules/@react-native-firebase/installations`)"
+  - "RNFBMessaging (from `../node_modules/@react-native-firebase/messaging`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
@@ -3498,6 +3526,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   RNCAsyncStorage:
     :path: "../node_modules/@react-native-async-storage/async-storage"
+  RNCClipboard:
+    :path: "../node_modules/@react-native-clipboard/clipboard"
   RNCMaskedView:
     :path: "../node_modules/@react-native-masked-view/masked-view"
   RNFBApp:
@@ -3510,6 +3540,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-firebase/in-app-messaging"
   RNFBInstallations:
     :path: "../node_modules/@react-native-firebase/installations"
+  RNFBMessaging:
+    :path: "../node_modules/@react-native-firebase/messaging"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
   RNScreens:
@@ -3616,12 +3648,14 @@ SPEC CHECKSUMS:
   ReactCodegen: 684a73edf1b470489d78a9be498a442d7ce55112
   ReactCommon: 646c9fb7fd3db3f1c4fdef21c045363cbd15aa2d
   RNCAsyncStorage: 481acf401089f312189e100815088ea5dafc583c
+  RNCClipboard: 4d8c76e488f1491e5235901b7028ff53a678bd94
   RNCMaskedView: ca5c7d2db3015c15e6e06522bdd921cc50a7cf44
   RNFBApp: 9ddaa4edee3ea7dfca8c866a4c1feca2439e2de6
   RNFBCrashlytics: 2d69f4c604cbed2cfa6e2efe6133c36b3059b721
   RNFBFirestore: dde90f839f5d712bd1ea8548d8324ba655fa48d7
   RNFBInAppMessaging: 9810fe36b4f67011305883c8b7b19df207ec6bb4
   RNFBInstallations: 9acf5bb1917e358cd499a78d9e55ef9143cba203
+  RNFBMessaging: 8ce084d2f49f59bae6d1abea130335d6b26969cd
   RNGestureHandler: 433f2680b512ab94fe82e014365ea8785de09c4d
   RNScreens: 2598aae5123846139d151bc88edd1ee073ac7fd3
   RNSVG: 02ef1157622e9e59e31c257e48a0dc943411c7bf
