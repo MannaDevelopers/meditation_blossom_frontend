@@ -72,9 +72,12 @@ extension MeditationBlossomWidgetAttributes.ContentState {
      }
 }
 
+// iOS 16.6과 호환성을 위해 Preview 주석 처리
+/*
 #Preview("Notification", as: .content, using: MeditationBlossomWidgetAttributes.preview) {
    MeditationBlossomWidgetLiveActivity()
 } contentStates: {
     MeditationBlossomWidgetAttributes.ContentState.smiley
     MeditationBlossomWidgetAttributes.ContentState.starEyes
 }
+*/
