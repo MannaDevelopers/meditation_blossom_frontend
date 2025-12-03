@@ -5,6 +5,10 @@
 //  Created by 최상준 on 5/31/25.
 //
 
+// iOS 18.0+ ControlWidget 기능은 iOS 16.6과 호환되지 않으므로 주석 처리
+// ControlWidget은 iOS 18.0에서 새로 도입된 기능입니다.
+
+/*
 import AppIntents
 import SwiftUI
 import WidgetKit
@@ -75,3 +79,4 @@ struct StartTimerIntent: SetValueIntent {
         return .result()
     }
 }
+*/
