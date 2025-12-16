@@ -46,11 +46,22 @@ jobs:
     - name: Decode Keystore
       run: |
         echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
-    
+
+    - name: Extract Version
+      run: |
+        # Extract version name from tag (e.g., v1.0.0 -> 1.0.0)
+        VERSION_NAME=${GITHUB_REF_NAME#v}
+        echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+
+        # Use GitHub Run Number as Version Code (auto-incrementing)
+        # Adding offset to ensure it's higher than previous manual versions
+        VERSION_CODE=$((GITHUB_RUN_NUMBER + 100))
+        echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
+
     - name: Build Android Release
       run: |
         cd android
-        ./gradlew bundleRelease --no-daemon
+        ./gradlew bundleRelease -PVERSION_NAME=${{ env.VERSION_NAME }} -PVERSION_CODE=${{ env.VERSION_CODE }} --no-daemon
 
     - name: Upload AAB
       uses: actions/upload-artifact@v4
