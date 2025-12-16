@@ -54,8 +54,8 @@ android {
         applicationId = "app.mannadev.meditation"
         minSdk = rootProject.extra["minSdkVersion"].toString().toInt()
         targetSdk = rootProject.extra["targetSdkVersion"].toString().toInt()
-        versionCode = 7
-        versionName = "1.0.2"
+        versionCode = (project.findProperty("VERSION_CODE") as? String)?.toInt() ?: libs.versions.appVersionCode.get().toInt()
+        versionName = (project.findProperty("VERSION_NAME") as? String) ?: libs.versions.appVersionName.get()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -70,6 +70,27 @@ cd android
 - AAB: `android/app/build/outputs/bundle/release/app-release.aab`
 - APK: `android/app/build/outputs/apk/release/app-release.apk`
 
+### 3. 앱 버전 관리
+앱의 버전 정보는 `android/gradle/libs.versions.toml` 파일에서 관리합니다.
+
+- `appVersionName`: 사용자에게 보이는 버전 (예: "1.0.2")
+- `appVersionCode`: 내부 빌드 번호 (예: "7")
+
+로컬 빌드 시에는 이 파일에 설정된 값이 사용됩니다.
+
+> **CI 빌드 참고**: GitHub Actions를 통한 릴리스 시에는:
+> - `versionName`: Git Tag에서 추출 (예: `v1.0.0` -> `1.0.0`)
+> - `versionCode`: GitHub Run Number를 기반으로 자동 생성 (자동 증가)
+
+#### iOS와 버전 공유 (제안)
+Android와 iOS의 버전을 일치시키기 위해 다음 방법을 제안합니다:
+
+1. **`package.json`을 기준(Single Source of Truth)으로 사용**:
+   - `package.json`의 `version` 필드를 마스터 버전으로 관리합니다.
+2. **버전 동기화 스크립트/도구 사용**:
+   - `react-native-version` 같은 라이브러리를 사용하여 `npm version` 명령 실행 시 Android와 iOS 프로젝트 파일의 버전을 자동으로 업데이트합니다.
+   - 또는 Fastlane 같은 배포 도구를 사용하여 배포 파이프라인에서 버전을 동기화할 수 있습니다.
+
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
 # Getting Started
