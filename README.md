@@ -6,7 +6,7 @@
 4. Related Pages
 
 ## 1. About This App
-![app](./docs/playstore게시.png)
+![app 소개](./docs/playstore게시.png)
 * 앱 이름: 묵상만개 (Meditation Blossom)
 * 주 기능: 매 주 교회 설교 말씀을 기억할 수 있도록 휴대폰 바탕화면 위젯에 자동으로 업데이트 해줍니다. 
 * 앱 다운로드 페이지
@@ -14,13 +14,14 @@
    * [App store](https://apps.apple.com/kr/app/%EB%AC%B5%EC%83%81%EB%A7%8C%EA%B0%9C/id6754749244)
 * 본 앱은 만나교회 개발자 소모임 [만개하다](https://manna.or.kr/somoim/130539/) 에서 성도님들의 신앙생활에 도움을 드리고자 제작하였습니다. 
 * 다른 교회에서도 코드를 수정하여 사용하실 수 있도록 오픈소스로 공개합니다. 앱 수정 및 배포에 관한 내용은 아래 Contribution Guide 를 참고해주세요.
+* 본 프로젝트는 [GPLv3 License](LICENSE) 하에 배포됩니다.
 
 ## 2. Contribution Guide
 묵상만개 앱은 오픈소스 프로젝트로, 성도님들의 신앙생활에 도움이 되는 기능을 개발하기 위해 자유롭게 수정 및 재배포 하실 수 있습니다.   
 묵상만개가 아닌 다른 앱으로 재배포 하실 경우 출처를 표기하고, 코드를 공유해주세요. (GPLv3 License)  
 본 리포지토리에 수정사항을 반영하실 때는 아래 내용을 참고해주세요.
 
-1. 브랜치 정책 (Trunk)
+1. 브랜치 정책 (main 브랜치 기준)
    * main: 프로덕션, 개발 브랜치
    * feature/issue_id: 기능 개발, 버그 수정 브랜치
 2. Pull Request (PR) 규칙
@@ -41,7 +42,8 @@
       - `android/app/secrets.properties`
 
       > 💡 위 파일들은 보안상의 이유로 git에 포함되어 있지 않습니다.
-      > Discord의 `group-android-widget` 채널에서 파일을 받을 수 있습니다.
+      > **만개하다 프로젝트 참여자**: Discord의 `group-android-widget` 채널에서 파일을 받을 수 있습니다.
+      > **외부 포크/재배포**: 본인 앱용으로 빌드하시려면 직접 keystore와 secrets를 생성해야 합니다. ([Android 서명 가이드](https://developer.android.com/studio/publish/app-signing) 참고)
 
       #### 설정 방법
 
@@ -60,7 +62,7 @@
       KEY_PASSWORD=<키 비밀번호>
       ```
 
-      > ⚠️ 실제 값은 Discord 채널에서 확인하세요.
+      > ⚠️ 만개하다 참여자는 Discord 채널에서 확인하세요. 외부에서 포크하여 빌드할 경우 본인 환경에 맞게 직접 작성하세요.
 
       #### 빌드 실행
       ```bash
@@ -78,9 +80,9 @@
    </details>
 
 ## 3. Setup Guide
-1. Package Version
-2. Mac
-3. Window
+1. Package Version (3.1)
+2. Mac (3.2)
+3. Windows (3.3)
 
 ### 3.1. Package Version (2025. 1. 기준)
 
@@ -91,7 +93,7 @@
 | **Android SDK** | `targetSdk 35`<br>`minSdk 28` | * **targetSdk**: Android 15 (API 35) 수준 사용 (최근 정규 릴리스 적용)<br>* **minSdk**: API 28 (Android 9.0) - 카카오톡 기준과 동일<br>* 2024년 1월 기준 기기의 약 90%가 API 28 이상 사용 중<br>* [Google Play 대상 API 수준 요구사항](https://support.google.com/googleplay/android-developer/answer/11926878?hl=ko) |
 | **iOS Version** | `Min 16` | * 최신 4년간 출시 기기의 95%가 iOS 17 이상 사용 중<br>* 전체 기기의 87%가 iOS 17 이상 사용 중<br>* 카카오톡 기준(iOS 16+)에 맞춰 하위 호환성 확보<br>* [App Store 지원 버전 통계](https://developer.apple.com/kr/support/app-store/) |
 
-### 3.2 Mac
+### 3.2. Mac
 <details>
 <summary>펼치기</summary>
 
@@ -188,7 +190,7 @@ cd ..
    * Podfile 수정, 네이티브 모듈 추가 시 --> 앱 재설치 필요 ```npx react-native run-ios```
    
 
-* 3.2.14. React Native / iOS 빌드 에러 해결 방법
+* 3.2.15. React Native / iOS 빌드 에러 해결 방법
 
 | 에러 메시지 | 해결 방법 |
 | :--- | :--- |
@@ -219,8 +221,13 @@ cd ..
    ```
 Reference : [\[Node.js\] 윈도우에서 nvm 설치하기](https://velog.io/@februaar/Node.js-윈도우에서-nvm-설치하기)
 
-* 3.3.2. Make react-native project  
-```npx @react-native-community/cli init {{ProjectName}} --version 0.78.0 ```
+* 3.3.2. 저장소 클론 및 의존성 설치
+   * 이 프로젝트를 클론한 뒤 아래 명령으로 의존성을 설치합니다.
+   ```bash
+   git clone https://github.com/MannaDevelopers/meditation_blossom_frontend.git
+   cd meditation_blossom_frontend
+   yarn install
+   ```
 
 * 3.3.3. Install JVM
    * Download java 21 and execute --> [다운로드 링크](https://www.oracle.com/java/technologies/downloads/#java21)
@@ -236,9 +243,8 @@ Reference : [\[Node.js\] 윈도우에서 nvm 설치하기](https://velog.io/@feb
 * 3.3.5. Install Android Studio
    * Download and execute --> [다운로드 링크](https://developer.android.com/studio?hl=ko)
 
-* 3.3.6. Run app
-   * cd to dir
-   * 실행
+* 3.3.6. 앱 실행
+   * 프로젝트 루트 디렉터리에서 실행
       ``` 
       yarn install
       npx react-native run-android
@@ -252,7 +258,7 @@ Reference : [\[Node.js\] 윈도우에서 nvm 설치하기](https://velog.io/@feb
 
 
 ## 4. Related Pages
-* [묵상만개 Firebase](https://console.firebase.google.com/u/0/project/muksang-mangae/overview)
+* [묵상만개 Firebase](https://console.firebase.google.com/u/0/project/muksang-mangae/overview) (프로젝트 관리자용)
 * [Backend Repository](https://github.com/MannaDevelopers/meditation_blossom_firebase) (예배 말씀 크롤러)
 * 소모임 페이지 
    * [만개하다 - 만나 개발자 모임](https://manna.or.kr/somoim/130539/)
