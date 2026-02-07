@@ -18,8 +18,8 @@ jobs:
         with:
           script: |
             const title = context.payload.pull_request.title;
-            const pattern = /^(?:\[SCRUM-\d+\]|\[HOTFIX\]).+$/;
+            const pattern = /^(?:\[ISSUE-\d+\]|\[HOTFIX\]).+$/;
             
             if (!pattern.test(title)) {
-              core.setFailed('PR 제목은 "[SCRUM-숫자] 설명" 또는 "[HOTFIX] 설명" 형식이어야 합니다.\n예: [SCRUM-1] 예배정보 타이틀화 또는 [HOTFIX] 로그인 버그 수정');
+              core.setFailed('PR 제목은 "[ISSUE-숫자] 설명" 또는 "[HOTFIX] 설명" 형식이어야 합니다.\n예: [SCRUM-1] 예배정보 타이틀화 또는 [HOTFIX] 로그인 버그 수정');
             } 
