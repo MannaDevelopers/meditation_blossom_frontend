@@ -1,11 +1,27 @@
 const admin = require('firebase-admin');
+const fs = require('fs');
+const path = require('path');
 
 // Firebase Admin SDK 초기화
-const serviceAccount = require('./firebase-service-account.json');
+// 우선순위:
+// 1) 로컬에 `firebase-service-account.json` 파일이 있으면 그 파일로 초기화 (로컬에만 두고 git에는 올리지 마세요)
+// 2) 없으면 Application Default Credentials 사용 (예: GOOGLE_APPLICATION_CREDENTIALS 환경 변수)
+const localServiceAccountPath = path.join(__dirname, 'firebase-service-account.json');
+
+let credential;
+if (fs.existsSync(localServiceAccountPath)) {
+  // eslint-disable-next-line global-require, import/no-dynamic-require
+  const serviceAccount = require(localServiceAccountPath);
+  credential = admin.credential.cert(serviceAccount);
+  console.log('🔐 Using local firebase-service-account.json');
+} else {
+  credential = admin.credential.applicationDefault();
+  console.log('🔐 Using Application Default Credentials (e.g. GOOGLE_APPLICATION_CREDENTIALS)');
+}
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  projectId: 'muksang-mangae'
+  credential,
+  projectId: process.env.FIREBASE_PROJECT_ID || 'muksang-mangae',
 });
 
 // FCM 토큰 (앱에서 로그로 확인한 토큰을 여기에 입력)
@@ -18,15 +34,15 @@ function getSermonData(topicName = 'sermon_events') {
   return {
     topic: topicName,
     source_id: Date.now().toString(),
-    title: '[토요설교] 21.밀알로 살아라(닥터 홀의 조선회상)',
-    category: '주말의 명작',
-    content: '본문 : 요한복음 12:24-26 24   내가 진실로 진실로 너희에게 이르노니 한 알의 밀이 땅에 떨어져 죽지 아니하면 한 알 그대로 있고 죽으면 많은 열매를 맺느니라 25   자기의 생명을 사랑하는 자는 잃어버릴 것이요 이 세상에서 자기의 생명을 미워하는 자는 영생하도록 보전하리라 26   사람이 나를 섬기려면 나를 따르라 나 있는 곳에 나를 섬기는 자도 거기 있으리니 사람이 나를 섬기면 내 아버지께서 그를 귀히 여기시리라',
-    date: '2025-11-22',
-    year: '2025',
-    day_of_week: 'SAT',
+    title: '4. 믿음은 하나님의 주권을 인정하는 것이다!',
+    category: '믿음으로 새롭게',
+    content: '본문 : 갈라디아서 2:20\n 20   내가 그리스도와 함께 십자가에 못 박혔나니 그런즉 이제는 내가 사는 것이 아니요 오직 내 안에 그리스도께서 사시는 것이라 이제 내가 육체 가운데 사는 것은 나를 사랑하사 나를 위하여 자기 자신을 버리신 하나님의 아들을 믿는 믿음 안에서 사는 것이라',
+    date: '2026-01-25',
+    year: '2026',
+    day_of_week: 'SUN',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-    operation: 'CREATED'
+    operation: 'UPDATED'
   };
 }
 
@@ -441,7 +457,10 @@ console.log('  3. "FCM 토큰 복사" 버튼을 눌러 토큰 복사');
 console.log('  4. 복사한 토큰을 아래 명령어에 사용');
 console.log('');
 console.log('사용법:');
-console.log('  1. firebase-service-account.json 파일을 프로젝트 루트에 추가');
+console.log('  1. 서비스 계정 설정 (둘 중 하나 선택):');
+console.log('     A) (로컬 파일) test_fcm.js 옆에 firebase-service-account.json 을 두기 (gitignore 필수)');
+console.log('     B) (환경 변수) GOOGLE_APPLICATION_CREDENTIALS=경로/to/service-account.json');
+console.log('     (선택) FIREBASE_PROJECT_ID=프로젝트ID');
 console.log('  2. 다음 명령어 실행:');
 console.log('     - node test_fcm.js sendTest [FCM_TOKEN] (개별 디바이스, 내 기기에만 전송)');
 console.log('     - node test_fcm.js sendTopic [토픽이름|FCM_TOKEN] (알림 포함)');
