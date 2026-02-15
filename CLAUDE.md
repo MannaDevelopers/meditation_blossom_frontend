@@ -1,126 +1,124 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+묵상만개 (Meditation Blossom) — React Native (bare, not Expo) 모바일 앱. 매주 교회 설교 콘텐츠를 홈 화면 위젯에 표시. Firebase Firestore에서 데이터를 가져오고 FCM으로 푸시.
 
-## Project Overview
-
-묵상만개 (Meditation Blossom) — a React Native mobile app (iOS + Android) that displays weekly church sermon content on home screen widgets. Sermon data is fetched from Firebase Firestore and pushed via FCM. The app is not Expo-based; it uses bare React Native with native code for both platforms.
-
-## Build & Run Commands
+## Commands
 
 ```bash
-# Install dependencies
-yarn install
-
-# iOS: install CocoaPods then run
-cd ios && pod install && cd ..
-npx react-native run-ios
-
-# Android
-npx react-native run-android
-
-# Start Metro bundler separately
-npx react-native start
-
-# Lint
-yarn lint
-
-# Tests
-yarn test                    # run all tests
-npx jest path/to/test.ts    # run a single test
+yarn install                 # 의존성 설치
+yarn test                    # 전체 테스트 실행
+npx jest __tests__/Foo.test.ts  # 단일 테스트 실행
+yarn lint                    # ESLint
+npx react-native run-ios     # iOS 실행 (사전: cd ios && pod install && cd ..)
+npx react-native run-android # Android 실행
+npx react-native start       # Metro 번들러
 ```
 
-### Release Build (Android)
+릴리스: `git tag v1.0.0 && git push origin v1.0.0` → GitHub Actions 자동 빌드. 로컬 빌드 시 `android/app/release.keystore`, `android/app/secrets.properties` 필요 (git 미포함).
 
-Triggered automatically via GitHub Actions when a version tag is pushed:
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
+## Rules
 
-Local release build requires `android/app/release.keystore` and `android/app/secrets.properties` (not in git).
+### Must
+
+- **로깅**: `console.log/error/warn` 직접 호출 금지 → `src/utils/logger.ts` 사용. logger는 `__DEV__`에서만 콘솔 출력, 프로덕션에서 `warn`/`error`는 Crashlytics에 전송
+- **에러 처리**: catch 블록에서 에러를 무시하지 않기. Crashlytics에 기록 (`logger.error`) 또는 상위로 전파
+- **타입**: `any` 사용 금지. FCM 데이터는 `SermonRaw`, Firestore 쿼리는 `FirebaseFirestoreTypes.Query` 사용
+- **스타일**: `StyleSheet.create` 사용 (EditScreen만 `styled-components/native` 예외). 인라인 스타일 지양
+- **테스트**: 순수 함수 변경 시 `__tests__/` 에 단위 테스트 추가/수정. Jest preset은 `react-native`
+- **커밋 메시지**: `[ISSUE-숫자] type: 설명` (예: `[ISSUE-45] fix: 버그 설명`)
+- **PR 제목**: `[ISSUE-숫자] 설명` 또는 `[HOTFIX] 설명` (CI 검증)
+
+### Must Not
+
+- `console.log` / `console.error` 직접 사용 (→ `logger` 사용)
+- Sermon 타입을 각 파일에서 재정의 (→ `src/types/Sermon.ts`의 정식 타입 사용)
+- iOS App Group ID 하드코딩 (→ 각 Swift 파일의 `Constants.appGroupId` 사용)
+- native module 이름 불일치 (Android `NativeEventModule.getName()` → JS에서 `NativeModules.MyEventModule`으로 접근)
 
 ## Architecture
 
-### React Native Layer (`src/`)
-
-- **App.tsx** — Root component with React Navigation native stack (HomeScreen, EditScreen, SettingsScreen)
-- **screens/HomeScreen.tsx** — Main screen. Orchestrates data loading via `useSermonData` hook, App Group sync via `useAppGroupSync`, widget sync via `useWidgetSync`, and FCM events via `useFCMListener`. Picks the most recent sermon via `compareSermon()`.
-- **screens/EditScreen.tsx** — Widget customization screen (text alignment, color, size, weight, background, style)
-- **screens/SettingsScreen.tsx** — Settings with data refresh, hidden developer menu (5 taps to toggle), FCM token display
-- **screens/TempSermonScreen.tsx** — Dev/debug screen for browsing all sermons with pull-to-refresh
-- **components/WidgetPreview.tsx** — Parses sermon text (Bible verse format) into index + content using regex, renders preview with background image
-- **components/SvgIcon.tsx** — Generic SVG icon component, icons registered in `assets/icons/index.ts`
-- **types/Sermon.ts** — Core data types (`Sermon`, `SermonRaw`, `SermonMetadata`), conversion functions (`fcmDataToSermon`, `firestoreDocToSermon`, `compareSermon`), Korean locale timestamp parsing
-- **types/WidgetUpdateModule.ts** — TypeScript interface for native `WidgetUpdateModule` bridge module
-- **types/navigation.ts** — `RootStackParamList` type for React Navigation
-- **hooks/useSermonData.ts** — Sermon loading/fetching state management hook
-- **hooks/useAppGroupSync.ts** — iOS App Group polling and sync hook
-- **hooks/useWidgetSync.ts** — Native widget update hook
-- **hooks/useFCMListener.ts** — Android FCM broadcast listener hook
-- **services/sermonService.ts** — Sermon data access layer (Firestore, AsyncStorage, App Group, staleness check)
-- **utils/logger.ts** — Logging utility that routes to console (dev) and Crashlytics (prod)
-- **utils/normalize.ts** — JSON normalization for App Group data signature comparison
-- **utils/textFormatting.ts** — Title text formatting for display
-- **constants/index.ts** — App-wide constants (poll intervals, thresholds, storage keys)
-
-### Native Bridge Modules
-
-The app uses custom native modules bridged to React Native:
-
-**Android** (`android/.../rnmodule/`):
-- `WidgetUpdateModule.kt` — Sends sermon data to Android home screen widgets
-- `NativeEventModule.kt` — Exposes as `MyEventModule` to JS; emits `ON_SERMON_UPDATE` events when FCM delivers new data
-- `MyReactPackage.kt` — Registers native modules
-
-**iOS** (`ios/`):
-- `WidgetUpdateModule.swift` — Swift native module for widget updates, reads/writes App Group shared data
-
-### Widget Implementations
-
-**Android** (`android/.../widget/`):
-- `VerseWidgetSmall.kt`, `VerseWidgetLarge.kt` — Glance AppWidget implementations for small/large widget sizes
-- `VerseWidgetSmallReceiver.kt`, `VerseWidgetLargeReceiver.kt` — AppWidget receiver/provider classes
-
-**iOS** (`ios/MeditationBlossomWidget/`):
-- `MeditationBlossomWidget.swift` — WidgetKit widget implementation
-- `Sermon.swift` — Swift Sermon model (mirrors the TS type)
-- App Group (`group.mannachurch.meditationblossom`) shared between app and widget extension
-
-### FCM / Push Notifications
-
-- **iOS**: `ios/PushNotificationService/NotificationService.swift` — Notification Service Extension for processing push payloads in background/terminated state
-- **Android**: FCM handling in `android/.../service/` directory
-- Sermon data arrives via FCM data payload, stored in AsyncStorage (key: `fcm_sermon`), and synced to widgets
-
 ### Data Flow
 
-1. Sermon created in Firestore (by backend crawler) → FCM push sent to devices
-2. App receives FCM → stores in AsyncStorage → updates widget via native module
-3. On app launch: loads from Firestore cache + AsyncStorage → picks newest → displays + syncs widget
-4. iOS additionally: FCM data written to App Group by NotificationService extension → polled by HomeScreen
+```
+Firestore ──→ FCM push ──→ App receives
+                            ├── AsyncStorage 저장 (key: "fcm_sermon")
+                            ├── Native Widget 업데이트
+                            └── (iOS) App Group에 기록 → Widget Extension에서 읽기
+App launch ──→ Firestore cache + AsyncStorage ──→ compareSermon() 최신 선택 ──→ 화면 + 위젯
+```
 
-## Key Conventions
+### src/ 구조
 
-- **Styling**: `styled-components/native` for EditScreen; `StyleSheet.create` for other screens. Font family: Pretendard (multiple weights via `src/assets/fonts/`)
-- **SVG**: Imported as React components via `react-native-svg-transformer` (configured in `metro.config.js`). Declare types in `declaration.d.ts`.
-- **Navigation**: `@react-navigation/native-stack` with typed params (`RootStackParamList`)
-- **Firebase**: Uses `@react-native-firebase/*` (v22.2.1) — Firestore, Messaging, Crashlytics, In-App Messaging
-- **Language**: TypeScript for React Native, Kotlin for Android native, Swift/Objective-C for iOS native
+```
+src/
+├── App.tsx                    # Root (React Navigation native stack)
+├── screens/
+│   ├── HomeScreen.tsx         # 메인. 훅으로 데이터/동기화 위임
+│   ├── EditScreen.tsx         # 위젯 커스터마이징 (styled-components)
+│   ├── SettingsScreen.tsx     # 설정 + 숨김 개발자 메뉴 (5탭 토글)
+│   └── TempSermonScreen.tsx   # 디버그용 설교 목록
+├── hooks/
+│   ├── useSermonData.ts       # 설교 로딩/상태 관리
+│   ├── useAppGroupSync.ts     # iOS App Group 폴링/동기화
+│   ├── useWidgetSync.ts       # Native 위젯 업데이트
+│   └── useFCMListener.ts      # Android FCM 브로드캐스트 수신
+├── services/
+│   └── sermonService.ts       # 데이터 접근 계층 (Firestore, AsyncStorage, App Group)
+├── types/
+│   ├── Sermon.ts              # 핵심 타입 + 변환 함수 (fcmDataToSermon, firestoreDocToSermon, compareSermon)
+│   ├── WidgetUpdateModule.ts  # Native bridge 인터페이스
+│   └── navigation.ts          # RootStackParamList
+├── components/
+│   ├── WidgetPreview.tsx      # 설교 텍스트 파싱 + 미리보기 렌더링
+│   └── SvgIcon.tsx            # SVG 아이콘 (assets/icons/index.ts에 등록)
+├── utils/
+│   ├── logger.ts              # 로깅 (dev: console, prod: Crashlytics)
+│   ├── normalize.ts           # JSON 정규화 (App Group 시그니처 비교)
+│   └── textFormatting.ts      # 제목 텍스트 포맷
+└── constants/
+    └── index.ts               # 폴링 간격, 임계값, 스토리지 키
+```
 
-## Branch & PR Policy
+### Native (Android)
 
-- **Branching strategy**: Trunk-based development — all work merges directly into `main`
-- **main**: single production/development branch (the trunk)
-- Feature branches: short-lived `feature/issue-##`, branched from and merged back to `main`
-- PR titles must match: `[ISSUE-숫자] 설명` or `[HOTFIX] 설명` (enforced by CI)
-- Squash and merge; minimum 1 approval required
+| 경로 | 역할 |
+|------|------|
+| `android/.../rnmodule/NativeEventModule.kt` | JS에 `MyEventModule`로 노출. `ON_SERMON_UPDATE` 이벤트 emit |
+| `android/.../rnmodule/WidgetUpdateModule.kt` | RN → Android 위젯 데이터 전달 |
+| `android/.../widget/VerseWidget{Small,Large}.kt` | Glance AppWidget 구현 |
+| `android/.../widget/VerseWidget{Small,Large}Receiver.kt` | AppWidget receiver/provider |
+| `android/.../service/MyFirebaseMessagingService.kt` | FCM 메시지 수신/처리 |
+| `android/.../analytics/CrashlyticsHelper.kt` | Crashlytics 래퍼 (원본 스택 보존) |
 
-## Environment Requirements
+### Native (iOS)
 
-- Node.js >= 18 (recommended: 18.18.0 via nvm)
-- React Native 0.78, React 19
-- Android: targetSdk 35, minSdk 28
-- iOS: minimum deployment target iOS 16.6
-- JDK 17 (for Android builds)
-- Ruby 3.0+ with CocoaPods (for iOS)
+| 경로 | 역할 |
+|------|------|
+| `ios/WidgetUpdateModule.swift` | RN → iOS 위젯 + App Group 읽기/쓰기 |
+| `ios/MeditationBlossomWidget/MeditationBlossomWidget.swift` | WidgetKit 구현 |
+| `ios/MeditationBlossomWidget/Sermon.swift` | Swift Sermon 모델 (TS 타입 미러) |
+| `ios/PushNotificationService/NotificationService.swift` | Notification Service Extension (백그라운드 FCM 처리) |
+
+App Group ID: `group.mannachurch.meditationblossom` (앱 + Widget Extension + NotificationService 공유)
+
+## Conventions
+
+- **언어**: TypeScript (RN), Kotlin (Android native), Swift (iOS native)
+- **SVG**: `react-native-svg-transformer`로 React 컴포넌트 import. 타입은 `declaration.d.ts`에 선언
+- **Navigation**: `@react-navigation/native-stack`, 타입 파라미터 `RootStackParamList`
+- **Firebase**: `@react-native-firebase/*` v22.2.1 (Firestore, Messaging, Crashlytics, In-App Messaging)
+- **폰트**: Pretendard (다중 weight, `src/assets/fonts/`)
+- **브랜칭**: Trunk-based. `main` 단일 브랜치, `feature/issue-##` 단기 분기 → squash merge
+
+## Testing
+
+- 테스트 위치: `__tests__/*.test.ts`
+- Jest 설정: `jest.config.js` (preset: `react-native`, setup: `jest.setup.js`)
+- `jest.setup.js`에 Firebase, AsyncStorage, Crashlytics 등 mock 포함
+- 순수 함수 중심 테스트: `Sermon.ts` 변환 함수, `sermonService.ts` staleness 체크, `normalize.ts`, `textFormatting.ts`
+
+## Environment
+
+- Node.js >= 18, React Native 0.78, React 19
+- Android: targetSdk 35, minSdk 28, JDK 17
+- iOS: deployment target 16.6, Ruby 3.0+ with CocoaPods
