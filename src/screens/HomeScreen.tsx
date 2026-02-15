@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useEffect } from 'react';
+import { useEffect } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -19,6 +19,7 @@ import { useSermonData } from '../hooks/useSermonData';
 import { useWidgetSync } from '../hooks/useWidgetSync';
 import { isSermonDataStale } from '../services/sermonService';
 import { RootStackParamList } from '../types/navigation';
+import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'HomeScreen'>;
@@ -27,17 +28,13 @@ const HomeScreen = ({ navigation }: Props) => {
   const { sermon, isLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useSermonData();
 
-  const onDataSynced = useCallback(async () => {
-    await loadLocalData();
-  }, [loadLocalData]);
-
   const { performInitialSync } = useAppGroupSync({
-    onDataSynced,
+    onDataSynced: loadLocalData,
     enabled: !isLoading,
   });
 
   useWidgetSync(sermon);
-  useFCMListener(useCallback(() => { loadLocalData(); }, [loadLocalData]));
+  useFCMListener(loadLocalData);
 
   useEffect(() => {
     const init = async () => {
@@ -51,7 +48,7 @@ const HomeScreen = ({ navigation }: Props) => {
         await fetchFromServer();
       }
     };
-    init();
+    init().catch((e) => { logger.error('HomeScreen init failed:', e); });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading && !sermon) {

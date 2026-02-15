@@ -8,6 +8,7 @@ import {
   orderBy,
   query,
 } from '@react-native-firebase/firestore';
+import { Platform } from 'react-native';
 import { STALE_DATA_THRESHOLD_DAYS } from '../constants';
 import {
   FCM_SERMON_KEY,
@@ -49,27 +50,25 @@ export async function fetchLatestSermonFromAsyncStorage(): Promise<Sermon | null
 }
 
 export async function fetchLatestSermonFromServer(): Promise<Sermon | null> {
-  try {
-    const db = getFirestore();
-    const q = query(
-      collection(db, 'sermons'),
-      orderBy('date', 'desc'),
-      limit(1),
-    );
-    const snapshot = await getDocsFromServer(q);
-    if (snapshot.empty) {
-      logger.log('No sermons found on server');
-      return null;
-    }
-    return firestoreDocToSermon(snapshot.docs[0]);
-  } catch (error) {
-    logger.error('Error fetching sermon from server:', error);
+  const db = getFirestore();
+  const q = query(
+    collection(db, 'sermons'),
+    orderBy('date', 'desc'),
+    limit(1),
+  );
+  const snapshot = await getDocsFromServer(q);
+  if (snapshot.empty) {
+    logger.log('No sermons found on server');
     return null;
   }
+  return firestoreDocToSermon(snapshot.docs[0]);
 }
 
 export async function readAppGroupData(key: string): Promise<string | null> {
   if (!WidgetUpdateModule?.getAppGroupData) {
+    if (Platform.OS === 'ios') {
+      logger.warn('WidgetUpdateModule.getAppGroupData is not available on iOS');
+    }
     return null;
   }
   return WidgetUpdateModule.getAppGroupData(key);

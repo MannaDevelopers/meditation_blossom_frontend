@@ -7,6 +7,7 @@ import android.content.IntentFilter
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import app.mannadev.meditation.Constants.ACTION_SERMON_UPDATE_EVENT
 import app.mannadev.meditation.Constants.MESSAGE_SERMON_UPDATE_EVENT
+import app.mannadev.meditation.analytics.CrashlyticsHelper
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.WritableMap
@@ -39,13 +40,14 @@ class NativeEventModule(reactContext: ReactApplicationContext) :
     }
 
     fun sendEventToJS(eventName: String, params: WritableMap? = null) {
-        if (reactApplicationContext.lifecycleState != LifecycleState.RESUMED) return
+        if (reactApplicationContext.lifecycleState == LifecycleState.BEFORE_CREATE) return
         try {
             reactApplicationContext
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
                 .emit(eventName, params)
         } catch (e: Exception) {
             Timber.e(e, "Failed to send event to JS: $eventName")
+            CrashlyticsHelper.recordException(e, "Failed to send event to JS: $eventName")
         }
     }
 

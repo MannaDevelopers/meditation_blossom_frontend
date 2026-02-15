@@ -6,6 +6,10 @@ import logger from '../utils/logger';
 export function useWidgetSync(sermon: Sermon | null): void {
   useEffect(() => {
     if (!sermon) return;
+    if (!WidgetUpdateModule) {
+      logger.error('WidgetUpdateModule is not available');
+      return;
+    }
 
     WidgetUpdateModule.onSermonUpdated(JSON.stringify(sermon)).catch((error) => {
       logger.error('Failed to update widget:', error);

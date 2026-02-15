@@ -138,7 +138,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             Timber.e(e, "Failed to update AsyncStorage or send broadcast")
             CrashlyticsHelper.recordException(
                 exception = e,
-                message = "Failed to asyncStorage",
+                message = "Failed to update AsyncStorage or send broadcast",
             )
         }
     }

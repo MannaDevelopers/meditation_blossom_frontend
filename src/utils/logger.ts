@@ -18,9 +18,7 @@ const logger = {
     const message = args.map(a => a instanceof Error ? a.message : String(a)).join(' ');
     crashlytics().log(message);
     const err = args.find(a => a instanceof Error);
-    if (err instanceof Error) {
-      crashlytics().recordError(err);
-    }
+    crashlytics().recordError(err instanceof Error ? err : new Error(message));
   },
 };
 
