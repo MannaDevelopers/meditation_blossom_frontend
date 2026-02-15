@@ -90,6 +90,15 @@ function convertStringToTimestamp(isoString: string | null | undefined): Firesto
   return { seconds: 0, nanoseconds: 0 };
 }
 
+function resolveTimestamp(
+  snakeCase: FirestoreTimestamp | string | undefined,
+  camelCase: FirestoreTimestamp | string | undefined,
+): FirestoreTimestamp {
+  if (typeof snakeCase === 'string') return convertStringToTimestamp(snakeCase);
+  if (typeof camelCase === 'string') return convertStringToTimestamp(camelCase);
+  return snakeCase || camelCase || { seconds: 0, nanoseconds: 0 };
+}
+
 // FCM 원시 데이터를 Sermon으로 변환하는 함수
 export function fcmDataToSermon(raw: SermonRaw): Sermon {
   return {
@@ -99,16 +108,8 @@ export function fcmDataToSermon(raw: SermonRaw): Sermon {
     date: raw.date || '',
     category: raw.category,
     day_of_week: raw.day_of_week || raw.dayOfWeek,
-    created_at: typeof raw.created_at === 'string'
-      ? convertStringToTimestamp(raw.created_at)
-      : typeof raw.createdAt === 'string'
-        ? convertStringToTimestamp(raw.createdAt)
-        : (raw.created_at || raw.createdAt || { seconds: 0, nanoseconds: 0 }),
-    updated_at: typeof raw.updated_at === 'string'
-      ? convertStringToTimestamp(raw.updated_at)
-      : typeof raw.updatedAt === 'string'
-        ? convertStringToTimestamp(raw.updatedAt)
-        : (raw.updated_at || raw.updatedAt || { seconds: 0, nanoseconds: 0 })
+    created_at: resolveTimestamp(raw.created_at, raw.createdAt),
+    updated_at: resolveTimestamp(raw.updated_at, raw.updatedAt),
   };
 }
 
@@ -158,7 +159,5 @@ export function compareSermon(a: Sermon | null, b: Sermon | null): number {
   const aTime = convertToComparableTimestamp(a.updated_at);
   const bTime = convertToComparableTimestamp(b.updated_at);
 
-  const result = aTime > bTime ? 1 : aTime < bTime ? -1 : 0;
-  logger.log(`compareSermon: A(${a.date}) vs B(${b.date}) → ${result}`);
-  return result;
+  return aTime > bTime ? 1 : aTime < bTime ? -1 : 0;
 }

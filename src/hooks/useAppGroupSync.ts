@@ -3,7 +3,6 @@ import { AppState, Platform } from 'react-native';
 import { APP_GROUP_DISPLAY_SERMON_KEY, APP_GROUP_POLL_INTERVAL_MS } from '../constants';
 import { readAppGroupData, syncAppGroupToAsyncStorage } from '../services/sermonService';
 import logger from '../utils/logger';
-import { normalizeJsonString } from '../utils/normalize';
 
 interface UseAppGroupSyncOptions {
   onDataSynced: () => Promise<void>;
@@ -20,13 +19,8 @@ export function useAppGroupSync({ onDataSynced, enabled }: UseAppGroupSyncOption
       const appGroupData = await readAppGroupData(APP_GROUP_DISPLAY_SERMON_KEY);
       if (!appGroupData) return;
 
-      const normalized = normalizeJsonString(appGroupData);
       const newSig = await syncAppGroupToAsyncStorage(appGroupData, null);
-      if (newSig) {
-        lastSyncedSignatureRef.current = newSig;
-      } else {
-        lastSyncedSignatureRef.current = normalized;
-      }
+      lastSyncedSignatureRef.current = newSig;
     } catch (error) {
       logger.error('Error during initial App Group sync:', error);
     }

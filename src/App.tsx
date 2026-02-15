@@ -11,7 +11,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const RootStack = () => {
   return (
-    <NavigationContainer onReady={() => logger.log('✅ NavigationContainer ready')}>
+    <NavigationContainer onReady={() => logger.log('NavigationContainer ready')}>
       <Stack.Navigator>
         <Stack.Screen 
           name="HomeScreen" 
