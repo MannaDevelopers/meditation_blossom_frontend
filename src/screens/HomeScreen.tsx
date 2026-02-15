@@ -385,7 +385,7 @@ const HomeScreen = ({ navigation }: Props) => {
             
             // 데이터가 변경되었는지 확인
             const normalized = normalizeJsonString(appGroupData);
-            if (normalized !== lastSyncedSignature) {
+            if (normalized !== lastSyncedSignatureRef.current) {
               console.log('📦 Found new data in App Group, copying to AsyncStorage...');
               // AsyncStorage에 복사
               await AsyncStorage.setItem(FCM_SERMON_KEY, appGroupData);

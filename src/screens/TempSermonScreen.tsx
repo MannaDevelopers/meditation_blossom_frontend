@@ -2,23 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, SafeAreaView } from 'react-native';
 import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Sermon, SermonMetadata } from '../types/Sermon';
 
-// 타입 정의
-interface Sermon {
-  id: string;
-  title: string;
-  content: string;
-  date: string; // 설교 날짜 (YYYY-MM-DD)
-  category?: string; // 설교 카테고리
-  day_of_week?: string; // 요일 (예: "SUN")
-  created_at: number; // Firestore 타임스탬프 (초 단위)
-  updated_at: number; // Firestore 타임스탬프 (초 단위)
-}
-
-// 메타데이터 타입 정의
-interface SermonMetadata {
-  latestDate: string; // 가장 최근 날짜 (YYYY-MM-DD)
-  lastUpdated: string;
+// TempSermonScreen-specific metadata with totalCount
+interface TempSermonMetadata extends SermonMetadata {
   totalCount: number;
 }
 
@@ -31,18 +18,18 @@ function TempSermonScreen(): React.JSX.Element {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [latestDate, setLatestDate] = useState<string | null>(null);
-  const [metadata, setMetadata] = useState<SermonMetadata>({
+  const [metadata, setMetadata] = useState<TempSermonMetadata>({
     latestDate: '',
     lastUpdated: new Date().toISOString(),
     totalCount: 0
   });
 
   // 메타데이터 로드
-  const loadMetadata = async (): Promise<SermonMetadata> => {
+  const loadMetadata = async (): Promise<TempSermonMetadata> => {
     try {
       const metadataStr = await AsyncStorage.getItem(METADATA_KEY);
       if (metadataStr) {
-        const parsedMetadata = JSON.parse(metadataStr) as SermonMetadata;
+        const parsedMetadata = JSON.parse(metadataStr) as TempSermonMetadata;
         console.log('Loaded metadata:', parsedMetadata);
         setMetadata(parsedMetadata);
         if (parsedMetadata.latestDate) {
@@ -62,7 +49,7 @@ function TempSermonScreen(): React.JSX.Element {
   };
 
   // 메타데이터 저장
-  const saveMetadata = async (newMetadata: SermonMetadata) => {
+  const saveMetadata = async (newMetadata: TempSermonMetadata) => {
     try {
       await AsyncStorage.setItem(METADATA_KEY, JSON.stringify(newMetadata));
       setMetadata(newMetadata);
@@ -169,8 +156,8 @@ function TempSermonScreen(): React.JSX.Element {
           date: firestoreData.date || new Date().toISOString().split('T')[0],
           category: firestoreData.category || '',
           day_of_week: firestoreData.day_of_week || '',
-          created_at: firestoreData.created_at || 0,
-          updated_at: firestoreData.updated_at || 0
+          created_at: firestoreData.created_at || { seconds: 0, nanoseconds: 0 },
+          updated_at: firestoreData.updated_at || { seconds: 0, nanoseconds: 0 }
         };
       });
       
@@ -207,7 +194,7 @@ function TempSermonScreen(): React.JSX.Element {
         console.log(`New latest date: ${newLatestDate}`);
         
         // 메타데이터 업데이트
-        const newMetadata: SermonMetadata = {
+        const newMetadata: TempSermonMetadata = {
           latestDate: newLatestDate,
           lastUpdated: new Date().toISOString(),
           totalCount: mergedSermons.length
@@ -277,8 +264,8 @@ function TempSermonScreen(): React.JSX.Element {
   };
 
   // 타임스탬프 포맷팅
-  const formatTimestamp = (timestamp: number): string => {
-    const date = new Date(timestamp * 1000); // 초 단위 타임스탬프를 밀리초로 변환
+  const formatTimestamp = (timestamp: { seconds: number; nanoseconds: number }): string => {
+    const date = new Date(timestamp.seconds * 1000);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 

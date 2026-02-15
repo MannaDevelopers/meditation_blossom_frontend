@@ -17,7 +17,7 @@ import timber.log.Timber
 class NativeEventModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
 
-    override fun getName() = "NativeEventModule"
+    override fun getName() = "MyEventModule"
     override fun initialize() {
         super.initialize()
         val intentFilter = IntentFilter(ACTION_SERMON_UPDATE_EVENT)
