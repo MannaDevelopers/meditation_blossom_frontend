@@ -75,3 +75,4 @@ yarn-error.log
 
 # Private (do not commit)
 firebase-service-account.json
+firebase-debug.log
