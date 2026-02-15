@@ -49,11 +49,9 @@ const normalizeJsonString = (jsonString: string | null | undefined): string => {
 const HomeScreen = ({ navigation }: Props) => {
   logger.log('🚀 HomeScreen component rendering');
   const [sermon, setSermon] = useState<Sermon | null>(null);
-  const [lastSyncedSignature, setLastSyncedSignature] = useState<string | null>(null);
   const lastSyncedSignatureRef = React.useRef<string | null>(null);
 
   const updateLastSyncedSignature = useCallback((signature: string | null) => {
-    setLastSyncedSignature(signature);
     lastSyncedSignatureRef.current = signature;
   }, []);
 

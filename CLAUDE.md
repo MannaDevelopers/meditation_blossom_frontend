@@ -52,7 +52,7 @@ Local release build requires `android/app/release.keystore` and `android/app/sec
 - **components/WidgetPreview.tsx** — Parses sermon text (Bible verse format) into index + content using regex, renders preview with background image
 - **components/SvgIcon.tsx** — Generic SVG icon component, icons registered in `assets/icons/index.ts`
 - **types/Sermon.ts** — Core data types (`Sermon`, `SermonRaw`, `SermonMetadata`), conversion functions (`fcmDataToSermon`, `firestoreDocToSermon`, `compareSermon`), Korean locale timestamp parsing
-- **types/WidgetUpdateModule.ts** — TypeScript interface for native `WidgetUpdateModule` and `FCMCheckModule` bridge modules
+- **types/WidgetUpdateModule.ts** — TypeScript interface for native `WidgetUpdateModule` bridge module
 - **types/navigation.ts** — `RootStackParamList` type for React Navigation
 
 ### Native Bridge Modules
@@ -61,7 +61,7 @@ The app uses custom native modules bridged to React Native:
 
 **Android** (`android/.../rnmodule/`):
 - `WidgetUpdateModule.kt` — Sends sermon data to Android home screen widgets
-- `NativeEventModule.kt` — Emits `ON_SERMON_UPDATE` events to JS when FCM delivers new data
+- `NativeEventModule.kt` — Exposes as `MyEventModule` to JS; emits `ON_SERMON_UPDATE` events when FCM delivers new data
 - `MyReactPackage.kt` — Registers native modules
 
 **iOS** (`ios/`):
@@ -111,6 +111,6 @@ The app uses custom native modules bridged to React Native:
 - Node.js >= 18 (recommended: 18.18.0 via nvm)
 - React Native 0.78, React 19
 - Android: targetSdk 35, minSdk 28
-- iOS: minimum deployment target iOS 16
+- iOS: minimum deployment target iOS 16.6
 - JDK 17 (for Android builds)
 - Ruby 3.0+ with CocoaPods (for iOS)

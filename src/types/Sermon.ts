@@ -21,8 +21,11 @@ export interface SermonRaw {
   date: string;
   category?: string;
   day_of_week?: string;
+  dayOfWeek?: string;
   created_at?: { seconds: number, nanoseconds: number } | string; // Firestore 타임스탬프 또는 ISO 문자열
+  createdAt?: { seconds: number, nanoseconds: number } | string;
   updated_at?: { seconds: number, nanoseconds: number } | string; // Firestore 타임스탬프 또는 ISO 문자열
+  updatedAt?: { seconds: number, nanoseconds: number } | string;
 }
 
 // 메타데이터 타입 정의
@@ -96,12 +99,16 @@ export function fcmDataToSermon(raw: SermonRaw): Sermon {
     date: raw.date || '',
     category: raw.category,
     day_of_week: raw.day_of_week || raw.dayOfWeek,
-    created_at: typeof raw.created_at === 'string' 
-      ? convertStringToTimestamp(raw.created_at) 
-      : (raw.created_at || raw.createdAt || { seconds: 0, nanoseconds: 0 }),
-    updated_at: typeof raw.updated_at === 'string' 
-      ? convertStringToTimestamp(raw.updated_at) 
-      : (raw.updated_at || raw.updatedAt || { seconds: 0, nanoseconds: 0 })
+    created_at: typeof raw.created_at === 'string'
+      ? convertStringToTimestamp(raw.created_at)
+      : typeof raw.createdAt === 'string'
+        ? convertStringToTimestamp(raw.createdAt)
+        : (raw.created_at || raw.createdAt || { seconds: 0, nanoseconds: 0 }),
+    updated_at: typeof raw.updated_at === 'string'
+      ? convertStringToTimestamp(raw.updated_at)
+      : typeof raw.updatedAt === 'string'
+        ? convertStringToTimestamp(raw.updatedAt)
+        : (raw.updated_at || raw.updatedAt || { seconds: 0, nanoseconds: 0 })
   };
 }
 
