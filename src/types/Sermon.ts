@@ -39,7 +39,7 @@ export interface SermonMetadata {
 export const FCM_SERMON_KEY = 'fcm_sermon';
 
 
-function convertStringToTimestamp(isoString: string | null | undefined): FirestoreTimestamp {
+export function convertStringToTimestamp(isoString: string | null | undefined): FirestoreTimestamp {
   if (!isoString || typeof isoString !== 'string') {
     return { seconds: 0, nanoseconds: 0 };
   }
