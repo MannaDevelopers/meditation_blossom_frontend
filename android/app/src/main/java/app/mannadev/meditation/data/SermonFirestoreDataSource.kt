@@ -26,7 +26,7 @@ class SermonFirestoreDataSource @Inject constructor(
     private suspend fun fetchFromRemote(source: Source): SermonDto {
         return try {
             val querySnapshot = firestore.collection("sermons")
-                .orderBy("created_at", Query.Direction.DESCENDING)
+                .orderBy("date", Query.Direction.DESCENDING)
                 .limit(1)
                 .get(source)
                 .await() // Use await() here

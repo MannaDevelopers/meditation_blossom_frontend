@@ -1,6 +1,8 @@
 package app.mannadev.meditation.model
 
+import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.dto.SermonDto
+import timber.log.Timber
 
 data class Sermon(
     val verses: List<String>, // 말씀 내용 (예: "또 비유로 말씀하시되...")
@@ -18,7 +20,9 @@ data class Sermon(
         fun fromDto(dto: SermonDto): Sermon =
             try {
                 VerseParser.parse(dto)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Timber.e(e, "Sermon.fromDto failed for dto: $dto")
+                CrashlyticsHelper.recordException(e, "Sermon.fromDto parsing failed")
                 errorSermon
             }
     }
