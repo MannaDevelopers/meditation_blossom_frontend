@@ -1,4 +1,5 @@
 import { FirebaseFirestoreTypes } from "@react-native-firebase/firestore";
+import logger from "../utils/logger";
 
 // 타입 정의
 export interface Sermon {
@@ -80,7 +81,7 @@ function convertStringToTimestamp(isoString: string | null | undefined): { secon
       return { seconds, nanoseconds };
     }
   } catch (e) {
-    console.error('Failed to parse timestamp string:', isoString, e);
+    logger.error('Failed to parse timestamp string:', isoString, e);
   }
 
   return { seconds: 0, nanoseconds: 0 };
@@ -143,36 +144,36 @@ export function compareSermon(a: Sermon | null, b: Sermon | null): number {
   if (a === null) return -1;
   if (b === null) return 1;
 
-  console.log(`  🔍 Comparing:`);
-  console.log(`    A: ${a.title?.substring(0, 20)}... date=${a.date}, updated_at=${JSON.stringify(a.updated_at)}`);
-  console.log(`    B: ${b.title?.substring(0, 20)}... date=${b.date}, updated_at=${JSON.stringify(b.updated_at)}`);
+  logger.log(`  🔍 Comparing:`);
+  logger.log(`    A: ${a.title?.substring(0, 20)}... date=${a.date}, updated_at=${JSON.stringify(a.updated_at)}`);
+  logger.log(`    B: ${b.title?.substring(0, 20)}... date=${b.date}, updated_at=${JSON.stringify(b.updated_at)}`);
 
   // date가 더 큰 쪽이 최신
   if (a.date > b.date) {
-    console.log(`    → A is newer (date: ${a.date} > ${b.date})`);
+    logger.log(`    → A is newer (date: ${a.date} > ${b.date})`);
     return 1;
   }
   if (a.date < b.date) {
-    console.log(`    → B is newer (date: ${a.date} < ${b.date})`);
+    logger.log(`    → B is newer (date: ${a.date} < ${b.date})`);
     return -1;
   }
 
-  console.log(`    → Dates are equal, comparing updated_at...`);
+  logger.log(`    → Dates are equal, comparing updated_at...`);
   
   // date가 같으면 updatedAt 비교
   const aTime = convertToComparableTimestamp(a.updated_at);
   const bTime = convertToComparableTimestamp(b.updated_at);
   
   if (aTime > bTime) {
-    console.log(`    → A is newer (updated_at)`);
+    logger.log(`    → A is newer (updated_at)`);
     return 1;
   }
   if (aTime < bTime) {
-    console.log(`    → B is newer (updated_at)`);
+    logger.log(`    → B is newer (updated_at)`);
     return -1;
   }
 
-  console.log(`    → Both are equal`);
+  logger.log(`    → Both are equal`);
   // 완전히 같으면 0
   return 0;
 }

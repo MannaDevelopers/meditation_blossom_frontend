@@ -3112,6 +3112,8 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - RNDeviceInfo (15.0.1):
+    - React-Core
   - RNFBApp (22.2.1):
     - Firebase/CoreOnly (= 11.13.0)
     - React-Core
@@ -3347,6 +3349,7 @@ DEPENDENCIES:
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - "RNCClipboard (from `../node_modules/@react-native-clipboard/clipboard`)"
   - "RNCMaskedView (from `../node_modules/@react-native-masked-view/masked-view`)"
+  - RNDeviceInfo (from `../node_modules/react-native-device-info`)
   - "RNFBApp (from `../node_modules/@react-native-firebase/app`)"
   - "RNFBCrashlytics (from `../node_modules/@react-native-firebase/crashlytics`)"
   - "RNFBFirestore (from `../node_modules/@react-native-firebase/firestore`)"
@@ -3530,6 +3533,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-clipboard/clipboard"
   RNCMaskedView:
     :path: "../node_modules/@react-native-masked-view/masked-view"
+  RNDeviceInfo:
+    :path: "../node_modules/react-native-device-info"
   RNFBApp:
     :path: "../node_modules/@react-native-firebase/app"
   RNFBCrashlytics:
@@ -3650,6 +3655,7 @@ SPEC CHECKSUMS:
   RNCAsyncStorage: 481acf401089f312189e100815088ea5dafc583c
   RNCClipboard: 4d8c76e488f1491e5235901b7028ff53a678bd94
   RNCMaskedView: ca5c7d2db3015c15e6e06522bdd921cc50a7cf44
+  RNDeviceInfo: 53f9c84e28e854a308d3e548e25ef120b4615531
   RNFBApp: 9ddaa4edee3ea7dfca8c866a4c1feca2439e2de6
   RNFBCrashlytics: 2d69f4c604cbed2cfa6e2efe6133c36b3059b721
   RNFBFirestore: dde90f839f5d712bd1ea8548d8324ba655fa48d7

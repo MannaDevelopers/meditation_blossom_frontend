@@ -7,7 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import messaging from '@react-native-firebase/messaging';
 import { RootStackParamList } from '../types/navigation';
 import { FCM_SERMON_KEY } from '../types/Sermon';
+import DeviceInfo from 'react-native-device-info';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
+import logger from '../utils/logger';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SettingsScreen'>;
 
@@ -32,30 +34,30 @@ const SettingsScreen = ({ navigation, route }: Props) => {
     try {
       await AsyncStorage.removeItem(FCM_SERMON_KEY);
 
-      console.log('Widget Preferences cleared');
+      logger.log('Widget Preferences cleared');
       await WidgetUpdateModule.onClear();
       route.params.onRefresh();
     } catch (error) {
-      console.error('Error clearing local storage:', error);
+      logger.error('Error clearing local storage:', error);
     }
   };
 
   // 로컬 스토리지 내용 확인
   const inspectStorage = async () => {
-    console.log('Inspecting AsyncStorage...');
+    logger.log('Inspecting AsyncStorage...');
     try {
       const keys = await AsyncStorage.getAllKeys();
 
       // 모든 키를 로그로 출력
-      console.log('AsyncStorage keys:', keys);
+      logger.log('AsyncStorage keys:', keys);
 
       // 각 키에 대한 데이터 검사
       for (const key of keys) {
         const value = await AsyncStorage.getItem(key);
-        console.log(`Key: ${key}`, JSON.parse(value || '{}'));
+        logger.log(`Key: ${key}`, JSON.parse(value || '{}'));
       }
     } catch (error) {
-      console.error('Error inspecting AsyncStorage:', JSON.stringify(error, null, 2));
+      logger.error('Error inspecting AsyncStorage:', JSON.stringify(error, null, 2));
     }
   };
 
@@ -71,16 +73,16 @@ const SettingsScreen = ({ navigation, route }: Props) => {
             authStatus === messaging.AuthorizationStatus.PROVISIONAL;
           
           if (!enabled) {
-            console.log('FCM 알림 권한이 없습니다.');
+            logger.log('FCM 알림 권한이 없습니다.');
             return;
           }
         }
 
         const token = await messaging().getToken();
         setFcmToken(token);
-        console.log('FCM Token:', token);
+        logger.log('FCM Token:', token);
       } catch (error) {
-        console.error('FCM 토큰 가져오기 실패:', error);
+        logger.error('FCM 토큰 가져오기 실패:', error);
       }
     };
 
@@ -243,7 +245,7 @@ const SettingsScreen = ({ navigation, route }: Props) => {
                 디자인: Somang Choi
               </Text>
               <Text style={{ color: '#A59EAE', fontSize: 14, textAlign: 'center', fontFamily: "Pretendard-Regular", lineHeight: 18 }}>
-                버전: 1.0.0
+                버전: {DeviceInfo.getVersion()}
               </Text>
             </View>
           </View>

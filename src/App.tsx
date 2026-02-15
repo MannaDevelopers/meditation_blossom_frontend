@@ -1,4 +1,5 @@
 import React from 'react';
+import logger from './utils/logger';
 import HomeScreen from './screens/HomeScreen';
 import EditScreen from './screens/EditScreen';
 import SettingsScreen from './screens/SettingsScreen';
@@ -9,10 +10,10 @@ import { RootStackParamList } from './types/navigation';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const RootStack = () => {
-  console.log('🚀 RootStack component rendering');
+  logger.log('🚀 RootStack component rendering');
   
   return (
-    <NavigationContainer onReady={() => console.log('✅ NavigationContainer ready')}>
+    <NavigationContainer onReady={() => logger.log('✅ NavigationContainer ready')}>
       <Stack.Navigator>
         <Stack.Screen 
           name="HomeScreen" 
@@ -35,7 +36,7 @@ const RootStack = () => {
 }
 
 function App(): React.JSX.Element {
-  console.log('🚀 App component rendering');
+  logger.log('🚀 App component rendering');
   
   return (
     <RootStack />

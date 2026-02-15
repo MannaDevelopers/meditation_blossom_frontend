@@ -7,21 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-
 		0808055756EF48E1AA2DF5FA /* Pretendard-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = CB14C5323D6A4E0CBAA87359 /* Pretendard-Regular.otf */; };
 		09392194228A4ED7A98675B6 /* Pretendard-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = DEF7CBC928634FD6B2DE77C8 /* Pretendard-Medium.otf */; };
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		35449F6D2E5EF66F005824B9 /* PushNotificationService.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 35449F662E5EF66F005824B9 /* PushNotificationService.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-
 		354EC78F2E13D06F00E2A018 /* WidgetUpdateModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 354EC78D2E13D06F00E2A018 /* WidgetUpdateModule.swift */; };
 		3578DB062DEA121C0046B6A0 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3578DB052DEA121C0046B6A0 /* WidgetKit.framework */; };
 		3578DB082DEA121C0046B6A0 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3578DB072DEA121C0046B6A0 /* SwiftUI.framework */; };
 		3578DB192DEA121D0046B6A0 /* MeditationBlossomWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3578DB042DEA121C0046B6A0 /* MeditationBlossomWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		3586FEA32E66DC780003ADE5 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3586FEA22E66DC780003ADE5 /* GoogleService-Info.plist */; };
 		3595A30B2DEBF76F006716D8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3595A3042DEBF76F006716D8 /* Assets.xcassets */; };
-
 		3595A30E2DEBF76F006716D8 /* MeditationBlossomWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3062DEBF76F006716D8 /* MeditationBlossomWidget.swift */; };
 		3595A30F2DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3072DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift */; };
 		3595A3112DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3092DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift */; };
@@ -85,7 +82,6 @@
 /* Begin PBXFileReference section */
 		00E356EE1AD99517003FC87E /* meditation_blossomTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = meditation_blossomTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		00E356F11AD99517003FC87E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-
 		13B07F961A680F5B00A75B9A /* meditation_blossom.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = meditation_blossom.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = meditation_blossom/AppDelegate.h; sourceTree = "<group>"; };
 		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = meditation_blossom/AppDelegate.mm; sourceTree = "<group>"; };
@@ -96,7 +92,6 @@
 		24B4574C15E64071AE2213F2 /* Pretendard-Light.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Pretendard-Light.otf"; path = "../src/assets/fonts/Pretendard-Light.otf"; sourceTree = "<group>"; };
 		2FBB870C8F426F0B56AD5781 /* Pods-meditation_blossom.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-meditation_blossom.debug.xcconfig"; path = "Target Support Files/Pods-meditation_blossom/Pods-meditation_blossom.debug.xcconfig"; sourceTree = "<group>"; };
 		35449F662E5EF66F005824B9 /* PushNotificationService.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PushNotificationService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-
 		354EC78D2E13D06F00E2A018 /* WidgetUpdateModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetUpdateModule.swift; sourceTree = "<group>"; };
 		3578DB042DEA121C0046B6A0 /* MeditationBlossomWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MeditationBlossomWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		3578DB052DEA121C0046B6A0 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -104,12 +99,10 @@
 		358368DC2E01985900AC2237 /* MeditationBlossomWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MeditationBlossomWidgetExtension.entitlements; sourceTree = "<group>"; };
 		358368DD2E01989500AC2237 /* meditation_blossom.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = meditation_blossom.entitlements; path = meditation_blossom/meditation_blossom.entitlements; sourceTree = "<group>"; };
 		3586FEA22E66DC780003ADE5 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
-
 		3595A3042DEBF76F006716D8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3595A3052DEBF76F006716D8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		3595A3062DEBF76F006716D8 /* MeditationBlossomWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeditationBlossomWidget.swift; sourceTree = "<group>"; };
 		3595A3072DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeditationBlossomWidgetBundle.swift; sourceTree = "<group>"; };
-
 		3595A3092DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeditationBlossomWidgetLiveActivity.swift; sourceTree = "<group>"; };
 		35B6CFCE2E01AC0A004A13DD /* Sermon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sermon.swift; sourceTree = "<group>"; };
 		35D57CC62E4E12C1006A8872 /* MyEventModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MyEventModule.m; sourceTree = "<group>"; };
