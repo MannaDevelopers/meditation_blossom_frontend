@@ -5,7 +5,7 @@ import { readAppGroupData, syncAppGroupToAsyncStorage } from '../services/sermon
 import logger from '../utils/logger';
 
 interface UseAppGroupSyncOptions {
-  onDataSynced: () => Promise<void>;
+  onDataSynced: () => Promise<unknown>;
   enabled: boolean;
 }
 
