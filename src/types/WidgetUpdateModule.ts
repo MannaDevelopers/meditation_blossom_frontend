@@ -16,4 +16,4 @@ interface FCMCheckModuleInterface {
 const { WidgetUpdateModule, FCMCheckModule } = NativeModules;
 
 export default WidgetUpdateModule as WidgetUpdateModuleInterface;
-export { FCMCheckModule as FCMCheckModuleInterface }; 
+export { FCMCheckModule };

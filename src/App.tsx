@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import HomeScreen from './screens/HomeScreen';
 import EditScreen from './screens/EditScreen';
 import SettingsScreen from './screens/SettingsScreen';

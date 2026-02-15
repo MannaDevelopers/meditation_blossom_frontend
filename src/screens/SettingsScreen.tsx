@@ -32,7 +32,7 @@ const SettingsScreen = ({ navigation, route }: Props) => {
     try {
       await AsyncStorage.removeItem(FCM_SERMON_KEY);
 
-      console.log('Widget Prefernces cleared');
+      console.log('Widget Preferences cleared');
       await WidgetUpdateModule.onClear();
       route.params.onRefresh();
     } catch (error) {

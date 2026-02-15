@@ -87,7 +87,7 @@ function convertStringToTimestamp(isoString: string | null | undefined): { secon
 }
 
 // FCM 원시 데이터를 Sermon으로 변환하는 함수
-export function fcmDataToSermon(raw: any): Sermon {
+export function fcmDataToSermon(raw: SermonRaw): Sermon {
   return {
     id: raw.id || '',
     title: raw.title || '',

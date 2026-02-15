@@ -7,7 +7,7 @@ import { collection, getDocsFromCache, getDocsFromServer, getFirestore, limit, o
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SvgIcon from '../components/SvgIcon';
 import { RootStackParamList } from '../types/navigation';
-import { compareSermon, FCM_SERMON_KEY, fcmDataToSermon, firestoreDocToSermon, Sermon } from '../types/Sermon';
+import { compareSermon, FCM_SERMON_KEY, fcmDataToSermon, firestoreDocToSermon, Sermon, SermonRaw } from '../types/Sermon';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
 
 
@@ -82,7 +82,7 @@ const HomeScreen = ({ navigation }: Props) => {
     try {
       const latestSermon = await AsyncStorage.getItem(FCM_SERMON_KEY);
       if (latestSermon) {
-        const rawData = JSON.parse(latestSermon);
+        const rawData = JSON.parse(latestSermon) as SermonRaw;
         return fcmDataToSermon(rawData);
       }
     } catch (error) {
@@ -178,7 +178,7 @@ const HomeScreen = ({ navigation }: Props) => {
     if (!title) return '';
 
     // 소괄호를 찾아서 줄바꿈 추가
-    return title.replace(/\(/g, '\n(').replace(/\)/g, ')');
+    return title.replace(/\(/g, '\n(');
   };
 
   const checkInvalidate = (latestSermonDate: Date | null): boolean => {
