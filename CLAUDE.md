@@ -45,7 +45,7 @@ Local release build requires `android/app/release.keystore` and `android/app/sec
 ### React Native Layer (`src/`)
 
 - **App.tsx** — Root component with React Navigation native stack (HomeScreen, EditScreen, SettingsScreen)
-- **screens/HomeScreen.tsx** — Main screen. Loads sermon from multiple sources (Firestore cache, AsyncStorage, iOS App Group) and picks the most recent via `compareSermon()`. Syncs widget on sermon change. Polls iOS App Group every 5 seconds for background FCM updates.
+- **screens/HomeScreen.tsx** — Main screen. Orchestrates data loading via `useSermonData` hook, App Group sync via `useAppGroupSync`, widget sync via `useWidgetSync`, and FCM events via `useFCMListener`. Picks the most recent sermon via `compareSermon()`.
 - **screens/EditScreen.tsx** — Widget customization screen (text alignment, color, size, weight, background, style)
 - **screens/SettingsScreen.tsx** — Settings with data refresh, hidden developer menu (5 taps to toggle), FCM token display
 - **screens/TempSermonScreen.tsx** — Dev/debug screen for browsing all sermons with pull-to-refresh
@@ -54,6 +54,15 @@ Local release build requires `android/app/release.keystore` and `android/app/sec
 - **types/Sermon.ts** — Core data types (`Sermon`, `SermonRaw`, `SermonMetadata`), conversion functions (`fcmDataToSermon`, `firestoreDocToSermon`, `compareSermon`), Korean locale timestamp parsing
 - **types/WidgetUpdateModule.ts** — TypeScript interface for native `WidgetUpdateModule` bridge module
 - **types/navigation.ts** — `RootStackParamList` type for React Navigation
+- **hooks/useSermonData.ts** — Sermon loading/fetching state management hook
+- **hooks/useAppGroupSync.ts** — iOS App Group polling and sync hook
+- **hooks/useWidgetSync.ts** — Native widget update hook
+- **hooks/useFCMListener.ts** — Android FCM broadcast listener hook
+- **services/sermonService.ts** — Sermon data access layer (Firestore, AsyncStorage, App Group, staleness check)
+- **utils/logger.ts** — Logging utility that routes to console (dev) and Crashlytics (prod)
+- **utils/normalize.ts** — JSON normalization for App Group data signature comparison
+- **utils/textFormatting.ts** — Title text formatting for display
+- **constants/index.ts** — App-wide constants (poll intervals, thresholds, storage keys)
 
 ### Native Bridge Modules
 
@@ -70,7 +79,8 @@ The app uses custom native modules bridged to React Native:
 ### Widget Implementations
 
 **Android** (`android/.../widget/`):
-- `VerseWidgetSmallReceiver.kt`, `VerseWidgetLargeReceiver.kt` — AppWidget providers for small/large widget sizes
+- `VerseWidgetSmall.kt`, `VerseWidgetLarge.kt` — Glance AppWidget implementations for small/large widget sizes
+- `VerseWidgetSmallReceiver.kt`, `VerseWidgetLargeReceiver.kt` — AppWidget receiver/provider classes
 
 **iOS** (`ios/MeditationBlossomWidget/`):
 - `MeditationBlossomWidget.swift` — WidgetKit widget implementation
@@ -92,7 +102,7 @@ The app uses custom native modules bridged to React Native:
 
 ## Key Conventions
 
-- **Styling**: `styled-components/native` for EditScreen; inline styles elsewhere. Font family: Pretendard (multiple weights via `src/assets/fonts/`)
+- **Styling**: `styled-components/native` for EditScreen; `StyleSheet.create` for other screens. Font family: Pretendard (multiple weights via `src/assets/fonts/`)
 - **SVG**: Imported as React components via `react-native-svg-transformer` (configured in `metro.config.js`). Declare types in `declaration.d.ts`.
 - **Navigation**: `@react-navigation/native-stack` with typed params (`RootStackParamList`)
 - **Firebase**: Uses `@react-native-firebase/*` (v22.2.1) — Firestore, Messaging, Crashlytics, In-App Messaging
