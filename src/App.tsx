@@ -10,8 +10,6 @@ import { RootStackParamList } from './types/navigation';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const RootStack = () => {
-  logger.log('🚀 RootStack component rendering');
-  
   return (
     <NavigationContainer onReady={() => logger.log('✅ NavigationContainer ready')}>
       <Stack.Navigator>
@@ -36,8 +34,6 @@ const RootStack = () => {
 }
 
 function App(): React.JSX.Element {
-  logger.log('🚀 App component rendering');
-  
   return (
     <RootStack />
   );
