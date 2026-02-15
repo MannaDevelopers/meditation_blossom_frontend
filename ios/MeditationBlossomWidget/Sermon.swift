@@ -91,14 +91,14 @@ extension UserDefaults {
         }
 
         guard let data = jsonString.data(using: .utf8) else {
-            print("❌ Widget: Failed to convert string to Data for key '\(key)'")
+            NSLog("Widget: Failed to convert string to Data for key '%@'", key)
             return nil
         }
 
         do {
             return try JSONDecoder().decode(type, from: data)
         } catch {
-            print("❌ Widget: JSON decoding failed for key '\(key)': \(error)")
+            NSLog("Widget: JSON decoding failed for key '%@': %@", key, error.localizedDescription)
             return nil
         }
     }

@@ -26,9 +26,11 @@ import androidx.glance.layout.padding
 import androidx.glance.text.Text
 import app.mannadev.meditation.MainActivity
 import app.mannadev.meditation.R
+import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.di.getWidgetDependencies
 import app.mannadev.meditation.model.Sermon
 import app.mannadev.meditation.ui.widget.theme.Typography
+import timber.log.Timber
 
 class VerseWidgetSmall : GlanceAppWidget(
     errorUiLayout = R.layout.verse_widget_small_error,
@@ -36,7 +38,14 @@ class VerseWidgetSmall : GlanceAppWidget(
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val widgetDependencies = getWidgetDependencies(context)
         val getDisplaySermonUseCase = widgetDependencies.getDisplaySermonUseCase()
-        val verse = getDisplaySermonUseCase() ?: Sermon.errorSermon
+        val verse = getDisplaySermonUseCase() ?: run {
+            Timber.w("VerseWidgetSmall: No sermon data available, using error fallback")
+            CrashlyticsHelper.recordException(
+                IllegalStateException("VerseWidgetSmall: getDisplaySermonUseCase returned null"),
+                "Widget displayed error fallback due to missing sermon data"
+            )
+            Sermon.errorSermon
+        }
 
         provideContent {
             VerseWidgetSmallContent(verse)

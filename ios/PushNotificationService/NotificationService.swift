@@ -129,6 +129,7 @@ class NotificationService: UNNotificationServiceExtension {
               let content = userInfo["content"] as? String,
               let date = userInfo["date"] as? String,
               let dayOfWeek = userInfo["day_of_week"] as? String else {
+            NSLog("NotificationService: parseSermonFromUserInfo failed - missing required fields (title/content/date/day_of_week)")
             return nil
         }
 
