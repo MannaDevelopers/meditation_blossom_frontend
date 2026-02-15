@@ -40,13 +40,13 @@ class SermonPrefsDataSource @Inject constructor(
     }
 
     suspend fun saveDisplaySermon(sermon: SermonDto) = withContext(Dispatchers.IO) {
-        prefs.edit(commit = true) {
+        prefs.edit {
             putString(KEY_DISPLAY_SERMON_JSON, json.encodeToString(sermon))
         }
     }
 
     suspend fun clearDisplaySermon() = withContext(Dispatchers.IO) {
-        prefs.edit(commit = true) {
+        prefs.edit {
             remove(KEY_DISPLAY_SERMON_JSON)
         }
     }

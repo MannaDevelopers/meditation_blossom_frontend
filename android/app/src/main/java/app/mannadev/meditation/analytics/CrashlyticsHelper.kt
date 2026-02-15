@@ -8,10 +8,10 @@ object CrashlyticsHelper {
         Timber
             .tag(tag ?: "CrashlyticsHelper")
             .e(exception, "Recording exception: $message")
+        val crashlytics = FirebaseCrashlytics.getInstance()
         if (message != null) {
-            FirebaseCrashlytics.getInstance().recordException(RuntimeException(message, exception))
-        } else {
-            FirebaseCrashlytics.getInstance().recordException(exception)
+            crashlytics.log(message)
         }
+        crashlytics.recordException(exception)
     }
 }
