@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
 import logger from '../utils/logger';
 
-export function useFCMListener(onUpdate: () => void): void {
+export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
   useEffect(() => {
     const { MyEventModule } = NativeModules;
 

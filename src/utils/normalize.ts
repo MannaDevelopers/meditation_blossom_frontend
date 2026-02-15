@@ -18,7 +18,7 @@ const normalizeValueForSignature = (value: unknown): unknown => {
   return value;
 };
 
-export const normalizeJsonString = (jsonString: string | null | undefined): string => {
+export const normalizeJsonString = (jsonString: string | null | undefined): string | null => {
   try {
     if (!jsonString) {
       return '';
@@ -28,6 +28,6 @@ export const normalizeJsonString = (jsonString: string | null | undefined): stri
     return JSON.stringify(sorted);
   } catch (error) {
     logger.error('Failed to normalize JSON string:', error);
-    return '';
+    return null;
   }
 };

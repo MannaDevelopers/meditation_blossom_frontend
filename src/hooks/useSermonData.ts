@@ -10,6 +10,7 @@ import logger from '../utils/logger';
 export interface UseSermonDataReturn {
   sermon: Sermon | null;
   isLoading: boolean;
+  setIsLoading: (loading: boolean) => void;
   error: string | null;
   loadLocalData: () => Promise<Sermon | null>;
   fetchFromServer: () => Promise<void>;
@@ -76,5 +77,5 @@ export function useSermonData(): UseSermonDataReturn {
     await fetchFromServer();
   }, [fetchFromServer]);
 
-  return { sermon, isLoading, error, loadLocalData, fetchFromServer, onRefresh };
+  return { sermon, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh };
 }

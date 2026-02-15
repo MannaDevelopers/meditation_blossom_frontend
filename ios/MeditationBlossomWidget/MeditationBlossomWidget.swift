@@ -231,12 +231,3 @@ extension View {
     }
   }
 }
-
-// iOS 16.6과 호환성을 위해 Preview 주석 처리
-/*
-#Preview(as: .systemMedium) {
-  MeditationBlossomWidget()
-} timeline: {
-  SimpleEntry(date: Date(), title: " ", quote: "등록된 설교가 없습니다", verse: " ")
-}
-*/

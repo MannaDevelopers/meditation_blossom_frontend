@@ -31,19 +31,26 @@ describe('convertStringToTimestamp', () => {
     expect(result.seconds).toBeGreaterThan(0);
   });
 
-  it('parses Korean PM format', () => {
+  it('parses Korean PM format with correct UTC value', () => {
+    // 2025년 3월 15일 오후 2시 30분 0초 UTC+9 → UTC: 2025-03-15 05:30:00
     const result = convertStringToTimestamp('2025년 3월 15일 오후 2시 30분 0초 UTC+9');
-    expect(result.seconds).toBeGreaterThan(0);
+    const expectedSeconds = Math.floor(Date.UTC(2025, 2, 15, 5, 30, 0) / 1000);
+    expect(result.seconds).toBe(expectedSeconds);
+    expect(result.nanoseconds).toBe(0);
   });
 
-  it('handles Korean noon (오후 12시)', () => {
+  it('handles Korean noon (오후 12시) correctly', () => {
+    // 오후 12시 = 12:00 (noon), UTC+9 → UTC: 03:00
     const result = convertStringToTimestamp('2025년 1월 1일 오후 12시 0분 0초 UTC+9');
-    expect(result.seconds).toBeGreaterThan(0);
+    const expectedSeconds = Math.floor(Date.UTC(2025, 0, 1, 3, 0, 0) / 1000);
+    expect(result.seconds).toBe(expectedSeconds);
   });
 
-  it('handles Korean midnight (오전 12시)', () => {
+  it('handles Korean midnight (오전 12시) correctly', () => {
+    // 오전 12시 = 00:00 (midnight), UTC+9 → UTC: previous day 15:00
     const result = convertStringToTimestamp('2025년 1월 1일 오전 12시 0분 0초 UTC+9');
-    expect(result.seconds).toBeGreaterThan(0);
+    const expectedSeconds = Math.floor(Date.UTC(2024, 11, 31, 15, 0, 0) / 1000);
+    expect(result.seconds).toBe(expectedSeconds);
   });
 
   it('returns zero timestamp for unparseable string', () => {
@@ -148,5 +155,47 @@ describe('fcmDataToSermon', () => {
     expect(result.title).toBe('');
     expect(result.content).toBe('');
     expect(result.date).toBe('');
+  });
+
+  it('resolveTimestamp prefers snake_case over camelCase when both are strings', () => {
+    const raw: SermonRaw = {
+      id: '1',
+      title: 'T',
+      content: 'C',
+      date: '2025-01-01',
+      updated_at: '2025-06-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+    };
+    const result = fcmDataToSermon(raw);
+    const expectedSeconds = Math.floor(new Date('2025-06-01T00:00:00.000Z').getTime() / 1000);
+    expect(result.updated_at.seconds).toBe(expectedSeconds);
+  });
+
+  it('resolveTimestamp uses camelCase when snake_case is undefined', () => {
+    const raw: SermonRaw = {
+      id: '1',
+      title: 'T',
+      content: 'C',
+      date: '2025-01-01',
+      updatedAt: '2025-03-01T00:00:00.000Z',
+    };
+    const result = fcmDataToSermon(raw);
+    const expectedSeconds = Math.floor(new Date('2025-03-01T00:00:00.000Z').getTime() / 1000);
+    expect(result.updated_at.seconds).toBe(expectedSeconds);
+  });
+
+  it('resolveTimestamp prefers snake_case object over camelCase object', () => {
+    const snakeTs: FirestoreTimestamp = { seconds: 9999, nanoseconds: 0 };
+    const camelTs: FirestoreTimestamp = { seconds: 1111, nanoseconds: 0 };
+    const raw: SermonRaw = {
+      id: '1',
+      title: 'T',
+      content: 'C',
+      date: '2025-01-01',
+      updated_at: snakeTs,
+      updatedAt: camelTs,
+    };
+    const result = fcmDataToSermon(raw);
+    expect(result.updated_at).toEqual(snakeTs);
   });
 });

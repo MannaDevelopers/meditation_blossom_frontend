@@ -45,7 +45,6 @@ export function useAppGroupSync({ onDataSynced, enabled }: UseAppGroupSyncOption
         }
       } catch (error) {
         logger.error('Error syncing App Group data:', error);
-        await onDataSynced();
       }
     };
 

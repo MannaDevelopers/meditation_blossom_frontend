@@ -25,7 +25,7 @@ import { processTitleText } from '../utils/textFormatting';
 type Props = NativeStackScreenProps<RootStackParamList, 'HomeScreen'>;
 
 const HomeScreen = ({ navigation }: Props) => {
-  const { sermon, isLoading, error, loadLocalData, fetchFromServer, onRefresh } =
+  const { sermon, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useSermonData();
 
   const { performInitialSync } = useAppGroupSync({
@@ -48,8 +48,11 @@ const HomeScreen = ({ navigation }: Props) => {
         await fetchFromServer();
       }
     };
-    init().catch((e) => { logger.error('HomeScreen init failed:', e); });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    init().catch((e) => {
+      logger.error('HomeScreen init failed:', e);
+      setIsLoading(false);
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- init must run once on mount; deps are stable callbacks
 
   if (isLoading && !sermon) {
     return (

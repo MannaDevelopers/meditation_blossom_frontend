@@ -79,6 +79,10 @@ export async function syncAppGroupToAsyncStorage(
   lastSignature: string | null,
 ): Promise<string | null> {
   const normalized = normalizeJsonString(data);
+  if (normalized === null) {
+    logger.warn('Skipping App Group sync: failed to normalize data');
+    return null;
+  }
   if (normalized === lastSignature) {
     return null; // no change
   }

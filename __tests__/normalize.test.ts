@@ -26,7 +26,7 @@ describe('normalizeJsonString', () => {
 
   it('normalizes nested objects', () => {
     const result = normalizeJsonString('{"b":{"d":1,"c":2},"a":3}');
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(result!);
     expect(Object.keys(parsed)).toEqual(['a', 'b']);
   });
 
@@ -35,7 +35,17 @@ describe('normalizeJsonString', () => {
     expect(result).toContain('hello\\nworld');
   });
 
-  it('returns empty string for invalid JSON', () => {
-    expect(normalizeJsonString('not-json')).toBe('');
+  it('returns null for invalid JSON', () => {
+    expect(normalizeJsonString('not-json')).toBeNull();
+  });
+
+  it('normalizes arrays', () => {
+    const result = normalizeJsonString('[{"b":1,"a":2},{"d":3,"c":4}]');
+    expect(result).toBe('[{"a":2,"b":1},{"c":4,"d":3}]');
+  });
+
+  it('normalizes arrays with mixed types', () => {
+    const result = normalizeJsonString('[1,"hello",{"b":2,"a":1}]');
+    expect(result).toBe('[1,"hello",{"a":1,"b":2}]');
   });
 });

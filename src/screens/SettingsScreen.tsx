@@ -41,8 +41,10 @@ const SettingsScreen = ({ navigation, route }: Props) => {
     try {
       await AsyncStorage.removeItem(FCM_SERMON_KEY);
       logger.log('Widget Preferences cleared');
-      await WidgetUpdateModule.onClear();
-      route.params.onRefresh();
+      if (WidgetUpdateModule) {
+        await WidgetUpdateModule.onClear();
+      }
+      await route.params.onRefresh();
     } catch (error) {
       logger.error('Error clearing local storage:', error);
     }
