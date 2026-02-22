@@ -17,7 +17,9 @@ const config = {
   },
   resolver: {
     assetExts: assetExts.filter((ext) => ext !== "svg"),
-    sourceExts: [...sourceExts, "svg"]
+    sourceExts: [...sourceExts, "svg"],
+    unstable_enablePackageExports: true,
+    unstable_conditionNames: ["react-native", "browser", "require", "import"]
   }
 };
 

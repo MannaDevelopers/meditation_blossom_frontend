@@ -62,3 +62,44 @@ jest.mock('react-native-device-info', () => ({
   getVersion: jest.fn(() => '1.0.0'),
   getBuildNumber: jest.fn(() => '1'),
 }));
+
+jest.mock('sp-react-native-in-app-updates', () => {
+  const mock = jest.fn().mockImplementation(() => ({
+    checkNeedsUpdate: jest.fn().mockResolvedValue({ shouldUpdate: false }),
+    startUpdate: jest.fn().mockResolvedValue(undefined),
+    installUpdate: jest.fn(),
+    addStatusUpdateListener: jest.fn(),
+    removeStatusUpdateListener: jest.fn(),
+    addIntentSelectionListener: jest.fn(),
+    removeIntentSelectionListener: jest.fn(),
+  }));
+  mock.IAUUpdateKind = { FLEXIBLE: 0, IMMEDIATE: 1 };
+  mock.IAUAvailabilityStatus = { UNKNOWN: 0, AVAILABLE: 2, UNAVAILABLE: 1, DEVELOPER_TRIGGERED: 3 };
+  mock.IAUInstallStatus = { UNKNOWN: 0, PENDING: 1, DOWNLOADING: 2, INSTALLING: 3, INSTALLED: 4, FAILED: 5, CANCELED: 6, DOWNLOADED: 11 };
+  return {
+    __esModule: true,
+    default: mock,
+    IAUUpdateKind: { FLEXIBLE: 0, IMMEDIATE: 1 },
+    IAUAvailabilityStatus: { UNKNOWN: 0, AVAILABLE: 2, UNAVAILABLE: 1, DEVELOPER_TRIGGERED: 3 },
+    IAUInstallStatus: { UNKNOWN: 0, PENDING: 1, DOWNLOADING: 2, INSTALLING: 3, INSTALLED: 4, FAILED: 5, CANCELED: 6, DOWNLOADED: 11 },
+  };
+});
+
+jest.mock('@react-native-firebase/remote-config', () => {
+  const mockGetValue = jest.fn((key) => {
+    const defaults = {
+      force_update_enabled: { asBoolean: () => false, asString: () => 'false' },
+      android_min_version: { asBoolean: () => false, asString: () => '1.0.0' },
+      ios_min_version: { asBoolean: () => false, asString: () => '1.0.0' },
+      force_update_message: { asBoolean: () => false, asString: () => '업데이트가 필요합니다.' },
+      android_store_url: { asBoolean: () => false, asString: () => '' },
+      ios_store_url: { asBoolean: () => false, asString: () => '' },
+    };
+    return defaults[key] || { asBoolean: () => false, asString: () => '' };
+  });
+  return () => ({
+    setDefaults: jest.fn().mockResolvedValue(undefined),
+    fetchAndActivate: jest.fn().mockResolvedValue(undefined),
+    getValue: mockGetValue,
+  });
+});
