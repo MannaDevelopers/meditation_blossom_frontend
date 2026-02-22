@@ -18,6 +18,7 @@
     "@react-native-firebase/in-app-messaging": "22.2.1",
     "@react-native-firebase/installations": "22.2.1",
     "@react-native-firebase/messaging": "^22.2.1",
+    "@react-native-firebase/remote-config": "22.2.1",
     "@react-native-masked-view/masked-view": "^0.3.2",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
@@ -31,6 +32,7 @@
     "react-native-screens": "^4.10.0",
     "react-native-svg": "^15.12.0",
     "react-native-vector-icons": "^10.2.0",
+    "sp-react-native-in-app-updates": "^1.5.0",
     "styled-components": "^6.1.17"
   },
   "devDependencies": {
