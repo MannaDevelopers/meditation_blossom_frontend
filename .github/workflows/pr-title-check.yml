@@ -2,7 +2,7 @@ name: PR Title Format Check
 
 on:
   pull_request:
-    types: [opened, edited]
+    types: [opened, edited, synchronize]
 
 permissions:
   pull-requests: read

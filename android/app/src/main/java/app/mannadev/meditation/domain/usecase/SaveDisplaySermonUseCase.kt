@@ -9,7 +9,7 @@ class SaveDisplaySermonUseCase @Inject constructor(
 ) {
 
     /**
-     * Saves the sermon to preferences if it is not older than the currently saved sermon.
+     * Saves the sermon to preferences unconditionally.
      */
     suspend operator fun invoke(sermon: SermonDto) {
         prefsDataSource.saveDisplaySermon(sermon)

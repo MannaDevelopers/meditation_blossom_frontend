@@ -2,7 +2,9 @@ package app.mannadev.meditation.data
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
+import app.mannadev.meditation.analytics.CrashlyticsHelper
 import dagger.hilt.android.qualifiers.ApplicationContext
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -37,7 +39,8 @@ class AsyncStorage @Inject constructor(
             cursor.close()
             value
         } catch (e: Exception) {
-            e.printStackTrace()
+            Timber.e(e, "AsyncStorage.get failed for key: $key")
+            CrashlyticsHelper.recordException(e, "AsyncStorage.get failed for key: $key")
             null
         } finally {
             db?.close()
@@ -71,8 +74,9 @@ class AsyncStorage @Inject constructor(
                 db.insert("catalystLocalStorage", null, values)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
-            // Optionally rethrow or handle the exception as needed
+            Timber.e(e, "AsyncStorage.set failed for key: $key")
+            CrashlyticsHelper.recordException(e, "AsyncStorage.set failed for key: $key")
+            throw e
         } finally {
             db?.close()
         }

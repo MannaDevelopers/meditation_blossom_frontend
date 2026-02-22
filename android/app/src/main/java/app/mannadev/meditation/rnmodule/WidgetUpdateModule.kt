@@ -117,7 +117,7 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
                 .onFailure {
                     CrashlyticsHelper.recordException(
                         it,
-                        "Error updating widgets after clearing preferences: ${it.message}",
+                        "Error updating widgets after saving sermon: ${it.message}",
                         tag = TAG
                     )
                 }

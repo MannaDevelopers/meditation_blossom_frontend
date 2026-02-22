@@ -6,14 +6,6 @@ interface WidgetUpdateModuleInterface {
   getAppGroupData(key: string): Promise<string | null>;
 }
 
-interface FCMCheckModuleInterface {
-  checkFCMReceived(): Promise<{
-    fcmReceived: boolean;
-    fcmTimestamp: number;
-  }>;
-}
-
-const { WidgetUpdateModule, FCMCheckModule } = NativeModules;
+const { WidgetUpdateModule } = NativeModules;
 
 export default WidgetUpdateModule as WidgetUpdateModuleInterface;
-export { FCMCheckModule as FCMCheckModuleInterface }; 

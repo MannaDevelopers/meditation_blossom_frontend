@@ -2,23 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, SafeAreaView } from 'react-native';
 import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { firestoreDocToSermon, Sermon, SermonMetadata } from '../types/Sermon';
+import logger from '../utils/logger';
 
-// 타입 정의
-interface Sermon {
-  id: string;
-  title: string;
-  content: string;
-  date: string; // 설교 날짜 (YYYY-MM-DD)
-  category?: string; // 설교 카테고리
-  day_of_week?: string; // 요일 (예: "SUN")
-  created_at: number; // Firestore 타임스탬프 (초 단위)
-  updated_at: number; // Firestore 타임스탬프 (초 단위)
-}
-
-// 메타데이터 타입 정의
-interface SermonMetadata {
-  latestDate: string; // 가장 최근 날짜 (YYYY-MM-DD)
-  lastUpdated: string;
+// TempSermonScreen-specific metadata with totalCount
+interface TempSermonMetadata extends SermonMetadata {
   totalCount: number;
 }
 
@@ -31,19 +19,19 @@ function TempSermonScreen(): React.JSX.Element {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [latestDate, setLatestDate] = useState<string | null>(null);
-  const [metadata, setMetadata] = useState<SermonMetadata>({
+  const [metadata, setMetadata] = useState<TempSermonMetadata>({
     latestDate: '',
     lastUpdated: new Date().toISOString(),
     totalCount: 0
   });
 
   // 메타데이터 로드
-  const loadMetadata = async (): Promise<SermonMetadata> => {
+  const loadMetadata = async (): Promise<TempSermonMetadata> => {
     try {
       const metadataStr = await AsyncStorage.getItem(METADATA_KEY);
       if (metadataStr) {
-        const parsedMetadata = JSON.parse(metadataStr) as SermonMetadata;
-        console.log('Loaded metadata:', parsedMetadata);
+        const parsedMetadata = JSON.parse(metadataStr) as TempSermonMetadata;
+        logger.log('Loaded metadata:', parsedMetadata);
         setMetadata(parsedMetadata);
         if (parsedMetadata.latestDate) {
           setLatestDate(parsedMetadata.latestDate);
@@ -51,7 +39,7 @@ function TempSermonScreen(): React.JSX.Element {
         return parsedMetadata;
       }
     } catch (error) {
-      console.error('Error loading metadata:', error);
+      logger.error('Error loading metadata:', error);
     }
     
     return {
@@ -62,16 +50,16 @@ function TempSermonScreen(): React.JSX.Element {
   };
 
   // 메타데이터 저장
-  const saveMetadata = async (newMetadata: SermonMetadata) => {
+  const saveMetadata = async (newMetadata: TempSermonMetadata) => {
     try {
       await AsyncStorage.setItem(METADATA_KEY, JSON.stringify(newMetadata));
       setMetadata(newMetadata);
       if (newMetadata.latestDate) {
         setLatestDate(newMetadata.latestDate);
       }
-      console.log('Metadata saved:', newMetadata);
+      logger.log('Metadata saved:', newMetadata);
     } catch (error) {
-      console.error('Error saving metadata:', error);
+      logger.error('Error saving metadata:', error);
     }
   };
 
@@ -83,14 +71,14 @@ function TempSermonScreen(): React.JSX.Element {
 
   // 로컬 데이터 로드
   const loadLocalData = async () => {
-    console.log('Loading local data...');
+    logger.log('Loading local data...');
     try {
       const currentMetadata = await loadMetadata();
       const data = await AsyncStorage.getItem(STORAGE_KEY);
       
       if (data) {
         const parsedData = JSON.parse(data) as Sermon[];
-        console.log(`Loaded ${parsedData.length} sermons from local storage`);
+        logger.log(`Loaded ${parsedData.length} sermons from local storage`);
         setSermons(parsedData);
         
         // 메타데이터의 최신 날짜 정보가 없으면 계산
@@ -103,22 +91,22 @@ function TempSermonScreen(): React.JSX.Element {
               latestDate: newLatestDate,
               totalCount: parsedData.length
             });
-            console.log(`Calculated and saved latest date: ${newLatestDate}`);
+            logger.log(`Calculated and saved latest date: ${newLatestDate}`);
           }
         }
       } else {
-        console.log('No local data found');
+        logger.log('No local data found');
       }
       setLoading(false);
     } catch (error) {
-      console.error('Error loading local data:', error);
+      logger.error('Error loading local data:', error);
       setLoading(false);
     }
   };
 
   // 서버에서 데이터 가져오기
   const fetchDataFromServer = async () => {
-    console.log('Fetching data from server...');
+    logger.log('Fetching data from server...');
     try {
       let existingSermons: Sermon[] = [];
       let currentMetadata = metadata;
@@ -135,11 +123,11 @@ function TempSermonScreen(): React.JSX.Element {
       
       // Firestore 쿼리 준비
       const sermonsCollection = firestore().collection('sermons');
-      let query: any = sermonsCollection;
+      let query: FirebaseFirestoreTypes.Query = sermonsCollection;
       
       // 최신 날짜 기준으로 쿼리 설정
       if (currentMetadata.latestDate) {
-        console.log(`Fetching sermons from date: ${currentMetadata.latestDate}`);
+        logger.log(`Fetching sermons from date: ${currentMetadata.latestDate}`);
         
         // >= 연산자를 사용해 해당 날짜와 이후의 데이터를 가져옴
         query = sermonsCollection.where('date', '>=', currentMetadata.latestDate);
@@ -149,32 +137,19 @@ function TempSermonScreen(): React.JSX.Element {
       query = query.orderBy('date', 'desc');
       
       const snapshot = await query.get();
-      console.log(`Fetched ${snapshot.docs.length} sermons from server`);
+      logger.log(`Fetched ${snapshot.docs.length} sermons from server`);
       
       if (snapshot.empty) {
-        console.log('No new sermons found');
+        logger.log('No new sermons found');
         setLoading(false);
         setRefreshing(false);
         return;
       }
       
       // 새로운 설교 데이터 처리
-      const newSermonsData: Sermon[] = snapshot.docs.map((doc: FirebaseFirestoreTypes.QueryDocumentSnapshot) => {
-        const firestoreData = doc.data();
-        
-        return {
-          id: doc.id,
-          title: firestoreData.title || '',
-          content: firestoreData.content || '',
-          date: firestoreData.date || new Date().toISOString().split('T')[0],
-          category: firestoreData.category || '',
-          day_of_week: firestoreData.day_of_week || '',
-          created_at: firestoreData.created_at || 0,
-          updated_at: firestoreData.updated_at || 0
-        };
-      });
+      const newSermonsData: Sermon[] = snapshot.docs.map(firestoreDocToSermon);
       
-      console.log('Sample of new sermon data:', newSermonsData.length > 0 ? JSON.stringify(newSermonsData[0], null, 2) : 'No data');
+      logger.log('Sample of new sermon data:', newSermonsData.length > 0 ? JSON.stringify(newSermonsData[0], null, 2) : 'No data');
       
       // 기존 데이터와 새 데이터를 병합
       const mergedSermons = [...existingSermons];
@@ -185,39 +160,39 @@ function TempSermonScreen(): React.JSX.Element {
         if (existingIndex !== -1) {
           // 기존 데이터 업데이트
           mergedSermons[existingIndex] = newSermon;
-          console.log(`Updated existing sermon: ${newSermon.id} for date ${newSermon.date}`);
+          logger.log(`Updated existing sermon: ${newSermon.id} for date ${newSermon.date}`);
         } else {
           // 새 데이터 추가
           mergedSermons.push(newSermon);
-          console.log(`Added new sermon: ${newSermon.id} for date ${newSermon.date}`);
+          logger.log(`Added new sermon: ${newSermon.id} for date ${newSermon.date}`);
         }
       });
       
-      console.log(`Total sermons after merge: ${mergedSermons.length}`);
+      logger.log(`Total sermons after merge: ${mergedSermons.length}`);
       
       // AsyncStorage에 저장
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(mergedSermons));
-      console.log('Saved merged data to local storage');
+      logger.log('Saved merged data to local storage');
       
       setSermons(mergedSermons);
       
       // 가장 최신 날짜 찾기
       const newLatestDate = findLatestDate(mergedSermons);
       if (newLatestDate) {
-        console.log(`New latest date: ${newLatestDate}`);
+        logger.log(`New latest date: ${newLatestDate}`);
         
         // 메타데이터 업데이트
-        const newMetadata: SermonMetadata = {
+        const newMetadata: TempSermonMetadata = {
           latestDate: newLatestDate,
           lastUpdated: new Date().toISOString(),
           totalCount: mergedSermons.length
         };
         
         await saveMetadata(newMetadata);
-        console.log(`Updated metadata with latest date: ${newLatestDate}`);
+        logger.log(`Updated metadata with latest date: ${newLatestDate}`);
       }
     } catch (error) {
-      console.error('Error fetching sermons:', error);
+      logger.error('Error fetching sermons:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -238,28 +213,28 @@ function TempSermonScreen(): React.JSX.Element {
         totalCount: 0
       });
       
-      console.log('Local storage and metadata cleared');
+      logger.log('Local storage and metadata cleared');
     } catch (error) {
-      console.error('Error clearing local storage:', error);
+      logger.error('Error clearing local storage:', error);
     }
   };
 
   // 로컬 스토리지 내용 확인
   const inspectStorage = async () => {
-    console.log('Inspecting AsyncStorage...');
+    logger.log('Inspecting AsyncStorage...');
     try {
       const keys = await AsyncStorage.getAllKeys();
       
       // 모든 키를 로그로 출력
-      console.log(keys);
+      logger.log(keys);
       
       // 각 키에 대한 데이터 검사
       for (const key of keys) {
         const value = await AsyncStorage.getItem(key);
-        console.log([JSON.parse(value || '{}')]);
+        logger.log([JSON.parse(value || '{}')]);
       }
     } catch (error) {
-      console.error('Error inspecting AsyncStorage:', JSON.stringify(error, null, 2));
+      logger.error('Error inspecting AsyncStorage:', JSON.stringify(error, null, 2));
     }
   };
 
@@ -277,8 +252,8 @@ function TempSermonScreen(): React.JSX.Element {
   };
 
   // 타임스탬프 포맷팅
-  const formatTimestamp = (timestamp: number): string => {
-    const date = new Date(timestamp * 1000); // 초 단위 타임스탬프를 밀리초로 변환
+  const formatTimestamp = (timestamp: { seconds: number; nanoseconds: number }): string => {
+    const date = new Date(timestamp.seconds * 1000);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 

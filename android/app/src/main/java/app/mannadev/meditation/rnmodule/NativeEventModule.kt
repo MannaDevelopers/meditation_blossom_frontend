@@ -7,6 +7,7 @@ import android.content.IntentFilter
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import app.mannadev.meditation.Constants.ACTION_SERMON_UPDATE_EVENT
 import app.mannadev.meditation.Constants.MESSAGE_SERMON_UPDATE_EVENT
+import app.mannadev.meditation.analytics.CrashlyticsHelper
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.WritableMap
@@ -17,7 +18,7 @@ import timber.log.Timber
 class NativeEventModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
 
-    override fun getName() = "NativeEventModule"
+    override fun getName() = "MyEventModule"
     override fun initialize() {
         super.initialize()
         val intentFilter = IntentFilter(ACTION_SERMON_UPDATE_EVENT)
@@ -39,11 +40,14 @@ class NativeEventModule(reactContext: ReactApplicationContext) :
     }
 
     fun sendEventToJS(eventName: String, params: WritableMap? = null) {
-        // 앱이 현재 포그라운드(Resumed) 상태인지 확인합니다.
-        if (reactApplicationContext.lifecycleState == LifecycleState.BEFORE_RESUME || reactApplicationContext.lifecycleState == LifecycleState.RESUMED) {
+        if (reactApplicationContext.lifecycleState == LifecycleState.BEFORE_CREATE) return
+        try {
             reactApplicationContext
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
                 .emit(eventName, params)
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to send event to JS: $eventName")
+            CrashlyticsHelper.recordException(e, "Failed to send event to JS: $eventName")
         }
     }
 

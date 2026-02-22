@@ -54,10 +54,8 @@ const EditScreen = ({navigation, route}: Props) => {
       {/*Edit Tab*/}
       {/*Tab 1*/} 
       <View style={{ backgroundColor: 'black', width: 177, flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: 64, marginVertical: 15}} >
-        <TextAlignIconBox selected={textAlignIconSelected === 0} onPress={() => setTextAlignIconSelected(0)} > 
-        {/* <View style={{backgroundColor: 'blue', flex: 1, justifyContent: 'center', alignItems: 'center', width: 55, height: 55}} > */}
+        <TextAlignIconBox selected={textAlignIconSelected === 0} onPress={() => setTextAlignIconSelected(0)} >
           <SvgIcon name="TextLeft" size={25} color='black'/>
-        {/* </View> */}
         </TextAlignIconBox>
         <TextAlignIconBox selected={textAlignIconSelected === 1} onPress={() => setTextAlignIconSelected(1)} >
           <SvgIcon name="TextCenter" size={25}/>
@@ -72,9 +70,6 @@ const EditScreen = ({navigation, route}: Props) => {
 <TouchableOpacity onPress={() => setTextSettingItemSelected(1)}><TextSettingItemBox selected={textSettingItemSelected === 1}>색상</TextSettingItemBox></TouchableOpacity>
 <TouchableOpacity onPress={() => setTextSettingItemSelected(2)}><TextSettingItemBox selected={textSettingItemSelected === 2}>크기</TextSettingItemBox></TouchableOpacity>
 <TouchableOpacity onPress={() => setTextSettingItemSelected(3)}><TextSettingItemBox selected={textSettingItemSelected === 3}>두께</TextSettingItemBox></TouchableOpacity>
-{/* <TextSettingItemBox>색상</TextSettingItemBox>
-<TextSettingItemBox>크기</TextSettingItemBox>
-<TextSettingItemBox>두께</TextSettingItemBox> */}
 </View>
 {/* Tab 3 */}
 <View style={{backgroundColor: 'transparent', flexDirection: 'row', width: 243, height: 71, marginHorizontal: 31, marginBottom: 60, justifyContent: 'space-between', alignItems: 'center'}} >

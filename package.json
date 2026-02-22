@@ -25,6 +25,7 @@
     "false": "^0.0.4",
     "react": "19.0.0",
     "react-native": "0.78.1",
+    "react-native-device-info": "^15.0.1",
     "react-native-gesture-handler": "^2.25.0",
     "react-native-safe-area-context": "^5.5.0",
     "react-native-screens": "^4.10.0",
