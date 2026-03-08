@@ -23,6 +23,13 @@
 // 디버깅용 imports (테스트 완료 후 주석 처리)
 // #import <FirebaseInstallations/FirebaseInstallations.h>
 
+// AsyncStorage 저장을 위한 헤더
+#if __has_include(<RNCAsyncStorage/RNCAsyncStorage.h>)
+#import <RNCAsyncStorage/RNCAsyncStorage.h>
+#elif __has_include("RNCAsyncStorage.h")
+#import "RNCAsyncStorage.h"
+#endif
+
 // MyEventModule 클래스 선언
 @interface MyEventModule : NSObject
 - (void)trigger:(NSString *)message;
@@ -722,9 +729,27 @@
     }
   }];
   
-  // DEBUG 모드에서만 sermon_events_test 토픽 구독
+  // qt_events 토픽도 구독
+  [[FIRMessaging messaging] subscribeToTopic:@"qt_events" completion:^(NSError * _Nullable error) {
+    if (error) {
+      NSLog(@"Failed to subscribe to qt_events topic: %@", error);
+    } else {
+      NSLog(@"Successfully subscribed to qt_events topic");
+    }
+  }];
+  
+  
+  // DEBUG 모드에서만 test 토픽들 구독
 #ifdef DEBUG
   [[FIRMessaging messaging] subscribeToTopic:@"sermon_events_test" completion:^(NSError * _Nullable error) {
+    if (error) {
+      NSLog(@"[DEBUG] Failed to subscribe to sermon_events_test topic: %@", error);
+    } else {
+      NSLog(@"[DEBUG] Successfully subscribed to sermon_events_test topic");
+    }
+  }];
+  
+  [[FIRMessaging messaging] subscribeToTopic:@"qt_events_test" completion:^(NSError * _Nullable error) {
     if (error) {
       NSLog(@"[DEBUG] Failed to subscribe to sermon_events_test topic: %@", error);
     } else {
@@ -828,34 +853,95 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   }
 }
 
+- (void)saveToAsyncStorageDirect:(NSString *)jsonString forKey:(NSString *)key {
+#if __has_include(<RNCAsyncStorage/RNCAsyncStorage.h>) || __has_include("RNCAsyncStorage.h")
+  if (!jsonString || !key) {
+    NSLog(@"❌ AsyncStorage save skipped: key or value is nil");
+    return;
+  }
+
+  RNCAsyncStorage *storage = [RNCAsyncStorage new];
+
+  dispatch_async(storage.methodQueue, ^{
+    [storage multiSet:@[@[key, jsonString]]
+             callback:^(NSArray *response) {
+      id error = (response.count > 0) ? response[0] : nil;
+
+      if (error && error != [NSNull null]) {
+        NSLog(@"❌ AsyncStorage direct save failed for key %@: %@", key, error);
+      } else {
+        NSLog(@"✅ AsyncStorage direct save success for key %@", key);
+      }
+    }];
+  });
+#else
+  NSLog(@"⚠️ RNCAsyncStorage header not found. AsyncStorage direct save skipped.");
+#endif
+}
+
+- (NSString *)asyncStorageKeyForFCMData:(NSDictionary *)data {
+  NSString *topic = [NSString stringWithFormat:@"%@", data[@"topic"] ?: @""].lowercaseString;
+
+  // fcm 타입 분기
+  if ([topic containsString:@"qt"]) {
+    // qt일 경우
+    return @"fcm_qt";
+  }
+  else if ([topic containsString:@"sermon"]) {
+    // 설교일 경우
+    return @"fcm_sermon";
+  }
+  else {
+    // 예외
+    return nil;
+  }
+}
+
 // 설교 이벤트 처리 헬퍼 메서드
 - (void)saveFcmSermon:(NSDictionary *)data {
   NSLog(@"=== PROCESSING SERMON EVENT ===");
   NSLog(@"Event data: %@", data);
   
   // id가 없으면 gcm.message_id를 사용
-  NSString *sermonId = data[@"id"];
-  if (!sermonId) {
+  NSString *sourceId = data[@"source_id"];
+  if (!sourceId) {
     id messageId = data[@"gcm.message_id"];
-    sermonId = [NSString stringWithFormat:@"%@", messageId];
+    sourceId = [NSString stringWithFormat:@"%@", messageId];
   }
   
   // content 필드 확인 및 로깅
-  NSString *contentValue = data[@"content"];
-  NSLog(@"📝 Content length: %lu characters", (unsigned long)[contentValue length]);
-  NSLog(@"📝 Content preview (first 200 chars): %@", [contentValue substringToIndex:MIN(200, [contentValue length])]);
+//  NSString *contentValue = data[@"content"];
+//  NSLog(@"📝 Content length: %lu characters", (unsigned long)[contentValue length]);
+//  NSLog(@"📝 Content preview (first 200 chars): %@", [contentValue substringToIndex:MIN(200, [contentValue length])]);
   
-  // AsyncStorage에 새로운 설교 데이터 저장
-  NSDictionary *sermonData = @{
-    @"id": sermonId ?: @"",
-    @"title": data[@"title"] ?: @"",
-    @"content": data[@"content"] ?: @"",
-    @"date": data[@"date"] ?: @"",
-    @"category": data[@"category"] ?: [NSNull null],
-    @"dayOfWeek": data[@"day_of_week"] ?: @"",
-    @"createdAt": data[@"created_at"] ?: [NSNull null],
-    @"updatedAt": data[@"updated_at"] ?: [NSNull null]
-  };
+  // AsyncStorage 키 파싱
+  NSString *storageKey = [self asyncStorageKeyForFCMData:data];
+  if (storageKey == nil) {
+    NSLog(@"Failed to get topic type");
+    return;
+  }
+  
+  // 나머지 데이터 파싱
+  NSMutableDictionary *sermonData = [@{
+      @"source_id": sourceId ?: @"",
+      @"title": data[@"title"] ?: @"",
+      @"category": data[@"category"] ?: @"",
+      @"bible_references": data[@"bible_references"] ?: @"",
+      @"meditation_questions": data[@"meditation_questions"] ?: @"",
+      @"date": data[@"date"] ?: @"",
+      @"year": data[@"year"] ?: @"",
+      @"day_of_week": data[@"day_of_week"] ?: @"",
+      @"video_url": @"", // url이 없는 경우를 대비 일단 빈 문자열 처리
+      @"created_at": data[@"created_at"] ?: @"",
+      @"updated_at": data[@"updated_at"] ?: @"",
+      @"operation": data[@"operation"] ?: @"",
+      @"topic": data[@"topic"] ?: @""
+  } mutableCopy];
+  
+  // 영상이 있을 경우에만 url에 추가
+  if (data[@"video_url"]) {
+      sermonData[@"video_url"] = data[@"video_url"];
+  }
   
   NSError *error;
   NSData *jsonData = [NSJSONSerialization dataWithJSONObject:sermonData options:0 error:&error];
@@ -867,19 +953,23 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
     
     // 1. App Group에 저장 (위젯용)
     NSUserDefaults *sharedDefaults = [[NSUserDefaults alloc] initWithSuiteName:@"group.mannachurch.meditationblossom"];
-    [sharedDefaults setObject:jsonString forKey:@"fcm_sermon"];
+    // [sharedDefaults setObject:jsonString forKey:@"fcm_sermon"];
+    [sharedDefaults setObject:jsonString forKey:storageKey];
     [sharedDefaults setObject:jsonString forKey:@"displaySermon"];
     [sharedDefaults synchronize];
     
     // 저장된 데이터 확인
-    NSString *savedData = [sharedDefaults stringForKey:@"fcm_sermon"];
+    // NSString *savedData = [sharedDefaults stringForKey:@"fcm_sermon"];
+    NSString *savedData = [sharedDefaults stringForKey:storageKey];
     NSLog(@"📝 Saved data length in UserDefaults: %lu characters", (unsigned long)[savedData length]);
     NSLog(@"✅ Successfully saved FCM sermon to App Group");
     
-    // 2. 위젯 즉시 업데이트 (Swift 모듈 사용)
+    [self saveToAsyncStorageDirect:jsonString forKey:storageKey];
+    
+    // 위젯 즉시 업데이트 (Swift 모듈 사용)
     [WidgetUpdateModule reloadWidgets];
     
-    // 3. React Native로 이벤트 전송
+    // React Native로 이벤트 전송
     [self sendSermonUpdateEvent];
   } else {
     NSLog(@"Failed to serialize sermon data: %@", error);
