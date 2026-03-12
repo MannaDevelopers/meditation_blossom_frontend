@@ -1,8 +1,10 @@
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useEffect } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Linking,
   Platform,
   StyleSheet,
   Text,
@@ -22,9 +24,10 @@ import { RootStackParamList } from '../types/navigation';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'HomeScreen'>;
+const SUNDAY_SERMON_YOUTUBE_URL = 'https://www.youtube.com/@mannachurch';
 
-const HomeScreen = ({ navigation }: Props) => {
+const HomeScreen = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { sermon, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useSermonData();
 
@@ -56,7 +59,7 @@ const HomeScreen = ({ navigation }: Props) => {
 
   if (isLoading && !sermon) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         <ActivityIndicator size="large" color="#A59EAE" />
       </SafeAreaView>
     );
@@ -64,7 +67,7 @@ const HomeScreen = ({ navigation }: Props) => {
 
   if (error && !sermon) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>데이터를 불러올 수 없습니다</Text>
           <TouchableOpacity onPress={onRefresh} style={styles.retryButton}>
@@ -76,7 +79,7 @@ const HomeScreen = ({ navigation }: Props) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.content}>
         <View style={styles.header}>
           <Image
@@ -84,6 +87,16 @@ const HomeScreen = ({ navigation }: Props) => {
             style={styles.icon}
           />
           <Text style={styles.appTitle}>묵상만개</Text>
+          <TouchableOpacity
+            onPress={() => {
+              Linking.openURL(SUNDAY_SERMON_YOUTUBE_URL).catch(e =>
+                logger.error('HomeScreen: YouTube 링크 열기 실패', e),
+              );
+            }}
+            style={styles.youtubeButton}
+          >
+            <SvgIcon name="YoutubeButton" size={24} />
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => navigation.navigate('SettingsScreen', { onRefresh })}
             style={styles.settingsButton}
@@ -140,8 +153,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Pretendard-Medium',
     marginLeft: 8,
   },
-  settingsButton: {
+  youtubeButton: {
     marginLeft: 'auto',
+    padding: 2,
+  },
+  settingsButton: {
+    marginLeft: 8,
   },
   dateContainer: {
     backgroundColor: 'transparent',
