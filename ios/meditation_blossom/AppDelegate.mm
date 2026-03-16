@@ -12,6 +12,8 @@
 #import <WidgetKit/WidgetKit.h>
 #import <ifaddrs.h>
 #import <arpa/inet.h>
+#import <string.h>
+#import <CommonCrypto/CommonDigest.h>
 
 // Hermes 엔진 확인을 위한 헤더
 #if __has_include(<hermes/hermes.h>)
@@ -666,52 +668,22 @@
     }
   }
   
-  // sermon_events 또는 sermon_events_test 토픽에서 온 메시지인지 확인
+  // 지원하는 FCM 토픽(sermon/qt)인지 확인
   NSString *topic = userInfo[@"topic"];
   NSString *from = userInfo[@"from"];
   
   NSLog(@"Topic from data: %@", topic);
   NSLog(@"From: %@", from);
   
-  BOOL isSermonEventsTopic = NO;
   BOOL isTestTopic = NO;
-  
-  // data 필드의 topic을 먼저 확인
-  if (topic) {
-    if ([topic isEqualToString:@"sermon_events"]) {
-      isSermonEventsTopic = YES;
-    }
-#ifdef DEBUG
-    // DEBUG 모드에서만 sermon_events_test 처리
-    else if ([topic isEqualToString:@"sermon_events_test"]) {
-      isTestTopic = YES;
-    }
-#endif
-  }
-  
-  // topic이 없으면 from 필드 확인
-  if (!isSermonEventsTopic && !isTestTopic && from) {
-    if ([from containsString:@"sermon_events"]) {
-      isSermonEventsTopic = YES;
-    }
-#ifdef DEBUG
-    // DEBUG 모드에서만 sermon_events_test 처리
-    else if ([from containsString:@"sermon_events_test"]) {
-      isTestTopic = YES;
-    }
-#endif
-  }
-  
-  if (isSermonEventsTopic || isTestTopic) {
-    NSString *topicName = isTestTopic ? @"sermon_events_test" : @"sermon_events";
+  BOOL shouldProcessTopic = [self isRecognizedTopic:topic from:from isTestTopic:&isTestTopic];
+
+  if (shouldProcessTopic) {
+    NSString *topicName = topic ?: from;
     NSLog(@"✅ Processing %@ message in foreground", topicName);
     [self saveFcmSermon:userInfo];
   } else {
-    NSLog(@"❌ Message not from sermon_events%@ topic", @""
-#ifdef DEBUG
-          @" or sermon_events_test"
-#endif
-    );
+    NSLog(@"❌ Message not from a supported sermon/qt topic");
   }
 }
 
@@ -751,9 +723,9 @@
   
   [[FIRMessaging messaging] subscribeToTopic:@"qt_events_test" completion:^(NSError * _Nullable error) {
     if (error) {
-      NSLog(@"[DEBUG] Failed to subscribe to sermon_events_test topic: %@", error);
+      NSLog(@"[DEBUG] Failed to subscribe to qt_events_test topic: %@", error);
     } else {
-      NSLog(@"[DEBUG] Successfully subscribed to sermon_events_test topic");
+      NSLog(@"[DEBUG] Successfully subscribed to qt_events_test topic");
     }
   }];
 #endif
@@ -798,7 +770,7 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
     }
   }
   
-  // sermon_events 또는 sermon_events_test 토픽에서 온 메시지인지 확인
+  // 지원하는 FCM 토픽(sermon/qt)인지 확인
   NSString *topic = userInfo[@"topic"]; // data 필드에 포함된 topic
   NSString *from = userInfo[@"from"];
   NSString *gcmMessageId = userInfo[@"gcm.message_id"];
@@ -807,46 +779,16 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   NSLog(@"From: %@", from);
   NSLog(@"GCM Message ID: %@", gcmMessageId);
   
-  BOOL isSermonEventsTopic = NO;
   BOOL isTestTopic = NO;
-  
-  // data 필드의 topic을 먼저 확인
-  if (topic) {
-    if ([topic isEqualToString:@"sermon_events"]) {
-      isSermonEventsTopic = YES;
-    }
-#ifdef DEBUG
-    // DEBUG 모드에서만 sermon_events_test 처리
-    else if ([topic isEqualToString:@"sermon_events_test"]) {
-      isTestTopic = YES;
-    }
-#endif
-  }
-  
-  // topic이 없으면 from 필드 확인
-  if (!isSermonEventsTopic && !isTestTopic && from) {
-    if ([from containsString:@"sermon_events"]) {
-      isSermonEventsTopic = YES;
-    }
-#ifdef DEBUG
-    // DEBUG 모드에서만 sermon_events_test 처리
-    else if ([from containsString:@"sermon_events_test"]) {
-      isTestTopic = YES;
-    }
-#endif
-  }
-  
-  if (isSermonEventsTopic || isTestTopic) {
-    NSString *topicName = isTestTopic ? @"sermon_events_test" : @"sermon_events";
+  BOOL shouldProcessTopic = [self isRecognizedTopic:topic from:from isTestTopic:&isTestTopic];
+
+  if (shouldProcessTopic) {
+    NSString *topicName = topic ?: from;
     NSLog(@"✅ Processing %@ data-only message in background", topicName);
     [self saveFcmSermon:userInfo];
     completionHandler(UIBackgroundFetchResultNewData);
   } else {
-    NSLog(@"❌ Message not from sermon_events%@ topic", @""
-#ifdef DEBUG
-          @" or sermon_events_test"
-#endif
-    );
+    NSLog(@"❌ Message not from a supported sermon/qt topic");
     NSLog(@"Topic field: %@", topic);
     NSLog(@"From field: %@", from);
     completionHandler(UIBackgroundFetchResultNoData);
@@ -854,29 +796,168 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
 }
 
 - (void)saveToAsyncStorageDirect:(NSString *)jsonString forKey:(NSString *)key {
-#if __has_include(<RNCAsyncStorage/RNCAsyncStorage.h>) || __has_include("RNCAsyncStorage.h")
   if (!jsonString || !key) {
     NSLog(@"❌ AsyncStorage save skipped: key or value is nil");
     return;
   }
 
-  RNCAsyncStorage *storage = [RNCAsyncStorage new];
-
-  dispatch_async(storage.methodQueue, ^{
-    [storage multiSet:@[@[key, jsonString]]
-             callback:^(NSArray *response) {
-      id error = (response.count > 0) ? response[0] : nil;
-
-      if (error && error != [NSNull null]) {
-        NSLog(@"❌ AsyncStorage direct save failed for key %@: %@", key, error);
-      } else {
-        NSLog(@"✅ AsyncStorage direct save success for key %@", key);
-      }
-    }];
+  static dispatch_queue_t asyncStorageQueue;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    asyncStorageQueue = dispatch_queue_create("app.mannadev.meditation.AsyncStorageDirectQueue",
+                                              DISPATCH_QUEUE_SERIAL);
   });
-#else
-  NSLog(@"⚠️ RNCAsyncStorage header not found. AsyncStorage direct save skipped.");
+
+  dispatch_async(asyncStorageQueue, ^{
+    NSError *storageError = nil;
+    NSString *storageDirectory = [self asyncStorageStorageDirectoryPath];
+
+    if (![[NSFileManager defaultManager] fileExistsAtPath:storageDirectory]) {
+      [[NSFileManager defaultManager] createDirectoryAtPath:storageDirectory
+                                withIntermediateDirectories:YES
+                                                 attributes:nil
+                                                      error:&storageError];
+      if (storageError) {
+        NSLog(@"❌ AsyncStorage direct save failed to create storage directory: %@", storageError);
+        return;
+      }
+    }
+
+    NSMutableDictionary *manifest = [self loadAsyncStorageManifest:&storageError];
+    if (!manifest) {
+      NSLog(@"❌ AsyncStorage direct save failed to load manifest: %@", storageError);
+      return;
+    }
+
+    BOOL shouldWriteManifest = NO;
+    NSString *valueFilePath = [self asyncStorageValueFilePathForKey:key];
+
+    if (jsonString.length <= 1024) {
+      if (manifest[key] == (id)kCFNull) {
+        [[NSFileManager defaultManager] removeItemAtPath:valueFilePath error:nil];
+      }
+      manifest[key] = jsonString;
+      shouldWriteManifest = YES;
+    } else {
+      [jsonString writeToFile:valueFilePath
+                   atomically:YES
+                     encoding:NSUTF8StringEncoding
+                        error:&storageError];
+      if (storageError) {
+        NSLog(@"❌ AsyncStorage direct save failed to write value file for key %@: %@", key, storageError);
+        return;
+      }
+
+      if (manifest[key] != (id)kCFNull) {
+        manifest[key] = (id)kCFNull;
+        shouldWriteManifest = YES;
+      }
+    }
+
+    if (shouldWriteManifest && ![self writeAsyncStorageManifest:manifest error:&storageError]) {
+      NSLog(@"❌ AsyncStorage direct save failed to write manifest for key %@: %@", key, storageError);
+      return;
+    }
+
+    NSLog(@"✅ AsyncStorage direct save success for key %@", key);
+  });
+}
+
+- (NSString *)asyncStorageStorageDirectoryPath {
+  NSString *applicationSupportDirectory =
+      NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES)
+          .firstObject;
+  NSString *bundleIdentifier = [[NSBundle mainBundle] bundleIdentifier] ?: @"";
+  return [[applicationSupportDirectory stringByAppendingPathComponent:bundleIdentifier]
+      stringByAppendingPathComponent:@"RCTAsyncLocalStorage_V1"];
+}
+
+- (NSString *)asyncStorageManifestFilePath {
+  return [[self asyncStorageStorageDirectoryPath] stringByAppendingPathComponent:@"manifest.json"];
+}
+
+- (NSString *)asyncStorageValueFilePathForKey:(NSString *)key {
+  const char *utf8String = [key UTF8String];
+  unsigned char digest[CC_MD5_DIGEST_LENGTH];
+  CC_MD5(utf8String, (CC_LONG)strlen(utf8String), digest);
+
+  NSMutableString *hashedKey = [NSMutableString stringWithCapacity:CC_MD5_DIGEST_LENGTH * 2];
+  for (int i = 0; i < CC_MD5_DIGEST_LENGTH; i++) {
+    [hashedKey appendFormat:@"%02x", digest[i]];
+  }
+
+  return [[self asyncStorageStorageDirectoryPath] stringByAppendingPathComponent:hashedKey];
+}
+
+- (NSMutableDictionary *)loadAsyncStorageManifest:(NSError **)error {
+  NSString *manifestPath = [self asyncStorageManifestFilePath];
+  if (![[NSFileManager defaultManager] fileExistsAtPath:manifestPath]) {
+    return [NSMutableDictionary new];
+  }
+
+  NSData *manifestData = [NSData dataWithContentsOfFile:manifestPath options:0 error:error];
+  if (!manifestData) {
+    return nil;
+  }
+
+  id jsonObject = [NSJSONSerialization JSONObjectWithData:manifestData options:NSJSONReadingMutableContainers error:error];
+  if (![jsonObject isKindOfClass:[NSMutableDictionary class]]) {
+    if ([jsonObject isKindOfClass:[NSDictionary class]]) {
+      return [jsonObject mutableCopy];
+    }
+
+    if (error) {
+      *error = [NSError errorWithDomain:@"AsyncStorageDirectSave"
+                                   code:1
+                               userInfo:@{NSLocalizedDescriptionKey: @"Manifest is not a dictionary"}];
+    }
+    return nil;
+  }
+
+  return (NSMutableDictionary *)jsonObject;
+}
+
+- (BOOL)writeAsyncStorageManifest:(NSDictionary *)manifest error:(NSError **)error {
+  NSData *manifestData = [NSJSONSerialization dataWithJSONObject:manifest options:0 error:error];
+  if (!manifestData) {
+    return NO;
+  }
+
+  return [manifestData writeToFile:[self asyncStorageManifestFilePath] options:NSDataWritingAtomic error:error];
+}
+
+- (BOOL)isSermonStorageKey:(NSString *)storageKey {
+  return [storageKey isEqualToString:@"fcm_sermon"];
+}
+
+- (BOOL)isRecognizedTopic:(NSString *)topic from:(NSString *)from isTestTopic:(BOOL *)isTestTopic {
+  if (isTestTopic) {
+    *isTestTopic = NO;
+  }
+
+  NSString *normalizedTopic = [NSString stringWithFormat:@"%@", topic ?: @""].lowercaseString;
+  NSString *normalizedFrom = [NSString stringWithFormat:@"%@", from ?: @""].lowercaseString;
+
+  NSArray<NSString *> *productionTopics = @[@"sermon_events", @"qt_events"];
+  for (NSString *candidate in productionTopics) {
+    if ([normalizedTopic isEqualToString:candidate] || [normalizedFrom containsString:candidate]) {
+      return YES;
+    }
+  }
+
+#ifdef DEBUG
+  NSArray<NSString *> *testTopics = @[@"sermon_events_test", @"qt_events_test"];
+  for (NSString *candidate in testTopics) {
+    if ([normalizedTopic isEqualToString:candidate] || [normalizedFrom containsString:candidate]) {
+      if (isTestTopic) {
+        *isTestTopic = YES;
+      }
+      return YES;
+    }
+  }
 #endif
+
+  return NO;
 }
 
 - (NSString *)asyncStorageKeyForFCMData:(NSDictionary *)data {
@@ -923,8 +1004,10 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   
   // 나머지 데이터 파싱
   NSMutableDictionary *sermonData = [@{
+      @"id": sourceId ?: @"",
       @"source_id": sourceId ?: @"",
       @"title": data[@"title"] ?: @"",
+      @"content": data[@"content"] ?: @"",
       @"category": data[@"category"] ?: @"",
       @"bible_references": data[@"bible_references"] ?: @"",
       @"meditation_questions": data[@"meditation_questions"] ?: @"",
@@ -947,30 +1030,31 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   NSData *jsonData = [NSJSONSerialization dataWithJSONObject:sermonData options:0 error:&error];
   if (jsonData) {
     NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+    BOOL shouldUpdateDisplaySermon = [self isSermonStorageKey:storageKey];
     
     // JSON 문자열의 content 확인
     NSLog(@"📝 JSON string length: %lu characters", (unsigned long)[jsonString length]);
     
-    // 1. App Group에 저장 (위젯용)
+    // 1. App Group에 저장
     NSUserDefaults *sharedDefaults = [[NSUserDefaults alloc] initWithSuiteName:@"group.mannachurch.meditationblossom"];
-    // [sharedDefaults setObject:jsonString forKey:@"fcm_sermon"];
     [sharedDefaults setObject:jsonString forKey:storageKey];
-    [sharedDefaults setObject:jsonString forKey:@"displaySermon"];
+    if (shouldUpdateDisplaySermon) {
+      [sharedDefaults setObject:jsonString forKey:@"displaySermon"];
+    }
     [sharedDefaults synchronize];
     
     // 저장된 데이터 확인
-    // NSString *savedData = [sharedDefaults stringForKey:@"fcm_sermon"];
     NSString *savedData = [sharedDefaults stringForKey:storageKey];
     NSLog(@"📝 Saved data length in UserDefaults: %lu characters", (unsigned long)[savedData length]);
-    NSLog(@"✅ Successfully saved FCM sermon to App Group");
+    NSLog(@"✅ Successfully saved FCM data to App Group with key %@", storageKey);
     
     [self saveToAsyncStorageDirect:jsonString forKey:storageKey];
-    
-    // 위젯 즉시 업데이트 (Swift 모듈 사용)
+
     [WidgetUpdateModule reloadWidgets];
-    
-    // React Native로 이벤트 전송
-    [self sendSermonUpdateEvent];
+
+    if (shouldUpdateDisplaySermon) {
+      [self sendSermonUpdateEvent];
+    }
   } else {
     NSLog(@"Failed to serialize sermon data: %@", error);
   }
