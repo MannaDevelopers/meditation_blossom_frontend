@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { extractContent } from '../components/WidgetPreview';
+import { extractContent } from '../utils/sermonParser';
 import SvgIcon from '../components/SvgIcon';
 import { BRIDGE_INIT_DELAY_MS } from '../constants';
 import { useAppGroupSync } from '../hooks/useAppGroupSync';
