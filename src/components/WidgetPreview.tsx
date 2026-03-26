@@ -1,12 +1,11 @@
 import { useMemo } from 'react';
-import { ImageBackground, StyleSheet, Text } from 'react-native';
-import { ScrollView, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ImageBackground, StyleSheet, Text, View } from 'react-native';
 
 // Android VerseParser와 동일한 정규식 사용
 const bookNameRegex = /(본문\s*[:：]?\s*)?([^\d\s]+ ?\d+:\d+(?:-\d+)?(?:,\s*[^\d\s]+ ?\d+:\d+(?:-\d+)?)*)/;
 const verseNumberRegex = /\d+/g;
 
-const extractContent = (text: string): { index: string; content: string } => {
+export const extractContent = (text: string): { index: string; content: string } => {
   const match = text.match(bookNameRegex);
   if (!match) {
     return { index: '본문을 찾을 수 없습니다.', content: '' };
@@ -60,35 +59,26 @@ const WidgetPreview = ({ content }: { content: string | undefined }) => {
   );
 
   return (
-    <GestureHandlerRootView style={styles.root}>
-      <ImageBackground
-        source={require('../assets/image/BackgroundImg.png')}
-        style={styles.background}
-      >
-        <ScrollView style={styles.scrollView}>
-          <Text style={styles.contentText}>{extractedContent.content}</Text>
-          <Text style={styles.indexText}>{extractedContent.index}</Text>
-        </ScrollView>
-      </ImageBackground>
-    </GestureHandlerRootView>
+    <ImageBackground
+      source={require('../assets/image/BackgroundImg.png')}
+      style={styles.background}
+    >
+      <View style={styles.inner}>
+        <Text style={styles.contentText}>{extractedContent.content}</Text>
+        <Text style={styles.indexText}>{extractedContent.index}</Text>
+      </View>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  root: {
-    width: 300,
-    height: 270,
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 5,
-  },
   background: {
     backgroundColor: 'transparent',
-    flex: 1,
+    width: 300,
+    height: 270,
     borderRadius: 15,
   },
-  scrollView: {
+  inner: {
     backgroundColor: 'transparent',
     marginVertical: 50,
     marginHorizontal: 30,
