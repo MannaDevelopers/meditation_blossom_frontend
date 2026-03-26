@@ -1,18 +1,19 @@
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
   Image,
   Linking,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import WidgetPreview from '../components/WidgetPreview';
+import { extractContent } from '../utils/sermonParser';
 import SvgIcon from '../components/SvgIcon';
 import { BRIDGE_INIT_DELAY_MS } from '../constants';
 import { useAppGroupSync } from '../hooks/useAppGroupSync';
@@ -30,6 +31,11 @@ const HomeScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { sermon, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useSermonData();
+
+  const sermonContent = useMemo(
+    () => (sermon?.content ? extractContent(sermon.content) : { index: '', content: '' }),
+    [sermon?.content],
+  );
 
   const { performInitialSync } = useAppGroupSync({
     onDataSynced: loadLocalData,
@@ -80,42 +86,48 @@ const HomeScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Image
-            source={require('../assets/image/20250416_meditation_icon.png')}
-            style={styles.icon}
-          />
-          <Text style={styles.appTitle}>묵상만개</Text>
-          <TouchableOpacity
-            onPress={() => {
-              Linking.openURL(SUNDAY_SERMON_YOUTUBE_URL).catch(e =>
-                logger.error('HomeScreen: YouTube 링크 열기 실패', e),
-              );
-            }}
-            style={styles.youtubeButton}
-          >
-            <SvgIcon name="YoutubeButton" size={24} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('SettingsScreen', { onRefresh })}
-            style={styles.settingsButton}
-          >
-            <SvgIcon name="SettingButton" size={20} color="black" />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.dateContainer}>
-          <Text style={styles.dateText}>{sermon?.date}</Text>
-        </View>
-        <View style={styles.titleContainer}>
-          <Text style={styles.titleText} numberOfLines={0}>
-            {processTitleText(sermon?.title)}
-          </Text>
-        </View>
-        <View style={styles.previewContainer}>
-          <WidgetPreview content={sermon?.content} />
-        </View>
+      <View style={styles.header}>
+        <Image
+          source={require('../assets/image/20250416_meditation_icon.png')}
+          style={styles.icon}
+        />
+        <Text style={styles.appTitle}>묵상만개</Text>
+        <TouchableOpacity
+          onPress={() => {
+            Linking.openURL(SUNDAY_SERMON_YOUTUBE_URL).catch(e =>
+              logger.error('HomeScreen: YouTube 링크 열기 실패', e),
+            );
+          }}
+          style={styles.youtubeButton}
+        >
+          <SvgIcon name="YoutubeButton" size={24} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('SettingsScreen', { onRefresh })}
+          style={styles.settingsButton}
+        >
+          <SvgIcon name="SettingButton" size={20} color="black" />
+        </TouchableOpacity>
       </View>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.indexText}>{sermonContent.index}</Text>
+        <Text style={styles.dateText}>{sermon?.date}</Text>
+        <Text style={styles.titleText} numberOfLines={0}>
+          {processTitleText(sermon?.title)}
+        </Text>
+        <Text style={styles.contentText}>{sermonContent.content}</Text>
+        <TouchableOpacity
+          style={styles.youtubeLinkContainer}
+          onPress={() => {
+            Linking.openURL(SUNDAY_SERMON_YOUTUBE_URL).catch(e =>
+              logger.error('HomeScreen: YouTube 링크 열기 실패', e),
+            );
+          }}
+        >
+          <SvgIcon name="YoutubeButton" size={20} />
+          <Text style={styles.youtubeLinkText}>YouTube 예배 영상 바로가기</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -125,20 +137,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
     marginHorizontal: 35,
-    marginVertical: 35,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    backgroundColor: 'transparent',
-    flex: 1,
+    marginTop: 35,
   },
   header: {
     backgroundColor: 'transparent',
     flexDirection: 'row',
-    width: 305,
     height: 30,
-    marginBottom: 35,
+    marginBottom: 20,
     alignItems: 'center',
   },
   icon: {
@@ -160,39 +165,47 @@ const styles = StyleSheet.create({
   settingsButton: {
     marginLeft: 8,
   },
-  dateContainer: {
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 305,
-    height: 25,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  indexText: {
+    color: '#49454F',
+    fontSize: 18,
+    fontFamily: 'Pretendard-SemiBold',
+    marginBottom: 8,
   },
   dateText: {
     color: '#A59EAE',
-    fontSize: 20,
+    fontSize: 16,
     fontFamily: 'Pretendard-SemiBold',
-  },
-  titleContainer: {
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 305,
-    minHeight: 30,
-    paddingVertical: 5,
+    marginBottom: 8,
   },
   titleText: {
     color: '#A59EAE',
     fontSize: 24,
     fontFamily: 'Pretendard-Bold',
-    textAlign: 'center',
     flexWrap: 'wrap',
+    marginBottom: 16,
   },
-  previewContainer: {
-    backgroundColor: 'transparent',
-    width: 305,
-    height: 300,
-    justifyContent: 'center',
+  contentText: {
+    color: '#49454F',
+    fontSize: 16,
+    fontFamily: 'Pretendard-Regular',
+    lineHeight: 26,
+    marginBottom: 32,
+  },
+  youtubeLinkContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  youtubeLinkText: {
+    color: '#A59EAE',
+    fontSize: 14,
+    fontFamily: 'Pretendard-Medium',
   },
   errorContainer: {
     justifyContent: 'center',
