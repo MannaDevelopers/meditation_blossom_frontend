@@ -57,7 +57,7 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
     @Suppress("unused")
     @Keep
     @ReactMethod
-    fun onClear(promise: Promise) =
+    fun onClear(promise: Promise) {
         moduleScope.launch {
             //clear widget preferences
             val result = runCatching {
@@ -90,11 +90,12 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
                     promise.reject("WIDGET_UPDATE_ERROR", e.message, e)
                 }
         }
+    }
 
     @Suppress("unused")
     @Keep
     @ReactMethod
-    fun onSermonUpdated(sermonData: String, promise: Promise) =
+    fun onSermonUpdated(sermonData: String, promise: Promise) {
         moduleScope.launch {
             //optional: save sermon to prefs
             val saveSermonToPrefs = runCatching {
@@ -133,6 +134,7 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
                     promise.reject("WIDGET_UPDATE_ERROR", e.message, e)
                 }
         }
+    }
 
     private suspend fun updateWidgets() {
         val context = reactApplicationContext
