@@ -8,6 +8,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -27,6 +28,7 @@ const SettingsScreen = ({ navigation, route }: Props) => {
   const [showDeveloperMenu, setShowDeveloperMenu] = useState(false);
   const [tapCount, setTapCount] = useState(0);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
+  const [youtubeLinkEnabled, setYoutubeLinkEnabled] = useState(false);
 
   const toggleDeveloperMenu = () => {
     const newTapCount = tapCount + 1;
@@ -63,6 +65,20 @@ const SettingsScreen = ({ navigation, route }: Props) => {
       logger.error('Error inspecting AsyncStorage:', JSON.stringify(error, null, 2));
     }
   };
+
+  useEffect(() => {
+    const loadYoutubeLinkSetting = async () => {
+      try {
+        if (WidgetUpdateModule) {
+          const enabled = await WidgetUpdateModule.getYoutubeLinkEnabled();
+          setYoutubeLinkEnabled(enabled);
+        }
+      } catch (error) {
+        logger.error('YouTube 링크 설정 불러오기 실패:', error);
+      }
+    };
+    loadYoutubeLinkSetting();
+  }, []);
 
   useEffect(() => {
     const getFCMToken = async () => {
@@ -119,6 +135,25 @@ const SettingsScreen = ({ navigation, route }: Props) => {
           contentContainerStyle={styles.scrollContent}
         >
           <View style={styles.topSection}>
+            {/* 위젯 YouTube 링크 토글 */}
+            <View style={styles.toggleRow}>
+              <Text style={styles.toggleLabel}>위젯을 눌렀을 때 유튜브로 이동</Text>
+              <Switch
+                value={youtubeLinkEnabled}
+                onValueChange={async (value) => {
+                  setYoutubeLinkEnabled(value);
+                  try {
+                    if (WidgetUpdateModule) {
+                      await WidgetUpdateModule.setYoutubeLinkEnabled(value);
+                    }
+                  } catch (error) {
+                    logger.error('YouTube 링크 설정 저장 실패:', error);
+                    setYoutubeLinkEnabled(!value);
+                  }
+                }}
+              />
+            </View>
+
             {/* 제목 영역 */}
             <TouchableOpacity onPress={toggleDeveloperMenu} style={styles.sectionTitle}>
               <Text style={styles.sectionTitleText}>앱 관리</Text>
@@ -172,7 +207,7 @@ const SettingsScreen = ({ navigation, route }: Props) => {
             <Text style={styles.aboutTitle}>About this app</Text>
             <View style={styles.aboutContent}>
               <Text style={styles.aboutText}>
-                묵상만개{'\n'}Meditation Blossom
+                묵상만개{'\n'}Meditation Blossom v2.0
               </Text>
               <TouchableOpacity
                 onPress={() => Linking.openURL('https://manna.or.kr/somoim/157228/')}
@@ -257,6 +292,19 @@ const styles = StyleSheet.create({
   },
   topSection: {
     alignItems: 'center',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: 305,
+    marginBottom: 20,
+  },
+  toggleLabel: {
+    color: '#49454F',
+    fontSize: 14,
+    fontFamily: 'Pretendard-Regular',
+    flex: 1,
   },
   sectionTitle: {
     backgroundColor: 'transparent',

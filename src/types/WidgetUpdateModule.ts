@@ -4,6 +4,8 @@ interface WidgetUpdateModuleInterface {
   onSermonUpdated(sermonData: string): Promise<boolean>;
   onClear(): Promise<void>;
   getAppGroupData(key: string): Promise<string | null>;
+  setYoutubeLinkEnabled(enabled: boolean): Promise<void>;
+  getYoutubeLinkEnabled(): Promise<boolean>;
 }
 
 const { WidgetUpdateModule } = NativeModules;
