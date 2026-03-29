@@ -110,11 +110,11 @@ const HomeScreen = () => {
         </TouchableOpacity>
       </View>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.indexText}>{sermonContent.index}</Text>
         <Text style={styles.dateText}>{sermon?.date}</Text>
         <Text style={styles.titleText} numberOfLines={0}>
           {processTitleText(sermon?.title)}
         </Text>
+        <Text style={styles.indexText}>{sermonContent.index}</Text>
         <Text style={styles.contentText}>{sermonContent.content}</Text>
         <TouchableOpacity
           style={styles.youtubeLinkContainer}
