@@ -700,6 +700,14 @@
       NSLog(@"Successfully subscribed to sermon_events topic");
     }
   }];
+  // sermon_events_v2 구독
+  [[FIRMessaging messaging] subscribeToTopic:@"sermon_events_v2" completion:^(NSError * _Nullable error) {
+    if (error) {
+      NSLog(@"Failed to subscribe to qt_events topic: %@", error);
+    } else {
+      NSLog(@"Successfully subscribed to qt_events topic");
+    }
+  }];
   
   // qt_events 토픽도 구독
   [[FIRMessaging messaging] subscribeToTopic:@"qt_events" completion:^(NSError * _Nullable error) {
