@@ -31,6 +31,8 @@
 #elif __has_include("RNCAsyncStorage.h")
 #import "RNCAsyncStorage.h"
 #endif
+#import <sqlite3.h>
+
 
 // MyEventModule 클래스 선언
 @interface MyEventModule : NSObject
@@ -803,6 +805,8 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   }
 }
 
+#import <sqlite3.h>
+
 - (void)saveToAsyncStorageDirect:(NSString *)jsonString forKey:(NSString *)key {
   if (!jsonString || !key) {
     NSLog(@"❌ AsyncStorage save skipped: key or value is nil");
@@ -812,126 +816,112 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   static dispatch_queue_t asyncStorageQueue;
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
-    asyncStorageQueue = dispatch_queue_create("app.mannadev.meditation.AsyncStorageDirectQueue",
-                                              DISPATCH_QUEUE_SERIAL);
+    asyncStorageQueue = dispatch_queue_create(
+      "app.mannadev.meditation.AsyncStorageDirectQueue",
+      DISPATCH_QUEUE_SERIAL
+    );
   });
 
   dispatch_async(asyncStorageQueue, ^{
-    NSError *storageError = nil;
-    NSString *storageDirectory = [self asyncStorageStorageDirectoryPath];
-
-    if (![[NSFileManager defaultManager] fileExistsAtPath:storageDirectory]) {
-      [[NSFileManager defaultManager] createDirectoryAtPath:storageDirectory
-                                withIntermediateDirectories:YES
-                                                 attributes:nil
-                                                      error:&storageError];
-      if (storageError) {
-        NSLog(@"❌ AsyncStorage direct save failed to create storage directory: %@", storageError);
-        return;
-      }
-    }
-
-    NSMutableDictionary *manifest = [self loadAsyncStorageManifest:&storageError];
-    if (!manifest) {
-      NSLog(@"❌ AsyncStorage direct save failed to load manifest: %@", storageError);
-      return;
-    }
-
-    BOOL shouldWriteManifest = NO;
-    NSString *valueFilePath = [self asyncStorageValueFilePathForKey:key];
-
-    if (jsonString.length <= 1024) {
-      if (manifest[key] == (id)kCFNull) {
-        [[NSFileManager defaultManager] removeItemAtPath:valueFilePath error:nil];
-      }
-      manifest[key] = jsonString;
-      shouldWriteManifest = YES;
-    } else {
-      [jsonString writeToFile:valueFilePath
-                   atomically:YES
-                     encoding:NSUTF8StringEncoding
-                        error:&storageError];
-      if (storageError) {
-        NSLog(@"❌ AsyncStorage direct save failed to write value file for key %@: %@", key, storageError);
+    @autoreleasepool {
+      NSArray<NSURL *> *urls = [[NSFileManager defaultManager]
+                                URLsForDirectory:NSApplicationSupportDirectory
+                                inDomains:NSUserDomainMask];
+      NSURL *appSupportURL = urls.firstObject;
+      if (!appSupportURL) {
+        NSLog(@"❌ AsyncStorage.set failed: could not resolve Application Support directory");
         return;
       }
 
-      if (manifest[key] != (id)kCFNull) {
-        manifest[key] = (id)kCFNull;
-        shouldWriteManifest = YES;
+      NSString *dbPath = [[appSupportURL path] stringByAppendingPathComponent:@"RKStorage"];
+
+      if (![[NSFileManager defaultManager] fileExistsAtPath:dbPath]) {
+        NSLog(@"❌ AsyncStorage.set failed: database file does not exist: %@", dbPath);
+        return;
+      }
+
+      sqlite3 *db = NULL;
+      int openResult = sqlite3_open_v2(
+        [dbPath UTF8String],
+        &db,
+        SQLITE_OPEN_READWRITE,
+        NULL
+      );
+
+      if (openResult != SQLITE_OK) {
+        NSLog(@"❌ AsyncStorage.set failed to open DB for key %@: %s",
+              key, db ? sqlite3_errmsg(db) : "unknown error");
+        if (db) {
+          sqlite3_close(db);
+        }
+        return;
+      }
+
+      sqlite3_stmt *updateStmt = NULL;
+      sqlite3_stmt *insertStmt = NULL;
+
+      @try {
+        const char *updateSQL =
+          "UPDATE catalystLocalStorage SET value = ? WHERE key = ?;";
+
+        int prepareUpdateResult = sqlite3_prepare_v2(db, updateSQL, -1, &updateStmt, NULL);
+        if (prepareUpdateResult != SQLITE_OK) {
+          NSLog(@"❌ AsyncStorage.set failed to prepare update for key %@: %s",
+                key, sqlite3_errmsg(db));
+          return;
+        }
+
+        sqlite3_bind_text(updateStmt, 1, [jsonString UTF8String], -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(updateStmt, 2, [key UTF8String], -1, SQLITE_TRANSIENT);
+
+        int updateStepResult = sqlite3_step(updateStmt);
+        if (updateStepResult != SQLITE_DONE) {
+          NSLog(@"❌ AsyncStorage.set failed to update key %@: %s",
+                key, sqlite3_errmsg(db));
+          return;
+        }
+
+        int rowsAffected = sqlite3_changes(db);
+        sqlite3_finalize(updateStmt);
+        updateStmt = NULL;
+
+        if (rowsAffected == 0) {
+          const char *insertSQL =
+            "INSERT INTO catalystLocalStorage (key, value) VALUES (?, ?);";
+
+          int prepareInsertResult = sqlite3_prepare_v2(db, insertSQL, -1, &insertStmt, NULL);
+          if (prepareInsertResult != SQLITE_OK) {
+            NSLog(@"❌ AsyncStorage.set failed to prepare insert for key %@: %s",
+                  key, sqlite3_errmsg(db));
+            return;
+          }
+
+          sqlite3_bind_text(insertStmt, 1, [key UTF8String], -1, SQLITE_TRANSIENT);
+          sqlite3_bind_text(insertStmt, 2, [jsonString UTF8String], -1, SQLITE_TRANSIENT);
+
+          int insertStepResult = sqlite3_step(insertStmt);
+          if (insertStepResult != SQLITE_DONE) {
+            NSLog(@"❌ AsyncStorage.set failed to insert key %@: %s",
+                  key, sqlite3_errmsg(db));
+            return;
+          }
+        }
+
+        NSLog(@"✅ AsyncStorage direct save success for key %@", key);
+      }
+      @finally {
+        if (updateStmt) {
+          sqlite3_finalize(updateStmt);
+        }
+        if (insertStmt) {
+          sqlite3_finalize(insertStmt);
+        }
+        if (db) {
+          sqlite3_close(db);
+        }
       }
     }
-
-    if (shouldWriteManifest && ![self writeAsyncStorageManifest:manifest error:&storageError]) {
-      NSLog(@"❌ AsyncStorage direct save failed to write manifest for key %@: %@", key, storageError);
-      return;
-    }
-
-    NSLog(@"✅ AsyncStorage direct save success for key %@", key);
   });
-}
-
-- (NSString *)asyncStorageStorageDirectoryPath {
-  NSString *applicationSupportDirectory =
-      NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES)
-          .firstObject;
-  NSString *bundleIdentifier = [[NSBundle mainBundle] bundleIdentifier] ?: @"";
-  return [[applicationSupportDirectory stringByAppendingPathComponent:bundleIdentifier]
-      stringByAppendingPathComponent:@"RCTAsyncLocalStorage_V1"];
-}
-
-- (NSString *)asyncStorageManifestFilePath {
-  return [[self asyncStorageStorageDirectoryPath] stringByAppendingPathComponent:@"manifest.json"];
-}
-
-- (NSString *)asyncStorageValueFilePathForKey:(NSString *)key {
-  const char *utf8String = [key UTF8String];
-  unsigned char digest[CC_MD5_DIGEST_LENGTH];
-  CC_MD5(utf8String, (CC_LONG)strlen(utf8String), digest);
-
-  NSMutableString *hashedKey = [NSMutableString stringWithCapacity:CC_MD5_DIGEST_LENGTH * 2];
-  for (int i = 0; i < CC_MD5_DIGEST_LENGTH; i++) {
-    [hashedKey appendFormat:@"%02x", digest[i]];
-  }
-
-  return [[self asyncStorageStorageDirectoryPath] stringByAppendingPathComponent:hashedKey];
-}
-
-- (NSMutableDictionary *)loadAsyncStorageManifest:(NSError **)error {
-  NSString *manifestPath = [self asyncStorageManifestFilePath];
-  if (![[NSFileManager defaultManager] fileExistsAtPath:manifestPath]) {
-    return [NSMutableDictionary new];
-  }
-
-  NSData *manifestData = [NSData dataWithContentsOfFile:manifestPath options:0 error:error];
-  if (!manifestData) {
-    return nil;
-  }
-
-  id jsonObject = [NSJSONSerialization JSONObjectWithData:manifestData options:NSJSONReadingMutableContainers error:error];
-  if (![jsonObject isKindOfClass:[NSMutableDictionary class]]) {
-    if ([jsonObject isKindOfClass:[NSDictionary class]]) {
-      return [jsonObject mutableCopy];
-    }
-
-    if (error) {
-      *error = [NSError errorWithDomain:@"AsyncStorageDirectSave"
-                                   code:1
-                               userInfo:@{NSLocalizedDescriptionKey: @"Manifest is not a dictionary"}];
-    }
-    return nil;
-  }
-
-  return (NSMutableDictionary *)jsonObject;
-}
-
-- (BOOL)writeAsyncStorageManifest:(NSDictionary *)manifest error:(NSError **)error {
-  NSData *manifestData = [NSJSONSerialization dataWithJSONObject:manifest options:0 error:error];
-  if (!manifestData) {
-    return NO;
-  }
-
-  return [manifestData writeToFile:[self asyncStorageManifestFilePath] options:NSDataWritingAtomic error:error];
 }
 
 - (BOOL)isSermonStorageKey:(NSString *)storageKey {
