@@ -31,8 +31,9 @@
 #elif __has_include("RNCAsyncStorage.h")
 #import "RNCAsyncStorage.h"
 #endif
-#import <sqlite3.h>
 
+#import "SermonBuilder.h"
+#import "meditation_blossom-Swift.h"
 
 // MyEventModule 클래스 선언
 @interface MyEventModule : NSObject
@@ -40,9 +41,9 @@
 @end
 
 // WidgetUpdateModule 클래스 선언
-@interface WidgetUpdateModule : NSObject
-+ (void)reloadWidgets;
-@end
+//@interface WidgetUpdateModule : NSObject
+//+ (void)reloadWidgets;
+//@end
 
 @interface AppDelegate () <UNUserNotificationCenterDelegate, FIRMessagingDelegate>
 @end
@@ -936,7 +937,7 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   NSString *normalizedTopic = [NSString stringWithFormat:@"%@", topic ?: @""].lowercaseString;
   NSString *normalizedFrom = [NSString stringWithFormat:@"%@", from ?: @""].lowercaseString;
 
-  NSArray<NSString *> *productionTopics = @[@"sermon_events", @"qt_events"];
+  NSArray<NSString *> *productionTopics = @[@"sermon_events", @"qt_events", @"sermon_events_v2"];
   for (NSString *candidate in productionTopics) {
     if ([normalizedTopic isEqualToString:candidate] || [normalizedFrom containsString:candidate]) {
       return YES;
@@ -1001,27 +1002,29 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   }
   
   // 나머지 데이터 파싱
-  NSMutableDictionary *sermonData = [@{
-      @"id": sourceId ?: @"",
-      @"source_id": sourceId ?: @"",
-      @"title": data[@"title"] ?: @"",
-      @"content": data[@"content"] ?: @"",
-      @"category": data[@"category"] ?: @"",
-      @"bible_references": data[@"bible_references"] ?: @"",
-      @"meditation_questions": data[@"meditation_questions"] ?: @"",
-      @"date": data[@"date"] ?: @"",
-      @"year": data[@"year"] ?: @"",
-      @"day_of_week": data[@"day_of_week"] ?: @"",
-      @"video_url": @"", // url이 없는 경우를 대비 일단 빈 문자열 처리
-      @"created_at": data[@"created_at"] ?: @"",
-      @"updated_at": data[@"updated_at"] ?: @"",
-      @"operation": data[@"operation"] ?: @"",
-      @"topic": data[@"topic"] ?: @""
-  } mutableCopy];
+  NSMutableDictionary *sermonData = [SermonBuilder buildFromPayload:data
+                                                              sourceId:sourceId];
   
   // 영상이 있을 경우에만 url에 추가
   if (data[@"video_url"]) {
-      sermonData[@"video_url"] = data[@"video_url"];
+    sermonData[@"video_url"] = data[@"video_url"];
+  }
+  
+  if ([sermonData[@"topic"] containsString:@"v2"]) {
+    // sermon_events_v2 장절 범위 조회
+    NSArray<NSDictionary *> *refs = sermonData[@"bible_references"];
+    for (NSDictionary *ref in refs) {
+      NSString *book = [ref[@"book"] isKindOfClass:[NSString class]] ? ref[@"book"] : @"";
+      NSNumber *chapter = [ref[@"chapter"] isKindOfClass:[NSNumber class]] ? ref[@"chapter"] : @0;
+      NSNumber *start = [ref[@"verse_start"] isKindOfClass:[NSNumber class]] ? ref[@"verse_start"] : @0;
+      NSNumber *end = [ref[@"verse_end"] isKindOfClass:[NSNumber class]] ? ref[@"verse_end"] : @0;
+
+      NSArray *verses = [[BibleDbHelper shared] fetchVersesWithTranslation:@"KorRV"
+                                                    book:book
+                                                    chapter:chapter.intValue
+                                                    start:start.intValue
+                                                    end:end.intValue];
+    }
   }
   
   NSError *error;
