@@ -1025,6 +1025,8 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
 
 - (NSString *)buildBibleContentFromReferences:(NSArray<NSDictionary *> *)references
                                   translation:(NSString *)translation {
+  (void)translation;
+
   if (![references isKindOfClass:[NSArray class]] || references.count == 0) {
     return nil;
   }
@@ -1058,48 +1060,19 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
       end = temp;
     }
 
-    NSArray<NSDictionary *> *verses = [[BibleDbHelper shared] fetchVersesWithTranslation:translation
-                                                                                    book:book
-                                                                                 chapter:(int)chapter
-                                                                                   start:(int)start
-                                                                                     end:(int)end];
-    if (verses.count == 0) {
-      NSLog(@"⚠️ No verses found for %@ %@",
-            translation,
+    NSString *versesText = [[BibleDbHelper shared] getVersesWithBook:book
+                                                             chapter:(int)chapter
+                                                          verseStart:(int)start
+                                                            verseEnd:(int)end];
+    if (versesText.length == 0) {
+      NSLog(@"⚠️ No verses found for %@",
             [self referenceLabelForBook:book chapter:chapter start:start end:end]);
-      continue;
-    }
-
-    NSMutableArray<NSString *> *verseLines = [NSMutableArray arrayWithCapacity:verses.count];
-    for (id rawVerse in verses) {
-      if (![rawVerse isKindOfClass:[NSDictionary class]]) {
-        continue;
-      }
-
-      NSDictionary *verse = (NSDictionary *)rawVerse;
-      NSInteger verseNumber = [self integerValueFromObject:verse[@"verse"] defaultValue:0];
-      NSString *text = [verse[@"text"] isKindOfClass:[NSString class]]
-        ? [verse[@"text"] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
-        : @"";
-
-      if (text.length == 0) {
-        continue;
-      }
-
-      if (verseNumber > 0) {
-        [verseLines addObject:[NSString stringWithFormat:@"%ld %@", (long)verseNumber, text]];
-      } else {
-        [verseLines addObject:text];
-      }
-    }
-
-    if (verseLines.count == 0) {
       continue;
     }
 
     NSString *section = [NSString stringWithFormat:@"%@\n%@",
                          [self referenceLabelForBook:book chapter:chapter start:start end:end],
-                         [verseLines componentsJoinedByString:@"\n"]];
+                         versesText];
     [sections addObject:section];
   }
 

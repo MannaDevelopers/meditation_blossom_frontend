@@ -13,7 +13,6 @@ final class BibleDbHelper: NSObject {
     static let shared = BibleDbHelper()
 
     private var db: OpaquePointer?
-    private let fallbackTranslation = "KorRV"
 
     override init() {
         super.init()
@@ -66,25 +65,22 @@ final class BibleDbHelper: NSObject {
         return nil
     }
 
-    @objc(fetchVersesWithTranslation:book:chapter:start:end:)
-    func fetchVerses(
-        translation: String,
+    @objc(getVersesWithBook:chapter:verseStart:verseEnd:)
+    func getVerses(
         book: String,
         chapter: Int,
-        start: Int,
-        end: Int
-    ) -> [NSDictionary] {
-
+        verseStart: Int,
+        verseEnd: Int
+    ) -> String {
         guard let db else {
             NSLog("❌ DB is not open")
-            return []
+            return ""
         }
 
-        let resolvedTranslation = normalizedTranslation(translation)
-        let tableNames = tables(for: resolvedTranslation)
+        let tableNames = tables()
         guard let booksTable = tableNames.books, let versesTable = tableNames.verses else {
-            NSLog("❌ Could not resolve Bible DB tables for translation %@", resolvedTranslation)
-            return []
+            NSLog("❌ Could not resolve Bible DB tables")
+            return ""
         }
 
         let query = """
@@ -107,31 +103,33 @@ final class BibleDbHelper: NSObject {
         guard sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK else {
             let message = String(cString: sqlite3_errmsg(db))
             NSLog("❌ Failed to prepare query: %@", message)
-            return []
+            return ""
         }
 
         sqlite3_bind_text(stmt, 1, (book as NSString).utf8String, -1, SQLITE_TRANSIENT)
         sqlite3_bind_int(stmt, 2, Int32(chapter))
-        sqlite3_bind_int(stmt, 3, Int32(start))
-        sqlite3_bind_int(stmt, 4, Int32(end))
+        sqlite3_bind_int(stmt, 3, Int32(verseStart))
+        sqlite3_bind_int(stmt, 4, Int32(verseEnd))
 
-        var result: [NSDictionary] = []
+        var lines: [String] = []
 
         while sqlite3_step(stmt) == SQLITE_ROW {
-            let bookName = sqlite3_column_text(stmt, 0).map { String(cString: $0) } ?? ""
-            let chapterValue = Int(sqlite3_column_int(stmt, 1))
             let verseValue = Int(sqlite3_column_int(stmt, 2))
-            let textValue = sqlite3_column_text(stmt, 3).map { String(cString: $0) } ?? ""
+            let textValue = sqlite3_column_text(stmt, 3).map { String(cString: $0) }
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
-            result.append([
-                "book": bookName,
-                "chapter": chapterValue,
-                "verse": verseValue,
-                "text": textValue
-            ] as NSDictionary)
+            if textValue.isEmpty {
+                continue
+            }
+
+            if verseValue > 0 {
+                lines.append("\(verseValue) \(textValue)")
+            } else {
+                lines.append(textValue)
+            }
         }
 
-        return result
+        return lines.joined(separator: "\n")
     }
 
     @objc func availableTranslations() -> [String] {
@@ -163,23 +161,24 @@ final class BibleDbHelper: NSObject {
         db != nil
     }
 
-    private func normalizedTranslation(_ value: String) -> String {
-        guard isSafeIdentifier(value), !value.isEmpty else {
-            return fallbackTranslation
-        }
-        return value
-    }
+    private func tables() -> (books: String?, verses: String?) {
+        let candidates = [
+            ("KorRV_books", "KorRV_verses"),
+            ("books", "verses")
+        ]
 
-    private func tables(for translation: String) -> (books: String?, verses: String?) {
-        let translatedBooks = "\(translation)_books"
-        let translatedVerses = "\(translation)_verses"
-
-        if tableExists(translatedBooks), tableExists(translatedVerses) {
-            return (translatedBooks, translatedVerses)
+        for (booksTable, versesTable) in candidates {
+            if tableExists(booksTable), tableExists(versesTable) {
+                return (booksTable, versesTable)
+            }
         }
 
-        if tableExists("books"), tableExists("verses") {
-            return ("books", "verses")
+        if let translation = availableTranslations().first {
+            let booksTable = "\(translation)_books"
+            let versesTable = "\(translation)_verses"
+            if tableExists(booksTable), tableExists(versesTable) {
+                return (booksTable, versesTable)
+            }
         }
 
         return (nil, nil)
@@ -202,11 +201,6 @@ final class BibleDbHelper: NSObject {
 
         sqlite3_bind_text(stmt, 1, (tableName as NSString).utf8String, -1, SQLITE_TRANSIENT)
         return sqlite3_step(stmt) == SQLITE_ROW
-    }
-
-    private func isSafeIdentifier(_ value: String) -> Bool {
-        let pattern = "^[A-Za-z0-9_]+$"
-        return value.range(of: pattern, options: .regularExpression) != nil
     }
 }
 
