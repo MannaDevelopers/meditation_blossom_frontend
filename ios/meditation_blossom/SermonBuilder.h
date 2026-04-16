@@ -12,4 +12,6 @@
 + (NSMutableDictionary *)buildFromPayload:(NSDictionary *)data
                                  sourceId:(NSString *)sourceId;
 
++ (NSArray<NSDictionary *> *)parsedBibleReferencesFromValue:(id)rawValue;
+
 @end

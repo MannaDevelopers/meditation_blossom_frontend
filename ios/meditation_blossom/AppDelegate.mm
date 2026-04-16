@@ -977,6 +977,139 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   }
 }
 
+- (NSInteger)integerValueFromObject:(id)value defaultValue:(NSInteger)defaultValue {
+  if ([value isKindOfClass:[NSNumber class]]) {
+    return [value integerValue];
+  }
+
+  if ([value isKindOfClass:[NSString class]]) {
+    NSString *stringValue = [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (stringValue.length == 0) {
+      return defaultValue;
+    }
+    return [stringValue integerValue];
+  }
+
+  return defaultValue;
+}
+
+- (NSString *)bibleTranslationFromPayload:(NSDictionary *)data sermonData:(NSDictionary *)sermonData {
+  NSArray *candidates = @[
+    sermonData[@"translation"] ?: [NSNull null],
+    data[@"translation"] ?: [NSNull null],
+    data[@"bible_translation"] ?: [NSNull null]
+  ];
+
+  for (id candidate in candidates) {
+    if ([candidate isKindOfClass:[NSString class]]) {
+      NSString *translation = [(NSString *)candidate stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+      if (translation.length > 0) {
+        return translation;
+      }
+    }
+  }
+
+  return @"KorRV";
+}
+
+- (NSString *)referenceLabelForBook:(NSString *)book
+                            chapter:(NSInteger)chapter
+                              start:(NSInteger)start
+                                end:(NSInteger)end {
+  NSString *range = start == end
+    ? [NSString stringWithFormat:@"%ld:%ld", (long)chapter, (long)start]
+    : [NSString stringWithFormat:@"%ld:%ld-%ld", (long)chapter, (long)start, (long)end];
+
+  return [NSString stringWithFormat:@"%@ %@", book, range];
+}
+
+- (NSString *)buildBibleContentFromReferences:(NSArray<NSDictionary *> *)references
+                                  translation:(NSString *)translation {
+  if (![references isKindOfClass:[NSArray class]] || references.count == 0) {
+    return nil;
+  }
+
+  NSMutableArray<NSString *> *sections = [NSMutableArray array];
+
+  for (id rawRef in references) {
+    if (![rawRef isKindOfClass:[NSDictionary class]]) {
+      continue;
+    }
+
+    NSDictionary *ref = (NSDictionary *)rawRef;
+    NSString *book = [ref[@"book"] isKindOfClass:[NSString class]]
+      ? [ref[@"book"] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
+      : @"";
+    NSInteger chapter = [self integerValueFromObject:ref[@"chapter"] defaultValue:0];
+    NSInteger start = [self integerValueFromObject:ref[@"verse_start"] defaultValue:0];
+    NSInteger end = [self integerValueFromObject:ref[@"verse_end"] defaultValue:start];
+
+    if (book.length == 0 || chapter <= 0 || start <= 0) {
+      NSLog(@"⚠️ Skipping invalid bible reference: %@", ref);
+      continue;
+    }
+
+    if (end <= 0) {
+      end = start;
+    }
+    if (end < start) {
+      NSInteger temp = start;
+      start = end;
+      end = temp;
+    }
+
+    NSArray<NSDictionary *> *verses = [[BibleDbHelper shared] fetchVersesWithTranslation:translation
+                                                                                    book:book
+                                                                                 chapter:(int)chapter
+                                                                                   start:(int)start
+                                                                                     end:(int)end];
+    if (verses.count == 0) {
+      NSLog(@"⚠️ No verses found for %@ %@",
+            translation,
+            [self referenceLabelForBook:book chapter:chapter start:start end:end]);
+      continue;
+    }
+
+    NSMutableArray<NSString *> *verseLines = [NSMutableArray arrayWithCapacity:verses.count];
+    for (id rawVerse in verses) {
+      if (![rawVerse isKindOfClass:[NSDictionary class]]) {
+        continue;
+      }
+
+      NSDictionary *verse = (NSDictionary *)rawVerse;
+      NSInteger verseNumber = [self integerValueFromObject:verse[@"verse"] defaultValue:0];
+      NSString *text = [verse[@"text"] isKindOfClass:[NSString class]]
+        ? [verse[@"text"] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
+        : @"";
+
+      if (text.length == 0) {
+        continue;
+      }
+
+      if (verseNumber > 0) {
+        [verseLines addObject:[NSString stringWithFormat:@"%ld %@", (long)verseNumber, text]];
+      } else {
+        [verseLines addObject:text];
+      }
+    }
+
+    if (verseLines.count == 0) {
+      continue;
+    }
+
+    NSString *section = [NSString stringWithFormat:@"%@\n%@",
+                         [self referenceLabelForBook:book chapter:chapter start:start end:end],
+                         [verseLines componentsJoinedByString:@"\n"]];
+    [sections addObject:section];
+  }
+
+  if (sections.count == 0) {
+    return nil;
+  }
+
+  return [NSString stringWithFormat:@"본문 : %@", [sections componentsJoinedByString:@"\n\n"]];
+}
+
 // 설교 이벤트 처리 헬퍼 메서드
 - (void)saveFcmSermon:(NSDictionary *)data {
   NSLog(@"=== PROCESSING SERMON EVENT ===");
@@ -1011,19 +1144,14 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   }
   
   if ([sermonData[@"topic"] containsString:@"v2"]) {
-    // sermon_events_v2 장절 범위 조회
-    NSArray<NSDictionary *> *refs = sermonData[@"bible_references"];
-    for (NSDictionary *ref in refs) {
-      NSString *book = [ref[@"book"] isKindOfClass:[NSString class]] ? ref[@"book"] : @"";
-      NSNumber *chapter = [ref[@"chapter"] isKindOfClass:[NSNumber class]] ? ref[@"chapter"] : @0;
-      NSNumber *start = [ref[@"verse_start"] isKindOfClass:[NSNumber class]] ? ref[@"verse_start"] : @0;
-      NSNumber *end = [ref[@"verse_end"] isKindOfClass:[NSNumber class]] ? ref[@"verse_end"] : @0;
-
-      NSArray *verses = [[BibleDbHelper shared] fetchVersesWithTranslation:@"KorRV"
-                                                    book:book
-                                                    chapter:chapter.intValue
-                                                    start:start.intValue
-                                                    end:end.intValue];
+    NSString *translation = [self bibleTranslationFromPayload:data sermonData:sermonData];
+    NSString *builtContent = [self buildBibleContentFromReferences:sermonData[@"bible_references"]
+                                                       translation:translation];
+    if (builtContent.length > 0) {
+      sermonData[@"content"] = builtContent;
+      NSLog(@"✅ Built sermon content from bundled Bible DB (%lu chars)", (unsigned long)builtContent.length);
+    } else {
+      NSLog(@"⚠️ Failed to build sermon content from bundled Bible DB, keeping payload content");
     }
   }
   
