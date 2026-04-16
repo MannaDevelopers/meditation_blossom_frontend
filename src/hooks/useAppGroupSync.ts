@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef } from 'react';
-import { AppState, Platform } from 'react-native';
-import { APP_GROUP_DISPLAY_SERMON_KEY, APP_GROUP_POLL_INTERVAL_MS } from '../constants';
+import { useCallback, useRef } from 'react';
+import { Platform } from 'react-native';
+import { APP_GROUP_DISPLAY_SERMON_KEY } from '../constants';
 import { readAppGroupData, syncAppGroupToAsyncStorage } from '../services/sermonService';
 import logger from '../utils/logger';
 
@@ -13,7 +13,7 @@ export function useAppGroupSync({ onDataSynced, enabled }: UseAppGroupSyncOption
   const lastSyncedSignatureRef = useRef<string | null>(null);
 
   const performInitialSync = useCallback(async () => {
-    if (Platform.OS !== 'ios') return;
+    if (Platform.OS !== 'ios' || !enabled) return;
 
     try {
       const appGroupData = await readAppGroupData(APP_GROUP_DISPLAY_SERMON_KEY);
@@ -21,56 +21,12 @@ export function useAppGroupSync({ onDataSynced, enabled }: UseAppGroupSyncOption
 
       const newSig = await syncAppGroupToAsyncStorage(appGroupData, null);
       lastSyncedSignatureRef.current = newSig;
+      if (newSig) {
+        await onDataSynced();
+      }
     } catch (error) {
       logger.error('Error during initial App Group sync:', error);
     }
-  }, []);
-
-  // AppState listener + periodic polling
-  useEffect(() => {
-    if (Platform.OS !== 'ios' || !enabled) return;
-
-    const syncFromAppGroup = async () => {
-      try {
-        const appGroupData = await readAppGroupData(APP_GROUP_DISPLAY_SERMON_KEY);
-        if (!appGroupData) return;
-
-        const newSig = await syncAppGroupToAsyncStorage(
-          appGroupData,
-          lastSyncedSignatureRef.current,
-        );
-        if (newSig) {
-          lastSyncedSignatureRef.current = newSig;
-          await onDataSynced();
-        }
-      } catch (error) {
-        logger.error('Error syncing App Group data:', error);
-      }
-    };
-
-    // Sync on foreground transitions
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') {
-        syncFromAppGroup();
-      }
-    });
-
-    // If already active, sync now
-    if (AppState.currentState === 'active') {
-      syncFromAppGroup();
-    }
-
-    // Periodic polling (5s)
-    const intervalId = setInterval(() => {
-      if (AppState.currentState === 'active') {
-        syncFromAppGroup();
-      }
-    }, APP_GROUP_POLL_INTERVAL_MS);
-
-    return () => {
-      subscription.remove();
-      clearInterval(intervalId);
-    };
   }, [enabled, onDataSynced]);
 
   return { performInitialSync };
