@@ -8,6 +8,9 @@ object Constants {
     const val ACTION_SERMON_UPDATE_EVENT = "app.mannadev.meditation.SERMON_UPDATE_EVENT"
     const val MESSAGE_SERMON_UPDATE_EVENT = "ON_SERMON_UPDATE"
 
+    const val ACTION_QT_UPDATE_EVENT = "app.mannadev.meditation.QT_UPDATE_EVENT"
+    const val MESSAGE_QT_UPDATE_EVENT = "ON_QT_UPDATE"
+
     const val ASYNC_STORAGE_FCM_SERMON = "fcm_sermon"
     const val ASYNC_STORAGE_FCM_QT = "fcm_qt"
 }
