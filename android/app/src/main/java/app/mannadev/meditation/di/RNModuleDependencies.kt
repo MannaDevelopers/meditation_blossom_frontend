@@ -1,7 +1,9 @@
 package app.mannadev.meditation.di
 
 import android.content.Context
+import app.mannadev.meditation.domain.usecase.ClearQtPreferenceUseCase
 import app.mannadev.meditation.domain.usecase.ClearWidgetPreferenceUseCase
+import app.mannadev.meditation.domain.usecase.SaveDisplayQtUseCase
 import app.mannadev.meditation.domain.usecase.SaveDisplaySermonUseCase
 import app.mannadev.meditation.model.BibleReferenceResolver
 import dagger.hilt.EntryPoint
@@ -14,14 +16,14 @@ import dagger.hilt.components.SingletonComponent
 interface RNModuleDependencies {
     fun getSaveDisplaySermonUseCase(): SaveDisplaySermonUseCase
     fun getClearWidgetPreferences(): ClearWidgetPreferenceUseCase
+    fun getSaveDisplayQtUseCase(): SaveDisplayQtUseCase
+    fun getClearQtPreferences(): ClearQtPreferenceUseCase
     fun getBibleReferenceResolver(): BibleReferenceResolver
 }
 
-// Helper function to easily access the dependencies from a context
-fun  getRNModuleDependencies(context: Context): RNModuleDependencies {
-    val hiltEntryPoint = EntryPointAccessors.fromApplication(
-        context.applicationContext, // Use application context
+fun getRNModuleDependencies(context: Context): RNModuleDependencies {
+    return EntryPointAccessors.fromApplication(
+        context.applicationContext,
         RNModuleDependencies::class.java
     )
-    return hiltEntryPoint
 }
