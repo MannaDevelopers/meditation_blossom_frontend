@@ -12,6 +12,7 @@ import app.mannadev.meditation.analytics.SermonEventSource
 import app.mannadev.meditation.data.AsyncStorage
 import app.mannadev.meditation.domain.usecase.SaveDisplaySermonUseCase
 import app.mannadev.meditation.dto.SermonDto
+import app.mannadev.meditation.model.BibleReferenceResolver
 import app.mannadev.meditation.ui.widget.VerseWidgetLarge
 import app.mannadev.meditation.ui.widget.VerseWidgetSmall
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -47,6 +48,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     @Inject
     lateinit var asyncStorage: AsyncStorage
+
+    @Inject
+    lateinit var bibleReferenceResolver: BibleReferenceResolver
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -100,17 +104,24 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         Timber.d("Parsed sermon: ${sermonDto.title}")
 
+        val resolvedDto = runCatching { bibleReferenceResolver.resolveDto(sermonDto) }
+            .onFailure { e ->
+                Timber.e(e, "Failed to resolve bible content, skipping sermon update")
+                CrashlyticsHelper.recordException(e, "BibleReferenceResolver failed: ${sermonDto.content}")
+            }
+            .getOrNull() ?: return
+
         // 1. Sermon 저장 (가장 중요 - 취소 불가능한 컨텍스트에서 처리)
         runCatching {
             withContext(NonCancellable) {
-                saveDisplaySermonUseCase(sermonDto)
+                saveDisplaySermonUseCase(resolvedDto)
                 AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.FCM_TOPIC)
             }
         }.onFailure { e ->
             Timber.e(e, "Failed to save sermon")
             CrashlyticsHelper.recordException(
                 exception = e,
-                message = "Failed to save sermon: $sermonDto",
+                message = "Failed to save sermon: $resolvedDto",
             )
         }
 
@@ -129,7 +140,13 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         // 3. AsyncStorage 업데이트 및 Broadcast
         runCatching {
             withContext(Dispatchers.IO) {
-                asyncStorage.set(key = ASYNC_STORAGE_FCM_SERMON, value = Json.encodeToString(message.data))
+                val dataWithResolvedContent = message.data.toMutableMap().apply {
+                    put(KEY_CONTENT, resolvedDto.content)
+                }
+                asyncStorage.set(
+                    key = ASYNC_STORAGE_FCM_SERMON,
+                    value = Json.encodeToString(dataWithResolvedContent),
+                )
             }
             LocalBroadcastManager
                 .getInstance(this@MyFirebaseMessagingService)
