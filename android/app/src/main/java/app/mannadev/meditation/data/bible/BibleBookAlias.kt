@@ -57,10 +57,29 @@ object BibleBookAlias {
     }
 
     fun resolve(input: String): String {
-        val t1 = exactMap[input]
-        if (t1 != null) return t1
+        exactMap[input]?.let { return it }
+
+        val normalized = normalizeForTier2(input)
+        exactMap[normalized]?.let { return it }
+
+        // 접미사 보완: "로마" → "로마서", "요한" → "요한복음"
+        for (suffix in listOf("서", "복음", "기", "상", "하", "계시록")) {
+            val candidate = normalized + suffix
+            exactMap[candidate]?.let { return it }
+        }
+
         throw BookAliasNotFoundException(input)
     }
 
     internal fun isStandard(name: String): Boolean = name in standardSet
+
+    private fun normalizeForTier2(raw: String): String {
+        val stripped = raw.replace(WHITESPACE_OR_PUNCT, "")
+        return HANGUL_DIGIT_REPLACE.entries.fold(stripped) { acc, (k, v) -> acc.replace(k, v) }
+    }
+
+    private val WHITESPACE_OR_PUNCT = Regex("[\\s.,()\\[\\]<>\\-_/]")
+    private val HANGUL_DIGIT_REPLACE: Map<String, String> = mapOf(
+        "일" to "1", "이" to "2", "삼" to "3", "사" to "4",
+    )
 }
