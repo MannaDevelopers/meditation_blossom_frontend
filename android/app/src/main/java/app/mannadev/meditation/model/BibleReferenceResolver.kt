@@ -42,6 +42,14 @@ class BibleReferenceResolver @Inject constructor(
         return "${prefix}${reference} $body"
     }
 
+    /** 
+     * v2 payload 배열 형태의 bible_references 문자열을 파싱하여 본문 문자열을 반환. 
+     */
+    fun resolveBibleReferencesJson(jsonStr: String): String {
+        //TODO @docs/firestore-collections/sermons.md -> `bible_references` 참고
+        return ""
+    }
+
     companion object {
         // 책명(필수) + 장:시작[-끝]. 책명은 공백을 포함한 비숫자 토큰 연속.
         internal val PART_REGEX = Regex(
