@@ -101,9 +101,19 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
             val saveSermonToPrefs = runCatching {
                 log.d("Saving sermon to Widget Preference...")
                 val saveSermonUseCase = moduleDependencies.getSaveDisplaySermonUseCase()
+                val resolver = moduleDependencies.getBibleReferenceResolver()
                 val sermonDto = json.decodeFromString<SermonDto>(sermonData)
                 log.d("SermonDto: $sermonDto")
-                saveSermonUseCase(sermonDto)
+                val resolvedDto = runCatching { resolver.resolveDto(sermonDto) }
+                    .onFailure { e ->
+                        CrashlyticsHelper.recordException(
+                            e,
+                            "BibleReferenceResolver failed in RN bridge: ${sermonDto.content}",
+                            tag = TAG,
+                        )
+                    }
+                    .getOrNull() ?: return@runCatching
+                saveSermonUseCase(resolvedDto)
                 AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.RN_MODULE)
                 log.d("Sermon saved to prefs successfully")
             }.onFailure { e ->
