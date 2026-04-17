@@ -73,7 +73,7 @@ describe('compareQt', () => {
 
 describe('firestoreDocToQt', () => {
   const bridge = require('../src/types/WidgetUpdateModule').default;
-  const makeDoc = (data: any) => ({ id: 'doc-q', data: () => data });
+  const makeDoc = (data: any): any => ({ id: 'doc-q', data: () => data });
 
   beforeEach(() => {
     jest.clearAllMocks();
