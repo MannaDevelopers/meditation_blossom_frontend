@@ -46,4 +46,17 @@ class BibleBookAliasTest {
         assertEquals("로마서", BibleBookAlias.resolve("로마"))
         assertEquals("요한복음", BibleBookAlias.resolve("요한"))  // 주의: "요한"만 단독은 복음으로 해석
     }
+
+    @Test fun `tier3 fuzzy matches single-char typo`() {
+        // "로마서" → "노마서" (ㄹ→ㄴ, 1자 오타)
+        assertEquals("로마서", BibleBookAlias.resolve("노마서"))
+        // "요한복음" → "요환복음" (ㅏ→ㅘ)
+        assertEquals("요한복음", BibleBookAlias.resolve("요환복음"))
+    }
+
+    @Test fun `tier3 rejects too-distant input`() {
+        assertThrows(BookAliasNotFoundException::class.java) {
+            BibleBookAlias.resolve("이건전혀다른이름입니다")
+        }
+    }
 }

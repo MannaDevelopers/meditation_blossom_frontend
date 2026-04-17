@@ -68,6 +68,8 @@ object BibleBookAlias {
             exactMap[candidate]?.let { return it }
         }
 
+        tier3Fuzzy(normalized)?.let { return it }
+
         throw BookAliasNotFoundException(input)
     }
 
@@ -82,4 +84,69 @@ object BibleBookAlias {
     private val HANGUL_DIGIT_REPLACE: Map<String, String> = mapOf(
         "일" to "1", "이" to "2", "삼" to "3", "사" to "4",
     )
+
+    private const val FUZZY_MAX_DISTANCE = 2
+
+    internal fun tier3Fuzzy(normalizedInput: String): String? {
+        val inputJamo = toJamoSequence(normalizedInput)
+        var bestName: String? = null
+        var bestDistance = Int.MAX_VALUE
+        for (name in STANDARD_NAMES) {
+            val candidateJamo = toJamoSequence(name)
+            val d = levenshtein(inputJamo, candidateJamo, upperBound = FUZZY_MAX_DISTANCE)
+            if (d < bestDistance) {
+                bestDistance = d
+                bestName = name
+                if (d == 0) break
+            }
+        }
+        return if (bestDistance <= FUZZY_MAX_DISTANCE) bestName else null
+    }
+
+    /** 한글 음절(AC00-D7A3)을 초/중/종성 자모로 분해. 그 외 문자는 그대로 1원소. */
+    internal fun toJamoSequence(s: String): IntArray {
+        val out = IntArray(s.length * 3)
+        var idx = 0
+        for (ch in s) {
+            val code = ch.code
+            if (code in 0xAC00..0xD7A3) {
+                val base = code - 0xAC00
+                val cho = base / (21 * 28)                  // 0..18
+                val jung = (base % (21 * 28)) / 28          // 0..20
+                val jong = base % 28                        // 0..27 (0 = 종성 없음)
+                out[idx++] = 0x1100 + cho
+                out[idx++] = 0x1161 + jung
+                if (jong != 0) out[idx++] = 0x11A7 + jong
+            } else {
+                out[idx++] = code
+            }
+        }
+        return out.copyOf(idx)
+    }
+
+    /** 표준 Levenshtein. upperBound 초과가 확정되면 Int.MAX_VALUE 반환(조기 종료). */
+    internal fun levenshtein(a: IntArray, b: IntArray, upperBound: Int): Int {
+        val n = a.size; val m = b.size
+        if (kotlin.math.abs(n - m) > upperBound) return Int.MAX_VALUE
+        if (n == 0) return m
+        if (m == 0) return n
+        val prev = IntArray(m + 1) { it }
+        val curr = IntArray(m + 1)
+        for (i in 1..n) {
+            curr[0] = i
+            var rowMin = curr[0]
+            for (j in 1..m) {
+                val cost = if (a[i - 1] == b[j - 1]) 0 else 1
+                curr[j] = minOf(
+                    prev[j] + 1,        // deletion
+                    curr[j - 1] + 1,    // insertion
+                    prev[j - 1] + cost, // substitution
+                )
+                if (curr[j] < rowMin) rowMin = curr[j]
+            }
+            if (rowMin > upperBound) return Int.MAX_VALUE
+            System.arraycopy(curr, 0, prev, 0, m + 1)
+        }
+        return prev[m]
+    }
 }
