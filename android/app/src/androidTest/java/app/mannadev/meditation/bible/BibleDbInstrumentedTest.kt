@@ -13,7 +13,7 @@ class BibleDbInstrumentedTest {
 
     private val db = BibleDbImpl(ApplicationProvider.getApplicationContext())
 
-    @Test fun `loads all 66 books`() {
+    @Test fun loads_all_66_books() {
         val map = db.loadBookIdByName()
         assertEquals(66, map.size)
         assertTrue(map.containsKey("창세기"))
@@ -21,7 +21,7 @@ class BibleDbInstrumentedTest {
         assertTrue(map.containsKey("요한1서"))
     }
 
-    @Test fun `query romans 13 11 to 14 returns 4 verses`() {
+    @Test fun query_romans_13_11_to_14_returns_4_verses() {
         val books = db.loadBookIdByName()
         val rows = db.queryRange(bookId = books.getValue("로마서"), chapter = 13, startVerse = 11, endVerse = 14)
         assertEquals(4, rows.size)
