@@ -33,6 +33,9 @@ object BibleBookAlias {
 
     private val standardSet: Set<String> = STANDARD_NAMES.toSet()
 
+    /** Tier-3 fuzzy 후보 자모 시퀀스 캐시. 클래스 초기화 시 1회 계산. */
+    private val candidateJamoCache: List<IntArray> = STANDARD_NAMES.map { toJamoSequence(it) }
+
     private val exactMap: Map<String, String> = buildMap {
         // 표준명 그대로
         STANDARD_NAMES.forEach { put(it, it) }
@@ -90,17 +93,16 @@ object BibleBookAlias {
     internal fun tier3Fuzzy(normalizedInput: String): String? {
         val inputJamo = toJamoSequence(normalizedInput)
         var bestName: String? = null
-        var bestDistance = Int.MAX_VALUE
-        for (name in STANDARD_NAMES) {
-            val candidateJamo = toJamoSequence(name)
-            val d = levenshtein(inputJamo, candidateJamo, upperBound = FUZZY_MAX_DISTANCE)
-            if (d < bestDistance) {
+        var bestDistance = FUZZY_MAX_DISTANCE + 1  // sentinel: "worse than acceptable"
+        for (i in STANDARD_NAMES.indices) {
+            val d = levenshtein(inputJamo, candidateJamoCache[i], upperBound = FUZZY_MAX_DISTANCE)
+            if (d <= FUZZY_MAX_DISTANCE && d < bestDistance) {
                 bestDistance = d
-                bestName = name
+                bestName = STANDARD_NAMES[i]
                 if (d == 0) break
             }
         }
-        return if (bestDistance <= FUZZY_MAX_DISTANCE) bestName else null
+        return bestName  // only assigned when d <= FUZZY_MAX_DISTANCE
     }
 
     /** 한글 음절(AC00-D7A3)을 초/중/종성 자모로 분해. 그 외 문자는 그대로 1원소. */
