@@ -2394,7 +2394,7 @@ import { extractContent } from '../utils/sermonParser';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
 
-const DAILY_MANNA_CHANNEL_URL = 'https://www.youtube.com/@mannachurch';
+const DAILY_MANNA_CHANNEL_URL = 'https://www.youtube.com/@만나';
 
 const DailyMannaScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -2609,7 +2609,7 @@ git commit -m "[ISSUE-54] feat(screens): replace DailyManna placeholder with QT 
 
 - [ ] **Step 1: Read current file and plan the change**
 
-The current screen hardcodes `SUNDAY_SERMON_YOUTUBE_URL = 'https://www.youtube.com/@mannachurch'`. Change both YouTube tap handlers to use `sermon?.video_url` with channel URL as fallback.
+The current screen hardcodes `SUNDAY_SERMON_YOUTUBE_URL = 'https://www.youtube.com/@만나'`. Change both YouTube tap handlers to use `sermon?.video_url` with channel URL as fallback.
 
 - [ ] **Step 2: Apply edits**
 

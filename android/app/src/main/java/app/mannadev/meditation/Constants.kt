@@ -13,4 +13,6 @@ object Constants {
 
     const val ASYNC_STORAGE_FCM_SERMON = "fcm_sermon"
     const val ASYNC_STORAGE_FCM_QT = "fcm_qt"
+
+    const val FALLBACK_YOUTUBE_URL = "https://www.youtube.com/@만나"
 }

@@ -25,7 +25,7 @@ import { RootStackParamList } from '../types/navigation';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
 
-const SUNDAY_SERMON_YOUTUBE_URL = 'https://www.youtube.com/@mannachurch';
+const SUNDAY_SERMON_YOUTUBE_URL = 'https://www.youtube.com/@만나';
 
 const HomeScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();

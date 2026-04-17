@@ -22,7 +22,7 @@ import { extractContent } from '../utils/sermonParser';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
 
-const DAILY_MANNA_CHANNEL_URL = 'https://www.youtube.com/@mannachurch';
+const DAILY_MANNA_CHANNEL_URL = 'https://www.youtube.com/@만나';
 
 const DailyMannaScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
