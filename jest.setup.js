@@ -117,3 +117,4 @@ NativeModules.WidgetUpdateModule = {
   getYoutubeLinkEnabled: jest.fn().mockResolvedValue(false),
 };
 NativeModules.MyEventModule = { getName: () => 'MyEventModule' };
+

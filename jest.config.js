@@ -2,6 +2,11 @@ module.exports = {
   preset: 'react-native',
   setupFiles: ['./jest.setup.js'],
   transformIgnorePatterns: [
-    'node_modules/(?!(react-native|@react-native|@react-native-firebase|@react-native-async-storage|react-native-gesture-handler|react-native-safe-area-context|@react-navigation)/)',
+    // react-native 관련 모든 패키지를 변환 대상에 포함 (치트키)
+    'node_modules/(?!(jest-)?react-native|@react-native|@react-native-community|@react-navigation|react-native-.*|@react-native-.*)/',
   ],
+  // 테스트 종료 후 남아있는 비동기 작업으로 인한 에러 방지
+  fakeTimers: {
+    enableGlobally: true,
+  },
 };
