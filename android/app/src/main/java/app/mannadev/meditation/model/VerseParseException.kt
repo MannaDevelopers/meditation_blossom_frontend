@@ -3,6 +3,7 @@ package app.mannadev.meditation.model
 sealed class VerseParseException(message: String) : Exception(message) {
     class NoPrefixException : VerseParseException("본문 : 접두사가 없습니다.")
     class NoBookNameException : VerseParseException("책 이름을 찾을 수 없습니다.")
+    class EmptyReferencesException : VerseParseException("참조 목록이 비어있습니다.")
     class EmptyContentException : VerseParseException("내용이 비어있습니다.")
     class NoVersesException : VerseParseException("구절이 없습니다.")
     class InvalidVerseFormatException : VerseParseException("구절이 숫자로 시작하지 않습니다.")

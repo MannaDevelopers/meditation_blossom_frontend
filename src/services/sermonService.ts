@@ -30,7 +30,7 @@ export async function fetchLatestSermonFromCache(): Promise<Sermon | null> {
       limit(1),
     );
     const snapshot = await getDocsFromCache(q);
-    return snapshot.empty ? null : firestoreDocToSermon(snapshot.docs[0]);
+    return snapshot.empty ? null : await firestoreDocToSermon(snapshot.docs[0]);
   } catch (error) {
     logger.error('Failed to load sermon from Firestore cache', error);
     return null;
@@ -61,7 +61,7 @@ export async function fetchLatestSermonFromServer(): Promise<Sermon | null> {
     logger.log('No sermons found on server');
     return null;
   }
-  return firestoreDocToSermon(snapshot.docs[0]);
+  return await firestoreDocToSermon(snapshot.docs[0]);
 }
 
 export async function readAppGroupData(key: string): Promise<string | null> {

@@ -1,5 +1,7 @@
 import { FirebaseFirestoreTypes } from "@react-native-firebase/firestore";
+import { Platform } from 'react-native';
 import logger from "../utils/logger";
+import WidgetUpdateModule from './WidgetUpdateModule';
 
 export type FirestoreTimestamp = { seconds: number; nanoseconds: number };
 
@@ -10,6 +12,7 @@ export interface Sermon {
   date: string; // 설교 날짜 (YYYY-MM-DD)
   category?: string; // 설교 카테고리
   day_of_week?: string; // 요일 (예: "SUN")
+  video_url?: string;
   created_at: FirestoreTimestamp;
   updated_at: FirestoreTimestamp;
 }
@@ -23,6 +26,9 @@ export interface SermonRaw {
   category?: string;
   day_of_week?: string;
   dayOfWeek?: string;
+  bible_references?: string;
+  video_url?: string;
+  source_id?: string;
   created_at?: FirestoreTimestamp | string;
   createdAt?: FirestoreTimestamp | string;
   updated_at?: FirestoreTimestamp | string;
@@ -108,25 +114,45 @@ export function fcmDataToSermon(raw: SermonRaw): Sermon {
     date: raw.date || '',
     category: raw.category,
     day_of_week: raw.day_of_week || raw.dayOfWeek,
+    video_url: raw.video_url,
     created_at: resolveTimestamp(raw.created_at, raw.createdAt),
     updated_at: resolveTimestamp(raw.updated_at, raw.updatedAt),
   };
 }
 
-export const firestoreDocToSermon = (doc: FirebaseFirestoreTypes.QueryDocumentSnapshot): Sermon => {
+export const firestoreDocToSermon = async (
+  doc: FirebaseFirestoreTypes.QueryDocumentSnapshot,
+): Promise<Sermon> => {
   const firestoreData = doc.data();
+
+  let content = firestoreData.content || '';
+  const bibleRefs = firestoreData.bible_references;
+  if (Platform.OS === 'android' && bibleRefs) {
+    try {
+      const resolved = await WidgetUpdateModule.resolveBibleReferences(
+        JSON.stringify(bibleRefs),
+      );
+      content = resolved;
+    } catch (e) {
+      logger.error('firestoreDocToSermon: bridge resolveBibleReferences failed', e);
+      content = '';
+    }
+  } else if (Platform.OS === 'ios' && bibleRefs) {
+    content = '';
+  }
 
   return {
     id: doc.id,
     title: firestoreData.title || '',
-    content: firestoreData.content || '',
+    content,
     date: firestoreData.date || new Date().toISOString().split('T')[0],
     category: firestoreData.category || '',
     day_of_week: firestoreData.day_of_week || '',
+    video_url: firestoreData.video_url,
     created_at: firestoreData.created_at || { seconds: 0, nanoseconds: 0 },
-    updated_at: firestoreData.updated_at || { seconds: 0, nanoseconds: 0 }
+    updated_at: firestoreData.updated_at || { seconds: 0, nanoseconds: 0 },
   };
-}
+};
 
 function convertToComparableTimestamp(timestamp: FirestoreTimestamp | string | null | undefined): number {
   if (!timestamp) return 0;

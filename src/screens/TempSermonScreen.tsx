@@ -147,7 +147,7 @@ function TempSermonScreen(): React.JSX.Element {
       }
       
       // 새로운 설교 데이터 처리
-      const newSermonsData: Sermon[] = snapshot.docs.map(firestoreDocToSermon);
+      const newSermonsData: Sermon[] = await Promise.all(snapshot.docs.map(firestoreDocToSermon));
       
       logger.log('Sample of new sermon data:', newSermonsData.length > 0 ? JSON.stringify(newSermonsData[0], null, 2) : 'No data');
       

@@ -85,4 +85,48 @@ class BibleReferenceResolverTest {
         assertEquals("11 또한 너희가", sermon.verses[0])
         assertEquals("14 오직 주", sermon.verses[3])
     }
+
+    @Test fun `json single range with prefix uses DB not payload verses`() {
+        val json = """[{"book":"로마서","chapter":13,"verse_start":11,"verse_end":14,"verses":[{"verse_number":11,"content":"IGNORED"}]}]"""
+        val out = resolver().resolveBibleReferencesJson(json)
+        assertEquals(
+            "본문 : 로마서 13:11-14 11 또한 너희가 12 밤이 깊고 13 낮에와 같이 14 오직 주",
+            out,
+        )
+    }
+
+    @Test fun `json single verse drops number prefix`() {
+        val json = """[{"book":"요한복음","chapter":3,"verse_start":16,"verse_end":16}]"""
+        val out = resolver().resolveBibleReferencesJson(json)
+        assertEquals("본문 : 요한복음 3:16 하나님이 세상을", out)
+    }
+
+    @Test fun `json multi range across books joins with comma`() {
+        val json = """[
+          {"book":"창세기","chapter":22,"verse_start":2,"verse_end":2},
+          {"book":"신명기","chapter":34,"verse_start":4,"verse_end":4},
+          {"book":"요한복음","chapter":3,"verse_start":30,"verse_end":30}
+        ]"""
+        val out = resolver().resolveBibleReferencesJson(json)
+        assertEquals(
+            "본문 : 창세기 22:2, 신명기 34:4, 요한복음 3:30 2 여호와께서 이르시되 4 이는 내가 아브라함과 30 그는 흥하여야",
+            out,
+        )
+    }
+
+    @Test fun `json alias is resolved via repository`() {
+        val json = """[{"book":"요한일서","chapter":1,"verse_start":1,"verse_end":1}]"""
+        val out = resolver().resolveBibleReferencesJson(json)
+        assertEquals("본문 : 요한일서 1:1 태초부터 있는", out)
+    }
+
+    @Test(expected = Exception::class)
+    fun `json empty array throws`() {
+        resolver().resolveBibleReferencesJson("[]")
+    }
+
+    @Test(expected = Exception::class)
+    fun `json malformed throws`() {
+        resolver().resolveBibleReferencesJson("not-json")
+    }
 }

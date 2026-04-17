@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
-import androidx.glance.action.actionStartActivity
+import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.appWidgetBackground
@@ -24,7 +24,6 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.text.Text
-import app.mannadev.meditation.MainActivity
 import app.mannadev.meditation.R
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.di.getWidgetDependencies
@@ -46,9 +45,10 @@ class VerseWidgetSmall : GlanceAppWidget(
             )
             Sermon.errorSermon
         }
+        val clickAction = widgetClickAction(verse.videoUrl)
 
         provideContent {
-            VerseWidgetSmallContent(verse)
+            VerseWidgetSmallContent(verse, clickAction)
         }
     }
 }
@@ -63,11 +63,11 @@ private object VerseSmallWidgetDimens {
 }
 
 @Composable
-private fun VerseWidgetSmallContent(sermon: Sermon) {
+private fun VerseWidgetSmallContent(sermon: Sermon, clickAction: Action) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
-            .clickable(actionStartActivity<MainActivity>())
+            .clickable(clickAction)
             .appWidgetBackground()
             .background(Color.White),
         horizontalAlignment = Alignment.Start,
@@ -107,7 +107,7 @@ private fun VerseWidgetSmallContent(sermon: Sermon) {
                             modifier = GlanceModifier
                                 .fillMaxWidth()
                                 .padding(horizontal = VerseSmallWidgetDimens.contentPadding)
-                                .clickable(actionStartActivity<MainActivity>()),
+                                .clickable(clickAction),
                             text = verse,
                             style = Typography.bodyMedium,
                         )

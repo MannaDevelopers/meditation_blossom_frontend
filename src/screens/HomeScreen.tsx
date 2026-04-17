@@ -25,7 +25,7 @@ import { RootStackParamList } from '../types/navigation';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
 
-const SUNDAY_SERMON_YOUTUBE_URL = 'https://www.youtube.com/@mannachurch';
+const SUNDAY_SERMON_YOUTUBE_URL = 'https://www.youtube.com/@만나';
 
 const HomeScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -44,6 +44,8 @@ const HomeScreen = () => {
 
   useWidgetSync(sermon);
   useFCMListener(loadLocalData);
+
+  const targetYoutubeUrl = sermon?.video_url || SUNDAY_SERMON_YOUTUBE_URL;
 
   useEffect(() => {
     const init = async () => {
@@ -94,7 +96,7 @@ const HomeScreen = () => {
         <Text style={styles.appTitle}>묵상만개</Text>
         <TouchableOpacity
           onPress={() => {
-            Linking.openURL(SUNDAY_SERMON_YOUTUBE_URL).catch(e =>
+            Linking.openURL(targetYoutubeUrl).catch(e =>
               logger.error('HomeScreen: YouTube 링크 열기 실패', e),
             );
           }}
@@ -119,7 +121,7 @@ const HomeScreen = () => {
         <TouchableOpacity
           style={styles.youtubeLinkContainer}
           onPress={() => {
-            Linking.openURL(SUNDAY_SERMON_YOUTUBE_URL).catch(e =>
+            Linking.openURL(targetYoutubeUrl).catch(e =>
               logger.error('HomeScreen: YouTube 링크 열기 실패', e),
             );
           }}

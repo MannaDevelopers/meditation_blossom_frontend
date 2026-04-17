@@ -69,7 +69,8 @@ object VerseParser {
             return Sermon(
                 verses = verses,
                 bookName = bookName,
-                title = dto.title
+                title = dto.title,
+                videoUrl = dto.videoUrl,
             )
         } else {
             val versesWithNumber =
@@ -77,7 +78,8 @@ object VerseParser {
             return Sermon(
                 verses = versesWithNumber,
                 bookName = bookName,
-                title = dto.title
+                title = dto.title,
+                videoUrl = dto.videoUrl,
             )
         }
     }
