@@ -199,3 +199,70 @@ describe('fcmDataToSermon', () => {
     expect(result.updated_at).toEqual(snakeTs);
   });
 });
+
+import { Platform } from 'react-native';
+
+jest.mock('../src/types/WidgetUpdateModule', () => ({
+  __esModule: true,
+  default: {
+    resolveBibleReferences: jest.fn(),
+  },
+}));
+
+describe('firestoreDocToSermon (async)', () => {
+  const { firestoreDocToSermon } = require('../src/types/Sermon');
+  const bridge = require('../src/types/WidgetUpdateModule').default;
+
+  const makeDoc = (data: any) => ({ id: 'doc-1', data: () => data });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (Platform as any).OS = 'android';
+  });
+
+  it('on Android calls bridge with bible_references and returns resolved content', async () => {
+    bridge.resolveBibleReferences.mockResolvedValue('본문 : 창세기 1:1 태초에');
+    const doc = makeDoc({
+      title: 'T',
+      date: '2026-04-17',
+      bible_references: [{ book: '창세기', chapter: 1, verse_start: 1, verse_end: 1 }],
+      video_url: 'https://youtu.be/abc',
+    });
+    const result = await firestoreDocToSermon(doc);
+    expect(bridge.resolveBibleReferences).toHaveBeenCalledWith(
+      JSON.stringify(doc.data().bible_references),
+    );
+    expect(result.content).toBe('본문 : 창세기 1:1 태초에');
+    expect(result.video_url).toBe('https://youtu.be/abc');
+  });
+
+  it('on iOS returns empty content without calling bridge', async () => {
+    (Platform as any).OS = 'ios';
+    const doc = makeDoc({
+      title: 'T',
+      date: '2026-04-17',
+      bible_references: [{ book: '창세기', chapter: 1, verse_start: 1, verse_end: 1 }],
+    });
+    const result = await firestoreDocToSermon(doc);
+    expect(bridge.resolveBibleReferences).not.toHaveBeenCalled();
+    expect(result.content).toBe('');
+  });
+
+  it('returns empty content when bridge rejects (graceful degrade)', async () => {
+    bridge.resolveBibleReferences.mockRejectedValue(new Error('boom'));
+    const doc = makeDoc({
+      title: 'T',
+      date: '2026-04-17',
+      bible_references: [{ book: '창세기', chapter: 1, verse_start: 1, verse_end: 1 }],
+    });
+    const result = await firestoreDocToSermon(doc);
+    expect(result.content).toBe('');
+  });
+
+  it('returns empty content when bible_references missing', async () => {
+    const doc = makeDoc({ title: 'T', date: '2026-04-17' });
+    const result = await firestoreDocToSermon(doc);
+    expect(result.content).toBe('');
+    expect(bridge.resolveBibleReferences).not.toHaveBeenCalled();
+  });
+});
