@@ -6,9 +6,12 @@ import app.mannadev.meditation.analytics.AnalyticsHelper
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.analytics.SermonEventSource
 import app.mannadev.meditation.di.getRNModuleDependencies
+import app.mannadev.meditation.dto.QtDto
 import app.mannadev.meditation.dto.SermonDto
 import app.mannadev.meditation.ui.widget.VerseWidgetLarge
+import app.mannadev.meditation.ui.widget.VerseWidgetLargeQt
 import app.mannadev.meditation.ui.widget.VerseWidgetSmall
+import app.mannadev.meditation.ui.widget.VerseWidgetSmallQt
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -146,11 +149,71 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
         }
     }
 
+    @Suppress("unused")
+    @Keep
+    @ReactMethod
+    fun resolveBibleReferences(jsonString: String, promise: Promise) {
+        moduleScope.launch {
+            runCatching {
+                val resolver = moduleDependencies.getBibleReferenceResolver()
+                resolver.resolveBibleReferencesJson(jsonString)
+            }
+                .onSuccess { promise.resolve(it) }
+                .onFailure { e ->
+                    CrashlyticsHelper.recordException(
+                        e,
+                        "resolveBibleReferences failed for: $jsonString",
+                        tag = TAG,
+                    )
+                    promise.reject("RESOLVE_BIBLE_REFERENCES_ERROR", e.message, e)
+                }
+        }
+    }
+
+    @Suppress("unused")
+    @Keep
+    @ReactMethod
+    fun onQtUpdated(qtData: String, promise: Promise) {
+        moduleScope.launch {
+            val saveResult = runCatching {
+                log.d("Saving QT to Widget Preference...")
+                val saveQtUseCase = moduleDependencies.getSaveDisplayQtUseCase()
+                val qtDto = json.decodeFromString<QtDto>(qtData)
+                saveQtUseCase(qtDto)
+                log.d("QT saved to prefs successfully")
+            }.onFailure { e ->
+                CrashlyticsHelper.recordException(e, "Error saving QT data: ${e.message}", tag = TAG)
+            }
+
+            runCatching { updateQtWidgets() }
+                .onFailure {
+                    CrashlyticsHelper.recordException(
+                        it,
+                        "Error updating QT widgets after saving: ${it.message}",
+                        tag = TAG,
+                    )
+                }
+
+            saveResult
+                .onSuccess { promise.resolve(true) }
+                .onFailure { e ->
+                    promise.reject("QT_UPDATE_ERROR", e.message, e)
+                }
+        }
+    }
+
     private suspend fun updateWidgets() {
         val context = reactApplicationContext
         log.d("Updating widgets...")
         VerseWidgetLarge().updateAll(context)
         VerseWidgetSmall().updateAll(context)
+    }
+
+    private suspend fun updateQtWidgets() {
+        val context = reactApplicationContext
+        log.d("Updating QT widgets...")
+        VerseWidgetLargeQt().updateAll(context)
+        VerseWidgetSmallQt().updateAll(context)
     }
 
 }
