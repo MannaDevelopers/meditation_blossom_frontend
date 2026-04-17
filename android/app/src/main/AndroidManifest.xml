@@ -64,6 +64,30 @@
                 android:resource="@xml/verse_widget_large_info" />
         </receiver>
 
+        <receiver
+            android:name=".widget.QtWidgetSmallReceiver"
+            android:exported="true"
+            android:label="@string/verse_widget_qt_small_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/verse_widget_qt_small_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.QtWidgetLargeReceiver"
+            android:exported="true"
+            android:label="@string/verse_widget_qt_large_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/verse_widget_qt_large_info" />
+        </receiver>
+
         <service
             android:name=".service.MyFirebaseMessagingService"
             android:exported="false">
