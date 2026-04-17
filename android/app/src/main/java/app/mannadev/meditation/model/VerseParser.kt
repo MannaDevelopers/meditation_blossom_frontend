@@ -5,11 +5,11 @@ import com.google.common.annotations.VisibleForTesting
 
 object VerseParser {
 
-    private const val BOOK_NAME_REGEX_PATTERN =
+    internal const val BOOK_NAME_REGEX_PATTERN =
         """(본문\s*[:：]?\s*)?(?<bookName>[^\d\s]+ ?\d+:\d+(?:-\d+)?(?:,\s*[^\d\s]+ ?\d+:\d+(?:-\d+)?)*)"""
-    private val BOOK_NAME_REGEX = Regex(BOOK_NAME_REGEX_PATTERN)
+    internal val BOOK_NAME_REGEX = Regex(BOOK_NAME_REGEX_PATTERN)
 
-    private val VERSE_RANGE_REGEX = Regex("""(\d+):(\d+)(?:-(\d+))?""") // Compile once
+    internal val VERSE_RANGE_REGEX = Regex("""(\d+):(\d+)(?:-(\d+))?""") // Compile once
 
     private const val VERSE_SPLIT_REGEX_PATTERN = """\d+"""
     private val VERSE_SPLIT_REGEX = Regex(VERSE_SPLIT_REGEX_PATTERN)
