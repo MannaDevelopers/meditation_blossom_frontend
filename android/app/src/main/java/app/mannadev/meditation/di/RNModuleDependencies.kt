@@ -1,6 +1,7 @@
 package app.mannadev.meditation.di
 
 import android.content.Context
+import app.mannadev.meditation.data.WidgetPrefsDataSource
 import app.mannadev.meditation.domain.usecase.ClearQtPreferenceUseCase
 import app.mannadev.meditation.domain.usecase.ClearWidgetPreferenceUseCase
 import app.mannadev.meditation.domain.usecase.SaveDisplayQtUseCase
@@ -19,6 +20,7 @@ interface RNModuleDependencies {
     fun getSaveDisplayQtUseCase(): SaveDisplayQtUseCase
     fun getClearQtPreferences(): ClearQtPreferenceUseCase
     fun getBibleReferenceResolver(): BibleReferenceResolver
+    fun getWidgetPrefs(): WidgetPrefsDataSource
 }
 
 fun getRNModuleDependencies(context: Context): RNModuleDependencies {

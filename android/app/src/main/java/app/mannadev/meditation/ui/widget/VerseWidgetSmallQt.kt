@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
-import androidx.glance.action.actionStartActivity
+import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.appWidgetBackground
@@ -24,7 +24,6 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.text.Text
-import app.mannadev.meditation.MainActivity
 import app.mannadev.meditation.R
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.di.getWidgetDependencies
@@ -54,11 +53,13 @@ class VerseWidgetSmallQt : GlanceAppWidget(
                     title = if (it.seriesTitle.isNotBlank()) "${it.seriesTitle} / ${it.title}" else it.title,
                     content = it.content,
                     dayOfWeek = it.dayOfWeek,
+                    videoUrl = it.videoUrl,
                 )
             )
         } ?: Sermon.errorSermon
+        val clickAction = widgetClickAction(qt?.videoUrl)
 
-        provideContent { VerseWidgetSmallQtContent(verse) }
+        provideContent { VerseWidgetSmallQtContent(verse, clickAction) }
     }
 }
 
@@ -72,11 +73,11 @@ private object VerseSmallQtDimens {
 }
 
 @Composable
-private fun VerseWidgetSmallQtContent(sermon: Sermon) {
+private fun VerseWidgetSmallQtContent(sermon: Sermon, clickAction: Action) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
-            .clickable(actionStartActivity<MainActivity>())
+            .clickable(clickAction)
             .appWidgetBackground()
             .background(Color.White),
         horizontalAlignment = Alignment.Start,
@@ -111,7 +112,7 @@ private fun VerseWidgetSmallQtContent(sermon: Sermon) {
                             modifier = GlanceModifier
                                 .fillMaxWidth()
                                 .padding(horizontal = VerseSmallQtDimens.contentPadding)
-                                .clickable(actionStartActivity<MainActivity>()),
+                                .clickable(clickAction),
                             text = verse,
                             style = Typography.bodyMedium,
                         )

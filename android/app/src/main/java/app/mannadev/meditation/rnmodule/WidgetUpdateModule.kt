@@ -173,6 +173,40 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
     @Suppress("unused")
     @Keep
     @ReactMethod
+    fun getYoutubeLinkEnabled(promise: Promise) {
+        runCatching { moduleDependencies.getWidgetPrefs().isEnabled() }
+            .onSuccess { promise.resolve(it) }
+            .onFailure { e ->
+                CrashlyticsHelper.recordException(
+                    e,
+                    "Error reading youtube link pref: ${e.message}",
+                    tag = TAG,
+                )
+                promise.reject("YOUTUBE_LINK_PREF_ERROR", e.message, e)
+            }
+    }
+
+    @Suppress("unused")
+    @Keep
+    @ReactMethod
+    fun setYoutubeLinkEnabled(enabled: Boolean, promise: Promise) {
+        moduleScope.launch {
+            runCatching { moduleDependencies.getWidgetPrefs().setEnabled(enabled) }
+                .onSuccess { promise.resolve(null) }
+                .onFailure { e ->
+                    CrashlyticsHelper.recordException(
+                        e,
+                        "Error writing youtube link pref: ${e.message}",
+                        tag = TAG,
+                    )
+                    promise.reject("YOUTUBE_LINK_PREF_ERROR", e.message, e)
+                }
+        }
+    }
+
+    @Suppress("unused")
+    @Keep
+    @ReactMethod
     fun onQtUpdated(qtData: String, promise: Promise) {
         moduleScope.launch {
             val saveResult = runCatching {

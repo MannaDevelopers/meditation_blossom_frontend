@@ -12,4 +12,6 @@ data class QtDto(
     val content: String,              // resolved (as per BibleReferenceResolver output)
     @SerialName("day_of_week")
     val dayOfWeek: String,
+    @SerialName("video_url")
+    val videoUrl: String? = null,
 )

@@ -1,6 +1,7 @@
 package app.mannadev.meditation.di
 
 import android.content.Context
+import app.mannadev.meditation.data.WidgetPrefsDataSource
 import app.mannadev.meditation.domain.usecase.GetDisplayQtUseCase
 import app.mannadev.meditation.domain.usecase.GetDisplaySermonUseCase
 import dagger.hilt.EntryPoint
@@ -13,6 +14,7 @@ import dagger.hilt.components.SingletonComponent
 interface WidgetDependencies {
     fun getDisplaySermonUseCase(): GetDisplaySermonUseCase
     fun getDisplayQtUseCase(): GetDisplayQtUseCase
+    fun getWidgetPrefs(): WidgetPrefsDataSource
 }
 
 fun getWidgetDependencies(context: Context): WidgetDependencies {
