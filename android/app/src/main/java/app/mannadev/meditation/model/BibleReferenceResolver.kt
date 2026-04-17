@@ -3,6 +3,7 @@ package app.mannadev.meditation.model
 import app.mannadev.meditation.data.bible.BibleDb
 import app.mannadev.meditation.data.bible.BibleRepository
 import app.mannadev.meditation.dto.SermonDto
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
@@ -44,15 +45,15 @@ class BibleReferenceResolver @Inject constructor(
     /** v2 `bible_references` JSON 배열 문자열을 받아 "본문 : {refs} {body}" 형식으로 반환. */
     fun resolveBibleReferencesJson(jsonStr: String): String {
         val refs = json.decodeFromString<List<BibleReferenceJson>>(jsonStr)
-        if (refs.isEmpty()) throw VerseParseException.NoBookNameException()
+        if (refs.isEmpty()) throw VerseParseException.EmptyReferencesException()
 
         val allRows = ArrayList<BibleDb.VerseRow>()
         val refStrings = refs.map { ref ->
-            allRows.addAll(repo.getRange(ref.book, ref.chapter, ref.verse_start, ref.verse_end))
-            val range = if (ref.verse_start == ref.verse_end) {
-                "${ref.chapter}:${ref.verse_start}"
+            allRows.addAll(repo.getRange(ref.book, ref.chapter, ref.verseStart, ref.verseEnd))
+            val range = if (ref.verseStart == ref.verseEnd) {
+                "${ref.chapter}:${ref.verseStart}"
             } else {
-                "${ref.chapter}:${ref.verse_start}-${ref.verse_end}"
+                "${ref.chapter}:${ref.verseStart}-${ref.verseEnd}"
             }
             "${ref.book} $range"
         }
@@ -69,8 +70,8 @@ class BibleReferenceResolver @Inject constructor(
     private data class BibleReferenceJson(
         val book: String,
         val chapter: Int,
-        val verse_start: Int,
-        val verse_end: Int,
+        @SerialName("verse_start") val verseStart: Int,
+        @SerialName("verse_end") val verseEnd: Int,
     )
 
     companion object {
