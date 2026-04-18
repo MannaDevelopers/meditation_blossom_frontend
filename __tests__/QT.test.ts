@@ -45,6 +45,23 @@ describe('fcmDataToQt', () => {
     };
     expect(fcmDataToQt(raw).video_url).toBe('https://youtu.be/xyz');
   });
+
+  it('매핑: meditation_questions 있으면 그대로 전달됨', () => {
+    const raw: QTRaw = {
+      id: '1', title: 'T', series_title: '', content: 'C', date: '2026-04-17',
+      meditation_questions: '오늘 말씀에서 가장 마음에 닿은 구절은?\n이 말씀을 삶에 어떻게 적용할 수 있을까?',
+    };
+    expect(fcmDataToQt(raw).meditation_questions).toBe(
+      '오늘 말씀에서 가장 마음에 닿은 구절은?\n이 말씀을 삶에 어떻게 적용할 수 있을까?',
+    );
+  });
+
+  it('매핑: meditation_questions 없으면 undefined', () => {
+    const raw: QTRaw = {
+      id: '1', title: 'T', series_title: '', content: 'C', date: '2026-04-17',
+    };
+    expect(fcmDataToQt(raw).meditation_questions).toBeUndefined();
+  });
 });
 
 describe('compareQt', () => {
