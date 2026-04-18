@@ -1,7 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   collection,
-  getDocsFromCache,
   getDocsFromServer,
   getFirestore,
   limit,
@@ -18,17 +17,6 @@ import {
 } from '../types/QT';
 import logger from '../utils/logger';
 
-export async function fetchLatestQtFromCache(): Promise<QT | null> {
-  try {
-    const db = getFirestore();
-    const q = query(collection(db, 'qt'), orderBy('date', 'desc'), limit(1));
-    const snapshot = await getDocsFromCache(q);
-    return snapshot.empty ? null : await firestoreDocToQt(snapshot.docs[0]);
-  } catch (error) {
-    logger.error('Failed to load QT from Firestore cache', error);
-    return null;
-  }
-}
 
 export async function fetchLatestQtFromAsyncStorage(): Promise<QT | null> {
   try {

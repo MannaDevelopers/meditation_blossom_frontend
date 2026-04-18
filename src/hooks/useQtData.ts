@@ -1,8 +1,7 @@
 import { useCallback, useState } from 'react';
-import { compareQt, QT } from '../types/QT';
+import { QT } from '../types/QT';
 import {
   fetchLatestQtFromAsyncStorage,
-  fetchLatestQtFromCache,
   fetchLatestQtFromServer,
 } from '../services/qtService';
 import logger from '../utils/logger';
@@ -24,18 +23,8 @@ export function useQtData(): UseQtDataReturn {
 
   const loadLocalData = useCallback(async (): Promise<QT | null> => {
     try {
-      const [firestoreCache, asyncStorageCache] = await Promise.all([
-        fetchLatestQtFromCache(),
-        fetchLatestQtFromAsyncStorage(),
-      ]);
-
-      if (!firestoreCache && !asyncStorageCache) {
-        setQt(null);
-        return null;
-      }
-
-      const result = compareQt(firestoreCache, asyncStorageCache);
-      const selected = result >= 0 ? firestoreCache : asyncStorageCache;
+      const selected = await fetchLatestQtFromAsyncStorage();
+      logger.log('AsyncStorage qt:', selected ? selected.date : 'null');
       setQt(selected);
       setError(null);
       return selected;
