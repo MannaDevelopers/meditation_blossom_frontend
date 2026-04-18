@@ -1,8 +1,7 @@
 import { useCallback, useState } from 'react';
-import { compareSermon, Sermon } from '../types/Sermon';
+import { Sermon } from '../types/Sermon';
 import {
   fetchLatestSermonFromAsyncStorage,
-  fetchLatestSermonFromCache,
   fetchLatestSermonFromServer,
 } from '../services/sermonService';
 import logger from '../utils/logger';
@@ -24,24 +23,9 @@ export function useSermonData(): UseSermonDataReturn {
 
   const loadLocalData = useCallback(async (): Promise<Sermon | null> => {
     try {
-      const [firestoreCache, asyncStorageCache] = await Promise.all([
-        fetchLatestSermonFromCache(),
-        fetchLatestSermonFromAsyncStorage(),
-      ]);
+      const selected = await fetchLatestSermonFromAsyncStorage();
 
-      logger.log(
-        'Data sources:',
-        firestoreCache ? `Firestore(${firestoreCache.date})` : 'Firestore(null)',
-        asyncStorageCache ? `AsyncStorage(${asyncStorageCache.date})` : 'AsyncStorage(null)',
-      );
-
-      if (!firestoreCache && !asyncStorageCache) {
-        setSermon(null);
-        return null;
-      }
-
-      const result = compareSermon(firestoreCache, asyncStorageCache);
-      const selected = result >= 0 ? firestoreCache : asyncStorageCache;
+      logger.log('AsyncStorage sermon:', selected ? selected.date : 'null');
 
       setSermon(selected);
       setError(null);

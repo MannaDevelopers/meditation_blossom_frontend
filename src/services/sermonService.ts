@@ -1,7 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   collection,
-  getDocsFromCache,
   getDocsFromServer,
   getFirestore,
   limit,
@@ -20,22 +19,6 @@ import {
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
 import logger from '../utils/logger';
 import { normalizeJsonString } from '../utils/normalize';
-
-export async function fetchLatestSermonFromCache(): Promise<Sermon | null> {
-  try {
-    const db = getFirestore();
-    const q = query(
-      collection(db, 'sermons'),
-      orderBy('date', 'desc'),
-      limit(1),
-    );
-    const snapshot = await getDocsFromCache(q);
-    return snapshot.empty ? null : await firestoreDocToSermon(snapshot.docs[0]);
-  } catch (error) {
-    logger.error('Failed to load sermon from Firestore cache', error);
-    return null;
-  }
-}
 
 export async function fetchLatestSermonFromAsyncStorage(): Promise<Sermon | null> {
   try {
