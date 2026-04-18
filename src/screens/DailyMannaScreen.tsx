@@ -37,6 +37,13 @@ const DailyMannaScreen = () => {
     [qt?.content],
   );
 
+  const isSunday = qt?.day_of_week === 'SUN';
+
+  const meditationQuestions = useMemo(() => {
+    if (!qt?.meditation_questions) return [];
+    return qt.meditation_questions.split('\n').filter(q => q.trim());
+  }, [qt?.meditation_questions]);
+
   const targetYoutubeUrl = qt?.video_url || DAILY_MANNA_CHANNEL_URL;
 
   const openYoutube = () => {
@@ -98,7 +105,7 @@ const DailyMannaScreen = () => {
           <SvgIcon name="SettingButton" size={20} color="black" />
         </TouchableOpacity>
       </View>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.dateText}>{qt?.date}</Text>
         {qt?.series_title ? (
           <Text style={styles.seriesTitleText}>{qt.series_title}</Text>
@@ -108,6 +115,20 @@ const DailyMannaScreen = () => {
         </Text>
         <Text style={styles.indexText}>{qtContent.index}</Text>
         <Text style={styles.contentText}>{qtContent.content}</Text>
+        {isSunday ? (
+          <Text style={styles.noQuestionText}>오늘은 묵상 질문이 없습니다</Text>
+        ) : meditationQuestions.length > 0 ? (
+          <View style={styles.questionsContainer}>
+            {meditationQuestions.map((question, index) => (
+              <View key={index} style={styles.questionCard}>
+                <Text style={styles.questionNumber}>
+                  {index === 0 ? '❶' : index === 1 ? '❷' : `${index + 1}.`}
+                </Text>
+                <Text style={styles.questionText}>{question}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
         <TouchableOpacity style={styles.youtubeLinkContainer} onPress={openYoutube}>
           <SvgIcon name="YoutubeButton" size={20} />
           <Text style={styles.youtubeLinkText}>YouTube 영상 바로가기</Text>
@@ -188,6 +209,32 @@ const styles = StyleSheet.create({
     color: '#A59EAE',
     fontSize: 14,
     fontFamily: 'Pretendard-Medium',
+  },
+  noQuestionText: {
+    color: '#A59EAE',
+    fontSize: 14,
+    fontFamily: 'Pretendard-Medium',
+    marginBottom: 32,
+  },
+  questionsContainer: {
+    gap: 12,
+    marginBottom: 32,
+  },
+  questionCard: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  questionNumber: {
+    color: '#49454F',
+    fontSize: 16,
+    fontFamily: 'Pretendard-SemiBold',
+  },
+  questionText: {
+    flex: 1,
+    color: '#49454F',
+    fontSize: 16,
+    fontFamily: 'Pretendard-Regular',
+    lineHeight: 26,
   },
   errorContainer: { justifyContent: 'center', alignItems: 'center' },
   errorText: {
