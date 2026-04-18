@@ -111,7 +111,7 @@ const HomeScreen = () => {
           <SvgIcon name="SettingButton" size={20} color="black" />
         </TouchableOpacity>
       </View>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.dateText}>{sermon?.date}</Text>
         <Text style={styles.titleText} numberOfLines={0}>
           {processTitleText(sermon?.title)}
