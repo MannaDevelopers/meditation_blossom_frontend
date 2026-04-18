@@ -14,6 +14,7 @@ export interface QT {
   date: string;
   day_of_week?: string;
   video_url?: string;
+  meditation_questions?: string;
   created_at: FirestoreTimestamp;
   updated_at: FirestoreTimestamp;
 }
@@ -54,6 +55,7 @@ export function fcmDataToQt(raw: QTRaw): QT {
     date: raw.date || '',
     day_of_week: raw.day_of_week || raw.dayOfWeek,
     video_url: raw.video_url,
+    meditation_questions: raw.meditation_questions,
     created_at: resolveTimestamp(raw.created_at, raw.createdAt),
     updated_at: resolveTimestamp(raw.updated_at, raw.updatedAt),
   };
