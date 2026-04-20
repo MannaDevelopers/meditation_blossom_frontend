@@ -13,6 +13,7 @@ final class BibleDbHelper: NSObject {
     static let shared = BibleDbHelper()
 
     private var db: OpaquePointer?
+    private var resolvedTables: (books: String?, verses: String?)?
 
     override init() {
         super.init()
@@ -44,25 +45,11 @@ final class BibleDbHelper: NSObject {
         }
 
         NSLog("✅ Bible DB opened: %@", path)
+        resolvedTables = nil
     }
 
     private func databasePath() -> String? {
-        let candidates = [
-            ("bible", "db"),
-            ("bible", "sqlite"),
-            ("bible", "sqlite3"),
-            ("Bible", "db"),
-            ("Bible", "sqlite"),
-            ("Bible", "sqlite3")
-        ]
-
-        for (resource, ext) in candidates {
-            if let path = Bundle.main.path(forResource: resource, ofType: ext) {
-                return path
-            }
-        }
-
-        return nil
+        Bundle.main.path(forResource: "bible", ofType: "db")
     }
 
     @objc(getVersesWithBook:chapter:verseStart:verseEnd:)
@@ -115,8 +102,9 @@ final class BibleDbHelper: NSObject {
 
         while sqlite3_step(stmt) == SQLITE_ROW {
             let verseValue = Int(sqlite3_column_int(stmt, 2))
-            let textValue = sqlite3_column_text(stmt, 3).map { String(cString: $0) }
-                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+          let textValue = sqlite3_column_text(stmt, 3)
+              .map { String(cString: $0) }?
+              .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
             if textValue.isEmpty {
                 continue
@@ -135,7 +123,80 @@ final class BibleDbHelper: NSObject {
     @objc func availableTranslations() -> [String] {
         guard let db else { return [] }
 
-        let query = "SELECT translation FROM translations ORDER BY translation ASC"
+        if tableExists("translations") {
+            let query = "SELECT translation FROM translations ORDER BY translation ASC"
+            var stmt: OpaquePointer?
+            defer {
+                if stmt != nil {
+                    sqlite3_finalize(stmt)
+                }
+            }
+
+            guard sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK else {
+                NSLog("❌ Failed to prepare translations query: %s", sqlite3_errmsg(db))
+                return []
+            }
+
+            var result: [String] = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                if let cString = sqlite3_column_text(stmt, 0) {
+                    result.append(String(cString: cString))
+                }
+            }
+            return result
+        }
+
+        if let source = metaValue(forKey: "source"), !source.isEmpty {
+            return [source]
+        }
+
+        if tableExists("books"), tableExists("verses") {
+            return ["default"]
+        }
+
+        return []
+    }
+
+    @objc func hasDatabase() -> Bool {
+        db != nil
+    }
+
+    private func tables() -> (books: String?, verses: String?) {
+        if let resolvedTables {
+            return resolvedTables
+        }
+
+        let candidates = [
+            ("books", "verses"),
+            ("KorRV_books", "KorRV_verses")
+        ]
+
+        for (booksTable, versesTable) in candidates {
+            if tableExists(booksTable), tableExists(versesTable) {
+                let tables = (booksTable, versesTable)
+                resolvedTables = tables
+                return tables
+            }
+        }
+
+        if let translation = availableTranslations().first, translation != "default" {
+            let booksTable = "\(translation)_books"
+            let versesTable = "\(translation)_verses"
+            if tableExists(booksTable), tableExists(versesTable) {
+                let tables = (booksTable, versesTable)
+                resolvedTables = tables
+                return tables
+            }
+        }
+
+        resolvedTables = (nil, nil)
+        return resolvedTables!
+    }
+
+    private func metaValue(forKey key: String) -> String? {
+        guard let db, tableExists("meta") else { return nil }
+
+        let query = "SELECT value FROM meta WHERE key = ? LIMIT 1"
         var stmt: OpaquePointer?
         defer {
             if stmt != nil {
@@ -144,44 +205,18 @@ final class BibleDbHelper: NSObject {
         }
 
         guard sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK else {
-            NSLog("❌ Failed to prepare translations query: %s", sqlite3_errmsg(db))
-            return []
+            NSLog("❌ Failed to prepare meta query: %s", sqlite3_errmsg(db))
+            return nil
         }
 
-        var result: [String] = []
-        while sqlite3_step(stmt) == SQLITE_ROW {
-            if let cString = sqlite3_column_text(stmt, 0) {
-                result.append(String(cString: cString))
-            }
-        }
-        return result
-    }
+        sqlite3_bind_text(stmt, 1, (key as NSString).utf8String, -1, SQLITE_TRANSIENT)
 
-    @objc func hasDatabase() -> Bool {
-        db != nil
-    }
-
-    private func tables() -> (books: String?, verses: String?) {
-        let candidates = [
-            ("KorRV_books", "KorRV_verses"),
-            ("books", "verses")
-        ]
-
-        for (booksTable, versesTable) in candidates {
-            if tableExists(booksTable), tableExists(versesTable) {
-                return (booksTable, versesTable)
-            }
+        guard sqlite3_step(stmt) == SQLITE_ROW,
+              let cString = sqlite3_column_text(stmt, 0) else {
+            return nil
         }
 
-        if let translation = availableTranslations().first {
-            let booksTable = "\(translation)_books"
-            let versesTable = "\(translation)_verses"
-            if tableExists(booksTable), tableExists(versesTable) {
-                return (booksTable, versesTable)
-            }
-        }
-
-        return (nil, nil)
+        return String(cString: cString)
     }
 
     private func tableExists(_ tableName: String) -> Bool {

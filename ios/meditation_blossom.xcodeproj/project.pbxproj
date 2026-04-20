@@ -23,11 +23,14 @@
 		3595A30E2DEBF76F006716D8 /* MeditationBlossomWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3062DEBF76F006716D8 /* MeditationBlossomWidget.swift */; };
 		3595A30F2DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3072DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift */; };
 		3595A3112DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3092DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift */; };
-		35A491452F87753200666495 /* SermonBuilder.m in Sources */ = {isa = PBXBuildFile; fileRef = 35A491442F87753200666495 /* SermonBuilder.m */; };
+		35A491452F87753200666495 /* meditation_blossom/SermonBuilder.m in Sources */ = {isa = PBXBuildFile; fileRef = 35A491442F87753200666495 /* meditation_blossom/SermonBuilder.m */; };
 		35A99CA72E5F502B0087CB5B /* Sermon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35B6CFCE2E01AC0A004A13DD /* Sermon.swift */; };
 		35B6CFCF2E01AC0E004A13DD /* Sermon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35B6CFCE2E01AC0A004A13DD /* Sermon.swift */; };
+		35B920A62F960FE9007E5489 /* bible.db in Resources */ = {isa = PBXBuildFile; fileRef = 35B920A52F960FE9007E5489 /* bible.db */; };
+		35B920A72F960FE9007E5489 /* bible.db in Resources */ = {isa = PBXBuildFile; fileRef = 35B920A52F960FE9007E5489 /* bible.db */; };
+		35B920A82F960FE9007E5489 /* bible.db in Resources */ = {isa = PBXBuildFile; fileRef = 35B920A52F960FE9007E5489 /* bible.db */; };
 		35D57CC72E4E12CF006A8872 /* MyEventModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 35D57CC62E4E12C1006A8872 /* MyEventModule.m */; };
-		35DF7D9B2F87741F004FEDA3 /* BibleDbHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35DF7D9A2F87741F004FEDA3 /* BibleDbHelper.swift */; };
+		35DF7D9B2F87741F004FEDA3 /* meditation_blossom/BibleDbHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35DF7D9A2F87741F004FEDA3 /* meditation_blossom/BibleDbHelper.swift */; };
 		36D0ABAEB660494094DD9C97 /* Pretendard-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = F7AF6C1D72CD4A66B58C33B8 /* Pretendard-Bold.otf */; };
 		39332B17F97E76FF1FD1288D /* Pods_meditation_blossom.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B560E5A842BA9BC548C8640C /* Pods_meditation_blossom.framework */; };
 		3C0090A2347247CC84AEF51C /* Pretendard-Thin.otf in Resources */ = {isa = PBXBuildFile; fileRef = FA817E704269452E9C720D87 /* Pretendard-Thin.otf */; };
@@ -108,11 +111,12 @@
 		3595A3062DEBF76F006716D8 /* MeditationBlossomWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeditationBlossomWidget.swift; sourceTree = "<group>"; };
 		3595A3072DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeditationBlossomWidgetBundle.swift; sourceTree = "<group>"; };
 		3595A3092DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeditationBlossomWidgetLiveActivity.swift; sourceTree = "<group>"; };
-		35A491432F87753200666495 /* SermonBuilder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = meditation_blossom/SermonBuilder.h; sourceTree = "<group>"; };
-		35A491442F87753200666495 /* SermonBuilder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = meditation_blossom/SermonBuilder.m; sourceTree = "<group>"; };
+		35A491432F87753200666495 /* meditation_blossom/SermonBuilder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = meditation_blossom/SermonBuilder.h; sourceTree = "<group>"; };
+		35A491442F87753200666495 /* meditation_blossom/SermonBuilder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = meditation_blossom/SermonBuilder.m; sourceTree = "<group>"; };
 		35B6CFCE2E01AC0A004A13DD /* Sermon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sermon.swift; sourceTree = "<group>"; };
+		35B920A52F960FE9007E5489 /* bible.db */ = {isa = PBXFileReference; lastKnownFileType = file; path = bible.db; sourceTree = "<group>"; };
 		35D57CC62E4E12C1006A8872 /* MyEventModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MyEventModule.m; sourceTree = "<group>"; };
-		35DF7D9A2F87741F004FEDA3 /* BibleDbHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = meditation_blossom/BibleDbHelper.swift; sourceTree = "<group>"; };
+		35DF7D9A2F87741F004FEDA3 /* meditation_blossom/BibleDbHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = meditation_blossom/BibleDbHelper.swift; sourceTree = "<group>"; };
 		43B5D19BF99A22B562963F83 /* Pods-meditation_blossom-meditation_blossomTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-meditation_blossom-meditation_blossomTests.release.xcconfig"; path = "Target Support Files/Pods-meditation_blossom-meditation_blossomTests/Pods-meditation_blossom-meditation_blossomTests.release.xcconfig"; sourceTree = "<group>"; };
 		4BA946027628B235B51DB544 /* Pods-MeditationBlossomWidgetExtension.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MeditationBlossomWidgetExtension.debug.xcconfig"; path = "Target Support Files/Pods-MeditationBlossomWidgetExtension/Pods-MeditationBlossomWidgetExtension.debug.xcconfig"; sourceTree = "<group>"; };
 		77063045F3D0D0B129FFDFE2 /* Pods-meditation_blossom-meditation_blossomTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-meditation_blossom-meditation_blossomTests.debug.xcconfig"; path = "Target Support Files/Pods-meditation_blossom-meditation_blossomTests/Pods-meditation_blossom-meditation_blossomTests.debug.xcconfig"; sourceTree = "<group>"; };
@@ -214,9 +218,9 @@
 		13B07FAE1A68108700A75B9A /* meditation_blossom */ = {
 			isa = PBXGroup;
 			children = (
-				35A491432F87753200666495 /* SermonBuilder.h */,
-				35A491442F87753200666495 /* SermonBuilder.m */,
-				35DF7D9A2F87741F004FEDA3 /* BibleDbHelper.swift */,
+				35A491432F87753200666495 /* meditation_blossom/SermonBuilder.h */,
+				35A491442F87753200666495 /* meditation_blossom/SermonBuilder.m */,
+				35DF7D9A2F87741F004FEDA3 /* meditation_blossom/BibleDbHelper.swift */,
 				3586FEA22E66DC780003ADE5 /* GoogleService-Info.plist */,
 				35D57CC62E4E12C1006A8872 /* MyEventModule.m */,
 				354EC78C2E13D06F00E2A018 /* WidgetUpdateModule.m */,
@@ -296,6 +300,7 @@
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
 				7E0C2F8EC94049AFBF4118CB /* Resources */,
+				35B920A52F960FE9007E5489 /* bible.db */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -488,6 +493,7 @@
 				5329F3BA751046928CF6521F /* Pretendard-ExtraLight.otf in Resources */,
 				5FFA7AF4CB71498989F6EAC3 /* Pretendard-Light.otf in Resources */,
 				09392194228A4ED7A98675B6 /* Pretendard-Medium.otf in Resources */,
+				35B920A62F960FE9007E5489 /* bible.db in Resources */,
 				0808055756EF48E1AA2DF5FA /* Pretendard-Regular.otf in Resources */,
 				4BF67687D54E4D26AF6361BE /* Pretendard-SemiBold.otf in Resources */,
 				3C0090A2347247CC84AEF51C /* Pretendard-Thin.otf in Resources */,
@@ -498,6 +504,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				35B920A72F960FE9007E5489 /* bible.db in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -505,6 +512,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				35B920A82F960FE9007E5489 /* bible.db in Resources */,
 				3595A30B2DEBF76F006716D8 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -763,13 +771,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				35A491452F87753200666495 /* SermonBuilder.m in Sources */,
+				35A491452F87753200666495 /* meditation_blossom/SermonBuilder.m in Sources */,
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				35D57CC72E4E12CF006A8872 /* MyEventModule.m in Sources */,
 				354EC78E2E13D06F00E2A018 /* WidgetUpdateModule.m in Sources */,
 				354EC78F2E13D06F00E2A018 /* WidgetUpdateModule.swift in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
-				35DF7D9B2F87741F004FEDA3 /* BibleDbHelper.swift in Sources */,
+				35DF7D9B2F87741F004FEDA3 /* meditation_blossom/BibleDbHelper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
