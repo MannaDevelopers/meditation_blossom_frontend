@@ -233,6 +233,7 @@ const styles = StyleSheet.create({
     color: '#49454F',
     fontSize: 16,
     fontFamily: 'Pretendard-SemiBold',
+    lineHeight: 26,
   },
   questionText: {
     flex: 1,
