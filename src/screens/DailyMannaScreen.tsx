@@ -41,7 +41,12 @@ const DailyMannaScreen = () => {
 
   const meditationQuestions = useMemo(() => {
     if (!qt?.meditation_questions) return [];
-    return qt.meditation_questions.split('\n').filter(q => q.trim());
+    try {
+      const parsed = JSON.parse(qt.meditation_questions);
+      return Array.isArray(parsed) ? parsed.filter((q: string) => q.trim()) : [];
+    } catch {
+      return [];
+    }
   }, [qt?.meditation_questions]);
 
   const targetYoutubeUrl = qt?.video_url || DAILY_MANNA_CHANNEL_URL;
@@ -228,6 +233,7 @@ const styles = StyleSheet.create({
     color: '#49454F',
     fontSize: 16,
     fontFamily: 'Pretendard-SemiBold',
+    lineHeight: 26,
   },
   questionText: {
     flex: 1,
