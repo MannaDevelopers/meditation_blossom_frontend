@@ -118,4 +118,15 @@ describe('firestoreDocToQt', () => {
     const result = await firestoreDocToQt(doc);
     expect(result.content).toBe('');
   });
+
+  it('Firestore array를 JSON 문자열로 변환', async () => {
+    const doc = makeDoc({
+      title: 'T', series_title: 'Daily', date: '2026-04-17',
+      meditation_questions: ['오늘 말씀에서 가장 마음에 와닿는 구절은?', '이 말씀을 삶에 어떻게 적용할 수 있을까?'],
+    });
+    const result = await firestoreDocToQt(doc);
+    expect(result.meditation_questions).toBe(
+      '["오늘 말씀에서 가장 마음에 와닿는 구절은?","이 말씀을 삶에 어떻게 적용할 수 있을까?"]',
+    );
+  });
 });
