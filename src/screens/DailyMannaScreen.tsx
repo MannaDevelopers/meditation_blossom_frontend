@@ -44,7 +44,8 @@ const DailyMannaScreen = () => {
     try {
       const parsed = JSON.parse(qt.meditation_questions);
       return Array.isArray(parsed) ? parsed.filter((q: string) => q.trim()) : [];
-    } catch {
+    } catch (e) {
+      logger.error('DailyMannaScreen: meditation_questions 파싱 실패', e);
       return [];
     }
   }, [qt?.meditation_questions]);
