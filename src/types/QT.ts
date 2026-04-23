@@ -85,6 +85,9 @@ export const firestoreDocToQt = async (
     date: data.date || new Date().toISOString().split('T')[0],
     day_of_week: data.day_of_week || '',
     video_url: data.video_url,
+    meditation_questions: data.meditation_questions
+      ? JSON.stringify(data.meditation_questions)
+      : undefined,
     created_at: data.created_at || { seconds: 0, nanoseconds: 0 },
     updated_at: data.updated_at || { seconds: 0, nanoseconds: 0 },
   };

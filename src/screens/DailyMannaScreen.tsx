@@ -44,7 +44,8 @@ const DailyMannaScreen = () => {
     try {
       const parsed = JSON.parse(qt.meditation_questions);
       return Array.isArray(parsed) ? parsed.filter((q: string) => q.trim()) : [];
-    } catch {
+    } catch (e) {
+      logger.error('DailyMannaScreen: meditation_questions 파싱 실패', e instanceof Error ? e.message : String(e));
       return [];
     }
   }, [qt?.meditation_questions]);
@@ -127,7 +128,7 @@ const DailyMannaScreen = () => {
             {meditationQuestions.map((question, index) => (
               <View key={index} style={styles.questionCard}>
                 <Text style={styles.questionNumber}>
-                  {index === 0 ? '❶' : index === 1 ? '❷' : `${index + 1}.`}
+                  {index === 0 ? '•' : ['❶','❷','❸','❹','❺'][index - 1] ?? `${index}.`}
                 </Text>
                 <Text style={styles.questionText}>{question}</Text>
               </View>
