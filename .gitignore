@@ -80,3 +80,7 @@ firebase-debug.log
 # claude worktrees
 .claude/worktrees/
 android/.kotlin/sessions/
+
+# Git worktrees
+.worktrees/
+
