@@ -11,8 +11,6 @@ import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.cornerRadius
-import androidx.glance.appwidget.lazy.LazyColumn
-import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -24,11 +22,12 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.text.Text
+import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
 import app.mannadev.meditation.R
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.di.getWidgetDependencies
-import app.mannadev.meditation.dto.SermonDto
-import app.mannadev.meditation.model.Sermon
+import app.mannadev.meditation.ui.widget.qt.QtWidgetUiModel
 import app.mannadev.meditation.ui.widget.theme.Typography
 import timber.log.Timber
 
@@ -46,34 +45,25 @@ class VerseWidgetSmallQt : GlanceAppWidget(
             )
             null
         }
-        val verse = qt?.let {
-            Sermon.fromDto(
-                SermonDto(
-                    date = it.date,
-                    title = if (it.seriesTitle.isNotBlank()) "${it.seriesTitle} / ${it.title}" else it.title,
-                    content = it.content,
-                    dayOfWeek = it.dayOfWeek,
-                    videoUrl = it.videoUrl,
-                )
-            )
-        } ?: Sermon.errorSermon
-        val clickAction = widgetClickAction(qt?.videoUrl)
+        val uiModel = qt?.let(QtWidgetUiModel::fromDto) ?: QtWidgetUiModel.error
+        val clickAction = widgetClickAction(uiModel.videoUrl)
 
-        provideContent { VerseWidgetSmallQtContent(verse, clickAction) }
+        provideContent { VerseWidgetSmallQtContent(uiModel, clickAction) }
     }
 }
 
 private object VerseSmallQtDimens {
     val appBarVerticalPadding = 20.dp
     val horizontalPadding = 24.dp
-    val bookNameTopSpacer = 8.dp
     val contentBackgroundRadius = 16.dp
     val contentPadding = 12.dp
     val widgetPadding = 12.dp
+    val sectionGap = 8.dp
+    val dividerHeight = 1.dp
 }
 
 @Composable
-private fun VerseWidgetSmallQtContent(sermon: Sermon, clickAction: Action) {
+private fun VerseWidgetSmallQtContent(ui: QtWidgetUiModel, clickAction: Action) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -88,7 +78,7 @@ private fun VerseWidgetSmallQtContent(sermon: Sermon, clickAction: Action) {
                 horizontal = VerseSmallQtDimens.horizontalPadding,
                 vertical = VerseSmallQtDimens.appBarVerticalPadding,
             ),
-            text = sermon.title,
+            text = ui.title,
             style = Typography.titleMedium,
             maxLines = 2,
         )
@@ -104,30 +94,46 @@ private fun VerseWidgetSmallQtContent(sermon: Sermon, clickAction: Action) {
                     .cornerRadius(VerseSmallQtDimens.contentBackgroundRadius)
                     .xmlGradientBackground()
                     .fillMaxSize()
+                    .padding(VerseSmallQtDimens.contentPadding)
             ) {
-                LazyColumn(GlanceModifier.defaultWeight().fillMaxWidth()) {
-                    item { Spacer(GlanceModifier.height(VerseSmallQtDimens.contentPadding)) }
-                    items(sermon.verses) { verse ->
-                        Text(
-                            modifier = GlanceModifier
-                                .fillMaxWidth()
-                                .padding(horizontal = VerseSmallQtDimens.contentPadding)
-                                .clickable(clickAction),
-                            text = verse,
-                            style = Typography.bodyMedium,
-                        )
-                    }
-                    item { Spacer(GlanceModifier.height(VerseSmallQtDimens.contentPadding)) }
+                if (ui.reference.isNotBlank()) {
+                    Text(
+                        text = ui.reference,
+                        style = Typography.labelSmall,
+                    )
+                    Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
                 }
                 Text(
-                    modifier = GlanceModifier.padding(
-                        top = VerseSmallQtDimens.bookNameTopSpacer,
-                        start = VerseSmallQtDimens.contentPadding,
-                        bottom = VerseSmallQtDimens.contentPadding,
-                    ),
-                    text = sermon.bookName,
-                    style = Typography.labelSmall,
+                    text = ui.verses.joinToString(" "),
+                    style = Typography.bodyMedium,
+                    maxLines = 3,
                 )
+                if (ui.questions.isNotEmpty()) {
+                    Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
+                    Box(
+                        GlanceModifier
+                            .fillMaxWidth()
+                            .height(VerseSmallQtDimens.dividerHeight)
+                            .background(ColorProvider(Color(0x33000000)))
+                    ) {}
+                    Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
+                    Text(
+                        text = "묵상 질문",
+                        style = Typography.labelSmall,
+                    )
+                    Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
+                    Text(
+                        text = "1. ${ui.questions[0]}",
+                        style = Typography.bodyMedium,
+                        maxLines = 2,
+                    )
+                    if (ui.questions.size > 1) {
+                        Text(
+                            text = "+${ui.questions.size - 1}",
+                            style = Typography.labelSmall,
+                        )
+                    }
+                }
             }
         }
     }
