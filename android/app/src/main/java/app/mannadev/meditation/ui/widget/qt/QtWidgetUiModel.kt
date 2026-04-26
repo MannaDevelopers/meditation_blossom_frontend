@@ -63,5 +63,5 @@ private val DAY_OF_WEEK_KO = mapOf(
 internal fun formatDateLabel(date: String, dayOfWeek: String): String {
     val day = DAY_OF_WEEK_KO[dayOfWeek.uppercase(Locale.ROOT)] ?: return ""
     val parsedDate = runCatching { DATE_INPUT_FORMAT.parse(date) }.getOrNull() ?: return day
-    return "$day · ${DATE_OUTPUT_FORMAT.format(parsedDate)}"
+    return "${DATE_OUTPUT_FORMAT.format(parsedDate)} · $day"
 }

@@ -50,7 +50,7 @@ class VerseWidgetLargeQt : GlanceAppWidget(
 }
 
 private object VerseLargeQtDimens {
-    val appBarVerticalPadding = 24.dp
+    val appBarVerticalPadding = 12.dp
     val horizontalPadding = 24.dp
     val bottomPadding = 24.dp
     val sectionGap = 16.dp
