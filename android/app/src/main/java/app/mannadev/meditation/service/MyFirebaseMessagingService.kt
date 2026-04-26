@@ -50,6 +50,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         private const val KEY_BIBLE_REFERENCES = "bible_references"
         private const val KEY_DAY_OF_WEEK = "day_of_week"
         private const val KEY_VIDEO_URL = "video_url"
+        private const val KEY_MEDITATION_QUESTIONS = "meditation_questions"
         private const val KEY_TOPIC = "topic"
 
         private val ALLOWED_SERMON_TOPICS = setOf(SERMON_SUBJECT_V2, "sermon_events_v2_test")
@@ -206,9 +207,12 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             ?: throw IllegalArgumentException("Missing 'bible_references' in qt")
         val dayOfWeek = data[KEY_DAY_OF_WEEK]
             ?: throw IllegalArgumentException("Missing 'day_of_week' in qt")
+        val questionsJson = data[KEY_MEDITATION_QUESTIONS]
+            ?: throw IllegalArgumentException("Missing 'meditation_questions' in qt")
 
         val content = bibleReferenceResolver.resolveBibleReferencesJson(bibleRefsJson)
         val videoUrl = data[KEY_VIDEO_URL]?.takeIf { it.isNotBlank() }
+        val questions = Json.decodeFromString<List<String>>(questionsJson)
 
         return QtDto(
             date = date,
@@ -217,6 +221,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             content = content,
             dayOfWeek = dayOfWeek,
             videoUrl = videoUrl,
+            meditationQuestions = questions,
         )
     }
 }
