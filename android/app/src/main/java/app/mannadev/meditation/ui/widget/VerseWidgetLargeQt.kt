@@ -24,8 +24,7 @@ import androidx.glance.text.Text
 import app.mannadev.meditation.R
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.di.getWidgetDependencies
-import app.mannadev.meditation.dto.SermonDto
-import app.mannadev.meditation.model.Sermon
+import app.mannadev.meditation.ui.widget.qt.QtWidgetUiModel
 import app.mannadev.meditation.ui.widget.theme.Typography
 import timber.log.Timber
 
@@ -43,20 +42,10 @@ class VerseWidgetLargeQt : GlanceAppWidget(
             )
             null
         }
-        val verse = qt?.let {
-            Sermon.fromDto(
-                SermonDto(
-                    date = it.date,
-                    title = if (it.seriesTitle.isNotBlank()) "${it.seriesTitle} / ${it.title}" else it.title,
-                    content = it.content,
-                    dayOfWeek = it.dayOfWeek,
-                    videoUrl = it.videoUrl,
-                )
-            )
-        } ?: Sermon.errorSermon
-        val clickAction = widgetClickAction(qt?.videoUrl)
+        val uiModel = qt?.let(QtWidgetUiModel::fromDto) ?: QtWidgetUiModel.error
+        val clickAction = widgetClickAction(uiModel.videoUrl)
 
-        provideContent { VerseWidgetLargeQtContent(verse, clickAction) }
+        provideContent { VerseWidgetLargeQtContent(uiModel, clickAction) }
     }
 }
 
@@ -64,12 +53,13 @@ private object VerseLargeQtDimens {
     val appBarVerticalPadding = 24.dp
     val horizontalPadding = 24.dp
     val bottomPadding = 24.dp
-    val verseContentBottomSpacer = 16.dp
-    val bookNameTopSpacer = 12.dp
+    val sectionGap = 16.dp
+    val sectionInnerGap = 8.dp
+    val dateLabelBottomGap = 4.dp
 }
 
 @Composable
-private fun VerseWidgetLargeQtContent(sermon: Sermon, clickAction: Action) {
+private fun VerseWidgetLargeQtContent(ui: QtWidgetUiModel, clickAction: Action) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -84,16 +74,40 @@ private fun VerseWidgetLargeQtContent(sermon: Sermon, clickAction: Action) {
                 horizontal = VerseLargeQtDimens.horizontalPadding,
                 vertical = VerseLargeQtDimens.appBarVerticalPadding,
             ),
-            verticalAlignment = Alignment.CenterVertically
         ) {
+            if (ui.dateLabel.isNotBlank()) {
+                Text(
+                    text = ui.dateLabel,
+                    style = Typography.labelSmall,
+                )
+                Spacer(GlanceModifier.height(VerseLargeQtDimens.dateLabelBottomGap))
+            }
             Text(
-                text = sermon.title,
+                text = ui.title,
                 style = Typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 maxLines = 2,
             )
         }
         LazyColumn(GlanceModifier.fillMaxWidth().defaultWeight()) {
-            items(sermon.verses) { verse ->
+            item {
+                Text(
+                    modifier = GlanceModifier.padding(horizontal = VerseLargeQtDimens.horizontalPadding),
+                    text = "말씀",
+                    style = Typography.labelMedium,
+                )
+            }
+            if (ui.reference.isNotBlank()) {
+                item { Spacer(GlanceModifier.height(VerseLargeQtDimens.sectionInnerGap)) }
+                item {
+                    Text(
+                        modifier = GlanceModifier.padding(horizontal = VerseLargeQtDimens.horizontalPadding),
+                        text = ui.reference,
+                        style = Typography.labelMedium,
+                    )
+                }
+            }
+            item { Spacer(GlanceModifier.height(VerseLargeQtDimens.sectionInnerGap)) }
+            items(ui.verses) { verse ->
                 Text(
                     modifier = GlanceModifier
                         .fillMaxWidth()
@@ -103,16 +117,29 @@ private fun VerseWidgetLargeQtContent(sermon: Sermon, clickAction: Action) {
                     style = Typography.titleMedium.copy(fontWeight = FontWeight.Normal),
                 )
             }
-            item { Spacer(GlanceModifier.height(VerseLargeQtDimens.verseContentBottomSpacer)) }
+            if (ui.questions.isNotEmpty()) {
+                val numberedQuestions = ui.questions.mapIndexed { index, q -> "${index + 1}. $q" }
+                item { Spacer(GlanceModifier.height(VerseLargeQtDimens.sectionGap)) }
+                item {
+                    Text(
+                        modifier = GlanceModifier.padding(horizontal = VerseLargeQtDimens.horizontalPadding),
+                        text = "묵상 질문",
+                        style = Typography.labelMedium,
+                    )
+                }
+                item { Spacer(GlanceModifier.height(VerseLargeQtDimens.sectionInnerGap)) }
+                items(numberedQuestions) { numbered ->
+                    Text(
+                        modifier = GlanceModifier
+                            .fillMaxWidth()
+                            .padding(horizontal = VerseLargeQtDimens.horizontalPadding)
+                            .clickable(clickAction),
+                        text = numbered,
+                        style = Typography.titleMedium.copy(fontWeight = FontWeight.Normal),
+                    )
+                }
+            }
+            item { Spacer(GlanceModifier.height(VerseLargeQtDimens.bottomPadding)) }
         }
-        Text(
-            modifier = GlanceModifier.padding(
-                start = VerseLargeQtDimens.horizontalPadding,
-                top = VerseLargeQtDimens.bookNameTopSpacer,
-                bottom = VerseLargeQtDimens.bottomPadding,
-            ),
-            text = sermon.bookName,
-            style = Typography.labelMedium,
-        )
     }
 }
