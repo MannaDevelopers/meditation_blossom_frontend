@@ -14,4 +14,6 @@ data class QtDto(
     val dayOfWeek: String,
     @SerialName("video_url")
     val videoUrl: String? = null,
+    @SerialName("meditation_questions")
+    val meditationQuestions: List<String> = emptyList(),
 )
