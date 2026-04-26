@@ -89,15 +89,7 @@ private fun VerseWidgetLargeQtContent(ui: QtWidgetUiModel, clickAction: Action) 
             )
         }
         LazyColumn(GlanceModifier.fillMaxWidth().defaultWeight()) {
-            item {
-                Text(
-                    modifier = GlanceModifier.padding(horizontal = VerseLargeQtDimens.horizontalPadding),
-                    text = "말씀",
-                    style = Typography.labelMedium,
-                )
-            }
             if (ui.reference.isNotBlank()) {
-                item { Spacer(GlanceModifier.height(VerseLargeQtDimens.sectionInnerGap)) }
                 item {
                     Text(
                         modifier = GlanceModifier.padding(horizontal = VerseLargeQtDimens.horizontalPadding),

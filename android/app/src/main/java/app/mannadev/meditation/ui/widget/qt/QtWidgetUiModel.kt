@@ -26,7 +26,7 @@ data class QtWidgetUiModel(
 
         fun fromDto(dto: QtDto): QtWidgetUiModel {
             val titleMerged = if (dto.seriesTitle.isNotBlank())
-                "${dto.seriesTitle} / ${dto.title}" else dto.title
+                "${dto.title} / ${dto.seriesTitle}" else dto.title
 
             val parsed = runCatching {
                 VerseParser.parse(
