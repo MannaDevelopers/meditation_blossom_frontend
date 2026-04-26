@@ -102,16 +102,16 @@ adb logcat
 **React Native 로그가 보입니다!**
 ```cmd
 # Metro bundler 로그 확인
-npx react-native log-android
-npx react-native log-ios
+yarn react-native log-android
+yarn react-native log-ios
 ```
 
 ### 4.4 앱을 다시 열었을 때 (React Native 로그)
 앱을 FCM 알림으로 열면 React Native 로그가 보입니다:
 ```cmd
 # Metro bundler 로그에서 확인
-npx react-native log-android
-npx react-native log-ios
+yarn react-native log-android
+yarn react-native log-ios
 
 # 예상되는 로그:
 # === APP OPENED FROM BACKGROUND VIA FCM ===
@@ -213,19 +213,19 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 **DEBUG 모드**:
 ```bash
 # 실기기에서 DEBUG 빌드
-npx react-native run-ios --device "기기이름"
+yarn ios --device "기기이름"
 
 # 시뮬레이터에서 DEBUG 빌드
-npx react-native run-ios --simulator "iPhone 15"
+yarn ios --simulator "iPhone 15"
 ```
 
 **RELEASE 모드**:
 ```bash
 # 실기기에서 RELEASE 빌드
-npx react-native run-ios --device "기기이름" --configuration Release
+yarn ios --device "기기이름" --configuration Release
 
 # 시뮬레이터에서 RELEASE 빌드
-npx react-native run-ios --simulator "iPhone 15" --configuration Release
+yarn ios --simulator "iPhone 15" --configuration Release
 ```
 
 #### **방법 2: Xcode 사용**
