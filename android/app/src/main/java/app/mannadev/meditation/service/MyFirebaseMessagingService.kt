@@ -21,9 +21,9 @@ import app.mannadev.meditation.dto.QtDto
 import app.mannadev.meditation.dto.SermonDto
 import app.mannadev.meditation.model.BibleReferenceResolver
 import app.mannadev.meditation.ui.widget.VerseWidgetLarge
-import app.mannadev.meditation.ui.widget.VerseWidgetLargeQt
+import app.mannadev.meditation.ui.widget.QtWidgetLarge
+import app.mannadev.meditation.ui.widget.QtWidgetSmall
 import app.mannadev.meditation.ui.widget.VerseWidgetSmall
-import app.mannadev.meditation.ui.widget.VerseWidgetSmallQt
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import dagger.hilt.android.AndroidEntryPoint
@@ -155,8 +155,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }
 
         runCatching {
-            VerseWidgetLargeQt().updateAll(applicationContext)
-            VerseWidgetSmallQt().updateAll(applicationContext)
+            QtWidgetLarge().updateAll(applicationContext)
+            QtWidgetSmall().updateAll(applicationContext)
         }.onFailure { e ->
             CrashlyticsHelper.recordException(e, "Failed to update qt widgets")
         }

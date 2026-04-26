@@ -28,16 +28,16 @@ import app.mannadev.meditation.ui.widget.qt.QtWidgetUiModel
 import app.mannadev.meditation.ui.widget.theme.Typography
 import timber.log.Timber
 
-class VerseWidgetLargeQt : GlanceAppWidget(
+class QtWidgetLarge : GlanceAppWidget(
     errorUiLayout = R.layout.verse_widget_qt_large_error,
 ) {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val dependencies = getWidgetDependencies(context)
         val getDisplayQtUseCase = dependencies.getDisplayQtUseCase()
         val qt = getDisplayQtUseCase() ?: run {
-            Timber.w("VerseWidgetLargeQt: No QT data, using error fallback")
+            Timber.w("QtWidgetLarge: No QT data, using error fallback")
             CrashlyticsHelper.recordException(
-                IllegalStateException("VerseWidgetLargeQt: getDisplayQtUseCase returned null"),
+                IllegalStateException("QtWidgetLarge: getDisplayQtUseCase returned null"),
                 "QT widget displayed error fallback due to missing data"
             )
             null
@@ -45,7 +45,7 @@ class VerseWidgetLargeQt : GlanceAppWidget(
         val uiModel = qt?.let(QtWidgetUiModel::fromDto) ?: QtWidgetUiModel.error
         val clickAction = widgetClickAction(uiModel.videoUrl)
 
-        provideContent { VerseWidgetLargeQtContent(uiModel, clickAction) }
+        provideContent { QtWidgetLargeContent(uiModel, clickAction) }
     }
 }
 
@@ -60,7 +60,7 @@ private object VerseLargeQtDimens {
 }
 
 @Composable
-private fun VerseWidgetLargeQtContent(ui: QtWidgetUiModel, clickAction: Action) {
+private fun QtWidgetLargeContent(ui: QtWidgetUiModel, clickAction: Action) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
