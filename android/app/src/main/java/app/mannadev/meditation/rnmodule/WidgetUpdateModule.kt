@@ -11,7 +11,7 @@ import app.mannadev.meditation.dto.SermonDto
 import app.mannadev.meditation.ui.widget.VerseWidgetLarge
 import app.mannadev.meditation.ui.widget.QtWidgetLarge
 import app.mannadev.meditation.ui.widget.QtWidgetSmall
-import app.mannadev.meditation.ui.widget.VerseWidgetSmallQt
+import app.mannadev.meditation.ui.widget.VerseWidgetSmall
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
