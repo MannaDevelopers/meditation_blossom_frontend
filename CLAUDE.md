@@ -7,11 +7,11 @@
 ```bash
 yarn install                 # 의존성 설치
 yarn test                    # 전체 테스트 실행
-npx jest __tests__/Foo.test.ts  # 단일 테스트 실행
+yarn jest __tests__/Foo.test.ts  # 단일 테스트 실행
 yarn lint                    # ESLint
-npx react-native run-ios     # iOS 실행 (사전: cd ios && pod install && cd ..)
-npx react-native run-android # Android 실행
-npx react-native start       # Metro 번들러
+yarn ios                     # iOS 실행 (사전: cd ios && pod install && cd ..)
+yarn android                 # Android 실행
+yarn start                   # Metro 번들러
 ```
 
 릴리스: `git tag v1.0.0 && git push origin v1.0.0` → GitHub Actions 자동 빌드. 로컬 빌드 시 `android/app/release.keystore`, `android/app/secrets.properties` 필요 (git 미포함).
