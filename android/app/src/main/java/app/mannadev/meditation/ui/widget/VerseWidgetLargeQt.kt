@@ -56,6 +56,7 @@ private object VerseLargeQtDimens {
     val sectionGap = 16.dp
     val sectionInnerGap = 8.dp
     val dateLabelBottomGap = 4.dp
+    val dateLabelStartPadding = 4.dp
 }
 
 @Composable
@@ -77,6 +78,7 @@ private fun VerseWidgetLargeQtContent(ui: QtWidgetUiModel, clickAction: Action) 
         ) {
             if (ui.dateLabel.isNotBlank()) {
                 Text(
+                    modifier = GlanceModifier.padding(start = VerseLargeQtDimens.dateLabelStartPadding),
                     text = ui.dateLabel,
                     style = Typography.labelSmall,
                 )

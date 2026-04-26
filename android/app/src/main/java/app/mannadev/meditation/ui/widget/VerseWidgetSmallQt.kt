@@ -11,6 +11,7 @@ import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.cornerRadius
+import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -89,49 +90,53 @@ private fun VerseWidgetSmallQtContent(ui: QtWidgetUiModel, clickAction: Action) 
                 .defaultWeight()
                 .fillMaxWidth()
         ) {
-            Column(
+            LazyColumn(
                 GlanceModifier
                     .cornerRadius(VerseSmallQtDimens.contentBackgroundRadius)
                     .xmlGradientBackground()
                     .fillMaxSize()
-                    .padding(VerseSmallQtDimens.contentPadding)
             ) {
-                if (ui.reference.isNotBlank()) {
-                    Text(
-                        text = ui.reference,
-                        style = Typography.labelSmall,
-                    )
-                    Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
-                }
-                Text(
-                    text = ui.verses.joinToString(" "),
-                    style = Typography.bodyMedium,
-                    maxLines = 3,
-                )
-                if (ui.questions.isNotEmpty()) {
-                    Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
-                    Box(
+                item {
+                    Column(
                         GlanceModifier
                             .fillMaxWidth()
-                            .height(VerseSmallQtDimens.dividerHeight)
-                            .background(ColorProvider(Color(0x33000000)))
-                    ) {}
-                    Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
-                    Text(
-                        text = "묵상 질문",
-                        style = Typography.labelSmall,
-                    )
-                    Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
-                    Text(
-                        text = "1. ${ui.questions[0]}",
-                        style = Typography.bodyMedium,
-                        maxLines = 2,
-                    )
-                    if (ui.questions.size > 1) {
+                            .padding(VerseSmallQtDimens.contentPadding)
+                    ) {
+                        if (ui.reference.isNotBlank()) {
+                            Text(
+                                text = ui.reference,
+                                style = Typography.labelSmall,
+                            )
+                            Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
+                        }
                         Text(
-                            text = "+${ui.questions.size - 1}",
-                            style = Typography.labelSmall,
+                            text = ui.verses.joinToString(" "),
+                            style = Typography.bodyMedium,
                         )
+                        if (ui.questions.isNotEmpty()) {
+                            Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
+                            Box(
+                                GlanceModifier
+                                    .fillMaxWidth()
+                                    .height(VerseSmallQtDimens.dividerHeight)
+                                    .background(ColorProvider(Color(0x33000000)))
+                            ) {}
+                            Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
+                            Text(
+                                text = "묵상 질문",
+                                style = Typography.labelSmall,
+                            )
+                            Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
+                            ui.questions.forEachIndexed { index, question ->
+                                Text(
+                                    text = "${index + 1}. $question",
+                                    style = Typography.bodyMedium,
+                                )
+                                if (index < ui.questions.size - 1) {
+                                    Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
+                                }
+                            }
+                        }
                     }
                 }
             }
