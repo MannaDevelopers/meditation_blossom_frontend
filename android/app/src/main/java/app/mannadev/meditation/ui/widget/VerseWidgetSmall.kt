@@ -60,6 +60,7 @@ private object VerseSmallWidgetDimens {
     val contentBackgroundRadius = 16.dp
     val contentPadding = 12.dp
     val widgetPadding = 12.dp
+    val verseItemSpacing = 4.dp
 }
 
 @Composable
@@ -107,6 +108,7 @@ private fun VerseWidgetSmallContent(sermon: Sermon, clickAction: Action) {
                             modifier = GlanceModifier
                                 .fillMaxWidth()
                                 .padding(horizontal = VerseSmallWidgetDimens.contentPadding)
+                                .padding(bottom = VerseSmallWidgetDimens.verseItemSpacing)
                                 .clickable(clickAction),
                             text = verse,
                             style = Typography.bodyMedium,

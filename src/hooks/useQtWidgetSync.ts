@@ -10,7 +10,11 @@ export function useQtWidgetSync(qt: QT | null): void {
       logger.error('WidgetUpdateModule.onQtUpdated is not available');
       return;
     }
-    WidgetUpdateModule.onQtUpdated(JSON.stringify(qt)).catch((error) => {
+    const payload = {
+      ...qt,
+      meditation_questions: JSON.parse(qt.meditation_questions ?? '[]'),
+    };
+    WidgetUpdateModule.onQtUpdated(JSON.stringify(payload)).catch((error) => {
       logger.error('Failed to update QT widget:', error);
     });
   }, [qt]);
