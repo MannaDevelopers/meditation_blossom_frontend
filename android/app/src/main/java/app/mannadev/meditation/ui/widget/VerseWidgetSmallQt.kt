@@ -96,49 +96,66 @@ private fun VerseWidgetSmallQtContent(ui: QtWidgetUiModel, clickAction: Action) 
                     .xmlGradientBackground()
                     .fillMaxSize()
             ) {
-                item {
-                    Column(
-                        GlanceModifier
-                            .fillMaxWidth()
-                            .padding(VerseSmallQtDimens.contentPadding)
-                    ) {
-                        if (ui.reference.isNotBlank()) {
-                            Text(
-                                text = ui.reference,
-                                style = Typography.labelSmall,
-                            )
-                            Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
-                        }
+                item { Spacer(GlanceModifier.height(VerseSmallQtDimens.contentPadding)) }
+                
+                if (ui.reference.isNotBlank()) {
+                    item {
                         Text(
-                            text = ui.verses.joinToString(" "),
-                            style = Typography.bodyMedium,
+                            modifier = GlanceModifier.padding(horizontal = VerseSmallQtDimens.contentPadding),
+                            text = ui.reference,
+                            style = Typography.labelSmall,
                         )
-                        if (ui.questions.isNotEmpty()) {
-                            Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
+                    }
+                    item { Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap)) }
+                }
+                item {
+                    Text(
+                        modifier = GlanceModifier.padding(horizontal = VerseSmallQtDimens.contentPadding),
+                        text = ui.verses.joinToString(" "),
+                        style = Typography.bodyMedium,
+                    )
+                }
+                if (ui.questions.isNotEmpty()) {
+                    item { Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap)) }
+                    item {
+                        Box(
+                            GlanceModifier
+                                .fillMaxWidth()
+                                .padding(horizontal = VerseSmallQtDimens.contentPadding)
+                        ) {
                             Box(
                                 GlanceModifier
                                     .fillMaxWidth()
                                     .height(VerseSmallQtDimens.dividerHeight)
                                     .background(ColorProvider(Color(0x33000000)))
                             ) {}
-                            Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
+                        }
+                    }
+                    item { Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap)) }
+                    item {
+                        Text(
+                            modifier = GlanceModifier.padding(horizontal = VerseSmallQtDimens.contentPadding),
+                            text = "묵상 질문",
+                            style = Typography.labelSmall,
+                        )
+                    }
+                    item { Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap)) }
+                    
+                    ui.questions.forEachIndexed { index, question ->
+                        item {
                             Text(
-                                text = "묵상 질문",
-                                style = Typography.labelSmall,
+                                modifier = GlanceModifier.padding(horizontal = VerseSmallQtDimens.contentPadding),
+                                text = "${index + 1}. $question",
+                                style = Typography.bodyMedium,
                             )
-                            Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
-                            ui.questions.forEachIndexed { index, question ->
-                                Text(
-                                    text = "${index + 1}. $question",
-                                    style = Typography.bodyMedium,
-                                )
-                                if (index < ui.questions.size - 1) {
-                                    Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap))
-                                }
-                            }
+                        }
+                        if (index < ui.questions.size - 1) {
+                            item { Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap)) }
                         }
                     }
                 }
+                
+                item { Spacer(GlanceModifier.height(VerseSmallQtDimens.contentPadding)) }
             }
         }
     }
