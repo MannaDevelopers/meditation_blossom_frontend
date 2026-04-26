@@ -9,9 +9,9 @@ import app.mannadev.meditation.di.getRNModuleDependencies
 import app.mannadev.meditation.dto.QtDto
 import app.mannadev.meditation.dto.SermonDto
 import app.mannadev.meditation.ui.widget.VerseWidgetLarge
-import app.mannadev.meditation.ui.widget.VerseWidgetLargeQt
+import app.mannadev.meditation.ui.widget.QtWidgetLarge
+import app.mannadev.meditation.ui.widget.QtWidgetSmall
 import app.mannadev.meditation.ui.widget.VerseWidgetSmall
-import app.mannadev.meditation.ui.widget.VerseWidgetSmallQt
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -246,8 +246,8 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
     private suspend fun updateQtWidgets() {
         val context = reactApplicationContext
         log.d("Updating QT widgets...")
-        VerseWidgetLargeQt().updateAll(context)
-        VerseWidgetSmallQt().updateAll(context)
+        QtWidgetLarge().updateAll(context)
+        QtWidgetSmall().updateAll(context)
     }
 
 }

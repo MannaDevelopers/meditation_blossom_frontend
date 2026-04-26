@@ -55,6 +55,7 @@ private object VerseLargeWidgetDimens {
     val horizontalPadding = 24.dp
     val bottomPadding = 24.dp
     val verseContentBottomSpacer = 16.dp
+    val verseItemSpacing = 4.dp
     val bookNameTopSpacer = 12.dp
 }
 
@@ -102,6 +103,7 @@ private fun VerseWidgetLargeContent(sermon: Sermon, clickAction: Action) {
                     modifier = GlanceModifier
                         .fillMaxWidth()
                         .padding(horizontal = VerseLargeWidgetDimens.horizontalPadding)
+                        .padding(bottom = VerseLargeWidgetDimens.verseItemSpacing)
                         .clickable(clickAction),
                     text = verse,
                     style = Typography.titleMedium.copy(fontWeight = FontWeight.Normal),
