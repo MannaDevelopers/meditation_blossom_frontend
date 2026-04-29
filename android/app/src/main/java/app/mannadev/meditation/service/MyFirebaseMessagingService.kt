@@ -81,11 +81,16 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     /** Extracts topic name from `from` ("/topics/NAME") or `data.topic`. Returns null if neither resolves,
-     *  and in DEBUG=false drops any `*_test` topic. */
+     *  and in DEBUG=false drops any `*_test` topic.
+     *  topic 메시지: from = "/topics/NAME" → removePrefix 로 NAME 추출
+     *  token 메시지: from = FCM 발신자ID(숫자) → data["topic"] 로 폴백 */
     private fun resolveTopic(message: RemoteMessage): String? {
-        val fromTopic = message.from?.removePrefix("/topics/")
-        val dataTopic = message.data[KEY_TOPIC]
-        val candidate = fromTopic ?: dataTopic ?: return null
+        val from = message.from
+        val candidate = if (from != null && from.startsWith("/topics/")) {
+            from.removePrefix("/topics/")
+        } else {
+            message.data[KEY_TOPIC]
+        } ?: return null
         if (!BuildConfig.DEBUG && candidate.endsWith("_test")) return null
         return candidate
     }
