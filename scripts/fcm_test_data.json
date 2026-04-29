@@ -1,0 +1,21 @@
+{
+  "sermon_events": {
+    "topic": "sermon_events_v2",
+    "title": "4. 믿음은 하나님의 주권을 인정하는 것이다!",
+    "category": "믿음으로 새롭게",
+    "date": "2026-04-28",
+    "year": "2026",
+    "day_of_week": "SUN",
+    "bible_references": "[{\"book\": \"갈라디아서\", \"chapter\": 2, \"verse_start\": 20, \"verse_end\": 20}]"
+  },
+  "qt_events": {
+    "topic": "qt_events",
+    "title": "QT 테스트: 오늘의 묵상",
+    "series_title": "매일만나",
+    "date": "2026-04-28",
+    "year": "2026",
+    "day_of_week": "MON",
+    "bible_references": "[{\"book\": \"시편\", \"chapter\": 23, \"verse_start\": 1, \"verse_end\": 3}]",
+    "meditation_questions": "[\"오늘 말씀에서 하나님은 어떤 분으로 나타나시나요?\", \"이 말씀이 나의 삶에 어떻게 적용될 수 있을까요?\", \"오늘 하루 이 말씀을 어떻게 실천할 수 있을까요?\"]"
+  }
+}

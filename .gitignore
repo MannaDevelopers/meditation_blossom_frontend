@@ -79,6 +79,8 @@ package-lock.json
 # Private (do not commit)
 firebase-service-account.json
 firebase-debug.log
+.fcm_token.local
+.fcm_counter.local
 
 # claude worktrees
 .claude/worktrees/
