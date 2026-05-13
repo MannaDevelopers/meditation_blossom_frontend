@@ -1,9 +1,6 @@
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Linking,
   ScrollView,
   StyleSheet,
@@ -17,7 +14,6 @@ import { useQtData } from '../hooks/useQtData';
 import { useQtFCMListener } from '../hooks/useQtFCMListener';
 import { useQtWidgetSync } from '../hooks/useQtWidgetSync';
 import { isQtDataStale } from '../services/qtService';
-import { RootStackParamList } from '../types/navigation';
 import { extractContent } from '../utils/sermonParser';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
@@ -25,7 +21,6 @@ import { processTitleText } from '../utils/textFormatting';
 const DAILY_MANNA_CHANNEL_URL = 'https://www.youtube.com/@만나';
 
 const DailyMannaScreen = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { qt, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useQtData();
 
@@ -43,7 +38,13 @@ const DailyMannaScreen = () => {
     if (!qt?.meditation_questions) return [];
     try {
       const parsed = JSON.parse(qt.meditation_questions);
-      return Array.isArray(parsed) ? parsed.filter((q: string) => q.trim()) : [];
+      if (Array.isArray(parsed)) {
+        // 각 요소를 \n으로 쪼개서 flat하게 만들기
+        return parsed
+          .flatMap((q: string) => q.split('\n'))
+          .filter((q: string) => q.trim());
+      }
+      return [];
     } catch (e) {
       logger.error('DailyMannaScreen: meditation_questions 파싱 실패', e instanceof Error ? e.message : String(e));
       return [];
@@ -95,50 +96,40 @@ const DailyMannaScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.header}>
-        <Image
-          source={require('../assets/image/20250416_meditation_icon.png')}
-          style={styles.icon}
-        />
-        <Text style={styles.appTitle}>묵상만개</Text>
-        <TouchableOpacity onPress={openYoutube} style={styles.youtubeButton}>
-          <SvgIcon name="YoutubeButton" size={24} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('SettingsScreen', { onRefresh })}
-          style={styles.settingsButton}
-        >
-          <SvgIcon name="SettingButton" size={20} color="black" />
-        </TouchableOpacity>
-      </View>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.dateText}>{qt?.date}</Text>
-        {qt?.series_title ? (
-          <Text style={styles.seriesTitleText}>{qt.series_title}</Text>
-        ) : null}
+        <View style={styles.seriesCard}>
+          <View style={styles.seriesCardText}>
+            {qt?.series_title ? (
+              <Text style={styles.seriesTitleText}>{qt.series_title}</Text>
+            ) : null}
+            <Text style={styles.dateText}>{qt?.date}</Text>
+          </View>
+          <TouchableOpacity onPress={openYoutube}>
+            <SvgIcon name="YoutubeButton" size={60} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.smallDivider} />
         <Text style={styles.titleText} numberOfLines={0}>
           {processTitleText(qt?.title)}
         </Text>
         <Text style={styles.indexText}>{qtContent.index}</Text>
+        <View style={styles.contentDivider} />
         <Text style={styles.contentText}>{qtContent.content}</Text>
         {isSunday ? (
           <Text style={styles.noQuestionText}>오늘은 묵상 질문이 없습니다</Text>
         ) : meditationQuestions.length > 0 ? (
           <View style={styles.questionsContainer}>
+            <Text style={styles.questionsSectionTitle}>묵상 질문</Text>
             {meditationQuestions.map((question, index) => (
               <View key={index} style={styles.questionCard}>
                 <Text style={styles.questionNumber}>
-                  {index === 0 ? '•' : ['❶','❷','❸','❹','❺'][index - 1] ?? `${index}.`}
+                  {index === 0 ? '•' : ''}
                 </Text>
                 <Text style={styles.questionText}>{question}</Text>
               </View>
             ))}
           </View>
         ) : null}
-        <TouchableOpacity style={styles.youtubeLinkContainer} onPress={openYoutube}>
-          <SvgIcon name="YoutubeButton" size={20} />
-          <Text style={styles.youtubeLinkText}>YouTube 영상 바로가기</Text>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -148,81 +139,87 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'transparent',
-    marginHorizontal: 35,
-    marginTop: 35,
+    marginHorizontal: 27,
+    marginTop: 16,
   },
-  header: {
-    backgroundColor: 'transparent',
-    flexDirection: 'row',
-    height: 30,
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  icon: {
-    backgroundColor: 'transparent',
-    borderRadius: 15,
-    width: 20,
-    height: 20,
-  },
-  appTitle: {
-    color: '#49454F',
-    fontSize: 20,
-    fontFamily: 'Pretendard-Medium',
-    marginLeft: 8,
-  },
-  youtubeButton: { marginLeft: 'auto', padding: 2 },
-  settingsButton: { marginLeft: 8 },
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
   dateText: {
     color: '#A59EAE',
-    fontSize: 16,
-    fontFamily: 'Pretendard-SemiBold',
-    marginBottom: 8,
+    fontSize: 18,
+    fontFamily: 'Pretendard-Regular',
+  },
+  seriesCard: {
+    backgroundColor: '#F3F4F9',
+    borderRadius: 22,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  seriesCardText: {
+    flex: 1,
+    gap: 4,
   },
   seriesTitleText: {
-    color: '#A59EAE',
-    fontSize: 16,
-    fontFamily: 'Pretendard-Medium',
-    marginBottom: 4,
+    color: '#747474',
+    fontSize: 18,
+    fontFamily: 'Pretendard-SemiBold',
+  },
+  smallDivider: {
+    height: 3,
+    width: 50,
+    backgroundColor: '#8C8C8C',
+    marginBottom: 16,
+  },
+  contentDivider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginBottom: 16,
+  },
+  questionsSectionTitle: {
+    color: '#747474',
+    fontSize: 18,
+    fontFamily: 'Pretendard-Bold',
+    marginBottom: 12,
   },
   titleText: {
-    color: '#A59EAE',
-    fontSize: 24,
+    color: '#747474',
+    fontSize: 28,
     fontFamily: 'Pretendard-Bold',
     flexWrap: 'wrap',
     marginBottom: 16,
   },
-  indexText: {
-    color: '#49454F',
-    fontSize: 18,
-    fontFamily: 'Pretendard-SemiBold',
-    marginBottom: 8,
-  },
-  contentText: {
-    color: '#49454F',
-    fontSize: 16,
-    fontFamily: 'Pretendard-Regular',
-    lineHeight: 26,
-    marginBottom: 32,
-  },
-  youtubeLinkContainer: {
+  indexRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+    marginBottom: 8,
   },
-  youtubeLinkText: {
-    color: '#A59EAE',
-    fontSize: 14,
-    fontFamily: 'Pretendard-Medium',
+  indexText: {
+    color: '#000000',
+    fontSize: 16,
+    fontFamily: 'Pretendard-Regular',
   },
-  noQuestionText: {
+  contentText: {
+    color: '#000000',
+    fontSize: 20,
+    fontFamily: 'Pretendard-Bold',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+noQuestionText: {
     color: '#A59EAE',
     fontSize: 14,
     fontFamily: 'Pretendard-Medium',
     marginBottom: 32,
   },
   questionsContainer: {
+    backgroundColor: '#EBFAFF',
+    borderRadius: 15,
+    padding: 20,
     gap: 12,
     marginBottom: 32,
   },
@@ -231,17 +228,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   questionNumber: {
-    color: '#49454F',
-    fontSize: 16,
+    color: '#A59EAE',
+    fontSize: 18,
     fontFamily: 'Pretendard-SemiBold',
-    lineHeight: 26,
+    lineHeight: 24,
   },
   questionText: {
     flex: 1,
-    color: '#49454F',
-    fontSize: 16,
-    fontFamily: 'Pretendard-Regular',
-    lineHeight: 26,
+    color: '#A59EAE',
+    fontSize: 18,
+    fontFamily: 'Pretendard-SemiBold',
+    lineHeight: 24,
   },
   errorContainer: { justifyContent: 'center', alignItems: 'center' },
   errorText: {
