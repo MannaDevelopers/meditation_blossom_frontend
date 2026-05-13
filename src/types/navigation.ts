@@ -3,6 +3,6 @@ export type RootStackParamList = {
   MainTabs: undefined;
   EditScreen: { sermon?: Sermon };
   SettingsScreen: {
-    onRefresh: () => void;
+    onRefresh?: () => void;
   };
 };

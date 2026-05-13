@@ -7,3 +7,4 @@ export { default as EditBackground } from './EditBackground.svg';
 export { default as BackButton } from './BackButton.svg';
 export { default as SettingButton } from './SettingButton.svg';
 export { default as YoutubeButton } from './YoutubeButton.svg';
+export { default as BibleIcon } from './BibleIcon.svg';

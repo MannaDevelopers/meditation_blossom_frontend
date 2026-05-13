@@ -1,9 +1,6 @@
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Linking,
   Platform,
   ScrollView,
@@ -21,14 +18,12 @@ import { useFCMListener } from '../hooks/useFCMListener';
 import { useSermonData } from '../hooks/useSermonData';
 import { useWidgetSync } from '../hooks/useWidgetSync';
 import { isSermonDataStale } from '../services/sermonService';
-import { RootStackParamList } from '../types/navigation';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
 
 const SUNDAY_SERMON_YOUTUBE_URL = 'https://www.youtube.com/@만나';
 
 const HomeScreen = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { sermon, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useSermonData();
 
@@ -46,6 +41,12 @@ const HomeScreen = () => {
   useFCMListener(loadLocalData);
 
   const targetYoutubeUrl = sermon?.video_url || SUNDAY_SERMON_YOUTUBE_URL;
+
+  const openYoutube = () => {
+    Linking.openURL(targetYoutubeUrl).catch(e =>
+      logger.error('HomeScreen: YouTube 링크 열기 실패', e),
+    );
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -88,47 +89,24 @@ const HomeScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.header}>
-        <Image
-          source={require('../assets/image/20250416_meditation_icon.png')}
-          style={styles.icon}
-        />
-        <Text style={styles.appTitle}>묵상만개</Text>
-        <TouchableOpacity
-          onPress={() => {
-            Linking.openURL(targetYoutubeUrl).catch(e =>
-              logger.error('HomeScreen: YouTube 링크 열기 실패', e),
-            );
-          }}
-          style={styles.youtubeButton}
-        >
-          <SvgIcon name="YoutubeButton" size={24} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('SettingsScreen', { onRefresh })}
-          style={styles.settingsButton}
-        >
-          <SvgIcon name="SettingButton" size={20} color="black" />
-        </TouchableOpacity>
-      </View>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.dateText}>{sermon?.date}</Text>
-        <Text style={styles.titleText} numberOfLines={0}>
-          {processTitleText(sermon?.title)}
-        </Text>
-        <Text style={styles.indexText}>{sermonContent.index}</Text>
+        <View style={styles.seriesCard}>
+          <View style={styles.seriesCardText}>
+            <Text style={styles.cardTitleText} numberOfLines={0}>
+              {processTitleText(sermon?.title)}
+            </Text>
+            <Text style={styles.seriesDateText}>{sermon?.date}</Text>
+          </View>
+          <TouchableOpacity onPress={openYoutube}>
+            <SvgIcon name="YoutubeButton" size={60} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.indexRow}>
+          <SvgIcon name="BibleIcon" size={28} />
+          <Text style={styles.indexText}>{sermonContent.index}</Text>
+        </View>
+        <View style={styles.contentDivider} />
         <Text style={styles.contentText}>{sermonContent.content}</Text>
-        <TouchableOpacity
-          style={styles.youtubeLinkContainer}
-          onPress={() => {
-            Linking.openURL(targetYoutubeUrl).catch(e =>
-              logger.error('HomeScreen: YouTube 링크 열기 실패', e),
-            );
-          }}
-        >
-          <SvgIcon name="YoutubeButton" size={20} />
-          <Text style={styles.youtubeLinkText}>YouTube 예배 영상 바로가기</Text>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -138,34 +116,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'transparent',
-    marginHorizontal: 35,
-    marginTop: 35,
-  },
-  header: {
-    backgroundColor: 'transparent',
-    flexDirection: 'row',
-    height: 30,
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  icon: {
-    backgroundColor: 'transparent',
-    borderRadius: 15,
-    width: 20,
-    height: 20,
-  },
-  appTitle: {
-    color: '#49454F',
-    fontSize: 20,
-    fontFamily: 'Pretendard-Medium',
-    marginLeft: 8,
-  },
-  youtubeButton: {
-    marginLeft: 'auto',
-    padding: 2,
-  },
-  settingsButton: {
-    marginLeft: 8,
+    marginHorizontal: 27,
+    marginTop: 16,
   },
   scrollView: {
     flex: 1,
@@ -173,41 +125,66 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 40,
   },
-  indexText: {
-    color: '#49454F',
-    fontSize: 18,
-    fontFamily: 'Pretendard-SemiBold',
+  indexRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginBottom: 8,
   },
-  dateText: {
-    color: '#A59EAE',
+  indexText: {
+    color: '#000000',
     fontSize: 16,
-    fontFamily: 'Pretendard-SemiBold',
-    marginBottom: 8,
+    fontFamily: 'Pretendard-Regular',
   },
   titleText: {
-    color: '#A59EAE',
-    fontSize: 24,
+    color: '#747474',
+    fontSize: 28,
     fontFamily: 'Pretendard-Bold',
     flexWrap: 'wrap',
     marginBottom: 16,
   },
   contentText: {
-    color: '#49454F',
-    fontSize: 16,
-    fontFamily: 'Pretendard-Regular',
-    lineHeight: 26,
+    color: '#000000',
+    fontSize: 20,
+    fontFamily: 'Pretendard-Bold',
+    lineHeight: 24,
     marginBottom: 32,
   },
-  youtubeLinkContainer: {
+  seriesCard: {
+    backgroundColor: '#F3F4F9',
+    borderRadius: 22,
+    paddingHorizontal: 25,
+    paddingVertical: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
-  youtubeLinkText: {
+  seriesCardText: {
+    flex: 1,
+    gap: 4,
+    marginRight: 12,
+  },
+  cardTitleText: {
+    color: '#747474',
+    fontSize: 18,
+    fontFamily: 'Pretendard-SemiBold',
+  },
+  seriesDateText: {
     color: '#A59EAE',
-    fontSize: 14,
-    fontFamily: 'Pretendard-Medium',
+    fontSize: 18,
+    fontFamily: 'Pretendard-Regular',
+  },
+  smallDivider: {
+    height: 3,
+    width: 50,
+    backgroundColor: '#8C8C8C',
+    marginBottom: 16,
+  },
+  contentDivider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginBottom: 16,
   },
   errorContainer: {
     justifyContent: 'center',
