@@ -21,4 +21,12 @@ describe('processTitleText', () => {
     const result = processTitleText('A (B) C (D)');
     expect(result).toBe('A \n(B) C \n(D)');
   });
+
+  it('splits number prefix from title onto separate line', () => {
+    expect(processTitleText('049 제목')).toBe('049\n제목');
+  });
+
+  it('splits number prefix and also handles parentheses', () => {
+    expect(processTitleText('049 제목 (부제)')).toBe('049\n제목 \n(부제)');
+  });
 });
