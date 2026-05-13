@@ -8,7 +8,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -17,6 +16,7 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import messaging from '@react-native-firebase/messaging';
 import DeviceInfo from 'react-native-device-info';
+import SvgIcon from '../components/SvgIcon';
 import { RootStackParamList } from '../types/navigation';
 import { FCM_SERMON_KEY } from '../types/Sermon';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
@@ -39,6 +39,18 @@ const SettingsScreen = ({ navigation, route }: Props) => {
     }
   };
 
+  const setWidgetOption = async (value: boolean) => {
+    setYoutubeLinkEnabled(value);
+    try {
+      if (WidgetUpdateModule) {
+        await WidgetUpdateModule.setYoutubeLinkEnabled(value);
+      }
+    } catch (error) {
+      logger.error('YouTube 링크 설정 저장 실패:', error);
+      setYoutubeLinkEnabled(!value);
+    }
+  };
+
   const clearAndRefreshStorage = async () => {
     try {
       await AsyncStorage.removeItem(FCM_SERMON_KEY);
@@ -46,7 +58,7 @@ const SettingsScreen = ({ navigation, route }: Props) => {
       if (WidgetUpdateModule) {
         await WidgetUpdateModule.onClear();
       }
-      await route.params.onRefresh();
+      await route.params.onRefresh?.();
     } catch (error) {
       logger.error('Error clearing local storage:', error);
     }
@@ -115,119 +127,95 @@ const SettingsScreen = ({ navigation, route }: Props) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.innerContainer}>
-        {/* 헤더 영역 */}
-        <View style={styles.header}>
-          <Image
-            source={require('../assets/image/20250416_meditation_icon.png')}
-            style={styles.icon}
-          />
-          <Text style={styles.headerTitle}>설정</Text>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backText}>‹</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>설정</Text>
+      </View>
 
-        {/* 메인 컨텐츠 영역 */}
-        <ScrollView
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          <View style={styles.topSection}>
-            {/* 위젯 YouTube 링크 토글 */}
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>위젯을 눌렀을 때 유튜브로 이동</Text>
-              <Switch
-                value={youtubeLinkEnabled}
-                onValueChange={async (value) => {
-                  setYoutubeLinkEnabled(value);
-                  try {
-                    if (WidgetUpdateModule) {
-                      await WidgetUpdateModule.setYoutubeLinkEnabled(value);
-                    }
-                  } catch (error) {
-                    logger.error('YouTube 링크 설정 저장 실패:', error);
-                    setYoutubeLinkEnabled(!value);
-                  }
-                }}
-              />
-            </View>
-
-            {/* 제목 영역 */}
-            <TouchableOpacity onPress={toggleDeveloperMenu} style={styles.sectionTitle}>
-              <Text style={styles.sectionTitleText}>앱 관리</Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* 위젯 설정 섹션 */}
+        <Text style={styles.sectionLabel}>위젯 설정</Text>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionDescription}>위젯을 누르면 어디로 이동할까요?</Text>
+          <View style={styles.optionRow}>
+            <TouchableOpacity style={styles.optionItem} onPress={() => setWidgetOption(false)}>
+              <View style={styles.optionCard}>
+                <View style={styles.appPreview}>
+                  <Image
+                    source={require('../assets/image/20250416_meditation_icon.png')}
+                    style={styles.appPreviewIcon}
+                  />
+                  <Text style={styles.appPreviewText}>묵상만개</Text>
+                </View>
+              </View>
+              <Text style={[styles.optionLabel, !youtubeLinkEnabled && styles.optionLabelActive]}>
+                메인 앱 화면(기본)
+              </Text>
+              <View style={styles.radioButton}>
+                {!youtubeLinkEnabled && <View style={styles.radioInner} />}
+              </View>
             </TouchableOpacity>
 
-            {/* 버튼 컨테이너 */}
-            <View style={styles.buttonContainer}>
-              {/* 데이터 새로고침 버튼 */}
-              <TouchableOpacity onPress={clearAndRefreshStorage} style={styles.primaryButton}>
-                <Text style={styles.primaryButtonText}>데이터 새로고침</Text>
+            <TouchableOpacity style={styles.optionItem} onPress={() => setWidgetOption(true)}>
+              <View style={styles.optionCard}>
+                <SvgIcon name="YoutubeButton" size={30} />
+              </View>
+              <Text style={[styles.optionLabel, youtubeLinkEnabled && styles.optionLabelActive]}>
+                유튜브 링크
+              </Text>
+              <View style={styles.radioButton}>
+                {youtubeLinkEnabled && <View style={styles.radioInner} />}
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 앱 관리 섹션 */}
+        <TouchableOpacity onPress={toggleDeveloperMenu}>
+          <Text style={styles.sectionLabel}>앱 관리</Text>
+        </TouchableOpacity>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionDescription}>
+            교회 홈페이지에서 최신 설교 말씀을 받아옵니다.
+          </Text>
+          <TouchableOpacity onPress={clearAndRefreshStorage} style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>데이터 새로고침</Text>
+          </TouchableOpacity>
+
+          {showDeveloperMenu && (
+            <>
+              <TouchableOpacity onPress={inspectStorage} style={styles.devButton}>
+                <Text style={styles.devButtonText}>스토리지 검사</Text>
               </TouchableOpacity>
-
-              {/* 스토리지 검사 버튼 (개발자 히든 메뉴) */}
-              {showDeveloperMenu && (
-                <>
-                  <TouchableOpacity onPress={inspectStorage} style={styles.devButton}>
-                    <Text style={styles.devButtonText}>스토리지 검사</Text>
-                  </TouchableOpacity>
-
-                  {/* FCM 토큰 표시 및 복사 버튼 */}
-                  <TouchableOpacity onPress={copyFCMToken} style={styles.fcmButton}>
-                    <Text style={styles.devButtonText}>FCM 토큰 복사</Text>
-                    {fcmToken ? (
-                      <Text style={styles.fcmTokenText} numberOfLines={2}>
-                        {fcmToken.substring(0, 50)}...
-                      </Text>
-                    ) : (
-                      <Text style={styles.fcmLoadingText}>토큰 로딩 중...</Text>
-                    )}
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-
-            {/* 정보 영역 */}
-            <View style={styles.infoBox}>
-              <Text style={styles.infoText}>
-                데이터 새로고침: 교회 홈페이지에서 최신 설교 말씀을 받아옵니다.
-                {showDeveloperMenu && (
-                  <>
-                    {'\n'}스토리지 검사: 저장된 데이터를 콘솔에서 확인합니다.
-                    {'\n'}FCM 토큰 복사: test_fcm.js에서 사용할 토큰을 복사합니다.
-                  </>
+              <TouchableOpacity onPress={copyFCMToken} style={styles.fcmButton}>
+                <Text style={styles.devButtonText}>FCM 토큰 복사</Text>
+                {fcmToken ? (
+                  <Text style={styles.fcmTokenText} numberOfLines={2}>
+                    {fcmToken.substring(0, 50)}...
+                  </Text>
+                ) : (
+                  <Text style={styles.fcmLoadingText}>토큰 로딩 중...</Text>
                 )}
-              </Text>
-            </View>
-          </View>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </ScrollView>
 
-          {/* 통합된 앱 정보 영역 */}
-          <View style={styles.aboutBox}>
-            <Text style={styles.aboutTitle}>About this app</Text>
-            <View style={styles.aboutContent}>
-              <Text style={styles.aboutText}>
-                묵상만개{'\n'}Meditation Blossom v2.0
-              </Text>
-              <TouchableOpacity
-                onPress={() => Linking.openURL('https://manna.or.kr/somoim/157228/')}
-                style={styles.linkButton}
-              >
-                <Text style={styles.aboutText}>
-                  from 2025 만개하다 미니프로젝트 - 앱 만들기
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => Linking.openURL('https://manna.or.kr/somoim/130539/')}
-                style={styles.linkButton}
-              >
-                <Text style={styles.aboutText}>개발: 만개하다 - 만나교회 개발자 모임</Text>
-              </TouchableOpacity>
-              <Text style={styles.aboutText}>디자인: Somang Choi</Text>
-              <Text style={styles.aboutText}>버전: {DeviceInfo.getVersion()}</Text>
-            </View>
-          </View>
-        </ScrollView>
+      {/* About this app — 스크롤 밖, 하단 고정 */}
+      <View style={styles.aboutSection}>
+        <Text style={styles.aboutTitle}>About this app</Text>
+        <Text style={styles.aboutText}>묵상만개 Meditation Blossom</Text>
+        <TouchableOpacity onPress={() => Linking.openURL('https://manna.or.kr/somoim/157228/')}>
+          <Text style={styles.aboutText}>from 2025 만개하다 미니프로젝트 - 앱 만들기</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => Linking.openURL('https://manna.or.kr/somoim/130539/')}>
+          <Text style={styles.aboutText}>개발 : 만개하다 - 만나교회 개발자 모임</Text>
+        </TouchableOpacity>
+        <Text style={styles.aboutText}>디자인 : Somang Choi</Text>
+        <Text style={styles.aboutText}>버전 : {DeviceInfo.getVersion()}</Text>
       </View>
     </SafeAreaView>
   );
@@ -236,134 +224,148 @@ const SettingsScreen = ({ navigation, route }: Props) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
-    marginHorizontal: 35,
-    marginVertical: 35,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  innerContainer: {
-    backgroundColor: 'transparent',
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 305,
+    backgroundColor: '#F3F4F9',
   },
   header: {
-    backgroundColor: 'transparent',
     flexDirection: 'row',
-    width: 305,
-    height: 30,
-    marginBottom: 35,
     alignItems: 'center',
+    marginHorizontal: 27,
+    marginTop: 16,
+    marginBottom: 24,
+    height: 30,
   },
-  icon: {
-    backgroundColor: 'transparent',
-    borderRadius: 15,
-    width: 20,
-    height: 20,
+  backButton: {
+    marginRight: 8,
+  },
+  backText: {
+    color: '#49454F',
+    fontSize: 32,
+    fontFamily: 'Pretendard-Bold',
+    lineHeight: 32,
   },
   headerTitle: {
     color: '#49454F',
     fontSize: 20,
+    fontFamily: 'Pretendard-SemiBold',
     letterSpacing: -1,
-    fontFamily: 'Pretendard-Medium',
-    marginLeft: 8,
-  },
-  backButton: {
-    marginLeft: 'auto',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backText: {
-    color: '#49454F',
-    fontSize: 28,
-    fontFamily: 'Pretendard-Bold',
-    lineHeight: 28,
-  },
-  scrollView: {
-    flex: 1,
-    width: 305,
   },
   scrollContent: {
-    alignItems: 'center',
-    flexGrow: 1,
-    justifyContent: 'space-between',
+    paddingBottom: 40,
   },
-  topSection: {
-    alignItems: 'center',
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    width: 305,
-    marginBottom: 20,
-  },
-  toggleLabel: {
+  sectionLabel: {
     color: '#49454F',
-    fontSize: 14,
-    fontFamily: 'Pretendard-Regular',
-    flex: 1,
+    fontSize: 17,
+    fontFamily: 'Pretendard-SemiBold',
+    marginHorizontal: 27,
+    marginBottom: 0,
+    paddingVertical: 12,
   },
-  sectionTitle: {
-    backgroundColor: 'transparent',
+  sectionCard: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    marginHorizontal: 8,
+    marginBottom: 16,
+    paddingHorizontal: 19,
+    paddingBottom: 20,
+    paddingTop: 16,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginBottom: 16,
+  },
+  sectionDescription: {
+    color: '#919191',
+    fontSize: 15,
+    fontFamily: 'Pretendard-SemiBold',
+    marginBottom: 16,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    gap: 20,
+  },
+  optionItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 8,
+  },
+  optionCard: {
+    width: 110,
+    height: 70,
+    backgroundColor: '#F4F4F4',
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    width: 305,
-    height: 25,
-    marginBottom: 20,
   },
-  sectionTitleText: {
+  appPreview: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  appPreviewIcon: {
+    width: 15,
+    height: 15,
+    borderRadius: 8,
+  },
+  appPreviewText: {
+    color: '#49454F',
+    fontSize: 15,
+    fontFamily: 'Pretendard-Medium',
+  },
+  optionLabel: {
     color: '#A59EAE',
-    fontSize: 20,
-    letterSpacing: -3,
-    fontFamily: 'Pretendard-SemiBold',
+    fontSize: 14,
+    fontFamily: 'Pretendard-Bold',
+    textAlign: 'center',
   },
-  buttonContainer: {
-    backgroundColor: 'transparent',
-    width: 305,
-    gap: 15,
+  optionLabelActive: {
+    color: '#00A8DE',
+  },
+  radioButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#A59EAE',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioInner: {
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: '#00A8DE',
   },
   primaryButton: {
-    backgroundColor: 'transparent',
-    width: 305,
+    backgroundColor: '#00A8DE',
     height: 50,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#A59EAE',
+    marginTop: 8,
   },
   primaryButtonText: {
-    color: '#A59EAE',
-    fontWeight: 'bold',
-    fontSize: 18,
-    textAlign: 'center',
-    fontFamily: 'Pretendard-Bold',
+    color: 'white',
+    fontSize: 20,
+    fontFamily: 'Pretendard-SemiBold',
     letterSpacing: -1,
   },
   devButton: {
-    backgroundColor: 'transparent',
-    width: 305,
     height: 50,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#49454F',
+    marginTop: 12,
   },
   devButtonText: {
     color: '#49454F',
-    fontWeight: 'bold',
     fontSize: 18,
     textAlign: 'center',
     fontFamily: 'Pretendard-Bold',
     letterSpacing: -1,
   },
   fcmButton: {
-    backgroundColor: 'transparent',
-    width: 305,
     minHeight: 50,
     borderRadius: 10,
     justifyContent: 'center',
@@ -372,6 +374,7 @@ const styles = StyleSheet.create({
     borderColor: '#49454F',
     paddingVertical: 10,
     paddingHorizontal: 15,
+    marginTop: 12,
   },
   fcmTokenText: {
     color: '#A59EAE',
@@ -387,52 +390,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: 'Pretendard-Regular',
   },
-  infoBox: {
-    backgroundColor: 'transparent',
-    width: 305,
-    marginTop: 20,
-    padding: 20,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#A59EAE',
-    borderStyle: 'dashed',
-  },
-  infoText: {
-    color: '#A59EAE',
-    fontSize: 14,
-    textAlign: 'center',
-    fontFamily: 'Pretendard-Regular',
-    lineHeight: 20,
-  },
-  aboutBox: {
-    backgroundColor: 'transparent',
-    width: 305,
-    padding: 20,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#A59EAE',
-    marginBottom: 20,
+  aboutSection: {
+    backgroundColor: '#E1E5F7',
+    paddingHorizontal: 27,
+    paddingVertical: 15,
+    gap: 4,
   },
   aboutTitle: {
     color: '#49454F',
-    fontSize: 16,
-    textAlign: 'center',
-    fontFamily: 'Pretendard-Bold',
-    marginBottom: 15,
-    letterSpacing: -1,
-  },
-  aboutContent: {
-    gap: 8,
+    fontSize: 17,
+    fontFamily: 'Pretendard-SemiBold',
+    marginBottom: 8,
   },
   aboutText: {
-    color: '#A59EAE',
-    fontSize: 14,
-    textAlign: 'center',
-    fontFamily: 'Pretendard-Regular',
-    lineHeight: 18,
-  },
-  linkButton: {
-    alignItems: 'center',
+    color: '#919191',
+    fontSize: 15,
+    fontFamily: 'Pretendard-SemiBold',
+    lineHeight: 23,
   },
 });
 
