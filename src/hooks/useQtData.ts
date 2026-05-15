@@ -4,6 +4,7 @@ import {
   fetchLatestQtFromAsyncStorage,
   fetchLatestQtFromServer,
 } from '../services/qtService';
+import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
 
 export interface UseQtDataReturn {
@@ -48,6 +49,7 @@ export function useQtData(): UseQtDataReturn {
       const message = e instanceof Error ? e.message : String(e);
       logger.error('Failed to fetch QT from server:', e);
       setError(message);
+      logAnalytics.dataLoadFailed('qt');
     } finally {
       setIsLoading(false);
     }

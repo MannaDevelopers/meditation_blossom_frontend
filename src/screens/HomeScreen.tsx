@@ -1,7 +1,9 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
   Linking,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   ScrollView,
   StyleSheet,
@@ -18,6 +20,7 @@ import { useFCMListener } from '../hooks/useFCMListener';
 import { useSermonData } from '../hooks/useSermonData';
 import { useWidgetSync } from '../hooks/useWidgetSync';
 import { isSermonDataStale } from '../services/sermonService';
+import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
 
@@ -41,12 +44,26 @@ const HomeScreen = () => {
   useFCMListener(loadLocalData);
 
   const targetYoutubeUrl = sermon?.video_url || SUNDAY_SERMON_YOUTUBE_URL;
+  const hasLoggedScroll = useRef(false);
 
   const openYoutube = () => {
+    logAnalytics.youtubeClick('home');
     Linking.openURL(targetYoutubeUrl).catch(e =>
       logger.error('HomeScreen: YouTube 링크 열기 실패', e),
     );
   };
+
+  const handleScroll = useCallback(
+    ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (hasLoggedScroll.current) return;
+      const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+      if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 50) {
+        hasLoggedScroll.current = true;
+        logAnalytics.scrollComplete('home');
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     const init = async () => {
@@ -57,7 +74,10 @@ const HomeScreen = () => {
       const loaded = await loadLocalData();
       const latestDate = loaded?.date ? new Date(loaded.date) : null;
       if (isSermonDataStale(latestDate)) {
+        logAnalytics.appDataSource('firestore', 'sermon');
         await fetchFromServer();
+      } else {
+        logAnalytics.appDataSource(loaded ? 'cache' : 'none', 'sermon');
       }
     };
     init().catch((e) => {
@@ -89,7 +109,7 @@ const HomeScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={400}>
         <View style={styles.seriesCard}>
           <View style={styles.seriesCardText}>
             <Text style={styles.cardTitleText} numberOfLines={0}>

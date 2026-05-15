@@ -9,6 +9,7 @@ import SvgIcon from '../components/SvgIcon';
 import HomeScreen from '../screens/HomeScreen';
 import DailyMannaScreen from '../screens/DailyMannaScreen';
 import { RootStackParamList } from '../types/navigation';
+import { logAnalytics } from '../utils/analytics';
 
 export type MainTabParamList = {
   '주일 말씀': undefined;
@@ -50,6 +51,7 @@ const CustomTabBar = ({ state, navigation }: MaterialTopTabBarProps) => {
             });
             if (!isFocused && !event.defaultPrevented) {
               navigation.navigate(route.name);
+              logAnalytics.tabSwitch(index === 0 ? 'sunday_sermon' : 'daily_qt');
             }
           };
           return (

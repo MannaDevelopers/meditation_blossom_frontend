@@ -10,6 +10,24 @@ object AnalyticsHelper {
             param("source", source.value)
         }
     }
+
+    fun logWidgetUpdated(widgetType: String) {
+        Firebase.analytics.logEvent("widget_updated") {
+            param("widget_type", widgetType)
+        }
+    }
+
+    fun logWidgetInstalled(widgetType: String) {
+        Firebase.analytics.logEvent("widget_installed") {
+            param("widget_type", widgetType)
+        }
+    }
+
+    fun logWidgetRemoved(widgetType: String) {
+        Firebase.analytics.logEvent("widget_removed") {
+            param("widget_type", widgetType)
+        }
+    }
 }
 
 enum class SermonEventSource(val value: String) {

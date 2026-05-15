@@ -118,6 +118,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         runCatching {
             VerseWidgetLarge().updateAll(applicationContext)
             VerseWidgetSmall().updateAll(applicationContext)
+            AnalyticsHelper.logWidgetUpdated("verse_large")
+            AnalyticsHelper.logWidgetUpdated("verse_small")
         }.onFailure { e ->
             CrashlyticsHelper.recordException(e, "Failed to update sermon widgets")
         }
@@ -162,6 +164,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         runCatching {
             QtWidgetLarge().updateAll(applicationContext)
             QtWidgetSmall().updateAll(applicationContext)
+            AnalyticsHelper.logWidgetUpdated("qt_large")
+            AnalyticsHelper.logWidgetUpdated("qt_small")
         }.onFailure { e ->
             CrashlyticsHelper.recordException(e, "Failed to update qt widgets")
         }

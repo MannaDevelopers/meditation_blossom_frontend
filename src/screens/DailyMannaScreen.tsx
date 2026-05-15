@@ -1,7 +1,9 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
   Linking,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,6 +16,7 @@ import { useQtData } from '../hooks/useQtData';
 import { useQtFCMListener } from '../hooks/useQtFCMListener';
 import { useQtWidgetSync } from '../hooks/useQtWidgetSync';
 import { isQtDataStale } from '../services/qtService';
+import { logAnalytics } from '../utils/analytics';
 import { extractContent } from '../utils/sermonParser';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
@@ -52,19 +55,36 @@ const DailyMannaScreen = () => {
   }, [qt?.meditation_questions]);
 
   const targetYoutubeUrl = qt?.video_url || DAILY_MANNA_CHANNEL_URL;
+  const hasLoggedScroll = useRef(false);
 
   const openYoutube = () => {
+    logAnalytics.youtubeClick('daily_manna');
     Linking.openURL(targetYoutubeUrl).catch((e) =>
       logger.error('DailyMannaScreen: YouTube 링크 열기 실패', e),
     );
   };
+
+  const handleScroll = useCallback(
+    ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (hasLoggedScroll.current) return;
+      const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+      if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 50) {
+        hasLoggedScroll.current = true;
+        logAnalytics.scrollComplete('daily_manna');
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     const init = async () => {
       const loaded = await loadLocalData();
       const latestDate = loaded?.date ? new Date(loaded.date) : null;
       if (isQtDataStale(latestDate)) {
+        logAnalytics.appDataSource('firestore', 'qt');
         await fetchFromServer();
+      } else {
+        logAnalytics.appDataSource(loaded ? 'cache' : 'none', 'qt');
       }
     };
     init().catch((e) => {
@@ -96,7 +116,7 @@ const DailyMannaScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={400}>
         <View style={styles.seriesCard}>
           <View style={styles.seriesCardText}>
             {qt?.series_title ? (
