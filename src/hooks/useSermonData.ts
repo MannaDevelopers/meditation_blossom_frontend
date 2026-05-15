@@ -4,6 +4,7 @@ import {
   fetchLatestSermonFromAsyncStorage,
   fetchLatestSermonFromServer,
 } from '../services/sermonService';
+import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
 
 export interface UseSermonDataReturn {
@@ -52,6 +53,7 @@ export function useSermonData(): UseSermonDataReturn {
       const message = e instanceof Error ? e.message : String(e);
       logger.error('Failed to fetch from server:', e);
       setError(message);
+      logAnalytics.dataLoadFailed('sermon');
     } finally {
       setIsLoading(false);
     }

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, SafeAreaView } from 'react-native';
-import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
+import { getFirestore, collection, FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { firestoreDocToSermon, Sermon, SermonMetadata } from '../types/Sermon';
 import logger from '../utils/logger';
@@ -122,7 +122,7 @@ function TempSermonScreen(): React.JSX.Element {
       }
       
       // Firestore 쿼리 준비
-      const sermonsCollection = firestore().collection('sermons');
+      const sermonsCollection = collection(getFirestore(), 'sermons');
       let query: FirebaseFirestoreTypes.Query = sermonsCollection;
       
       // 최신 날짜 기준으로 쿼리 설정

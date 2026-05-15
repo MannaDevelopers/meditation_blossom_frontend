@@ -14,12 +14,18 @@ import {
 } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import messaging from '@react-native-firebase/messaging';
+import {
+  getMessaging,
+  getToken,
+  requestPermission,
+  AuthorizationStatus,
+} from '@react-native-firebase/messaging';
 import DeviceInfo from 'react-native-device-info';
 import SvgIcon from '../components/SvgIcon';
 import { RootStackParamList } from '../types/navigation';
 import { FCM_SERMON_KEY } from '../types/Sermon';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
+import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SettingsScreen'>;
@@ -41,6 +47,7 @@ const SettingsScreen = ({ navigation, route }: Props) => {
 
   const setWidgetOption = async (value: boolean) => {
     setYoutubeLinkEnabled(value);
+    logAnalytics.widgetOptionChange(value ? 'youtube_link' : 'main_app');
     try {
       if (WidgetUpdateModule) {
         await WidgetUpdateModule.setYoutubeLinkEnabled(value);
@@ -52,6 +59,7 @@ const SettingsScreen = ({ navigation, route }: Props) => {
   };
 
   const clearAndRefreshStorage = async () => {
+    logAnalytics.dataRefresh();
     try {
       await AsyncStorage.removeItem(FCM_SERMON_KEY);
       logger.log('Widget Preferences cleared');
@@ -96,16 +104,16 @@ const SettingsScreen = ({ navigation, route }: Props) => {
     const getFCMToken = async () => {
       try {
         if (Platform.OS === 'ios') {
-          const authStatus = await messaging().requestPermission();
+          const authStatus = await requestPermission(getMessaging());
           const enabled =
-            authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-            authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+            authStatus === AuthorizationStatus.AUTHORIZED ||
+            authStatus === AuthorizationStatus.PROVISIONAL;
           if (!enabled) {
             logger.log('FCM 알림 권한이 없습니다.');
             return;
           }
         }
-        const token = await messaging().getToken();
+        const token = await getToken(getMessaging());
         setFcmToken(token);
         logger.log('FCM Token:', token);
       } catch (error) {
