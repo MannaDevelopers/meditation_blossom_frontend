@@ -71,11 +71,18 @@ const SettingsScreen = ({ navigation }: Props) => {
         fetchLatestSermonFromServer(),
         fetchLatestQtFromServer(),
       ]);
-      await AsyncStorage.multiRemove([FCM_SERMON_KEY, FCM_QT_KEY]);
+      const keysToRemove: string[] = [];
+      if (sermon) keysToRemove.push(FCM_SERMON_KEY);
+      if (qt) keysToRemove.push(FCM_QT_KEY);
+      if (keysToRemove.length === 0) {
+        Alert.alert('알림', '서버에서 데이터를 찾을 수 없습니다.');
+        return;
+      }
+      await AsyncStorage.multiRemove(keysToRemove);
       if (sermon) await AsyncStorage.setItem(FCM_SERMON_KEY, JSON.stringify(sermon));
       if (qt) await AsyncStorage.setItem(FCM_QT_KEY, JSON.stringify(qt));
       if (WidgetUpdateModule) await WidgetUpdateModule.onClear();
-      Alert.alert('완료', '데이터가 최신으로 갱신되었습니다.');
+      Alert.alert('완료', '데이터를 새로 불러왔습니다.');
     } catch (error) {
       logger.error('Error refreshing data:', error);
       const code = (error as { code?: string }).code ?? '';
@@ -84,7 +91,7 @@ const SettingsScreen = ({ navigation }: Props) => {
       } else if (code.includes('permission-denied') || code.includes('resource-exhausted')) {
         Alert.alert('서버 오류', '서버에 접근할 수 없습니다. 잠시 후 다시 시도해주세요.');
       } else {
-        Alert.alert('오류', '데이터 갱신에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        Alert.alert('오류', '데이터 불러오기에 실패했습니다. 잠시 후 다시 시도해주세요.');
       }
     } finally {
       setIsRefreshing(false);
@@ -213,7 +220,7 @@ const SettingsScreen = ({ navigation }: Props) => {
             disabled={isRefreshing}
           >
             <Text style={styles.primaryButtonText}>
-              {isRefreshing ? '갱신 중...' : '데이터 새로고침'}
+              {isRefreshing ? '불러오는 중...' : '데이터 새로고침'}
             </Text>
           </TouchableOpacity>
 
