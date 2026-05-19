@@ -28,7 +28,7 @@ const SharedHeader = () => {
       />
       <Text style={styles.appTitle}>묵상만개</Text>
       <TouchableOpacity
-        onPress={() => navigation.navigate('SettingsScreen', {})}
+        onPress={() => navigation.navigate('SettingsScreen')}
         style={styles.settingsButton}
       >
         <SvgIcon name="SettingButton" size={20} color="black" />

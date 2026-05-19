@@ -24,17 +24,21 @@ import DeviceInfo from 'react-native-device-info';
 import SvgIcon from '../components/SvgIcon';
 import { RootStackParamList } from '../types/navigation';
 import { FCM_SERMON_KEY } from '../types/Sermon';
+import { FCM_QT_KEY } from '../types/QT';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
+import { fetchLatestSermonFromServer } from '../services/sermonService';
+import { fetchLatestQtFromServer } from '../services/qtService';
 import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SettingsScreen'>;
 
-const SettingsScreen = ({ navigation, route }: Props) => {
+const SettingsScreen = ({ navigation }: Props) => {
   const [showDeveloperMenu, setShowDeveloperMenu] = useState(false);
   const [tapCount, setTapCount] = useState(0);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [youtubeLinkEnabled, setYoutubeLinkEnabled] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const toggleDeveloperMenu = () => {
     const newTapCount = tapCount + 1;
@@ -59,16 +63,31 @@ const SettingsScreen = ({ navigation, route }: Props) => {
   };
 
   const clearAndRefreshStorage = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
     logAnalytics.dataRefresh();
     try {
-      await AsyncStorage.removeItem(FCM_SERMON_KEY);
-      logger.log('Widget Preferences cleared');
-      if (WidgetUpdateModule) {
-        await WidgetUpdateModule.onClear();
-      }
-      await route.params.onRefresh?.();
+      const [sermon, qt] = await Promise.all([
+        fetchLatestSermonFromServer(),
+        fetchLatestQtFromServer(),
+      ]);
+      await AsyncStorage.multiRemove([FCM_SERMON_KEY, FCM_QT_KEY]);
+      if (sermon) await AsyncStorage.setItem(FCM_SERMON_KEY, JSON.stringify(sermon));
+      if (qt) await AsyncStorage.setItem(FCM_QT_KEY, JSON.stringify(qt));
+      if (WidgetUpdateModule) await WidgetUpdateModule.onClear();
+      Alert.alert('완료', '데이터가 최신으로 갱신되었습니다.');
     } catch (error) {
-      logger.error('Error clearing local storage:', error);
+      logger.error('Error refreshing data:', error);
+      const code = (error as { code?: string }).code ?? '';
+      if (code.includes('unavailable') || code.includes('deadline-exceeded')) {
+        Alert.alert('네트워크 오류', '인터넷 연결을 확인하고 다시 시도해주세요.');
+      } else if (code.includes('permission-denied') || code.includes('resource-exhausted')) {
+        Alert.alert('서버 오류', '서버에 접근할 수 없습니다. 잠시 후 다시 시도해주세요.');
+      } else {
+        Alert.alert('오류', '데이터 갱신에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      }
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -188,8 +207,14 @@ const SettingsScreen = ({ navigation, route }: Props) => {
           <Text style={styles.sectionDescription}>
             교회 홈페이지에서 최신 설교 말씀을 받아옵니다.
           </Text>
-          <TouchableOpacity onPress={clearAndRefreshStorage} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>데이터 새로고침</Text>
+          <TouchableOpacity
+            onPress={clearAndRefreshStorage}
+            style={[styles.primaryButton, isRefreshing && styles.primaryButtonDisabled]}
+            disabled={isRefreshing}
+          >
+            <Text style={styles.primaryButtonText}>
+              {isRefreshing ? '갱신 중...' : '데이터 새로고침'}
+            </Text>
           </TouchableOpacity>
 
           {showDeveloperMenu && (
@@ -350,6 +375,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
+  },
+  primaryButtonDisabled: {
+    backgroundColor: '#A59EAE',
   },
   primaryButtonText: {
     color: 'white',
