@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { extractContent } from '../utils/sermonParser';
 import SvgIcon from '../components/SvgIcon';
 import { BRIDGE_INIT_DELAY_MS } from '../constants';
@@ -29,6 +30,7 @@ const SUNDAY_SERMON_YOUTUBE_URL = 'https://www.youtube.com/@만나';
 const HomeScreen = () => {
   const { sermon, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useSermonData();
+  const isInitialMount = useRef(true);
 
   const sermonContent = useMemo(
     () => (sermon?.content ? extractContent(sermon.content) : { index: '', content: '' }),
@@ -42,6 +44,16 @@ const HomeScreen = () => {
 
   useWidgetSync(sermon);
   useFCMListener(loadLocalData);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
+      }
+      loadLocalData();
+    }, [loadLocalData]),
+  );
 
   const targetYoutubeUrl = sermon?.video_url || SUNDAY_SERMON_YOUTUBE_URL;
   const hasLoggedScroll = useRef(false);

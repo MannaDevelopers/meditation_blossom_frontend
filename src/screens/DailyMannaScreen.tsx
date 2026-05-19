@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import SvgIcon from '../components/SvgIcon';
 import { useQtData } from '../hooks/useQtData';
 import { useQtFCMListener } from '../hooks/useQtFCMListener';
@@ -26,9 +27,20 @@ const DAILY_MANNA_CHANNEL_URL = 'https://www.youtube.com/@만나';
 const DailyMannaScreen = () => {
   const { qt, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useQtData();
+  const isInitialMount = useRef(true);
 
   useQtWidgetSync(qt);
   useQtFCMListener(loadLocalData);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
+      }
+      loadLocalData();
+    }, [loadLocalData]),
+  );
 
   const qtContent = useMemo(
     () => (qt?.content ? extractContent(qt.content) : { index: '', content: '' }),
