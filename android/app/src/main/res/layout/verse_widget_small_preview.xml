@@ -24,8 +24,8 @@ private object VerseSmallWidgetDimens {
 
     <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="56.dp"
-        android:paddingHorizontal="24.dp">
+        android:layout_height="56dp"
+        android:paddingHorizontal="24dp">
 
         <!--Typography.titleMedium-->
         <TextView
@@ -35,39 +35,39 @@ private object VerseSmallWidgetDimens {
             android:text="@string/widget_preview_title"
             android:textColor="@android:color/black"
             android:textFontWeight="500"
-            android:textSize="16.sp" />
+            android:textSize="16sp" />
     </FrameLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0.dp"
-        android:layout_marginHorizontal="12.dp"
-        android:layout_marginBottom="12.dp"
+        android:layout_height="0dp"
+        android:layout_marginHorizontal="12dp"
+        android:layout_marginBottom="12dp"
         android:layout_weight="1"
         android:background="@drawable/rounded_gradient_background"
         android:orientation="vertical"
-        android:padding="12.dp">
+        android:padding="12dp">
         <!--Typography.bodyMedium-->
         <TextView
             android:layout_width="match_parent"
-            android:layout_height="0.dp"
+            android:layout_height="0dp"
             android:layout_weight="1"
             android:scrollbars="vertical"
             android:text="@string/widget_preview_verses"
             android:textColor="@android:color/black"
             android:textFontWeight="400"
-            android:textSize="14.sp"
+            android:textSize="14sp"
             tools:ignore="NestedWeights" />
 
         <!--Typography.labelSmall-->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8.dp"
+            android:layout_marginTop="8dp"
             android:text="@string/widget_preview_books"
             android:textColor="@android:color/black"
             android:textFontWeight="500"
-            android:textSize="11.sp" />
+            android:textSize="11sp" />
     </LinearLayout>
 
 </LinearLayout>

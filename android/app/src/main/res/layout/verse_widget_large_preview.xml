@@ -22,8 +22,8 @@ private object VerseLargeWidgetDimens {
 
     <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="56.dp"
-        android:paddingHorizontal="24.dp">
+        android:layout_height="56dp"
+        android:paddingHorizontal="24dp">
 
         <!--Typography.titleMedium.copy(fontWeight = FontWeight.Bold)-->
         <TextView
@@ -33,30 +33,30 @@ private object VerseLargeWidgetDimens {
             android:text="@string/widget_preview_title"
             android:textColor="@android:color/black"
             android:textFontWeight="700"
-            android:textSize="16.sp" />
+            android:textSize="16sp" />
     </FrameLayout>
 
     <!--Typography.titleMedium.copy(fontWeight = FontWeight.Normal)-->
     <TextView
         android:layout_width="wrap_content"
-        android:layout_height="0.dp"
+        android:layout_height="0dp"
         android:layout_weight="1"
-        android:paddingHorizontal="24.dp"
+        android:paddingHorizontal="24dp"
         android:scrollbars="vertical"
         android:text="@string/widget_preview_verses"
         android:textColor="@android:color/black"
         android:textFontWeight="400"
-        android:textSize="16.sp" />
+        android:textSize="16sp" />
 
     <!--Typography.labelMedium-->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12.dp"
-        android:paddingHorizontal="24.dp"
-        android:paddingBottom="24.dp"
+        android:layout_marginTop="12dp"
+        android:paddingHorizontal="24dp"
+        android:paddingBottom="24dp"
         android:text="@string/widget_preview_books"
         android:textColor="@android:color/black"
         android:textFontWeight="500"
-        android:textSize="12.sp" />
+        android:textSize="12sp" />
 </LinearLayout>
