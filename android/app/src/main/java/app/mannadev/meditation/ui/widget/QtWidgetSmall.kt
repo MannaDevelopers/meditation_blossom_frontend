@@ -116,6 +116,7 @@ private fun QtWidgetSmallContent(ui: QtWidgetUiModel, clickAction: Action) {
                     )
                 }
                 if (ui.questions.isNotEmpty()) {
+                    val bulletedQuestions = ui.questions.map { question -> "• $question" }
                     item { Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap)) }
                     item {
                         Box(
@@ -140,16 +141,16 @@ private fun QtWidgetSmallContent(ui: QtWidgetUiModel, clickAction: Action) {
                         )
                     }
                     item { Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap)) }
-                    
-                    ui.questions.forEachIndexed { index, question ->
+
+                    bulletedQuestions.forEachIndexed { index, question ->
                         item {
                             Text(
                                 modifier = GlanceModifier.padding(horizontal = VerseSmallQtDimens.contentPadding),
-                                text = "${index + 1}. $question",
+                                text = question,
                                 style = Typography.bodyMedium,
                             )
                         }
-                        if (index < ui.questions.size - 1) {
+                        if (index < bulletedQuestions.size - 1) {
                             item { Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap)) }
                         }
                     }

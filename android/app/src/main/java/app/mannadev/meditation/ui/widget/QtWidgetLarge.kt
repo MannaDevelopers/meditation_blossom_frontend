@@ -112,7 +112,7 @@ private fun QtWidgetLargeContent(ui: QtWidgetUiModel, clickAction: Action) {
                 )
             }
             if (ui.questions.isNotEmpty()) {
-                val numberedQuestions = ui.questions.mapIndexed { index, q -> "${index + 1}. $q" }
+                val bulletedQuestions = ui.questions.map { question -> "• $question" }
                 item { Spacer(GlanceModifier.height(VerseLargeQtDimens.sectionGap)) }
                 item {
                     Text(
@@ -122,13 +122,13 @@ private fun QtWidgetLargeContent(ui: QtWidgetUiModel, clickAction: Action) {
                     )
                 }
                 item { Spacer(GlanceModifier.height(VerseLargeQtDimens.sectionInnerGap)) }
-                items(numberedQuestions) { numbered ->
+                items(bulletedQuestions) { question ->
                     Text(
                         modifier = GlanceModifier
                             .fillMaxWidth()
                             .padding(horizontal = VerseLargeQtDimens.horizontalPadding)
                             .clickable(clickAction),
-                        text = numbered,
+                        text = question,
                         style = Typography.titleMedium.copy(fontWeight = FontWeight.Normal),
                     )
                 }
