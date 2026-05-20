@@ -124,19 +124,20 @@ const HomeScreen = () => {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={400}>
         <View style={styles.seriesCard}>
           <View style={styles.seriesCardText}>
-            <Text style={styles.cardTitleText} numberOfLines={0}>
-              {processTitleText(sermon?.title)}
-            </Text>
+            {sermon?.category ? (
+              <Text style={styles.cardTitleText}>{sermon.category}</Text>
+            ) : null}
             <Text style={styles.seriesDateText}>{sermon?.date}</Text>
           </View>
           <TouchableOpacity onPress={openYoutube}>
             <SvgIcon name="YoutubeButton" size={60} />
           </TouchableOpacity>
         </View>
-        <View style={styles.indexRow}>
-          <SvgIcon name="BibleIcon" size={28} />
-          <Text style={styles.indexText}>{sermonContent.index}</Text>
-        </View>
+        <View style={styles.smallDivider} />
+        <Text style={styles.titleText} numberOfLines={0}>
+          {processTitleText(sermon?.title)}
+        </Text>
+        <Text style={styles.indexText}>{sermonContent.index}</Text>
         <View style={styles.contentDivider} />
         <Text style={styles.contentText}>{sermonContent.content}</Text>
       </ScrollView>
@@ -156,12 +157,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 40,
-  },
-  indexRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
   },
   indexText: {
     color: '#000000',

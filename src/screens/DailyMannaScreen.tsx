@@ -260,14 +260,14 @@ noQuestionText: {
     gap: 8,
   },
   questionNumber: {
-    color: '#A59EAE',
+    color: '#49454F',
     fontSize: 18,
     fontFamily: 'Pretendard-SemiBold',
     lineHeight: 24,
   },
   questionText: {
     flex: 1,
-    color: '#A59EAE',
+    color: '#49454F',
     fontSize: 18,
     fontFamily: 'Pretendard-SemiBold',
     lineHeight: 24,
