@@ -9,8 +9,8 @@
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingHorizontal="24.dp"
-        android:paddingVertical="20.dp">
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="20dp">
 
         <TextView
             android:layout_width="wrap_content"
@@ -18,18 +18,18 @@
             android:text="@string/widget_qt_preview_title"
             android:textColor="@android:color/black"
             android:textFontWeight="500"
-            android:textSize="16.sp" />
+            android:textSize="16sp" />
     </FrameLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0.dp"
-        android:layout_marginHorizontal="12.dp"
-        android:layout_marginBottom="12.dp"
+        android:layout_height="0dp"
+        android:layout_marginHorizontal="12dp"
+        android:layout_marginBottom="12dp"
         android:layout_weight="1"
         android:background="@drawable/rounded_gradient_background"
         android:orientation="vertical"
-        android:padding="12.dp">
+        android:padding="12dp">
 
         <TextView
             android:layout_width="wrap_content"
@@ -37,9 +37,9 @@
             android:text="@string/widget_qt_preview_books"
             android:textColor="@android:color/black"
             android:textFontWeight="500"
-            android:textSize="11.sp" />
+            android:textSize="11sp" />
 
-        <Space android:layout_width="wrap_content" android:layout_height="8.dp" />
+        <FrameLayout android:layout_width="match_parent" android:layout_height="8dp" />
 
         <TextView
             android:layout_width="match_parent"
@@ -48,16 +48,16 @@
             android:textColor="@android:color/black"
             android:maxLines="3"
             android:ellipsize="end"
-            android:textSize="14.sp" />
+            android:textSize="14sp" />
 
-        <Space android:layout_width="wrap_content" android:layout_height="8.dp" />
+        <FrameLayout android:layout_width="match_parent" android:layout_height="8dp" />
 
-        <View
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="1.dp"
+            android:layout_height="1dp"
             android:background="#33000000" />
 
-        <Space android:layout_width="wrap_content" android:layout_height="8.dp" />
+        <FrameLayout android:layout_width="match_parent" android:layout_height="8dp" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -65,9 +65,9 @@
             android:text="묵상 질문"
             android:textColor="@android:color/black"
             android:textFontWeight="500"
-            android:textSize="11.sp" />
+            android:textSize="11sp" />
 
-        <Space android:layout_width="wrap_content" android:layout_height="8.dp" />
+        <FrameLayout android:layout_width="match_parent" android:layout_height="8dp" />
 
         <TextView
             android:layout_width="match_parent"
@@ -76,14 +76,14 @@
             android:textColor="@android:color/black"
             android:maxLines="2"
             android:ellipsize="end"
-            android:textSize="14.sp" />
+            android:textSize="14sp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="+1"
             android:textColor="@android:color/black"
-            android:textSize="11.sp" />
+            android:textSize="11sp" />
     </LinearLayout>
 
 </LinearLayout>
