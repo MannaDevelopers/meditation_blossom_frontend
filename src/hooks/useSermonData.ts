@@ -51,6 +51,7 @@ export function useSermonData(): UseSermonDataReturn {
     try {
       const result = await fetchLatestSermonFromServer();
       if (result) {
+        await saveSermonToAsyncStorage(result);
         setSermon(result);
       }
     } catch (e) {
