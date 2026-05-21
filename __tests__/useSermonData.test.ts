@@ -100,14 +100,16 @@ describe('useSermonData', () => {
   });
 
   describe('fetchFromServer', () => {
-    it('서버에서 데이터 오면 sermon 세팅됨', async () => {
+    it('서버에서 데이터 오면 AsyncStorage 저장 후 sermon 세팅됨', async () => {
       mockFetchFromServer.mockResolvedValue(mockSermon);
+      mockSaveSermonToAsyncStorage.mockResolvedValue(undefined);
       const { result } = renderHook(() => useSermonData());
 
       await act(async () => {
         await result.current.fetchFromServer();
       });
 
+      expect(mockSaveSermonToAsyncStorage).toHaveBeenCalledWith(mockSermon);
       expect(result.current.sermon).toEqual(mockSermon);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
