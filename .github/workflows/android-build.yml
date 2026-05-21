@@ -77,6 +77,6 @@ jobs:
       uses: wzieba/Firebase-Distribution-Github-Action@v1
       with:
         appId: 1:885722038359:android:464defc0b9c3502b5b6312
-        token: ${{ secrets.FIREBASE_TOKEN }}
-        groups: testers
+        serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        groups: 내부테스트
         file: android/app/build/outputs/apk/release/app-release.apk
