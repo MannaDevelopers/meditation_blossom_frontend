@@ -4,6 +4,7 @@ import {
   getDocsFromServer,
   getFirestore,
   limit,
+  onSnapshot,
   orderBy,
   query,
 } from '@react-native-firebase/firestore';
@@ -28,6 +29,36 @@ export async function fetchLatestQtFromAsyncStorage(): Promise<QT | null> {
     logger.error('Failed to load QT from AsyncStorage', error);
   }
   return null;
+}
+
+export async function saveQtToAsyncStorage(qt: QT): Promise<void> {
+  await AsyncStorage.setItem(FCM_QT_KEY, JSON.stringify(qt));
+}
+
+export function subscribeToLatestQt(
+  onUpdate: (qt: QT) => void,
+  onError: (error: Error) => void,
+): () => void {
+  const db = getFirestore();
+  const q = query(
+    collection(db, 'qt'),
+    orderBy('date', 'desc'),
+    limit(1),
+  );
+
+  return onSnapshot(
+    q,
+    async (snapshot) => {
+      if (snapshot.empty || snapshot.metadata.fromCache) return;
+      try {
+        const qt = await firestoreDocToQt(snapshot.docs[0]);
+        onUpdate(qt);
+      } catch (e) {
+        onError(e instanceof Error ? e : new Error(String(e)));
+      }
+    },
+    onError,
+  );
 }
 
 export async function fetchLatestQtFromServer(): Promise<QT | null> {
