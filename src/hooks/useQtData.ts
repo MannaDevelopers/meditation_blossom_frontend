@@ -1,8 +1,10 @@
-import { useCallback, useState } from 'react';
-import { QT } from '../types/QT';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { compareQt, QT } from '../types/QT';
 import {
   fetchLatestQtFromAsyncStorage,
   fetchLatestQtFromServer,
+  saveQtToAsyncStorage,
+  subscribeToLatestQt,
 } from '../services/qtService';
 import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
@@ -21,6 +23,8 @@ export function useQtData(): UseQtDataReturn {
   const [qt, setQt] = useState<QT | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const qtRef = useRef<QT | null>(null);
+  qtRef.current = qt;
 
   const loadLocalData = useCallback(async (): Promise<QT | null> => {
     try {
@@ -44,7 +48,10 @@ export function useQtData(): UseQtDataReturn {
     setError(null);
     try {
       const result = await fetchLatestQtFromServer();
-      if (result) setQt(result);
+      if (result) {
+        await saveQtToAsyncStorage(result);
+        setQt(result);
+      }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       logger.error('Failed to fetch QT from server:', e);
@@ -53,6 +60,19 @@ export function useQtData(): UseQtDataReturn {
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    return subscribeToLatestQt(
+      async (fresh) => {
+        if (compareQt(fresh, qtRef.current) > 0) {
+          logger.log('onSnapshot: newer QT received, updating');
+          await saveQtToAsyncStorage(fresh);
+          setQt(fresh);
+        }
+      },
+      (e) => logger.error('Firestore QT subscription error:', e),
+    );
   }, []);
 
   const onRefresh = useCallback(async () => {
