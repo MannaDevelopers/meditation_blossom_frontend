@@ -2,9 +2,16 @@ import { act, renderHook } from '@testing-library/react-native';
 import { useSermonData } from '../src/hooks/useSermonData';
 import * as sermonService from '../src/services/sermonService';
 
+jest.mock('@react-native-firebase/analytics', () => ({
+  getAnalytics: jest.fn(),
+  logEvent: jest.fn().mockResolvedValue(undefined),
+}));
+
 jest.mock('../src/services/sermonService', () => ({
   fetchLatestSermonFromAsyncStorage: jest.fn(),
   fetchLatestSermonFromServer: jest.fn(),
+  saveSermonToAsyncStorage: jest.fn(),
+  subscribeToLatestSermon: jest.fn(() => jest.fn()), // returns unsubscribe fn
 }));
 
 jest.mock('../src/utils/logger', () => ({
@@ -14,6 +21,8 @@ jest.mock('../src/utils/logger', () => ({
 
 const mockFetchFromAsyncStorage = sermonService.fetchLatestSermonFromAsyncStorage as jest.Mock;
 const mockFetchFromServer = sermonService.fetchLatestSermonFromServer as jest.Mock;
+const mockSaveSermonToAsyncStorage = sermonService.saveSermonToAsyncStorage as jest.Mock;
+const mockSubscribeToLatestSermon = sermonService.subscribeToLatestSermon as jest.Mock;
 
 const mockSermon = {
   id: 'test-1',
@@ -143,6 +152,73 @@ describe('useSermonData', () => {
 
       expect(mockFetchFromServer).toHaveBeenCalledTimes(1);
       expect(result.current.sermon).toEqual(mockSermon);
+    });
+  });
+
+  describe('subscribeToLatestSermon (onSnapshot)', () => {
+    const olderSermon = {
+      id: 'older-1',
+      title: '이전 설교',
+      content: '내용',
+      date: '2025-04-06',
+      created_at: { seconds: 1000, nanoseconds: 0 },
+      updated_at: { seconds: 1000, nanoseconds: 0 },
+    };
+    const newerSermon = {
+      id: 'newer-1',
+      title: '최신 설교',
+      content: '내용',
+      date: '2025-05-18',
+      created_at: { seconds: 2000, nanoseconds: 0 },
+      updated_at: { seconds: 2000, nanoseconds: 0 },
+    };
+
+    it('마운트 시 subscribeToLatestSermon 호출됨', () => {
+      renderHook(() => useSermonData());
+      expect(mockSubscribeToLatestSermon).toHaveBeenCalledTimes(1);
+    });
+
+    it('언마운트 시 unsubscribe 함수 호출됨', () => {
+      const mockUnsubscribe = jest.fn();
+      mockSubscribeToLatestSermon.mockReturnValue(mockUnsubscribe);
+
+      const { unmount } = renderHook(() => useSermonData());
+      unmount();
+
+      expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
+    });
+
+    it('더 최신 sermon이 오면 AsyncStorage 저장 후 상태 업데이트', async () => {
+      let capturedOnUpdate: (sermon: typeof newerSermon) => Promise<void>;
+      mockSubscribeToLatestSermon.mockImplementation((onUpdate: typeof capturedOnUpdate) => {
+        capturedOnUpdate = onUpdate;
+        return jest.fn();
+      });
+      mockSaveSermonToAsyncStorage.mockResolvedValue(undefined);
+      mockFetchFromAsyncStorage.mockResolvedValue(olderSermon);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => { await result.current.loadLocalData(); });
+      await act(async () => { await capturedOnUpdate(newerSermon); });
+
+      expect(mockSaveSermonToAsyncStorage).toHaveBeenCalledWith(newerSermon);
+      expect(result.current.sermon).toEqual(newerSermon);
+    });
+
+    it('동일하거나 이전 sermon이 오면 상태 유지', async () => {
+      let capturedOnUpdate: (sermon: typeof olderSermon) => Promise<void>;
+      mockSubscribeToLatestSermon.mockImplementation((onUpdate: typeof capturedOnUpdate) => {
+        capturedOnUpdate = onUpdate;
+        return jest.fn();
+      });
+      mockFetchFromAsyncStorage.mockResolvedValue(newerSermon);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => { await result.current.loadLocalData(); });
+      await act(async () => { await capturedOnUpdate(olderSermon); });
+
+      expect(mockSaveSermonToAsyncStorage).not.toHaveBeenCalled();
+      expect(result.current.sermon).toEqual(newerSermon);
     });
   });
 });
