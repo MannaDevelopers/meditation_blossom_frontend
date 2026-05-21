@@ -1,3 +1,6 @@
+# Secrets
+.secrets/
+
 # OSX
 #
 .DS_Store
