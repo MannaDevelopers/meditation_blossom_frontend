@@ -31,7 +31,7 @@ const SharedHeader = () => {
         onPress={() => navigation.navigate('SettingsScreen')}
         style={styles.settingsButton}
       >
-        <SvgIcon name="SettingButton" size={20} color="black" />
+        <SvgIcon name="SettingButton" size={20} fill="black" />
       </TouchableOpacity>
     </View>
   );

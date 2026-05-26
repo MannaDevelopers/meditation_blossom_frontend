@@ -55,7 +55,7 @@ const EditScreen = ({navigation, route}: Props) => {
       {/*Tab 1*/} 
       <View style={{ backgroundColor: 'black', width: 177, flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: 64, marginVertical: 15}} >
         <TextAlignIconBox selected={textAlignIconSelected === 0} onPress={() => setTextAlignIconSelected(0)} >
-          <SvgIcon name="TextLeft" size={25} color='black'/>
+          <SvgIcon name="TextLeft" size={25} fill='black'/>
         </TextAlignIconBox>
         <TextAlignIconBox selected={textAlignIconSelected === 1} onPress={() => setTextAlignIconSelected(1)} >
           <SvgIcon name="TextCenter" size={25}/>
