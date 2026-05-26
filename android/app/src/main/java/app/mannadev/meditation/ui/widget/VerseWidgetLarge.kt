@@ -5,7 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
-import androidx.glance.action.actionStartActivity
+import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.appWidgetBackground
@@ -21,7 +21,6 @@ import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
-import app.mannadev.meditation.MainActivity
 import app.mannadev.meditation.R
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.di.getWidgetDependencies
@@ -43,9 +42,10 @@ class VerseWidgetLarge : GlanceAppWidget(
             )
             Sermon.errorSermon
         }
+        val clickAction = widgetClickAction(verse.videoUrl)
 
         provideContent {
-            VerseWidgetLargeContent(verse)
+            VerseWidgetLargeContent(verse, clickAction)
         }
     }
 }
@@ -55,6 +55,7 @@ private object VerseLargeWidgetDimens {
     val horizontalPadding = 24.dp
     val bottomPadding = 24.dp
     val verseContentBottomSpacer = 16.dp
+    val verseItemSpacing = 4.dp
     val bookNameTopSpacer = 12.dp
 }
 
@@ -66,12 +67,12 @@ private object VerseLargeWidgetDimens {
  * @param sermon The [Sermon] object containing the data to be displayed.
  */
 @Composable
-private fun VerseWidgetLargeContent(sermon: Sermon) {
+private fun VerseWidgetLargeContent(sermon: Sermon, clickAction: Action) {
 
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
-            .clickable(actionStartActivity<MainActivity>())
+            .clickable(clickAction)
             .appWidgetBackground()
             .xmlGradientBackground(),
         horizontalAlignment = Alignment.Start,
@@ -102,7 +103,8 @@ private fun VerseWidgetLargeContent(sermon: Sermon) {
                     modifier = GlanceModifier
                         .fillMaxWidth()
                         .padding(horizontal = VerseLargeWidgetDimens.horizontalPadding)
-                        .clickable(actionStartActivity<MainActivity>()),
+                        .padding(bottom = VerseLargeWidgetDimens.verseItemSpacing)
+                        .clickable(clickAction),
                     text = verse,
                     style = Typography.titleMedium.copy(fontWeight = FontWeight.Normal),
                 )

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import logger from './utils/logger';
-import HomeScreen from './screens/HomeScreen';
+import MainTabNavigator from './navigation/MainTabNavigator';
 import EditScreen from './screens/EditScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import ForceUpdateModal from './components/ForceUpdateModal';
@@ -17,8 +17,8 @@ const RootStack = () => {
     <NavigationContainer onReady={() => logger.log('NavigationContainer ready')}>
       <Stack.Navigator>
         <Stack.Screen
-          name="HomeScreen"
-          component={HomeScreen}
+          name="MainTabs"
+          component={MainTabNavigator}
           options={{ headerShown: false }}
         />
         <Stack.Screen

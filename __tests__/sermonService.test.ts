@@ -2,15 +2,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   fetchLatestSermonFromAsyncStorage,
   isSermonDataStale,
+  saveSermonToAsyncStorage,
   syncAppGroupToAsyncStorage,
 } from '../src/services/sermonService';
+import { Sermon } from '../src/types/Sermon';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(),
   setItem: jest.fn(),
 }));
-
-jest.mock('@react-native-firebase/firestore', () => ({}));
 
 jest.mock('../src/types/WidgetUpdateModule', () => null);
 
@@ -120,5 +120,29 @@ describe('syncAppGroupToAsyncStorage', () => {
     const result = await syncAppGroupToAsyncStorage('not-json{{{', null);
     expect(result).toBeNull();
     expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('saveSermonToAsyncStorage', () => {
+  const sermon: Sermon = {
+    id: 'save-test-1',
+    title: '저장 테스트',
+    content: '내용',
+    date: '2025-05-18',
+    created_at: { seconds: 0, nanoseconds: 0 },
+    updated_at: { seconds: 0, nanoseconds: 0 },
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('AsyncStorage에 fcm_sermon 키로 JSON 저장', async () => {
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+
+    await saveSermonToAsyncStorage(sermon);
+
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith('fcm_sermon', JSON.stringify(sermon));
   });
 });

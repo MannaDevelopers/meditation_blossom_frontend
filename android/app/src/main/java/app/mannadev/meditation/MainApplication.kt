@@ -51,32 +51,76 @@ class MainApplication : Application(), ReactApplication {
             Timber.plant(Timber.DebugTree())
         }
 
-        //Subject 구독
+        // 기존 토픽 구독 해제 (중복 알림 방지)
         FirebaseMessaging.getInstance()
-            .subscribeToTopic(Constants.SERMON_SUBJECT)
+            .unsubscribeFromTopic(Constants.SERMON_SUBJECT)
             .addOnCompleteListener { task ->
                 task.exception?.let { exception ->
                     CrashlyticsHelper.recordException(
                         exception,
-                        "FirebaseMessaging subscribeToTopic failed"
+                        "FirebaseMessaging unsubscribeFromTopic failed"
                     )
                 } ?: run {
-                    Timber.d("Successfully subscribed to ${Constants.SERMON_SUBJECT} topic")
+                    Timber.d("Successfully unsubscribed from ${Constants.SERMON_SUBJECT} topic")
+                }
+            }
+
+        // 새 Sermon 토픽 구독
+        FirebaseMessaging.getInstance()
+            .subscribeToTopic(Constants.SERMON_SUBJECT_V2)
+            .addOnCompleteListener { task ->
+                task.exception?.let { exception ->
+                    CrashlyticsHelper.recordException(
+                        exception,
+                        "FirebaseMessaging subscribeToTopic (sermon_events_v2) failed"
+                    )
+                } ?: run {
+                    Timber.d("Successfully subscribed to ${Constants.SERMON_SUBJECT_V2} topic")
+                }
+            }
+
+        // 새 QT 토픽 구독
+        FirebaseMessaging.getInstance()
+            .subscribeToTopic(Constants.QT_SUBJECT)
+            .addOnCompleteListener { task ->
+                task.exception?.let { exception ->
+                    CrashlyticsHelper.recordException(
+                        exception,
+                        "FirebaseMessaging subscribeToTopic (qt_events) failed"
+                    )
+                } ?: run {
+                    Timber.d("Successfully subscribed to ${Constants.QT_SUBJECT} topic")
                 }
             }
         
-        // DEBUG 모드에서만 sermon_events_test 토픽 구독 (iOS와 동일)
+        // DEBUG 모드에서만 _test 토픽 처리
         if (BuildConfig.DEBUG) {
             FirebaseMessaging.getInstance()
-                .subscribeToTopic("sermon_events_test")
+                .unsubscribeFromTopic("sermon_events_test")
+
+            FirebaseMessaging.getInstance()
+                .subscribeToTopic("sermon_events_v2_test")
                 .addOnCompleteListener { task ->
                     task.exception?.let { exception ->
                         CrashlyticsHelper.recordException(
                             exception,
-                            "FirebaseMessaging subscribeToTopic (sermon_events_test) failed"
+                            "FirebaseMessaging subscribeToTopic (sermon_events_v2_test) failed"
                         )
                     } ?: run {
-                        Timber.d("[DEBUG] Successfully subscribed to sermon_events_test topic")
+                        Timber.d("[DEBUG] Successfully subscribed to sermon_events_v2_test topic")
+                    }
+                }
+
+            FirebaseMessaging.getInstance()
+                .subscribeToTopic("qt_events_test")
+                .addOnCompleteListener { task ->
+                    task.exception?.let { exception ->
+                        CrashlyticsHelper.recordException(
+                            exception,
+                            "FirebaseMessaging subscribeToTopic (qt_events_test) failed"
+                        )
+                    } ?: run {
+                        Timber.d("[DEBUG] Successfully subscribed to qt_events_test topic")
                     }
                 }
         }

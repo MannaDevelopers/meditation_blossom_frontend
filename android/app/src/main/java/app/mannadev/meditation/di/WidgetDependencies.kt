@@ -1,6 +1,8 @@
 package app.mannadev.meditation.di
 
 import android.content.Context
+import app.mannadev.meditation.data.WidgetPrefsDataSource
+import app.mannadev.meditation.domain.usecase.GetDisplayQtUseCase
 import app.mannadev.meditation.domain.usecase.GetDisplaySermonUseCase
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -11,13 +13,13 @@ import dagger.hilt.components.SingletonComponent
 @InstallIn(SingletonComponent::class)
 interface WidgetDependencies {
     fun getDisplaySermonUseCase(): GetDisplaySermonUseCase
+    fun getDisplayQtUseCase(): GetDisplayQtUseCase
+    fun getWidgetPrefs(): WidgetPrefsDataSource
 }
 
-// Helper function to easily access the dependencies from a context
 fun getWidgetDependencies(context: Context): WidgetDependencies {
-    val hiltEntryPoint = EntryPointAccessors.fromApplication(
-        context.applicationContext, // Use application context
+    return EntryPointAccessors.fromApplication(
+        context.applicationContext,
         WidgetDependencies::class.java
     )
-    return hiltEntryPoint
 }

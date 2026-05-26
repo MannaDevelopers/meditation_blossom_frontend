@@ -9,6 +9,7 @@ jest.mock('@react-native-firebase/firestore', () => ({
   getDocsFromServer: jest.fn(),
   getFirestore: jest.fn(),
   limit: jest.fn(),
+  onSnapshot: jest.fn(),
   orderBy: jest.fn(),
   query: jest.fn(),
 }));
@@ -103,3 +104,18 @@ jest.mock('@react-native-firebase/remote-config', () => {
     getValue: mockGetValue,
   });
 });
+
+// Inject global stubs for native modules so tests that don't mock them explicitly
+// don't fail with undefined-property errors.
+const { NativeModules } = require('react-native');
+NativeModules.WidgetUpdateModule = {
+  onSermonUpdated: jest.fn().mockResolvedValue(true),
+  onQtUpdated: jest.fn().mockResolvedValue(true),
+  resolveBibleReferences: jest.fn().mockResolvedValue(''),
+  onClear: jest.fn().mockResolvedValue(undefined),
+  getAppGroupData: jest.fn().mockResolvedValue(null),
+  setYoutubeLinkEnabled: jest.fn().mockResolvedValue(undefined),
+  getYoutubeLinkEnabled: jest.fn().mockResolvedValue(false),
+};
+NativeModules.MyEventModule = { getName: () => 'MyEventModule' };
+

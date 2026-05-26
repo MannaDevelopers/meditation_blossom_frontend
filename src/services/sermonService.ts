@@ -1,10 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   collection,
-  getDocsFromCache,
   getDocsFromServer,
   getFirestore,
   limit,
+  onSnapshot,
   orderBy,
   query,
 } from '@react-native-firebase/firestore';
@@ -21,22 +21,6 @@ import WidgetUpdateModule from '../types/WidgetUpdateModule';
 import logger from '../utils/logger';
 import { normalizeJsonString } from '../utils/normalize';
 
-export async function fetchLatestSermonFromCache(): Promise<Sermon | null> {
-  try {
-    const db = getFirestore();
-    const q = query(
-      collection(db, 'sermons'),
-      orderBy('date', 'desc'),
-      limit(1),
-    );
-    const snapshot = await getDocsFromCache(q);
-    return snapshot.empty ? null : firestoreDocToSermon(snapshot.docs[0]);
-  } catch (error) {
-    logger.error('Failed to load sermon from Firestore cache', error);
-    return null;
-  }
-}
-
 export async function fetchLatestSermonFromAsyncStorage(): Promise<Sermon | null> {
   try {
     const raw = await AsyncStorage.getItem(FCM_SERMON_KEY);
@@ -47,6 +31,36 @@ export async function fetchLatestSermonFromAsyncStorage(): Promise<Sermon | null
     logger.error('Failed to load sermon from AsyncStorage', error);
   }
   return null;
+}
+
+export function subscribeToLatestSermon(
+  onUpdate: (sermon: Sermon) => void,
+  onError: (error: Error) => void,
+): () => void {
+  const db = getFirestore();
+  const q = query(
+    collection(db, 'sermons'),
+    orderBy('date', 'desc'),
+    limit(1),
+  );
+
+  return onSnapshot(
+    q,
+    async (snapshot) => {
+      if (snapshot.empty || snapshot.metadata.fromCache) return;
+      try {
+        const sermon = await firestoreDocToSermon(snapshot.docs[0]);
+        onUpdate(sermon);
+      } catch (e) {
+        onError(e instanceof Error ? e : new Error(String(e)));
+      }
+    },
+    onError,
+  );
+}
+
+export async function saveSermonToAsyncStorage(sermon: Sermon): Promise<void> {
+  await AsyncStorage.setItem(FCM_SERMON_KEY, JSON.stringify(sermon));
 }
 
 export async function fetchLatestSermonFromServer(): Promise<Sermon | null> {
@@ -61,7 +75,7 @@ export async function fetchLatestSermonFromServer(): Promise<Sermon | null> {
     logger.log('No sermons found on server');
     return null;
   }
-  return firestoreDocToSermon(snapshot.docs[0]);
+  return await firestoreDocToSermon(snapshot.docs[0]);
 }
 
 export async function readAppGroupData(key: string): Promise<string | null> {

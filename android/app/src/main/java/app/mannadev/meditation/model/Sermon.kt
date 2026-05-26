@@ -7,7 +7,8 @@ import timber.log.Timber
 data class Sermon(
     val verses: List<String>, // 말씀 내용 (예: "또 비유로 말씀하시되...")
     val bookName: String, // 성경 책 이름 (예: "마태복음")
-    val title: String //설교 제목
+    val title: String, //설교 제목
+    val videoUrl: String? = null,
 ) {
     companion object Companion {
 

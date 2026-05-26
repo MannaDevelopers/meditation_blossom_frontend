@@ -5,11 +5,14 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import app.mannadev.meditation.Constants.ACTION_QT_UPDATE_EVENT
 import app.mannadev.meditation.Constants.ACTION_SERMON_UPDATE_EVENT
+import app.mannadev.meditation.Constants.MESSAGE_QT_UPDATE_EVENT
 import app.mannadev.meditation.Constants.MESSAGE_SERMON_UPDATE_EVENT
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
+import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.common.LifecycleState
 import com.facebook.react.modules.core.DeviceEventManagerModule
@@ -19,25 +22,38 @@ class NativeEventModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
 
     override fun getName() = "MyEventModule"
+
     override fun initialize() {
         super.initialize()
-        val intentFilter = IntentFilter(ACTION_SERMON_UPDATE_EVENT)
-        LocalBroadcastManager.getInstance(reactApplicationContext)
-            .registerReceiver(myEventReceiver, intentFilter)
+        val broadcastManager = LocalBroadcastManager.getInstance(reactApplicationContext)
+        broadcastManager.registerReceiver(sermonReceiver, IntentFilter(ACTION_SERMON_UPDATE_EVENT))
+        broadcastManager.registerReceiver(qtReceiver, IntentFilter(ACTION_QT_UPDATE_EVENT))
     }
 
     override fun invalidate() {
         super.invalidate()
-        LocalBroadcastManager.getInstance(reactApplicationContext)
-            .unregisterReceiver(myEventReceiver)
+        val broadcastManager = LocalBroadcastManager.getInstance(reactApplicationContext)
+        broadcastManager.unregisterReceiver(sermonReceiver)
+        broadcastManager.unregisterReceiver(qtReceiver)
     }
 
-    private val myEventReceiver = object : BroadcastReceiver() {
+    private val sermonReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             Timber.d("Received broadcast: ${intent?.action}")
             sendEventToJS(MESSAGE_SERMON_UPDATE_EVENT)
         }
     }
+
+    private val qtReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            Timber.d("Received broadcast: ${intent?.action}")
+            sendEventToJS(MESSAGE_QT_UPDATE_EVENT)
+        }
+    }
+
+    // NativeEventEmitter가 요구하는 메서드 (RN 0.65+)
+    @ReactMethod fun addListener(eventName: String) {}
+    @ReactMethod fun removeListeners(count: Double) {}
 
     fun sendEventToJS(eventName: String, params: WritableMap? = null) {
         if (reactApplicationContext.lifecycleState == LifecycleState.BEFORE_CREATE) return
@@ -50,5 +66,4 @@ class NativeEventModule(reactContext: ReactApplicationContext) :
             CrashlyticsHelper.recordException(e, "Failed to send event to JS: $eventName")
         }
     }
-
 }

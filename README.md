@@ -179,7 +179,7 @@ cd ..
 ```
 
 * 3.2.13. ios 앱 실행   
-```npx react-native run-ios```
+```yarn ios```
    * 첫 빌드 시간: 10 ~ 15분 (정상)
    * 빌드 완료 후 Metro 번들러 자동 실행됨
    * 위젯 확인을 위해서는 실기기 연결 및 Xcode 에서 실행 필요
@@ -187,7 +187,7 @@ cd ..
 * 3.2.14. 이후 개발
    * JS/React 코드 수정시 --> 변경사항 자동 반영 (Hot Reload)
    * ```Cmd + R``` --> 수동 새로고침
-   * Podfile 수정, 네이티브 모듈 추가 시 --> 앱 재설치 필요 ```npx react-native run-ios```
+   * Podfile 수정, 네이티브 모듈 추가 시 --> 앱 재설치 필요 ```yarn ios```
    
 
 * 3.2.15. React Native / iOS 빌드 에러 해결 방법
@@ -198,7 +198,7 @@ cd ..
 | `iOS devices or simulators not detected` | `sudo xcodebuild -runFirstLaunch` 실행 |
 | `command not found: pod` | 터미널 재시작 후 `pod --version` 확인. 안 되면 Ruby PATH 설정 확인 |
 | `database is locked` | `rm -rf ~/Library/Developer/Xcode/DerivedData/*` 후 재빌드 |
-| `Failed to build ios project` | 1. `cd ios && rm -rf Pods Podfile.lock && pod install && cd ..`<br>2. `rm -rf node_modules && yarn install`<br>3. `npx react-native run-ios` |
+| `Failed to build ios project` | 1. `cd ios && rm -rf Pods Podfile.lock && pod install && cd ..`<br>2. `rm -rf node_modules && yarn install`<br>3. `yarn ios` |
 | `Ruby 버전이 2.6` | Ruby 3.0 이상 설치 필요  |
 | `CocoaPods 설치했는데 pod 명령어 안 됨` | gem bin PATH 추가 필요 (환경 변수 설정 확인) |
 
@@ -247,7 +247,7 @@ Reference : [\[Node.js\] 윈도우에서 nvm 설치하기](https://velog.io/@feb
    * 프로젝트 루트 디렉터리에서 실행
       ``` 
       yarn install
-      npx react-native run-android
+      yarn android
       ```
 * 3.3.7. React Native / android 빌드 에러 해결 방법
 

@@ -1,3 +1,6 @@
+# Secrets
+.secrets/
+
 # OSX
 #
 .DS_Store
@@ -73,6 +76,19 @@ yarn-error.log
 !.yarn/sdks
 !.yarn/versions
 
+# npm (this project uses yarn)
+package-lock.json
+
 # Private (do not commit)
 firebase-service-account.json
 firebase-debug.log
+.fcm_token.local
+.fcm_counter.local
+
+# claude worktrees
+.claude/worktrees/
+android/.kotlin/sessions/
+
+# Git worktrees
+.worktrees/
+

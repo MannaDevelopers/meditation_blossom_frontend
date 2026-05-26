@@ -1,16 +1,19 @@
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
-  Image,
+  Linking,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import WidgetPreview from '../components/WidgetPreview';
+import { useFocusEffect } from '@react-navigation/native';
+import { extractContent } from '../utils/sermonParser';
 import SvgIcon from '../components/SvgIcon';
 import { BRIDGE_INIT_DELAY_MS } from '../constants';
 import { useAppGroupSync } from '../hooks/useAppGroupSync';
@@ -18,15 +21,21 @@ import { useFCMListener } from '../hooks/useFCMListener';
 import { useSermonData } from '../hooks/useSermonData';
 import { useWidgetSync } from '../hooks/useWidgetSync';
 import { isSermonDataStale } from '../services/sermonService';
-import { RootStackParamList } from '../types/navigation';
+import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'HomeScreen'>;
+const SUNDAY_SERMON_YOUTUBE_URL = 'https://www.youtube.com/@만나';
 
-const HomeScreen = ({ navigation }: Props) => {
+const HomeScreen = () => {
   const { sermon, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useSermonData();
+  const isInitialMount = useRef(true);
+
+  const sermonContent = useMemo(
+    () => (sermon?.content ? extractContent(sermon.content) : { index: '', content: '' }),
+    [sermon?.content],
+  );
 
   const { performInitialSync } = useAppGroupSync({
     onDataSynced: loadLocalData,
@@ -35,6 +44,38 @@ const HomeScreen = ({ navigation }: Props) => {
 
   useWidgetSync(sermon);
   useFCMListener(loadLocalData);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
+      }
+      loadLocalData();
+    }, [loadLocalData]),
+  );
+
+  const targetYoutubeUrl = sermon?.video_url || SUNDAY_SERMON_YOUTUBE_URL;
+  const hasLoggedScroll = useRef(false);
+
+  const openYoutube = () => {
+    logAnalytics.youtubeClick('home');
+    Linking.openURL(targetYoutubeUrl).catch(e =>
+      logger.error('HomeScreen: YouTube 링크 열기 실패', e),
+    );
+  };
+
+  const handleScroll = useCallback(
+    ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (hasLoggedScroll.current) return;
+      const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+      if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 50) {
+        hasLoggedScroll.current = true;
+        logAnalytics.scrollComplete('home');
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     const init = async () => {
@@ -45,7 +86,10 @@ const HomeScreen = ({ navigation }: Props) => {
       const loaded = await loadLocalData();
       const latestDate = loaded?.date ? new Date(loaded.date) : null;
       if (isSermonDataStale(latestDate)) {
+        logAnalytics.appDataSource('firestore', 'sermon');
         await fetchFromServer();
+      } else {
+        logAnalytics.appDataSource(loaded ? 'cache' : 'none', 'sermon');
       }
     };
     init().catch((e) => {
@@ -56,7 +100,7 @@ const HomeScreen = ({ navigation }: Props) => {
 
   if (isLoading && !sermon) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         <ActivityIndicator size="large" color="#A59EAE" />
       </SafeAreaView>
     );
@@ -64,7 +108,7 @@ const HomeScreen = ({ navigation }: Props) => {
 
   if (error && !sermon) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>데이터를 불러올 수 없습니다</Text>
           <TouchableOpacity onPress={onRefresh} style={styles.retryButton}>
@@ -76,33 +120,27 @@ const HomeScreen = ({ navigation }: Props) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Image
-            source={require('../assets/image/20250416_meditation_icon.png')}
-            style={styles.icon}
-          />
-          <Text style={styles.appTitle}>묵상만개</Text>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('SettingsScreen', { onRefresh })}
-            style={styles.settingsButton}
-          >
-            <SvgIcon name="SettingButton" size={20} color="black" />
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={400}>
+        <View style={styles.seriesCard}>
+          <View style={styles.seriesCardText}>
+            {sermon?.category ? (
+              <Text style={styles.cardTitleText}>{sermon.category}</Text>
+            ) : null}
+            <Text style={styles.seriesDateText}>{sermon?.date}</Text>
+          </View>
+          <TouchableOpacity onPress={openYoutube}>
+            <SvgIcon name="YoutubeButton" size={60} />
           </TouchableOpacity>
         </View>
-        <View style={styles.dateContainer}>
-          <Text style={styles.dateText}>{sermon?.date}</Text>
-        </View>
-        <View style={styles.titleContainer}>
-          <Text style={styles.titleText} numberOfLines={0}>
-            {processTitleText(sermon?.title)}
-          </Text>
-        </View>
-        <View style={styles.previewContainer}>
-          <WidgetPreview content={sermon?.content} />
-        </View>
-      </View>
+        <View style={styles.smallDivider} />
+        <Text style={styles.titleText} numberOfLines={0}>
+          {processTitleText(sermon?.title)}
+        </Text>
+        <Text style={styles.indexText}>{sermonContent.index}</Text>
+        <View style={styles.contentDivider} />
+        <Text style={styles.contentText}>{sermonContent.content}</Text>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -111,71 +149,69 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'transparent',
-    marginHorizontal: 35,
-    marginVertical: 35,
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginHorizontal: 27,
+    marginTop: 16,
   },
-  content: {
-    backgroundColor: 'transparent',
+  scrollView: {
     flex: 1,
   },
-  header: {
-    backgroundColor: 'transparent',
-    flexDirection: 'row',
-    width: 305,
-    height: 30,
-    marginBottom: 35,
-    alignItems: 'center',
+  scrollContent: {
+    paddingBottom: 40,
   },
-  icon: {
-    backgroundColor: 'transparent',
-    borderRadius: 15,
-    width: 20,
-    height: 20,
-  },
-  appTitle: {
-    color: '#49454F',
-    fontSize: 20,
-    fontFamily: 'Pretendard-Medium',
-    marginLeft: 8,
-  },
-  settingsButton: {
-    marginLeft: 'auto',
-  },
-  dateContainer: {
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 305,
-    height: 25,
-  },
-  dateText: {
-    color: '#A59EAE',
-    fontSize: 20,
-    fontFamily: 'Pretendard-SemiBold',
-  },
-  titleContainer: {
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 305,
-    minHeight: 30,
-    paddingVertical: 5,
+  indexText: {
+    color: '#000000',
+    fontSize: 16,
+    fontFamily: 'Pretendard-Regular',
   },
   titleText: {
-    color: '#A59EAE',
-    fontSize: 24,
+    color: '#747474',
+    fontSize: 28,
     fontFamily: 'Pretendard-Bold',
-    textAlign: 'center',
     flexWrap: 'wrap',
+    marginBottom: 16,
   },
-  previewContainer: {
-    backgroundColor: 'transparent',
-    width: 305,
-    height: 300,
-    justifyContent: 'center',
+  contentText: {
+    color: '#000000',
+    fontSize: 20,
+    fontFamily: 'Pretendard-Bold',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  seriesCard: {
+    backgroundColor: '#F3F4F9',
+    borderRadius: 22,
+    paddingHorizontal: 25,
+    paddingVertical: 20,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  seriesCardText: {
+    flex: 1,
+    gap: 4,
+    marginRight: 12,
+  },
+  cardTitleText: {
+    color: '#747474',
+    fontSize: 18,
+    fontFamily: 'Pretendard-SemiBold',
+  },
+  seriesDateText: {
+    color: '#A59EAE',
+    fontSize: 18,
+    fontFamily: 'Pretendard-Regular',
+  },
+  smallDivider: {
+    height: 3,
+    width: 50,
+    backgroundColor: '#8C8C8C',
+    marginBottom: 16,
+  },
+  contentDivider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginBottom: 16,
   },
   errorContainer: {
     justifyContent: 'center',

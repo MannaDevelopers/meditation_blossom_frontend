@@ -1,6 +1,7 @@
 package app.mannadev.meditation.data
 
 import app.mannadev.meditation.dto.SermonDto
+import app.mannadev.meditation.model.BibleReferenceResolver
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
@@ -16,7 +17,8 @@ class FirestoreFetchException(message: String, cause: Throwable? = null) : Excep
 
 @Singleton
 class SermonFirestoreDataSource @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val bibleReferenceResolver: BibleReferenceResolver,
 ) {
 
     suspend fun getDisplaySermonFromCache(): SermonDto? = withContext(Dispatchers.IO) {
@@ -43,7 +45,7 @@ class SermonFirestoreDataSource @Inject constructor(
             throw SermonNotFoundException("Sermon document list was empty unexpectedly after non-empty snapshot.")
         }
         val document = snapshot.documents.first()
-        return document.data?.let { map ->
+        val raw = document.data?.let { map ->
             SermonDto(
                 date = map["date"] as String,
                 title = map["title"] as String,
@@ -51,5 +53,6 @@ class SermonFirestoreDataSource @Inject constructor(
                 dayOfWeek = map["day_of_week"] as String,
             )
         } ?: throw SermonNotFoundException("No sermons found in Firestore")
+        return bibleReferenceResolver.resolveDto(raw)
     }
 }

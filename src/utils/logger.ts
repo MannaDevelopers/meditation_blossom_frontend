@@ -1,4 +1,8 @@
-import crashlytics from '@react-native-firebase/crashlytics';
+import {
+  getCrashlytics,
+  log as crashlyticsLog,
+  recordError as crashlyticsRecordError,
+} from '@react-native-firebase/crashlytics';
 
 /**
  * Logger utility.
@@ -17,17 +21,17 @@ const logger = {
       console.warn(...args);
     }
     const message = args.map(a => a instanceof Error ? a.message : String(a)).join(' ');
-    crashlytics().log(`[WARN] ${message}`);
+    crashlyticsLog(getCrashlytics(), `[WARN] ${message}`);
   },
   error: (...args: unknown[]) => {
     if (__DEV__) {
       console.error(...args);
     }
     const message = args.map(a => a instanceof Error ? a.message : String(a)).join(' ');
-    crashlytics().log(message);
+    crashlyticsLog(getCrashlytics(), message);
     const err = args.find(a => a instanceof Error);
     if (err instanceof Error) {
-      crashlytics().recordError(err);
+      crashlyticsRecordError(getCrashlytics(), err);
     }
   },
 };

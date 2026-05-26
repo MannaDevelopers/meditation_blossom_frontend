@@ -46,7 +46,7 @@ Release 빌드에서는 Metro가 없으므로 이 로그가 안 나타납니다:
 
 ```bash
 # Release 빌드
-npx react-native run-ios --configuration Release
+yarn ios --configuration Release
 ```
 
 ## 왜 이제 더 많이 보이나요?
