@@ -90,5 +90,14 @@
 	<array>
 		<string>itms-apps</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>meditationblossom</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
