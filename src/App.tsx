@@ -20,7 +20,7 @@ const TAB_DEEP_LINK_MAP: Record<string, string> = {
 const linking: LinkingOptions<RootStackParamList> = {
   prefixes: ['meditationblossom://'],
   getStateFromPath(path) {
-    const tab = new URLSearchParams(path.split('?')[1] ?? '').get('tab');
+    const tab = path.match(/[?&]tab=([^&]*)/)?.[1];
     const tabName = (tab && TAB_DEEP_LINK_MAP[tab]) ?? '주일 말씀';
     return {
       routes: [{ name: 'MainTabs', state: { routes: [{ name: tabName }] } }],
