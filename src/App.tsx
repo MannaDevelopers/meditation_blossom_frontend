@@ -5,16 +5,32 @@ import MainTabNavigator from './navigation/MainTabNavigator';
 import EditScreen from './screens/EditScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import ForceUpdateModal from './components/ForceUpdateModal';
-import { NavigationContainer } from '@react-navigation/native';
+import { LinkingOptions, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types/navigation';
 import { useForceUpdate } from './hooks/useForceUpdate';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const TAB_DEEP_LINK_MAP: Record<string, string> = {
+  daily_manna: '매일 만나',
+  sunday_sermon: '주일 말씀',
+};
+
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: ['meditationblossom://'],
+  getStateFromPath(path) {
+    const tab = path.match(/[?&]tab=([^&]*)/)?.[1];
+    const tabName = (tab && TAB_DEEP_LINK_MAP[tab]) ?? '주일 말씀';
+    return {
+      routes: [{ name: 'MainTabs', state: { routes: [{ name: tabName }] } }],
+    };
+  },
+};
+
 const RootStack = () => {
   return (
-    <NavigationContainer onReady={() => logger.log('NavigationContainer ready')}>
+    <NavigationContainer linking={linking} onReady={() => logger.log('NavigationContainer ready')}>
       <Stack.Navigator>
         <Stack.Screen
           name="MainTabs"

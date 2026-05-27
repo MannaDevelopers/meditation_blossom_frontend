@@ -16,6 +16,7 @@ private enum WidgetConstants {
   static let displaySermonKey = "displaySermon"
   static let fcmSermonKey = "fcm_sermon"
   static let widgetKind = "MeditationBlossomWidget"
+  static let deepLinkSundaySermon = URL(string: "meditationblossom://open?tab=sunday_sermon")!
 }
 
 struct SimpleEntry: TimelineEntry {
@@ -144,9 +145,11 @@ struct MeditationBlossomWidget: Widget {
       if #available(iOS 17.0, *) {
         MeditationBlossomWidgetEntryView(entry: entry)
           .containerBackground(.fill.tertiary, for: .widget)
+          .widgetURL(WidgetConstants.deepLinkSundaySermon)
       } else {
         // iOS 16에서는 View 자체에 배경 적용
         MeditationBlossomWidgetEntryView(entry: entry)
+          .widgetURL(WidgetConstants.deepLinkSundaySermon)
       }
     }
     .supportedFamilies([.systemMedium, .systemLarge])

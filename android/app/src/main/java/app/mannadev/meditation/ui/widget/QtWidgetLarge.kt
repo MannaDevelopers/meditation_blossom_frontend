@@ -21,6 +21,7 @@ import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
+import app.mannadev.meditation.Constants
 import app.mannadev.meditation.R
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.di.getWidgetDependencies
@@ -43,7 +44,7 @@ class QtWidgetLarge : GlanceAppWidget(
             null
         }
         val uiModel = qt?.let(QtWidgetUiModel::fromDto) ?: QtWidgetUiModel.error
-        val clickAction = widgetClickAction(uiModel.videoUrl)
+        val clickAction = widgetClickAction(uiModel.videoUrl, Constants.DEEP_LINK_DAILY_MANNA)
 
         provideContent { QtWidgetLargeContent(uiModel, clickAction) }
     }

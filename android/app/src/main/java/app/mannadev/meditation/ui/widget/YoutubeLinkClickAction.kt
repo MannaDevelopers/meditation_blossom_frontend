@@ -27,7 +27,9 @@ class YoutubeLinkClickAction : ActionCallback {
                     ?: FALLBACK_YOUTUBE_URL.toUri()
                 Intent(Intent.ACTION_VIEW, target)
             } else {
-                Intent(context, MainActivity::class.java)
+                val deepLinkUrl = parameters[DEEP_LINK_URL]
+                val target: Uri? = deepLinkUrl?.takeIf { it.isNotBlank() }?.toUri()
+                Intent(Intent.ACTION_VIEW, target ?: return@runCatching Intent(context, MainActivity::class.java))
             }
         }.getOrElse { e ->
             CrashlyticsHelper.recordException(e, "YoutubeLinkClickAction: fallback to app launch")
@@ -39,10 +41,13 @@ class YoutubeLinkClickAction : ActionCallback {
 
     companion object {
         val VIDEO_URL: ActionParameters.Key<String> = ActionParameters.Key("video_url")
+        val DEEP_LINK_URL: ActionParameters.Key<String> = ActionParameters.Key("deep_link_url")
 
-        fun params(videoUrl: String?): ActionParameters =
-            videoUrl?.takeIf { it.isNotBlank() }
-                ?.let { actionParametersOf(VIDEO_URL to it) }
-                ?: actionParametersOf()
+        fun params(videoUrl: String?, deepLinkUrl: String): ActionParameters =
+            if (videoUrl?.isNotBlank() == true) {
+                actionParametersOf(DEEP_LINK_URL to deepLinkUrl, VIDEO_URL to videoUrl)
+            } else {
+                actionParametersOf(DEEP_LINK_URL to deepLinkUrl)
+            }
     }
 }
