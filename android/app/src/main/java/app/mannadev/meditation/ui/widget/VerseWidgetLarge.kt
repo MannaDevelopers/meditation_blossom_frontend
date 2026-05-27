@@ -21,6 +21,7 @@ import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
+import app.mannadev.meditation.Constants
 import app.mannadev.meditation.R
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.di.getWidgetDependencies
@@ -42,7 +43,7 @@ class VerseWidgetLarge : GlanceAppWidget(
             )
             Sermon.errorSermon
         }
-        val clickAction = widgetClickAction(verse.videoUrl)
+        val clickAction = widgetClickAction(verse.videoUrl, Constants.DEEP_LINK_SUNDAY_SERMON)
 
         provideContent {
             VerseWidgetLargeContent(verse, clickAction)

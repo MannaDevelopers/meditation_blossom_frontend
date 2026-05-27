@@ -21,6 +21,7 @@ import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
+import app.mannadev.meditation.Constants
 import app.mannadev.meditation.R
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.di.getWidgetDependencies
@@ -43,7 +44,7 @@ class QtWidgetLarge : GlanceAppWidget(
             null
         }
         val uiModel = qt?.let(QtWidgetUiModel::fromDto) ?: QtWidgetUiModel.error
-        val clickAction = widgetClickAction(uiModel.videoUrl)
+        val clickAction = widgetClickAction(uiModel.videoUrl, Constants.DEEP_LINK_DAILY_MANNA)
 
         provideContent { QtWidgetLargeContent(uiModel, clickAction) }
     }
@@ -94,7 +95,9 @@ private fun QtWidgetLargeContent(ui: QtWidgetUiModel, clickAction: Action) {
             if (ui.reference.isNotBlank()) {
                 item {
                     Text(
-                        modifier = GlanceModifier.padding(horizontal = VerseLargeQtDimens.horizontalPadding),
+                        modifier = GlanceModifier
+                            .padding(horizontal = VerseLargeQtDimens.horizontalPadding)
+                            .clickable(clickAction),
                         text = ui.reference,
                         style = Typography.labelMedium,
                     )
@@ -116,7 +119,9 @@ private fun QtWidgetLargeContent(ui: QtWidgetUiModel, clickAction: Action) {
                 item { Spacer(GlanceModifier.height(VerseLargeQtDimens.sectionGap)) }
                 item {
                     Text(
-                        modifier = GlanceModifier.padding(horizontal = VerseLargeQtDimens.horizontalPadding),
+                        modifier = GlanceModifier
+                            .padding(horizontal = VerseLargeQtDimens.horizontalPadding)
+                            .clickable(clickAction),
                         text = "묵상 질문",
                         style = Typography.labelMedium,
                     )

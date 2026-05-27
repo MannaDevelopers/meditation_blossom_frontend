@@ -25,6 +25,7 @@ import androidx.glance.layout.padding
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import app.mannadev.meditation.Constants
 import app.mannadev.meditation.R
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.di.getWidgetDependencies
@@ -47,7 +48,7 @@ class QtWidgetSmall : GlanceAppWidget(
             null
         }
         val uiModel = qt?.let(QtWidgetUiModel::fromDto) ?: QtWidgetUiModel.error
-        val clickAction = widgetClickAction(uiModel.videoUrl)
+        val clickAction = widgetClickAction(uiModel.videoUrl, Constants.DEEP_LINK_DAILY_MANNA)
 
         provideContent { QtWidgetSmallContent(uiModel, clickAction) }
     }
@@ -101,7 +102,9 @@ private fun QtWidgetSmallContent(ui: QtWidgetUiModel, clickAction: Action) {
                 if (ui.reference.isNotBlank()) {
                     item {
                         Text(
-                            modifier = GlanceModifier.padding(horizontal = VerseSmallQtDimens.contentPadding),
+                            modifier = GlanceModifier
+                                .padding(horizontal = VerseSmallQtDimens.contentPadding)
+                                .clickable(clickAction),
                             text = ui.reference,
                             style = Typography.labelSmall,
                         )
@@ -110,7 +113,9 @@ private fun QtWidgetSmallContent(ui: QtWidgetUiModel, clickAction: Action) {
                 }
                 item {
                     Text(
-                        modifier = GlanceModifier.padding(horizontal = VerseSmallQtDimens.contentPadding),
+                        modifier = GlanceModifier
+                            .padding(horizontal = VerseSmallQtDimens.contentPadding)
+                            .clickable(clickAction),
                         text = ui.verses.joinToString(" "),
                         style = Typography.bodyMedium,
                     )
@@ -135,7 +140,9 @@ private fun QtWidgetSmallContent(ui: QtWidgetUiModel, clickAction: Action) {
                     item { Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap)) }
                     item {
                         Text(
-                            modifier = GlanceModifier.padding(horizontal = VerseSmallQtDimens.contentPadding),
+                            modifier = GlanceModifier
+                                .padding(horizontal = VerseSmallQtDimens.contentPadding)
+                                .clickable(clickAction),
                             text = "묵상 질문",
                             style = Typography.labelSmall,
                         )
@@ -145,7 +152,9 @@ private fun QtWidgetSmallContent(ui: QtWidgetUiModel, clickAction: Action) {
                     bulletedQuestions.forEachIndexed { index, question ->
                         item {
                             Text(
-                                modifier = GlanceModifier.padding(horizontal = VerseSmallQtDimens.contentPadding),
+                                modifier = GlanceModifier
+                                    .padding(horizontal = VerseSmallQtDimens.contentPadding)
+                                    .clickable(clickAction),
                                 text = question,
                                 style = Typography.bodyMedium,
                             )
