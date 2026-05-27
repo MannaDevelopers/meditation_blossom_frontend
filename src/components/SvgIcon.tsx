@@ -14,6 +14,7 @@ function Icon({
   width: _width,
   height: _height,
   size,
+  color: _color, // New Architecture에서 RCTView.setColor: 오류 방지 — SVG 색상은 fill 사용
   ...props
 }: IconProps) {
   const Comp = Icons[name];

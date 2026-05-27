@@ -7,6 +7,7 @@ class NotificationService: UNNotificationServiceExtension {
         static let appGroupId = "group.mannachurch.meditationblossom"
         static let displaySermonKey = "displaySermon"
         static let fcmSermonKey = "fcm_sermon"
+        static let fcmQtKey = "fcm_qt"
         static let widgetKind = "MeditationBlossomWidget"
     }
 
@@ -46,7 +47,7 @@ class NotificationService: UNNotificationServiceExtension {
             let hasAlert = aps["alert"] != nil
 
             if let sermon = parseSermonFromUserInfo(userInfo) {
-                saveSermonToAppGroup(sermon)
+                saveSermonToAppGroup(sermon, userInfo: userInfo)
 
                 if isSilent || !hasAlert {
                     suppressNotification(bestAttemptContent)
@@ -59,7 +60,7 @@ class NotificationService: UNNotificationServiceExtension {
 
         // 일반 FCM 메시지 처리
         if let sermon = parseSermonFromUserInfo(userInfo) {
-            saveSermonToAppGroup(sermon)
+            saveSermonToAppGroup(sermon, userInfo: userInfo)
         }
 
         contentHandler(bestAttemptContent)
@@ -117,7 +118,7 @@ class NotificationService: UNNotificationServiceExtension {
             createdAt: createdAt, updatedAt: updatedAt
         )
 
-        saveSermonToAppGroup(sermon)
+        saveSermonToAppGroup(sermon, userInfo: userInfo)
     }
 
     // MARK: - Sermon Parsing & Saving
@@ -150,7 +151,7 @@ class NotificationService: UNNotificationServiceExtension {
         )
     }
 
-    private func saveSermonToAppGroup(_ sermon: Sermon) {
+    private func saveSermonToAppGroup(_ sermon: Sermon, userInfo: [AnyHashable: Any]) {
         guard let userDefaults = UserDefaults(suiteName: Constants.appGroupId) else {
             NSLog("NotificationService: Failed to access App Group")
             return
@@ -163,12 +164,15 @@ class NotificationService: UNNotificationServiceExtension {
                 return
             }
 
-            userDefaults.set(jsonString, forKey: Constants.displaySermonKey)
-            userDefaults.set(jsonString, forKey: Constants.fcmSermonKey)
+            let storageKey = asyncStorageKey(for: userInfo)
+            userDefaults.set(jsonString, forKey: storageKey)
+            if storageKey == Constants.fcmSermonKey {
+                userDefaults.set(jsonString, forKey: Constants.displaySermonKey)
+            }
             userDefaults.synchronize()
 
             WidgetCenter.shared.reloadTimelines(ofKind: Constants.widgetKind)
-            NSLog("NotificationService: Saved sermon '%@' and reloaded widget", sermon.title)
+            NSLog("NotificationService: Saved payload '%@' to %@ and reloaded widget", sermon.title, storageKey)
         } catch {
             NSLog("NotificationService: Failed to encode sermon: %@", error.localizedDescription)
         }
@@ -199,6 +203,18 @@ class NotificationService: UNNotificationServiceExtension {
                 .replacingOccurrences(of: ":", with: "-")
         }
         return "fcm_\(Int64(Date().timeIntervalSince1970 * 1000))"
+    }
+
+    private func asyncStorageKey(for userInfo: [AnyHashable: Any]) -> String {
+        let topic = String(describing: userInfo["topic"] ?? "").lowercased()
+        let from = String(describing: userInfo["from"] ?? "").lowercased()
+        let category = String(describing: userInfo["category"] ?? "").lowercased()
+
+        if topic.contains("qt") || from.contains("qt") || category == "qt" {
+            return Constants.fcmQtKey
+        }
+
+        return Constants.fcmSermonKey
     }
 
     private func convertStringToTimestamp(_ isoString: String) -> FirestoreTimeStamp? {
