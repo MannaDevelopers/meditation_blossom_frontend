@@ -32,6 +32,7 @@
 // MyEventModule 클래스 선언
 @interface MyEventModule : NSObject
 - (void)trigger:(NSString *)message;
+- (void)triggerQtUpdate:(NSString *)message;
 @end
 
 @interface AppDelegate () <UNUserNotificationCenterDelegate, FIRMessagingDelegate>
