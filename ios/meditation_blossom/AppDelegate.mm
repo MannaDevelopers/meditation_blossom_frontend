@@ -444,6 +444,8 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
 
     if (shouldUpdateDisplaySermon) {
       [self sendSermonUpdateEvent];
+    } else if ([storageKey isEqualToString:@"fcm_qt"]) {
+      [self sendQtUpdateEvent];
     }
   }
 }
@@ -462,6 +464,20 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   }
 }
 
+- (void)sendQtUpdateEvent {
+  UIApplicationState state = [[UIApplication sharedApplication] applicationState];
+  if (state == UIApplicationStateActive) {
+    if (self.bridge) {
+      MyEventModule *eventModule = [self.bridge moduleForClass:[MyEventModule class]];
+      if (eventModule) {
+        [eventModule triggerQtUpdate:@"New QT received from FCM"];
+        return;
+      }
+    }
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"FCM_QT_UPDATE" object:nil];
+  }
+}
+
 #pragma mark - UNUserNotificationCenterDelegate
 
 - (void)userNotificationCenter:(UNUserNotificationCenter *)center
@@ -475,11 +491,9 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
          withCompletionHandler:(void(^)(void))completionHandler {
   NSDictionary *userInfo = response.notification.request.content.userInfo;
   NSString *topic = userInfo[@"topic"];
-  if (topic && ([topic isEqualToString:@"sermon_events"]
-#ifdef DEBUG
-                || [topic isEqualToString:@"sermon_events_test"]
-#endif
-                )) {
+  NSString *from = userInfo[@"from"];
+  BOOL isTestTopic = NO;
+  if ([self isRecognizedTopic:topic from:from isTestTopic:&isTestTopic]) {
     [self saveFcmSermon:userInfo];
   }
   completionHandler();
