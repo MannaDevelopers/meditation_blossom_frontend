@@ -95,7 +95,9 @@ private fun QtWidgetLargeContent(ui: QtWidgetUiModel, clickAction: Action) {
             if (ui.reference.isNotBlank()) {
                 item {
                     Text(
-                        modifier = GlanceModifier.padding(horizontal = VerseLargeQtDimens.horizontalPadding),
+                        modifier = GlanceModifier
+                            .padding(horizontal = VerseLargeQtDimens.horizontalPadding)
+                            .clickable(clickAction),
                         text = ui.reference,
                         style = Typography.labelMedium,
                     )
@@ -117,7 +119,9 @@ private fun QtWidgetLargeContent(ui: QtWidgetUiModel, clickAction: Action) {
                 item { Spacer(GlanceModifier.height(VerseLargeQtDimens.sectionGap)) }
                 item {
                     Text(
-                        modifier = GlanceModifier.padding(horizontal = VerseLargeQtDimens.horizontalPadding),
+                        modifier = GlanceModifier
+                            .padding(horizontal = VerseLargeQtDimens.horizontalPadding)
+                            .clickable(clickAction),
                         text = "묵상 질문",
                         style = Typography.labelMedium,
                     )

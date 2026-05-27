@@ -102,7 +102,9 @@ private fun QtWidgetSmallContent(ui: QtWidgetUiModel, clickAction: Action) {
                 if (ui.reference.isNotBlank()) {
                     item {
                         Text(
-                            modifier = GlanceModifier.padding(horizontal = VerseSmallQtDimens.contentPadding),
+                            modifier = GlanceModifier
+                                .padding(horizontal = VerseSmallQtDimens.contentPadding)
+                                .clickable(clickAction),
                             text = ui.reference,
                             style = Typography.labelSmall,
                         )
@@ -111,7 +113,9 @@ private fun QtWidgetSmallContent(ui: QtWidgetUiModel, clickAction: Action) {
                 }
                 item {
                     Text(
-                        modifier = GlanceModifier.padding(horizontal = VerseSmallQtDimens.contentPadding),
+                        modifier = GlanceModifier
+                            .padding(horizontal = VerseSmallQtDimens.contentPadding)
+                            .clickable(clickAction),
                         text = ui.verses.joinToString(" "),
                         style = Typography.bodyMedium,
                     )
@@ -136,7 +140,9 @@ private fun QtWidgetSmallContent(ui: QtWidgetUiModel, clickAction: Action) {
                     item { Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap)) }
                     item {
                         Text(
-                            modifier = GlanceModifier.padding(horizontal = VerseSmallQtDimens.contentPadding),
+                            modifier = GlanceModifier
+                                .padding(horizontal = VerseSmallQtDimens.contentPadding)
+                                .clickable(clickAction),
                             text = "묵상 질문",
                             style = Typography.labelSmall,
                         )
@@ -146,7 +152,9 @@ private fun QtWidgetSmallContent(ui: QtWidgetUiModel, clickAction: Action) {
                     bulletedQuestions.forEachIndexed { index, question ->
                         item {
                             Text(
-                                modifier = GlanceModifier.padding(horizontal = VerseSmallQtDimens.contentPadding),
+                                modifier = GlanceModifier
+                                    .padding(horizontal = VerseSmallQtDimens.contentPadding)
+                                    .clickable(clickAction),
                                 text = question,
                                 style = Typography.bodyMedium,
                             )
