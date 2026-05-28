@@ -24,6 +24,8 @@
 		3595A30E2DEBF76F006716D8 /* MeditationBlossomWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3062DEBF76F006716D8 /* MeditationBlossomWidget.swift */; };
 		3595A30F2DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3072DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift */; };
 		3595A3112DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595A3092DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift */; };
+		35570001BBBB0001BBBBBBBB /* QT.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35570000BBBB0001BBBBBBBB /* QT.swift */; };
+		35570003BBBB0001BBBBBBBB /* DailyMannaWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35570002BBBB0001BBBBBBBB /* DailyMannaWidget.swift */; };
 		35A491452F87753200666495 /* SermonBuilder.m in Sources */ = {isa = PBXBuildFile; fileRef = 35A491442F87753200666495 /* SermonBuilder.m */; };
 		35A99CA72E5F502B0087CB5B /* Sermon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35B6CFCE2E01AC0A004A13DD /* Sermon.swift */; };
 		35B6CFCF2E01AC0E004A13DD /* Sermon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35B6CFCE2E01AC0A004A13DD /* Sermon.swift */; };
@@ -115,6 +117,8 @@
 		3595A3062DEBF76F006716D8 /* MeditationBlossomWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeditationBlossomWidget.swift; sourceTree = "<group>"; };
 		3595A3072DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeditationBlossomWidgetBundle.swift; sourceTree = "<group>"; };
 		3595A3092DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeditationBlossomWidgetLiveActivity.swift; sourceTree = "<group>"; };
+		35570000BBBB0001BBBBBBBB /* QT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QT.swift; sourceTree = "<group>"; };
+		35570002BBBB0001BBBBBBBB /* DailyMannaWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyMannaWidget.swift; sourceTree = "<group>"; };
 		35A491432F87753200666495 /* SermonBuilder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = meditation_blossom/SermonBuilder.h; sourceTree = "<group>"; };
 		35A491442F87753200666495 /* SermonBuilder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = meditation_blossom/SermonBuilder.m; sourceTree = "<group>"; };
 		35B6CFCE2E01AC0A004A13DD /* Sermon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sermon.swift; sourceTree = "<group>"; };
@@ -258,11 +262,13 @@
 			isa = PBXGroup;
 			children = (
 				35B6CFCE2E01AC0A004A13DD /* Sermon.swift */,
+				35570000BBBB0001BBBBBBBB /* QT.swift */,
 				3595A3042DEBF76F006716D8 /* Assets.xcassets */,
 				3595A3052DEBF76F006716D8 /* Info.plist */,
 				3595A3062DEBF76F006716D8 /* MeditationBlossomWidget.swift */,
 				3595A3072DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift */,
 				3595A3092DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift */,
+				35570002BBBB0001BBBBBBBB /* DailyMannaWidget.swift */,
 			);
 			path = MeditationBlossomWidget;
 			sourceTree = "<group>";
@@ -781,6 +787,8 @@
 				3595A30F2DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift in Sources */,
 				3595A3112DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift in Sources */,
 				35B6CFCF2E01AC0E004A13DD /* Sermon.swift in Sources */,
+				35570001BBBB0001BBBBBBBB /* QT.swift in Sources */,
+				35570003BBBB0001BBBBBBBB /* DailyMannaWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
