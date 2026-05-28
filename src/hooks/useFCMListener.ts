@@ -1,8 +1,27 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
+import { APP_GROUP_DISPLAY_SERMON_KEY } from '../constants';
+import { readAppGroupData, syncAppGroupToAsyncStorage } from '../services/sermonService';
 import logger from '../utils/logger';
 
 export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
+  const onEventReceived = useCallback(async () => {
+    logger.log(`${Platform.OS} FCM sermon update received`);
+    // iOS: AppDelegate이 App Group에 올바르게 저장했으므로,
+    // AsyncStorage(JS)에 동기화한 뒤 loadLocalData를 호출해 즉시 최신 데이터를 표시
+    if (Platform.OS === 'ios') {
+      try {
+        const appGroupData = await readAppGroupData(APP_GROUP_DISPLAY_SERMON_KEY);
+        if (appGroupData) {
+          await syncAppGroupToAsyncStorage(appGroupData, null);
+        }
+      } catch (e) {
+        logger.warn('useFCMListener: App Group displaySermon이 유효한 JSON이 아님, 건너뜀');
+      }
+    }
+    await onUpdate();
+  }, [onUpdate]);
+
   useEffect(() => {
     const { MyEventModule } = NativeModules;
 
@@ -12,13 +31,10 @@ export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
     }
 
     const eventEmitter = new NativeEventEmitter(MyEventModule);
-    const subscription = eventEmitter.addListener('ON_SERMON_UPDATE', () => {
-      logger.log(`${Platform.OS} FCM sermon update received`);
-      onUpdate();
-    });
+    const subscription = eventEmitter.addListener('ON_SERMON_UPDATE', onEventReceived);
 
     return () => {
       subscription.remove();
     };
-  }, [onUpdate]);
+  }, [onEventReceived]);
 }

@@ -10,9 +10,24 @@ export function useQtWidgetSync(qt: QT | null): void {
       logger.error('WidgetUpdateModule.onQtUpdated is not available');
       return;
     }
+    let parsedMeditationQuestions: string[] = [];
+    const raw = qt.meditation_questions;
+    if (typeof raw === 'string' && raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsedMeditationQuestions = parsed.filter((q: unknown) => typeof q === 'string') as string[];
+        } else if (typeof parsed === 'string') {
+          parsedMeditationQuestions = parsed.split('\n').filter(Boolean);
+        }
+      } catch {
+        // FCM 경로: meditation_questions가 한국어 평문인 경우
+        parsedMeditationQuestions = raw.split('\n').filter(Boolean);
+      }
+    }
     const payload = {
       ...qt,
-      meditation_questions: JSON.parse(qt.meditation_questions ?? '[]'),
+      meditation_questions: parsedMeditationQuestions,
     };
     WidgetUpdateModule.onQtUpdated(JSON.stringify(payload)).catch((error) => {
       logger.error('Failed to update QT widget:', error);

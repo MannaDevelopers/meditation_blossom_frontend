@@ -20,13 +20,16 @@ import logger from '../utils/logger';
 
 
 export async function fetchLatestQtFromAsyncStorage(): Promise<QT | null> {
+  let raw: string | null = null;
   try {
-    const raw = await AsyncStorage.getItem(FCM_QT_KEY);
+    raw = await AsyncStorage.getItem(FCM_QT_KEY);
     if (raw) {
       return fcmDataToQt(JSON.parse(raw) as QTRaw);
     }
   } catch (error) {
-    logger.error('Failed to load QT from AsyncStorage', error);
+    logger.warn('Failed to load QT from AsyncStorage, clearing corrupted data');
+    // 오염된 데이터가 반복적으로 파싱 오류를 일으키지 않도록 삭제
+    await AsyncStorage.removeItem(FCM_QT_KEY).catch(() => {});
   }
   return null;
 }

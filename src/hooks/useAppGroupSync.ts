@@ -30,8 +30,13 @@ export function useAppGroupSync({ onDataSynced: _onDataSynced, enabled: _enabled
       // 앱 완전 종료 후 재시작 시 App Group 데이터를 복사
       const qtData = await readAppGroupData(FCM_QT_KEY);
       if (qtData) {
-        await AsyncStorage.setItem(FCM_QT_KEY, qtData);
-        logger.log('useAppGroupSync: Synced App Group fcm_qt to AsyncStorage');
+        try {
+          JSON.parse(qtData); // 유효한 JSON인지 검증
+          await AsyncStorage.setItem(FCM_QT_KEY, qtData);
+          logger.log('useAppGroupSync: Synced App Group fcm_qt to AsyncStorage');
+        } catch {
+          logger.warn('useAppGroupSync: fcm_qt App Group 데이터가 유효한 JSON이 아님, 건너뜀');
+        }
       }
     } catch (error) {
       logger.error('Error during initial App Group sync:', error);
