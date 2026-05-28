@@ -5,11 +5,9 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet, TouchableOpacity, Text, View, Image } from 'react-native';
-// PanResponderAdapter: react-native-pager-view(RNCViewPager)를 사용하지 않는 순수 JS 페이저.
-// react-native-tab-view의 iOS 빌드는 기본적으로 PagerViewAdapter(네이티브)를 사용하므로,
-// PanResponderAdapter를 명시적으로 주입하여 네이티브 의존성을 제거한다.
-// eslint-disable-next-line import/no-internal-modules
-import { PanResponderAdapter } from 'react-native-tab-view/src/PanResponderAdapter';
+// JsPager는 metro.config.js의 resolveRequest를 통해 주입된다.
+// iOS에서 react-native-tab-view/Pager.ios → src/navigation/JsPager.tsx 로 리다이렉트되어
+// RNCViewPager 네이티브 모듈 없이 탭 전환이 동작한다.
 import SvgIcon from '../components/SvgIcon';
 import HomeScreen from '../screens/HomeScreen';
 import DailyMannaScreen from '../screens/DailyMannaScreen';
@@ -83,8 +81,6 @@ const MainTabNavigator = () => {
       <SharedHeader />
       <Tab.Navigator
         tabBar={(props) => <CustomTabBar {...props} />}
-        // PanResponderAdapter: 순수 JS 페이저로 RNCViewPager 네이티브 모듈 불필요
-        renderPager={(props) => <PanResponderAdapter {...props} />}
       >
         <Tab.Screen name="주일 말씀" component={HomeScreen} />
         <Tab.Screen name="매일 만나" component={DailyMannaScreen} />
