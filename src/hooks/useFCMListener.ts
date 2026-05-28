@@ -16,7 +16,7 @@ export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
           await syncAppGroupToAsyncStorage(appGroupData, null);
         }
       } catch (e) {
-        logger.error('useFCMListener: App Group 동기화 실패', e);
+        logger.warn('useFCMListener: App Group displaySermon이 유효한 JSON이 아님, 건너뜀');
       }
     }
     await onUpdate();

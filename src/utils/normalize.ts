@@ -27,7 +27,7 @@ export const normalizeJsonString = (jsonString: string | null | undefined): stri
     const sorted = normalizeValueForSignature(parsed);
     return JSON.stringify(sorted);
   } catch (error) {
-    logger.error('Failed to normalize JSON string:', error);
+    logger.warn('Failed to normalize JSON string (non-JSON App Group data, skipping)');
     return null;
   }
 };

@@ -19,7 +19,7 @@ export function useQtFCMListener(onUpdate: () => void | Promise<unknown>): void 
           logger.log('useQtFCMListener: App Group fcm_qt → AsyncStorage 동기화 완료');
         }
       } catch (e) {
-        logger.error('useQtFCMListener: App Group 동기화 실패 (비JSON 데이터 또는 읽기 오류)', e);
+        logger.warn('useQtFCMListener: App Group fcm_qt가 유효한 JSON이 아님, 건너뜀');
       }
     }
     await onUpdate();
