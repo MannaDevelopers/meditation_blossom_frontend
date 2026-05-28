@@ -28,7 +28,9 @@ export async function fetchLatestSermonFromAsyncStorage(): Promise<Sermon | null
       return fcmDataToSermon(JSON.parse(raw) as SermonRaw);
     }
   } catch (error) {
-    logger.error('Failed to load sermon from AsyncStorage', error);
+    logger.warn('Failed to load sermon from AsyncStorage, clearing corrupted data');
+    // 오염된 데이터가 반복적으로 파싱 오류를 일으키지 않도록 삭제
+    await AsyncStorage.removeItem(FCM_SERMON_KEY).catch(() => {});
   }
   return null;
 }
