@@ -54,15 +54,19 @@ const DailyMannaScreen = () => {
     try {
       const parsed = JSON.parse(qt.meditation_questions);
       if (Array.isArray(parsed)) {
-        // 각 요소를 \n으로 쪼개서 flat하게 만들기
+        // Firestore 경로: JSON.stringify(array) → JSON.parse → array
         return parsed
           .flatMap((q: string) => q.split('\n'))
           .filter((q: string) => q.trim());
       }
+      if (typeof parsed === 'string') {
+        // Firestore 경로: JSON.stringify(plainString) → JSON.parse → string
+        return parsed.split('\n').filter((q: string) => q.trim());
+      }
       return [];
-    } catch (e) {
-      logger.error('DailyMannaScreen: meditation_questions 파싱 실패', e instanceof Error ? e.message : String(e));
-      return [];
+    } catch {
+      // FCM/App Group 경로: 평문 한국어 문자열로 저장된 경우
+      return qt.meditation_questions.split('\n').filter((q: string) => q.trim());
     }
   }, [qt?.meditation_questions]);
 

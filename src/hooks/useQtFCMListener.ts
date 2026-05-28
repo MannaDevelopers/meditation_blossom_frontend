@@ -14,11 +14,12 @@ export function useQtFCMListener(onUpdate: () => void | Promise<unknown>): void 
       try {
         const qtData = await readAppGroupData(FCM_QT_KEY);
         if (qtData) {
+          JSON.parse(qtData); // 유효한 JSON인지 검증
           await AsyncStorage.setItem(FCM_QT_KEY, qtData);
           logger.log('useQtFCMListener: App Group fcm_qt → AsyncStorage 동기화 완료');
         }
       } catch (e) {
-        logger.error('useQtFCMListener: App Group 동기화 실패', e);
+        logger.error('useQtFCMListener: App Group 동기화 실패 (비JSON 데이터 또는 읽기 오류)', e);
       }
     }
     await onUpdate();
