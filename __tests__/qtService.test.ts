@@ -2,7 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   fetchLatestQtFromAsyncStorage,
   isQtDataStale,
+  saveQtToAsyncStorage,
 } from '../src/services/qtService';
+import { QT } from '../src/types/QT';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(),
@@ -55,5 +57,27 @@ describe('fetchLatestQtFromAsyncStorage', () => {
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue('not-json{{{');
     const result = await fetchLatestQtFromAsyncStorage();
     expect(result).toBeNull();
+  });
+});
+
+describe('saveQtToAsyncStorage', () => {
+  const qt: QT = {
+    id: 'qt-save-1',
+    title: '저장 테스트',
+    series_title: '시리즈',
+    content: '내용',
+    date: '2026-05-21',
+    created_at: { seconds: 0, nanoseconds: 0 },
+    updated_at: { seconds: 0, nanoseconds: 0 },
+  };
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it('AsyncStorage에 fcm_qt 키로 JSON 저장', async () => {
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+
+    await saveQtToAsyncStorage(qt);
+
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith('fcm_qt', JSON.stringify(qt));
   });
 });

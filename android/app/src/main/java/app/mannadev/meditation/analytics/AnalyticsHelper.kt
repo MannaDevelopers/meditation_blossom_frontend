@@ -24,8 +24,8 @@ object AnalyticsHelper {
             else -> "unknown"
         }
         Firebase.analytics.logEvent("widget_click") {
-            param("destination", destination)    // "youtube" or "main_app"
-            param("widget_family", widgetFamily) // "qt" or "sermon"
+            param("destination", destination)
+            param("widget_family", widgetFamily)
         }
     }
 

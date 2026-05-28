@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { extractContent } from '../utils/sermonParser';
 import SvgIcon from '../components/SvgIcon';
 import { BRIDGE_INIT_DELAY_MS } from '../constants';
@@ -29,6 +30,7 @@ const SUNDAY_SERMON_YOUTUBE_URL = 'https://www.youtube.com/@만나';
 const HomeScreen = () => {
   const { sermon, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useSermonData();
+  const isInitialMount = useRef(true);
 
   const sermonContent = useMemo(
     () => (sermon?.content ? extractContent(sermon.content) : { index: '', content: '' }),
@@ -42,6 +44,16 @@ const HomeScreen = () => {
 
   useWidgetSync(sermon);
   useFCMListener(loadLocalData);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
+      }
+      loadLocalData();
+    }, [loadLocalData]),
+  );
 
   const targetYoutubeUrl = sermon?.video_url || SUNDAY_SERMON_YOUTUBE_URL;
   const hasLoggedScroll = useRef(false);
@@ -112,19 +124,20 @@ const HomeScreen = () => {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={400}>
         <View style={styles.seriesCard}>
           <View style={styles.seriesCardText}>
-            <Text style={styles.cardTitleText} numberOfLines={0}>
-              {processTitleText(sermon?.title)}
-            </Text>
+            {sermon?.category ? (
+              <Text style={styles.cardTitleText}>{sermon.category}</Text>
+            ) : null}
             <Text style={styles.seriesDateText}>{sermon?.date}</Text>
           </View>
           <TouchableOpacity onPress={openYoutube}>
             <SvgIcon name="YoutubeButton" size={60} />
           </TouchableOpacity>
         </View>
-        <View style={styles.indexRow}>
-          <SvgIcon name="BibleIcon" size={28} />
-          <Text style={styles.indexText}>{sermonContent.index}</Text>
-        </View>
+        <View style={styles.smallDivider} />
+        <Text style={styles.titleText} numberOfLines={0}>
+          {processTitleText(sermon?.title)}
+        </Text>
+        <Text style={styles.indexText}>{sermonContent.index}</Text>
         <View style={styles.contentDivider} />
         <Text style={styles.contentText}>{sermonContent.content}</Text>
       </ScrollView>
@@ -144,12 +157,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 40,
-  },
-  indexRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
   },
   indexText: {
     color: '#000000',

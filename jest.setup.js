@@ -9,6 +9,7 @@ jest.mock('@react-native-firebase/firestore', () => ({
   getDocsFromServer: jest.fn(),
   getFirestore: jest.fn(),
   limit: jest.fn(),
+  onSnapshot: jest.fn(),
   orderBy: jest.fn(),
   query: jest.fn(),
 }));

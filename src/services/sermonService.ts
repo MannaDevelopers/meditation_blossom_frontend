@@ -4,6 +4,7 @@ import {
   getDocsFromServer,
   getFirestore,
   limit,
+  onSnapshot,
   orderBy,
   query,
 } from '@react-native-firebase/firestore';
@@ -27,9 +28,41 @@ export async function fetchLatestSermonFromAsyncStorage(): Promise<Sermon | null
       return fcmDataToSermon(JSON.parse(raw) as SermonRaw);
     }
   } catch (error) {
-    logger.error('Failed to load sermon from AsyncStorage', error);
+    logger.warn('Failed to load sermon from AsyncStorage, clearing corrupted data');
+    // 오염된 데이터가 반복적으로 파싱 오류를 일으키지 않도록 삭제
+    await AsyncStorage.removeItem(FCM_SERMON_KEY).catch(() => {});
   }
   return null;
+}
+
+export function subscribeToLatestSermon(
+  onUpdate: (sermon: Sermon) => void,
+  onError: (error: Error) => void,
+): () => void {
+  const db = getFirestore();
+  const q = query(
+    collection(db, 'sermons'),
+    orderBy('date', 'desc'),
+    limit(1),
+  );
+
+  return onSnapshot(
+    q,
+    async (snapshot) => {
+      if (snapshot.empty || snapshot.metadata.fromCache) return;
+      try {
+        const sermon = await firestoreDocToSermon(snapshot.docs[0]);
+        onUpdate(sermon);
+      } catch (e) {
+        onError(e instanceof Error ? e : new Error(String(e)));
+      }
+    },
+    onError,
+  );
+}
+
+export async function saveSermonToAsyncStorage(sermon: Sermon): Promise<void> {
+  await AsyncStorage.setItem(FCM_SERMON_KEY, JSON.stringify(sermon));
 }
 
 export async function fetchLatestSermonFromServer(): Promise<Sermon | null> {

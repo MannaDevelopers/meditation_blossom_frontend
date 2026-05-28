@@ -1,8 +1,10 @@
-import { useCallback, useState } from 'react';
-import { Sermon } from '../types/Sermon';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { compareSermon, Sermon } from '../types/Sermon';
 import {
   fetchLatestSermonFromAsyncStorage,
   fetchLatestSermonFromServer,
+  saveSermonToAsyncStorage,
+  subscribeToLatestSermon,
 } from '../services/sermonService';
 import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
@@ -21,6 +23,8 @@ export function useSermonData(): UseSermonDataReturn {
   const [sermon, setSermon] = useState<Sermon | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const sermonRef = useRef<Sermon | null>(null);
+  sermonRef.current = sermon;
 
   const loadLocalData = useCallback(async (): Promise<Sermon | null> => {
     try {
@@ -47,6 +51,7 @@ export function useSermonData(): UseSermonDataReturn {
     try {
       const result = await fetchLatestSermonFromServer();
       if (result) {
+        await saveSermonToAsyncStorage(result);
         setSermon(result);
       }
     } catch (e) {
@@ -57,6 +62,19 @@ export function useSermonData(): UseSermonDataReturn {
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    return subscribeToLatestSermon(
+      async (fresh) => {
+        if (compareSermon(fresh, sermonRef.current) > 0) {
+          logger.log('onSnapshot: newer sermon received, updating');
+          await saveSermonToAsyncStorage(fresh);
+          setSermon(fresh);
+        }
+      },
+      (e) => logger.error('Firestore subscription error:', e),
+    );
   }, []);
 
   const onRefresh = useCallback(async () => {

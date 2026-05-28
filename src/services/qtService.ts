@@ -4,6 +4,7 @@ import {
   getDocsFromServer,
   getFirestore,
   limit,
+  onSnapshot,
   orderBy,
   query,
 } from '@react-native-firebase/firestore';
@@ -19,15 +20,48 @@ import logger from '../utils/logger';
 
 
 export async function fetchLatestQtFromAsyncStorage(): Promise<QT | null> {
+  let raw: string | null = null;
   try {
-    const raw = await AsyncStorage.getItem(FCM_QT_KEY);
+    raw = await AsyncStorage.getItem(FCM_QT_KEY);
     if (raw) {
       return fcmDataToQt(JSON.parse(raw) as QTRaw);
     }
   } catch (error) {
-    logger.error('Failed to load QT from AsyncStorage', error);
+    logger.warn('Failed to load QT from AsyncStorage, clearing corrupted data');
+    // 오염된 데이터가 반복적으로 파싱 오류를 일으키지 않도록 삭제
+    await AsyncStorage.removeItem(FCM_QT_KEY).catch(() => {});
   }
   return null;
+}
+
+export async function saveQtToAsyncStorage(qt: QT): Promise<void> {
+  await AsyncStorage.setItem(FCM_QT_KEY, JSON.stringify(qt));
+}
+
+export function subscribeToLatestQt(
+  onUpdate: (qt: QT) => void,
+  onError: (error: Error) => void,
+): () => void {
+  const db = getFirestore();
+  const q = query(
+    collection(db, 'qt'),
+    orderBy('date', 'desc'),
+    limit(1),
+  );
+
+  return onSnapshot(
+    q,
+    async (snapshot) => {
+      if (snapshot.empty || snapshot.metadata.fromCache) return;
+      try {
+        const qt = await firestoreDocToQt(snapshot.docs[0]);
+        onUpdate(qt);
+      } catch (e) {
+        onError(e instanceof Error ? e : new Error(String(e)));
+      }
+    },
+    onError,
+  );
 }
 
 export async function fetchLatestQtFromServer(): Promise<QT | null> {

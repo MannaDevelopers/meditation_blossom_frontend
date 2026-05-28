@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import SvgIcon from '../components/SvgIcon';
 import { useQtData } from '../hooks/useQtData';
 import { useQtFCMListener } from '../hooks/useQtFCMListener';
@@ -26,9 +27,20 @@ const DAILY_MANNA_CHANNEL_URL = 'https://www.youtube.com/@만나';
 const DailyMannaScreen = () => {
   const { qt, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useQtData();
+  const isInitialMount = useRef(true);
 
   useQtWidgetSync(qt);
   useQtFCMListener(loadLocalData);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
+      }
+      loadLocalData();
+    }, [loadLocalData]),
+  );
 
   const qtContent = useMemo(
     () => (qt?.content ? extractContent(qt.content) : { index: '', content: '' }),
@@ -42,14 +54,22 @@ const DailyMannaScreen = () => {
     try {
       const parsed = JSON.parse(qt.meditation_questions);
       if (Array.isArray(parsed)) {
-        // 각 요소를 \n으로 쪼개서 flat하게 만들기
+        // Firestore 경로: JSON.stringify(array) → JSON.parse → array
         return parsed
-          .flatMap((q: string) => q.split('\n'))
+          .flatMap((q: unknown) => typeof q === 'string' ? q.split('\n') : [])
           .filter((q: string) => q.trim());
       }
+      if (typeof parsed === 'string') {
+        // Firestore 경로: JSON.stringify(plainString) → JSON.parse → string
+        return parsed.split('\n').filter((q: string) => q.trim());
+      }
       return [];
-    } catch (e) {
-      logger.error('DailyMannaScreen: meditation_questions 파싱 실패', e instanceof Error ? e.message : String(e));
+    } catch {
+      // FCM/App Group 경로: 평문 한국어 문자열로 저장된 경우
+      const raw = qt.meditation_questions;
+      if (typeof raw === 'string') {
+        return raw.split('\n').filter((q: string) => q.trim());
+      }
       return [];
     }
   }, [qt?.meditation_questions]);
@@ -248,14 +268,14 @@ noQuestionText: {
     gap: 8,
   },
   questionNumber: {
-    color: '#A59EAE',
+    color: '#49454F',
     fontSize: 18,
     fontFamily: 'Pretendard-SemiBold',
     lineHeight: 24,
   },
   questionText: {
     flex: 1,
-    color: '#A59EAE',
+    color: '#49454F',
     fontSize: 18,
     fontFamily: 'Pretendard-SemiBold',
     lineHeight: 24,
