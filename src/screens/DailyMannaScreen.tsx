@@ -66,7 +66,11 @@ const DailyMannaScreen = () => {
       return [];
     } catch {
       // FCM/App Group 경로: 평문 한국어 문자열로 저장된 경우
-      return qt.meditation_questions.split('\n').filter((q: string) => q.trim());
+      const raw = qt.meditation_questions;
+      if (typeof raw === 'string') {
+        return raw.split('\n').filter((q: string) => q.trim());
+      }
+      return [];
     }
   }, [qt?.meditation_questions]);
 
