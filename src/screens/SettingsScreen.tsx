@@ -51,7 +51,9 @@ const SettingsScreen = ({ navigation }: Props) => {
 
   const setWidgetOption = async (value: boolean) => {
     setYoutubeLinkEnabled(value);
-    logAnalytics.widgetOptionChange(value ? 'youtube_link' : 'main_app');
+    const target = value ? 'youtube_link' : 'main_app';
+    logAnalytics.widgetOptionChange(target);
+    logAnalytics.setWidgetLinkTarget(target);
     try {
       if (WidgetUpdateModule) {
         await WidgetUpdateModule.setYoutubeLinkEnabled(value);

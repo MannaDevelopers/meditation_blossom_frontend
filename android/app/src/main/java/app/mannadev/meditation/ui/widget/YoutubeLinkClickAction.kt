@@ -10,6 +10,7 @@ import androidx.glance.action.actionParametersOf
 import androidx.glance.appwidget.action.ActionCallback
 import app.mannadev.meditation.Constants.FALLBACK_YOUTUBE_URL
 import app.mannadev.meditation.MainActivity
+import app.mannadev.meditation.analytics.AnalyticsHelper
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.di.getWidgetDependencies
 
@@ -21,14 +22,16 @@ class YoutubeLinkClickAction : ActionCallback {
     ) {
         val intent = runCatching {
             val enabled = getWidgetDependencies(context).getWidgetPrefs().isEnabled()
+            val deepLinkUrl = parameters[DEEP_LINK_URL]
             if (enabled) {
                 val videoUrl = parameters[VIDEO_URL]
                 val target: Uri = videoUrl?.takeIf { it.isNotBlank() }?.toUri()
                     ?: FALLBACK_YOUTUBE_URL.toUri()
+                AnalyticsHelper.logWidgetClicked("youtube", deepLinkUrl)
                 Intent(Intent.ACTION_VIEW, target)
             } else {
-                val deepLinkUrl = parameters[DEEP_LINK_URL]
                 val target: Uri? = deepLinkUrl?.takeIf { it.isNotBlank() }?.toUri()
+                AnalyticsHelper.logWidgetClicked("main_app", deepLinkUrl)
                 Intent(Intent.ACTION_VIEW, target ?: return@runCatching Intent(context, MainActivity::class.java))
             }
         }.getOrElse { e ->
