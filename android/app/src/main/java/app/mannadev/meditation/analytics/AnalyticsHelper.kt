@@ -17,6 +17,18 @@ object AnalyticsHelper {
         }
     }
 
+    fun logWidgetClicked(destination: String, deepLinkUrl: String?) {
+        val widgetFamily = when {
+            deepLinkUrl?.contains("daily_manna") == true -> "qt"
+            deepLinkUrl?.contains("sunday_sermon") == true -> "sermon"
+            else -> "unknown"
+        }
+        Firebase.analytics.logEvent("widget_click") {
+            param("destination", destination)    // "youtube" or "main_app"
+            param("widget_family", widgetFamily) // "qt" or "sermon"
+        }
+    }
+
     fun logWidgetInstalled(widgetType: String) {
         Firebase.analytics.logEvent("widget_installed") {
             param("widget_type", widgetType)

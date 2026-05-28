@@ -10,6 +10,7 @@ import androidx.glance.action.actionParametersOf
 import androidx.glance.appwidget.action.ActionCallback
 import app.mannadev.meditation.Constants.FALLBACK_YOUTUBE_URL
 import app.mannadev.meditation.MainActivity
+import app.mannadev.meditation.analytics.AnalyticsHelper
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.di.getWidgetDependencies
 
@@ -25,8 +26,10 @@ class YoutubeLinkClickAction : ActionCallback {
                 val videoUrl = parameters[VIDEO_URL]
                 val target: Uri = videoUrl?.takeIf { it.isNotBlank() }?.toUri()
                     ?: FALLBACK_YOUTUBE_URL.toUri()
+                AnalyticsHelper.logWidgetClicked("youtube", null)
                 Intent(Intent.ACTION_VIEW, target)
             } else {
+                AnalyticsHelper.logWidgetClicked("main_app", null)
                 Intent(context, MainActivity::class.java)
             }
         }.getOrElse { e ->

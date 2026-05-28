@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import logger from './utils/logger';
+import { logAnalytics } from './utils/analytics';
+import WidgetUpdateModule from './types/WidgetUpdateModule';
 import MainTabNavigator from './navigation/MainTabNavigator';
 import EditScreen from './screens/EditScreen';
 import SettingsScreen from './screens/SettingsScreen';
@@ -39,6 +41,14 @@ const RootStack = () => {
 function App(): React.JSX.Element {
   const { isChecking, needsUpdate, config, showFallbackModal, startUpdate } =
     useForceUpdate();
+
+  useEffect(() => {
+    WidgetUpdateModule?.getYoutubeLinkEnabled?.()
+      .then((enabled: boolean) => {
+        logAnalytics.setWidgetLinkTarget(enabled ? 'youtube_link' : 'main_app');
+      })
+      .catch((e: unknown) => logger.warn('App: widget link target 읽기 실패', e));
+  }, []);
 
   if (isChecking) {
     return (
