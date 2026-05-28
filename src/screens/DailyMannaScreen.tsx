@@ -56,7 +56,7 @@ const DailyMannaScreen = () => {
       if (Array.isArray(parsed)) {
         // Firestore 경로: JSON.stringify(array) → JSON.parse → array
         return parsed
-          .flatMap((q: string) => q.split('\n'))
+          .flatMap((q: unknown) => typeof q === 'string' ? q.split('\n') : [])
           .filter((q: string) => q.trim());
       }
       if (typeof parsed === 'string') {
