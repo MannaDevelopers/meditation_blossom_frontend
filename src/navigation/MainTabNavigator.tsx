@@ -1,22 +1,27 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, TouchableOpacity, Text, View, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React from 'react';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, TouchableOpacity, Text, View, Image } from 'react-native';
+// PanResponderAdapter: react-native-pager-view(RNCViewPager)를 사용하지 않는 순수 JS 페이저.
+// react-native-tab-view의 iOS 빌드는 기본적으로 PagerViewAdapter(네이티브)를 사용하므로,
+// PanResponderAdapter를 명시적으로 주입하여 네이티브 의존성을 제거한다.
+// eslint-disable-next-line import/no-internal-modules
+import { PanResponderAdapter } from 'react-native-tab-view/src/PanResponderAdapter';
 import SvgIcon from '../components/SvgIcon';
 import HomeScreen from '../screens/HomeScreen';
 import DailyMannaScreen from '../screens/DailyMannaScreen';
 import { RootStackParamList } from '../types/navigation';
 import { logAnalytics } from '../utils/analytics';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'MainTabs'>;
-
-const TAB_ID_MAP: Record<string, number> = {
-  sunday_sermon: 0,
-  daily_manna: 1,
+export type MainTabParamList = {
+  '주일 말씀': undefined;
+  '매일 만나': undefined;
 };
 
-const TAB_LABELS = ['주일 말씀', '매일 만나'] as const;
+const Tab = createMaterialTopTabNavigator<MainTabParamList>();
 
 const SharedHeader = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -37,59 +42,53 @@ const SharedHeader = () => {
   );
 };
 
-const MainTabNavigator = ({ route }: Props) => {
-  const initialIndex = TAB_ID_MAP[route.params?.tab ?? 'sunday_sermon'] ?? 0;
-  const [activeIndex, setActiveIndex] = useState(initialIndex);
-  // 한 번 마운트된 탭은 언마운트하지 않고 숨김 처리 (상태 보존)
-  const mountedTabs = useRef(new Set<number>([initialIndex]));
-
-  useEffect(() => {
-    const tab = route.params?.tab;
-    const idx = TAB_ID_MAP[tab ?? 'sunday_sermon'] ?? 0;
-    setActiveIndex(idx);
-  }, [route.params?.tab]);
-
-  const handleTabPress = (index: number) => {
-    if (index === activeIndex) return;
-    mountedTabs.current.add(index);
-    setActiveIndex(index);
-    logAnalytics.tabSwitch(index === 0 ? 'sunday_sermon' : 'daily_qt');
-  };
-
+const CustomTabBar = ({ state, navigation }: MaterialTopTabBarProps) => {
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <SharedHeader />
-      {/* 탭 바 */}
+    <View>
       <View style={styles.tabBarContainer}>
-        {TAB_LABELS.map((label, index) => {
-          const isFocused = activeIndex === index;
+        {state.routes.map((route, index) => {
+          const isFocused = state.index === index;
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+              logAnalytics.tabSwitch(index === 0 ? 'sunday_sermon' : 'daily_qt');
+            }
+          };
           return (
             <TouchableOpacity
-              key={label}
-              onPress={() => handleTabPress(index)}
+              key={route.key}
+              onPress={onPress}
               style={[styles.tabButton, isFocused && styles.tabButtonActive]}
             >
               <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>
-                {label}
+                {route.name}
               </Text>
             </TouchableOpacity>
           );
         })}
       </View>
       <View style={styles.separator} />
-      {/* 화면 내용 — 한 번 마운트된 탭은 숨김 처리만 하여 상태 유지 */}
-      <View style={styles.screenContainer}>
-        {mountedTabs.current.has(0) && (
-          <View style={[styles.screen, activeIndex !== 0 && styles.hidden]}>
-            <HomeScreen />
-          </View>
-        )}
-        {mountedTabs.current.has(1) && (
-          <View style={[styles.screen, activeIndex !== 1 && styles.hidden]}>
-            <DailyMannaScreen />
-          </View>
-        )}
-      </View>
+    </View>
+  );
+};
+
+const MainTabNavigator = () => {
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <SharedHeader />
+      <Tab.Navigator
+        tabBar={(props) => <CustomTabBar {...props} />}
+        // PanResponderAdapter: 순수 JS 페이저로 RNCViewPager 네이티브 모듈 불필요
+        renderPager={(props) => <PanResponderAdapter {...props} />}
+      >
+        <Tab.Screen name="주일 말씀" component={HomeScreen} />
+        <Tab.Screen name="매일 만나" component={DailyMannaScreen} />
+      </Tab.Navigator>
     </SafeAreaView>
   );
 };
@@ -161,15 +160,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
-  },
-  screenContainer: {
-    flex: 1,
-  },
-  screen: {
-    flex: 1,
-  },
-  hidden: {
-    display: 'none',
   },
 });
 

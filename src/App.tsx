@@ -14,12 +14,18 @@ import { useForceUpdate } from './hooks/useForceUpdate';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const TAB_DEEP_LINK_MAP: Record<string, string> = {
+  daily_manna: '매일 만나',
+  sunday_sermon: '주일 말씀',
+};
+
 const linking: LinkingOptions<RootStackParamList> = {
   prefixes: ['meditationblossom://'],
   getStateFromPath(path) {
     const tab = path.match(/[?&]tab=([^&]*)/)?.[1];
+    const tabName = (tab && TAB_DEEP_LINK_MAP[tab]) ?? '주일 말씀';
     return {
-      routes: [{ name: 'MainTabs', params: { tab: tab ?? 'sunday_sermon' } }],
+      routes: [{ name: 'MainTabs', state: { routes: [{ name: tabName }] } }],
     };
   },
 };
