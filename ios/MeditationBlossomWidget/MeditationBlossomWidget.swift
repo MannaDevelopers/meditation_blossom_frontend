@@ -15,18 +15,32 @@ private enum WidgetConstants {
   static let appGroupId = "group.mannachurch.meditationblossom"
   static let displaySermonKey = "displaySermon"
   static let fcmSermonKey = "fcm_sermon"
+  static let youtubeLinkEnabledKey = "youtube_link_enabled"
+  static let fallbackYoutubeUrl = URL(string: "https://www.youtube.com/@만나")!
   static let widgetKind = "MeditationBlossomWidget"
   static let deepLinkSundaySermon = URL(string: "meditationblossom://open?tab=sunday_sermon")!
 }
 
 struct SimpleEntry: TimelineEntry {
-  let date: Date;
-  let title: String;
-  let quote: String;
-  let verse: String;
+  let date: Date
+  let title: String
+  let quote: String
+  let verse: String
+  let videoUrl: String?
+  let youtubeLinkEnabled: Bool
+
+  var targetURL: URL {
+    if youtubeLinkEnabled {
+      if let urlStr = videoUrl, let url = URL(string: urlStr) {
+        return url
+      }
+      return WidgetConstants.fallbackYoutubeUrl
+    }
+    return WidgetConstants.deepLinkSundaySermon
+  }
 }
 
-private let emptyEntry = SimpleEntry(date: Date(), title: " ", quote: "등록된 설교가 없습니다", verse: " ")
+private let emptyEntry = SimpleEntry(date: Date(), title: " ", quote: "등록된 설교가 없습니다", verse: " ", videoUrl: nil, youtubeLinkEnabled: false)
 
 @available(iOS 16.0, *)
 struct Provider: TimelineProvider {
@@ -132,7 +146,9 @@ struct Provider: TimelineProvider {
       }
     }
 
-    return SimpleEntry(date: Date(), title: sermon.title, quote: quote, verse: verse)
+    let youtubeLinkEnabled = sharedDefaults.bool(forKey: WidgetConstants.youtubeLinkEnabledKey)
+
+    return SimpleEntry(date: Date(), title: sermon.title, quote: quote, verse: verse, videoUrl: sermon.videoUrl, youtubeLinkEnabled: youtubeLinkEnabled)
   }
 }
 
@@ -145,11 +161,11 @@ struct MeditationBlossomWidget: Widget {
       if #available(iOS 17.0, *) {
         MeditationBlossomWidgetEntryView(entry: entry)
           .containerBackground(.fill.tertiary, for: .widget)
-          .widgetURL(WidgetConstants.deepLinkSundaySermon)
+          .widgetURL(entry.targetURL)
       } else {
         // iOS 16에서는 View 자체에 배경 적용
         MeditationBlossomWidgetEntryView(entry: entry)
-          .widgetURL(WidgetConstants.deepLinkSundaySermon)
+          .widgetURL(entry.targetURL)
       }
     }
     .supportedFamilies([.systemMedium, .systemLarge])
