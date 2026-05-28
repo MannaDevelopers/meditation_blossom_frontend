@@ -12,11 +12,11 @@ export function useQtWidgetSync(qt: QT | null): void {
     }
     let parsedMeditationQuestions: string[] = [];
     const raw = qt.meditation_questions;
-    if (raw) {
+    if (typeof raw === 'string' && raw) {
       try {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          parsedMeditationQuestions = parsed;
+          parsedMeditationQuestions = parsed.filter((q: unknown) => typeof q === 'string') as string[];
         } else if (typeof parsed === 'string') {
           parsedMeditationQuestions = parsed.split('\n').filter(Boolean);
         }
