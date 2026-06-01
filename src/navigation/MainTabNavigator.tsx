@@ -33,8 +33,9 @@ const SharedHeader = () => {
       <TouchableOpacity
         onPress={() => navigation.navigate('SettingsScreen')}
         style={styles.settingsButton}
+        hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
       >
-        <SvgIcon name="SettingButton" size={20} />
+        <SvgIcon name="SettingButton" size={24} />
       </TouchableOpacity>
     </View>
   );
@@ -96,10 +97,10 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    height: 30,
+    height: 44,
     marginHorizontal: 27,
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 4,
     alignItems: 'center',
   },
   icon: {
