@@ -244,21 +244,22 @@ const SettingsScreen = ({ navigation }: Props) => {
             </>
           )}
         </View>
-      </ScrollView>
 
-      {/* About this app — 스크롤 밖, 하단 고정 */}
-      <View style={styles.aboutSection}>
-        <Text style={styles.aboutTitle}>About this app</Text>
-        <Text style={styles.aboutText}>묵상만개 Meditation Blossom</Text>
-        <TouchableOpacity onPress={() => Linking.openURL('https://manna.or.kr/somoim/157228/')}>
-          <Text style={styles.aboutText}>from 2025 만개하다 미니프로젝트 - 앱 만들기</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => Linking.openURL('https://manna.or.kr/somoim/130539/')}>
-          <Text style={styles.aboutText}>개발 : 만개하다 - 만나교회 개발자 모임</Text>
-        </TouchableOpacity>
-        <Text style={styles.aboutText}>디자인 : Somang Choi</Text>
-        <Text style={styles.aboutText}>버전 : {DeviceInfo.getVersion()}</Text>
-      </View>
+        <View style={styles.aboutSpacer} />
+        {/* About this app — 콘텐츠가 짧으면 화면 하단 고정, 길면 스크롤 끝 */}
+        <View style={styles.aboutSection}>
+          <Text style={styles.aboutTitle}>About this app</Text>
+          <Text style={styles.aboutText}>묵상만개 Meditation Blossom</Text>
+          <TouchableOpacity onPress={() => Linking.openURL('https://manna.or.kr/somoim/190510/')}>
+            <Text style={styles.aboutText}>2026 만개하다 미니프로젝트</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => Linking.openURL('https://manna.or.kr/somoim/130539/')}>
+            <Text style={styles.aboutText}>개발 : 만개하다 - 만나교회 개발자 모임</Text>
+          </TouchableOpacity>
+          <Text style={styles.aboutText}>디자인 : Somang Choi</Text>
+          <Text style={styles.aboutText}>버전 : {DeviceInfo.getVersion()}</Text>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -292,7 +293,10 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    flexGrow: 1,
+  },
+  aboutSpacer: {
+    flex: 1,
   },
   sectionLabel: {
     color: '#49454F',
