@@ -240,15 +240,25 @@ export function JsPager<T extends Route>({
     onPanResponderTerminationRequest: () => true,
   });
 
-  const maxTranslate = layout.width * (routes.length - 1);
-  const translateX = Animated.multiply(
-    panX.interpolate({
-      inputRange: [-maxTranslate, 0],
-      outputRange: [-maxTranslate, 0],
-      extrapolate: 'clamp',
-    }),
-    layoutDirection === 'rtl' ? -1 : 1,
+  // maxTranslate와 translateX를 메모이제이션:
+  // Fabric(New Architecture) iOS에서 Animated.multiply/interpolate 파생 노드를
+  // 매 렌더마다 새로 생성하면 네이티브 뷰의 transform이 일시적으로 무효화될 수 있다.
+  // 특히 Animated.multiply(x, 1)는 불필요한 파생 노드를 만들므로,
+  // outputRange 부호 반전으로 RTL을 처리하고 Animated.multiply를 완전히 제거한다.
+  const maxTranslate = React.useMemo(
+    () => layout.width * (routes.length - 1),
+    [layout.width, routes.length],
   );
+
+  const translateX = React.useMemo(() => {
+    if (!maxTranslate) return panX;
+    return panX.interpolate({
+      inputRange: [-maxTranslate, 0],
+      // RTL: 부호 반전을 outputRange로 처리 → Animated.multiply 없이 동일 효과
+      outputRange: layoutDirection === 'rtl' ? [maxTranslate, 0] : [-maxTranslate, 0],
+      extrapolate: 'clamp',
+    });
+  }, [panX, maxTranslate, layoutDirection]);
 
   const position = React.useMemo(
     () => (layout.width ? Animated.divide(panX, -layout.width) : null),

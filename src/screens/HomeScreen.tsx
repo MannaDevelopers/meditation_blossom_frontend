@@ -79,11 +79,15 @@ const HomeScreen = () => {
 
   useEffect(() => {
     const init = async () => {
+      // AsyncStorage 읽기는 네이티브 브릿지 불필요 → 지연 없이 즉시 실행
+      const loaded = await loadLocalData();
+
       if (Platform.OS === 'ios') {
+        // 브릿지 초기화 대기 후 App Group 동기화 (네이티브 모듈 필요)
         await new Promise(resolve => setTimeout(resolve, BRIDGE_INIT_DELAY_MS));
         await performInitialSync();
       }
-      const loaded = await loadLocalData();
+
       const latestDate = loaded?.date ? new Date(loaded.date) : null;
       if (isSermonDataStale(latestDate)) {
         logAnalytics.appDataSource('firestore', 'sermon');
