@@ -150,6 +150,12 @@ export function JsPager<T extends Route>({
 
   React.useLayoutEffect(() => {
     const offset = -navigationStateRef.current.index * layout.width;
+    // Fabric(New Architecture) + useNativeDriver:false 에서는 Animated.Value.setValue()가
+    // 현재 값과 동일할 때 no-op이 되어 native 쪽에 transform이 커밋되지 않는다.
+    // (panX 초기값 0, index=0 → offset=0 → setValue(0) 이면 리스너 미호출)
+    // 미세한 값 변화(+0.001)로 dispatch를 강제한 뒤 즉시 올바른 값으로 복원한다.
+    // 두 번의 setState는 React 19 배칭으로 한 번 커밋되고, 최종값(offset)만 native에 전달된다.
+    panX.setValue(offset + 0.001);
     panX.setValue(offset);
   }, [layout.width, panX]);
 
