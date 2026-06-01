@@ -4,7 +4,7 @@ import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet, TouchableOpacity, Text, View, Image } from 'react-native';
+import { StyleSheet, TouchableOpacity, Text, View, Image, Dimensions } from 'react-native';
 // JsPager는 metro.config.js의 resolveRequest를 통해 주입된다.
 // iOS에서 react-native-tab-view/Pager.ios → src/navigation/JsPager.tsx 로 리다이렉트되어
 // RNCViewPager 네이티브 모듈 없이 탭 전환이 동작한다.
@@ -20,6 +20,7 @@ export type MainTabParamList = {
 };
 
 const Tab = createMaterialTopTabNavigator<MainTabParamList>();
+const SCREEN_WIDTH = Dimensions.get('window').width;
 const SharedHeader = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   return (
@@ -81,6 +82,7 @@ const MainTabNavigator = () => {
       <SharedHeader />
       <Tab.Navigator
         tabBar={(props) => <CustomTabBar {...props} />}
+        initialLayout={{ width: SCREEN_WIDTH }}
       >
         <Tab.Screen name="주일 말씀" component={HomeScreen} />
         <Tab.Screen name="매일 만나" component={DailyMannaScreen} />
