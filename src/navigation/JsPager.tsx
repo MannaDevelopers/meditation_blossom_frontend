@@ -300,7 +300,13 @@ export function JsPager<T extends Route>({
               key={route.key}
               style={
                 layout.width
-                  ? { width: layout.width }
+                  ? {
+                      position: 'absolute',
+                      width: layout.width,
+                      top: 0,
+                      bottom: 0,
+                      left: i * layout.width,
+                    }
                   : focused
                     ? StyleSheet.absoluteFill
                     : null
