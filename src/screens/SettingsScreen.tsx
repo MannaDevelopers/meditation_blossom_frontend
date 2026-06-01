@@ -245,7 +245,8 @@ const SettingsScreen = ({ navigation }: Props) => {
           )}
         </View>
 
-        {/* About this app — 스크롤 내부, 하단 */}
+        <View style={styles.aboutSpacer} />
+        {/* About this app — 콘텐츠가 짧으면 화면 하단 고정, 길면 스크롤 끝 */}
         <View style={styles.aboutSection}>
           <Text style={styles.aboutTitle}>About this app</Text>
           <Text style={styles.aboutText}>묵상만개 Meditation Blossom</Text>
@@ -292,7 +293,10 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    flexGrow: 1,
+  },
+  aboutSpacer: {
+    flex: 1,
   },
   sectionLabel: {
     color: '#49454F',
