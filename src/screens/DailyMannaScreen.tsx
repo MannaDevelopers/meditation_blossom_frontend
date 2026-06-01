@@ -22,7 +22,7 @@ import { extractContent } from '../utils/sermonParser';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
 
-const DAILY_MANNA_CHANNEL_URL = 'https://www.youtube.com/@만나';
+const DAILY_MANNA_CHANNEL_URL = encodeURI('https://www.youtube.com/@만나');
 
 const DailyMannaScreen = () => {
   const { qt, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
@@ -144,7 +144,10 @@ const DailyMannaScreen = () => {
             ) : null}
             <Text style={styles.dateText}>{qt?.date}</Text>
           </View>
-          <TouchableOpacity onPress={openYoutube}>
+          <TouchableOpacity
+            onPress={openYoutube}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <SvgIcon name="YoutubeButton" size={60} />
           </TouchableOpacity>
         </View>

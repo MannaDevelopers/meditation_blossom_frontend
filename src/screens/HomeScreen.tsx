@@ -25,7 +25,7 @@ import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
 
-const SUNDAY_SERMON_YOUTUBE_URL = 'https://www.youtube.com/@만나';
+const SUNDAY_SERMON_YOUTUBE_URL = encodeURI('https://www.youtube.com/@만나');
 
 const HomeScreen = () => {
   const { sermon, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
@@ -129,7 +129,10 @@ const HomeScreen = () => {
             ) : null}
             <Text style={styles.seriesDateText}>{sermon?.date}</Text>
           </View>
-          <TouchableOpacity onPress={openYoutube}>
+          <TouchableOpacity
+            onPress={openYoutube}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <SvgIcon name="YoutubeButton" size={60} />
           </TouchableOpacity>
         </View>
