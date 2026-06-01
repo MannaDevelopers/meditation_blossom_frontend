@@ -49,8 +49,10 @@ const HomeScreen = () => {
     useCallback(() => {
       if (isInitialMount.current) {
         isInitialMount.current = false;
+        logger.log('[Home] useFocusEffect: initial mount → skip');
         return;
       }
+      logger.log('[Home] useFocusEffect: re-focus → loadLocalData');
       loadLocalData();
     }, [loadLocalData]),
   );
@@ -79,22 +81,29 @@ const HomeScreen = () => {
 
   useEffect(() => {
     const init = async () => {
+      logger.log('[Home] init: start');
       // AsyncStorage 읽기는 네이티브 브릿지 불필요 → 지연 없이 즉시 실행
       const loaded = await loadLocalData();
+      logger.log('[Home] init: loadLocalData done, loaded=' + (loaded?.date ?? 'null'));
 
       if (Platform.OS === 'ios') {
         // 브릿지 초기화 대기 후 App Group 동기화 (네이티브 모듈 필요)
         await new Promise(resolve => setTimeout(resolve, BRIDGE_INIT_DELAY_MS));
         await performInitialSync();
+        logger.log('[Home] init: performInitialSync done');
       }
 
       const latestDate = loaded?.date ? new Date(loaded.date) : null;
       if (isSermonDataStale(latestDate)) {
         logAnalytics.appDataSource('firestore', 'sermon');
+        logger.log('[Home] init: data stale → fetchFromServer');
         await fetchFromServer();
+        logger.log('[Home] init: fetchFromServer done');
       } else {
         logAnalytics.appDataSource(loaded ? 'cache' : 'none', 'sermon');
+        logger.log('[Home] init: data fresh, skipping fetch');
       }
+      logger.log('[Home] init: complete');
     };
     init().catch((e) => {
       logger.error('HomeScreen init failed:', e);
@@ -103,6 +112,7 @@ const HomeScreen = () => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- init must run once on mount; deps are stable callbacks
 
   if (isLoading && !sermon) {
+    logger.log('[Home] rendering: SPINNER (isLoading=true, sermon=null)');
     return (
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <ActivityIndicator size="large" color="#A59EAE" />
@@ -111,6 +121,7 @@ const HomeScreen = () => {
   }
 
   if (error && !sermon) {
+    logger.log('[Home] rendering: ERROR', error);
     return (
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.errorContainer}>
@@ -123,6 +134,7 @@ const HomeScreen = () => {
     );
   }
 
+  logger.log('[Home] rendering: CONTENT, sermon=' + (sermon?.date ?? 'null') + ', isLoading=' + isLoading);
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={400}>

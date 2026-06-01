@@ -46,13 +46,16 @@ export function useSermonData(): UseSermonDataReturn {
   }, []);
 
   const fetchFromServer = useCallback(async () => {
+    logger.log('[SermonData] fetchFromServer: start');
     setIsLoading(true);
     setError(null);
     try {
       const result = await fetchLatestSermonFromServer();
+      logger.log('[SermonData] fetchFromServer: result=' + (result?.date ?? 'null'));
       if (result) {
         await saveSermonToAsyncStorage(result);
         setSermon(result);
+        logger.log('[SermonData] fetchFromServer: setSermon called');
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
@@ -61,6 +64,7 @@ export function useSermonData(): UseSermonDataReturn {
       logAnalytics.dataLoadFailed('sermon');
     } finally {
       setIsLoading(false);
+      logger.log('[SermonData] fetchFromServer: done, isLoading=false');
     }
   }, []);
 

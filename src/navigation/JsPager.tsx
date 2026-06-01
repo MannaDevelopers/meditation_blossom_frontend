@@ -19,6 +19,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import useLatestCallback from 'use-latest-callback';
+import logger from '../utils/logger';
 
 // ─── 로컬 useAnimatedValue ───────────────────────────────────────────────────
 
@@ -96,6 +97,17 @@ export function JsPager<T extends Route>({
 }: PagerAdapterProps<T>): React.ReactElement {
   const { routes, index } = navigationState;
   const panX = useAnimatedValue(0);
+
+  // 레이아웃 경로 진단 로그 (layout.width 변경 시에만)
+  const prevLayoutWidthRef = React.useRef<number>(-1);
+  if (layout.width !== prevLayoutWidthRef.current) {
+    prevLayoutWidthRef.current = layout.width;
+    logger.log(
+      '[JsPager] layout.width=' + layout.width +
+      ' → path=' + (layout.width ? 'side-by-side' : 'absoluteFill') +
+      ', index=' + index,
+    );
+  }
   const listenersRef = React.useRef<((value: number) => void)[]>([]);
   const navigationStateRef = React.useRef(navigationState);
   const layoutRef = React.useRef(layout);
