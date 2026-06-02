@@ -136,7 +136,14 @@ const HomeScreen = () => {
 
   logger.log('[Home] rendering: CONTENT, sermon=' + (sermon?.date ?? 'null') + ', isLoading=' + isLoading);
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView
+      style={styles.container}
+      edges={['bottom']}
+      onLayout={(e) => {
+        const { width, height } = e.nativeEvent.layout;
+        logger.log('[Home] SafeAreaView onLayout: width=' + width + ', height=' + height);
+      }}
+    >
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={400}>
         <View style={styles.seriesCard}>
           <View style={styles.seriesCardText}>

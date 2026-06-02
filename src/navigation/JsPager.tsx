@@ -159,6 +159,21 @@ export function JsPager<T extends Route>({
     panX.setValue(offset);
   }, [layout.width, panX]);
 
+  // Fabric 초기 렌더 버그 워크어라운드:
+  // SPINNER→CONTENT 트리 교체(Fabric 커밋) 이후 Animated.View transform이 무효화될 수 있다.
+  // useLayoutEffect bounce는 CONTENT 렌더 이전(~65ms)에 발생하므로 효과 없음.
+  // 300ms 지연으로 CONTENT 렌더 이후 panX를 다시 커밋한다.
+  React.useEffect(() => {
+    if (!layout.width) return;
+    const timer = setTimeout(() => {
+      const offset = -navigationStateRef.current.index * layout.width;
+      panX.setValue(offset + 0.001);
+      panX.setValue(offset);
+      logger.log('[JsPager] delayed panX bounce, offset=' + offset);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [layout.width, panX]);
+
   React.useEffect(() => {
     if (keyboardDismissMode === 'auto') {
       Keyboard.dismiss();
@@ -296,6 +311,10 @@ export function JsPager<T extends Route>({
             : null,
           style,
         ]}
+        onLayout={(e) => {
+          const { width, height } = e.nativeEvent.layout;
+          logger.log('[JsPager] Animated.View onLayout: width=' + width + ', height=' + height);
+        }}
         {...panResponder.panHandlers}
       >
         {React.Children.map(childrenNodes, (child, i) => {
