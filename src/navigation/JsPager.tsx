@@ -150,26 +150,31 @@ export function JsPager<T extends Route>({
 
   React.useLayoutEffect(() => {
     const offset = -navigationStateRef.current.index * layout.width;
-    // Fabric(New Architecture) + useNativeDriver:false 에서는 Animated.Value.setValue()가
-    // 현재 값과 동일할 때 no-op이 되어 native 쪽에 transform이 커밋되지 않는다.
-    // (panX 초기값 0, index=0 → offset=0 → setValue(0) 이면 리스너 미호출)
-    // 미세한 값 변화(+0.001)로 dispatch를 강제한 뒤 즉시 올바른 값으로 복원한다.
-    // 두 번의 setState는 React 19 배칭으로 한 번 커밋되고, 최종값(offset)만 native에 전달된다.
-    panX.setValue(offset + 0.001);
+    // Fabric(New Architecture) 초기 렌더 워크어라운드:
+    // panX.setValue(offset)이 no-op(값 동일)이면 native dispatch가 발생하지 않는다.
+    // 또한 bounce target이 interpolation inputRange 밖이면 clamp되어 translateX가
+    // 실제로 이동하지 않으므로 Fabric이 자식 뷰를 커밋하지 않는다.
+    // offset < 0이면 +0.001로 range 안의 값을 만들고,
+    // offset = 0이면 -0.001로 range 안의 값([-maxTranslate, 0] 내부)을 만든다.
+    const bounceTarget = offset < 0 ? offset + 0.001 : -0.001;
+    panX.setValue(bounceTarget);
     panX.setValue(offset);
   }, [layout.width, panX]);
 
-  // Fabric 초기 렌더 버그 워크어라운드:
-  // SPINNER→CONTENT 트리 교체(Fabric 커밋) 이후 Animated.View transform이 무효화될 수 있다.
-  // useLayoutEffect bounce는 CONTENT 렌더 이전(~65ms)에 발생하므로 효과 없음.
-  // 300ms 지연으로 CONTENT 렌더 이후 panX를 다시 커밋한다.
+  // Fabric 초기 렌더 버그 워크어라운드 (2단계):
+  // useLayoutEffect bounce는 SPINNER 단계에서 발화하므로, 이후 CONTENT 렌더
+  // (Fabric 커밋)가 Animated.View transform을 무효화할 수 있다.
+  // 300ms 지연으로 CONTENT 렌더 이후 실제 native 이동이 일어나는 bounce를 재실행한다.
+  // bounce target은 반드시 interpolation inputRange 안에 있어야 translateX가
+  // clamp되지 않고 실제로 이동하여 Fabric이 자식 뷰를 제대로 커밋한다.
   React.useEffect(() => {
     if (!layout.width) return;
     const timer = setTimeout(() => {
       const offset = -navigationStateRef.current.index * layout.width;
-      panX.setValue(offset + 0.001);
+      const bounceTarget = offset < 0 ? offset + 0.001 : -0.001;
+      panX.setValue(bounceTarget);
       panX.setValue(offset);
-      logger.log('[JsPager] delayed panX bounce, offset=' + offset);
+      logger.log('[JsPager] delayed panX bounce, offset=' + offset + ', bounceTarget=' + bounceTarget);
     }, 300);
     return () => clearTimeout(timer);
   }, [layout.width, panX]);
