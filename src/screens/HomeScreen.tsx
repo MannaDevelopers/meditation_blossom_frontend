@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -31,18 +31,6 @@ const HomeScreen = () => {
   const { sermon, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useSermonData();
 
-  // Fabric(New Architecture) 초기 렌더 버그 워크어라운드:
-  // 매일 만나 탭은 display:none→flex 전환으로 정상 표시되지만,
-  // 주일 말씀 탭(초기 탭)은 항상 flex라 이 전환이 없어 CONTENT가 blank.
-  // CONTENT 첫 렌더 시 display:none으로 시작하고, useLayoutEffect(paint 이전)에서
-  // display:flex로 전환하여 동일한 none→flex 메커니즘을 적용한다.
-  const [contentVisible, setContentVisible] = React.useState(false);
-  React.useLayoutEffect(() => {
-    if (!isLoading && sermon) {
-      setContentVisible(true);
-    }
-  }, [isLoading, sermon]);
-
   const sermonContent = useMemo(
     () => (sermon?.content ? extractContent(sermon.content) : { index: '', content: '' }),
     [sermon?.content],
@@ -58,11 +46,6 @@ const HomeScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      // Fabric(New Architecture) 초기 렌더 버그 워크어라운드:
-      // 초기 마운트 시 loadLocalData를 호출하여 sermon 상태를 새 객체 참조로 업데이트한다.
-      // 이를 통해 openYoutube, hitSlop 등 non-memoized prop이 새 reference로 Fabric에
-      // 전달되어 display refresh가 트리거된다.
-      // (이 호출은 init()의 loadLocalData와 동시에 실행되지만 AsyncStorage read-only라 안전하다)
       logger.log('[Home] useFocusEffect: focus → loadLocalData');
       loadLocalData();
     }, [loadLocalData]),
@@ -122,39 +105,16 @@ const HomeScreen = () => {
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- init must run once on mount; deps are stable callbacks
 
-  if (isLoading && !sermon) {
-    logger.log('[Home] rendering: SPINNER (isLoading=true, sermon=null)');
-    return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
-        <ActivityIndicator size="large" color="#A59EAE" />
-      </SafeAreaView>
-    );
-  }
-
-  if (error && !sermon) {
-    logger.log('[Home] rendering: ERROR', error);
-    return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>데이터를 불러올 수 없습니다</Text>
-          <TouchableOpacity onPress={onRefresh} style={styles.retryButton}>
-            <Text style={styles.retryText}>다시 시도</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  logger.log('[Home] rendering: CONTENT, sermon=' + (sermon?.date ?? 'null') + ', isLoading=' + isLoading + ', contentVisible=' + contentVisible);
+  // Fabric(New Architecture) 초기 렌더 버그 워크어라운드:
+  // SPINNER→CONTENT 분기 교체(reconciliation)를 없애고 항상 같은 컴포넌트 트리를 렌더한다.
+  // JsPager의 displayFixed가 tab 0을 display:none→flex로 전환할 때,
+  // SafeAreaView+ScrollView가 이미 마운트된 상태로 함께 전환되어 Fabric이 올바르게 커밋한다.
+  // 로딩/에러 상태는 absoluteFill overlay로 표시한다.
+  const showSpinner = isLoading && !sermon;
+  const showError = error && !sermon;
+  logger.log('[Home] rendering, sermon=' + (sermon?.date ?? 'null') + ', isLoading=' + isLoading + ', showSpinner=' + showSpinner);
   return (
-    <SafeAreaView
-      style={[styles.container, contentVisible ? undefined : { display: 'none' }]}
-      edges={['bottom']}
-      onLayout={(e) => {
-        const { width, height } = e.nativeEvent.layout;
-        logger.log('[Home] SafeAreaView onLayout: width=' + width + ', height=' + height);
-      }}
-    >
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={400}>
         <View style={styles.seriesCard}>
           <View style={styles.seriesCardText}>
@@ -178,6 +138,21 @@ const HomeScreen = () => {
         <View style={styles.contentDivider} />
         <Text style={styles.contentText}>{sermonContent.content}</Text>
       </ScrollView>
+      {showSpinner && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#A59EAE" />
+        </View>
+      )}
+      {showError && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>데이터를 불러올 수 없습니다</Text>
+            <TouchableOpacity onPress={onRefresh} style={styles.retryButton}>
+              <Text style={styles.retryText}>다시 시도</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -249,6 +224,12 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#E0E0E0',
     marginBottom: 16,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
   },
   errorContainer: {
     justifyContent: 'center',
