@@ -98,6 +98,16 @@ export function JsPager<T extends Route>({
   const { routes, index } = navigationState;
   const panX = useAnimatedValue(0);
 
+  // Fabric(New Architecture) display:none→flex 워크어라운드:
+  // 초기 렌더 시 focused tab(tab 0)을 포함한 모든 탭을 display:none으로 시작하고,
+  // useLayoutEffect(first paint 이전)에서 focused tab을 absoluteFill로 전환한다.
+  // 이렇게 하면 매일 만나 탭(처음 전환 시 display:none→flex)과 동일한 메커니즘이
+  // 주일 말씀 탭(초기 탭)에도 적용되어 Fabric이 컨텐츠를 올바르게 커밋한다.
+  const [displayFixed, setDisplayFixed] = React.useState(false);
+  React.useLayoutEffect(() => {
+    setDisplayFixed(true);
+  }, []);
+
   // 레이아웃 경로 진단 로그 (layout.width 변경 시에만)
   const prevLayoutWidthRef = React.useRef<number>(-1);
   if (layout.width !== prevLayoutWidthRef.current) {
@@ -279,10 +289,13 @@ export function JsPager<T extends Route>({
         {React.Children.map(childrenNodes, (child, i) => {
           const route = routes[i];
           const focused = i === index;
+          // displayFixed=false: 모든 탭 hidden (초기 렌더 - paint 이전)
+          // displayFixed=true: focused 탭만 absoluteFill, 나머지 hidden
+          const visible = displayFixed && focused;
           return (
             <View
               key={route.key}
-              style={focused ? StyleSheet.absoluteFill : styles.hiddenTab}
+              style={visible ? StyleSheet.absoluteFill : styles.hiddenTab}
             >
               {child}
             </View>
