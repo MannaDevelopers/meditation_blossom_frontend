@@ -150,33 +150,7 @@ export function JsPager<T extends Route>({
 
   React.useLayoutEffect(() => {
     const offset = -navigationStateRef.current.index * layout.width;
-    // Fabric(New Architecture) 초기 렌더 워크어라운드:
-    // panX.setValue(offset)이 no-op(값 동일)이면 native dispatch가 발생하지 않는다.
-    // 또한 bounce target이 interpolation inputRange 밖이면 clamp되어 translateX가
-    // 실제로 이동하지 않으므로 Fabric이 자식 뷰를 커밋하지 않는다.
-    // offset < 0이면 +0.001로 range 안의 값을 만들고,
-    // offset = 0이면 -0.001로 range 안의 값([-maxTranslate, 0] 내부)을 만든다.
-    const bounceTarget = offset < 0 ? offset + 0.001 : -0.001;
-    panX.setValue(bounceTarget);
     panX.setValue(offset);
-  }, [layout.width, panX]);
-
-  // Fabric 초기 렌더 버그 워크어라운드 (2단계):
-  // useLayoutEffect bounce는 SPINNER 단계에서 발화하므로, 이후 CONTENT 렌더
-  // (Fabric 커밋)가 Animated.View transform을 무효화할 수 있다.
-  // 300ms 지연으로 CONTENT 렌더 이후 실제 native 이동이 일어나는 bounce를 재실행한다.
-  // bounce target은 반드시 interpolation inputRange 안에 있어야 translateX가
-  // clamp되지 않고 실제로 이동하여 Fabric이 자식 뷰를 제대로 커밋한다.
-  React.useEffect(() => {
-    if (!layout.width) return;
-    const timer = setTimeout(() => {
-      const offset = -navigationStateRef.current.index * layout.width;
-      const bounceTarget = offset < 0 ? offset + 0.001 : -0.001;
-      panX.setValue(bounceTarget);
-      panX.setValue(offset);
-      logger.log('[JsPager] delayed panX bounce, offset=' + offset + ', bounceTarget=' + bounceTarget);
-    }, 300);
-    return () => clearTimeout(timer);
   }, [layout.width, panX]);
 
   React.useEffect(() => {
@@ -278,47 +252,27 @@ export function JsPager<T extends Route>({
     onPanResponderTerminationRequest: () => true,
   });
 
-  // maxTranslate와 translateX를 메모이제이션:
-  // Fabric(New Architecture) iOS에서 Animated.multiply/interpolate 파생 노드를
-  // 매 렌더마다 새로 생성하면 네이티브 뷰의 transform이 일시적으로 무효화될 수 있다.
-  // 특히 Animated.multiply(x, 1)는 불필요한 파생 노드를 만들므로,
-  // outputRange 부호 반전으로 RTL을 처리하고 Animated.multiply를 완전히 제거한다.
-  const maxTranslate = React.useMemo(
-    () => layout.width * (routes.length - 1),
-    [layout.width, routes.length],
-  );
-
-  const translateX = React.useMemo(() => {
-    if (!maxTranslate) return panX;
-    return panX.interpolate({
-      inputRange: [-maxTranslate, 0],
-      // RTL: 부호 반전을 outputRange로 처리 → Animated.multiply 없이 동일 효과
-      outputRange: layoutDirection === 'rtl' ? [maxTranslate, 0] : [-maxTranslate, 0],
-      extrapolate: 'clamp',
-    });
-  }, [panX, maxTranslate, layoutDirection]);
-
   const position = React.useMemo(
     () => (layout.width ? Animated.divide(panX, -layout.width) : null),
     [layout.width, panX],
   );
 
+  // Animated.View + transform 방식을 사용하지 않고 display:'none'으로 비활성 탭을 숨긴다.
+  // Fabric(New Architecture)에서 Animated.View + transform을 사용하면 초기 렌더 시
+  // 콘텐츠가 표시되지 않는 버그가 있어(탭 전환 후에야 표시됨), 이를 우회하기 위해
+  // absoluteFill + display:'none' 방식을 채택한다.
+  // PanResponder는 스와이프 제스처 감지를 위해 유지하되, 시각적 애니메이션은
+  // display 전환(즉시 전환)으로 처리된다.
   return children({
     position: position ?? new Animated.Value(index),
     addEnterListener,
     jumpTo,
     render: (childrenNodes) => (
-      <Animated.View
-        style={[
-          styles.sheet,
-          layout.width
-            ? { width: routes.length * layout.width, transform: [{ translateX }] }
-            : null,
-          style,
-        ]}
+      <View
+        style={[styles.sheet, style]}
         onLayout={(e) => {
           const { width, height } = e.nativeEvent.layout;
-          logger.log('[JsPager] Animated.View onLayout: width=' + width + ', height=' + height);
+          logger.log('[JsPager] View onLayout: width=' + width + ', height=' + height);
         }}
         {...panResponder.panHandlers}
       >
@@ -328,25 +282,13 @@ export function JsPager<T extends Route>({
           return (
             <View
               key={route.key}
-              style={
-                layout.width
-                  ? {
-                      position: 'absolute',
-                      width: layout.width,
-                      top: 0,
-                      bottom: 0,
-                      left: i * layout.width,
-                    }
-                  : focused
-                    ? StyleSheet.absoluteFill
-                    : null
-              }
+              style={focused ? StyleSheet.absoluteFill : styles.hiddenTab}
             >
-              {focused || layout.width ? child : null}
+              {child}
             </View>
           );
         })}
-      </Animated.View>
+      </View>
     ),
   });
 }
@@ -354,8 +296,10 @@ export function JsPager<T extends Route>({
 const styles = StyleSheet.create({
   sheet: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'stretch',
+    overflow: 'hidden',
+  },
+  hiddenTab: {
+    display: 'none',
   },
 });
 
