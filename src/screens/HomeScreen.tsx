@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -30,6 +30,18 @@ const SUNDAY_SERMON_YOUTUBE_URL = encodeURI('https://www.youtube.com/@만나');
 const HomeScreen = () => {
   const { sermon, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useSermonData();
+
+  // Fabric(New Architecture) 초기 렌더 버그 워크어라운드:
+  // 매일 만나 탭은 display:none→flex 전환으로 정상 표시되지만,
+  // 주일 말씀 탭(초기 탭)은 항상 flex라 이 전환이 없어 CONTENT가 blank.
+  // CONTENT 첫 렌더 시 display:none으로 시작하고, useLayoutEffect(paint 이전)에서
+  // display:flex로 전환하여 동일한 none→flex 메커니즘을 적용한다.
+  const [contentVisible, setContentVisible] = React.useState(false);
+  React.useLayoutEffect(() => {
+    if (!isLoading && sermon) {
+      setContentVisible(true);
+    }
+  }, [isLoading, sermon]);
 
   const sermonContent = useMemo(
     () => (sermon?.content ? extractContent(sermon.content) : { index: '', content: '' }),
@@ -133,10 +145,10 @@ const HomeScreen = () => {
     );
   }
 
-  logger.log('[Home] rendering: CONTENT, sermon=' + (sermon?.date ?? 'null') + ', isLoading=' + isLoading);
+  logger.log('[Home] rendering: CONTENT, sermon=' + (sermon?.date ?? 'null') + ', isLoading=' + isLoading + ', contentVisible=' + contentVisible);
   return (
     <SafeAreaView
-      style={styles.container}
+      style={[styles.container, contentVisible ? undefined : { display: 'none' }]}
       edges={['bottom']}
       onLayout={(e) => {
         const { width, height } = e.nativeEvent.layout;
