@@ -30,7 +30,6 @@ const SUNDAY_SERMON_YOUTUBE_URL = encodeURI('https://www.youtube.com/@만나');
 const HomeScreen = () => {
   const { sermon, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useSermonData();
-  const isInitialMount = useRef(true);
 
   const sermonContent = useMemo(
     () => (sermon?.content ? extractContent(sermon.content) : { index: '', content: '' }),
@@ -47,12 +46,12 @@ const HomeScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      if (isInitialMount.current) {
-        isInitialMount.current = false;
-        logger.log('[Home] useFocusEffect: initial mount → skip');
-        return;
-      }
-      logger.log('[Home] useFocusEffect: re-focus → loadLocalData');
+      // Fabric(New Architecture) 초기 렌더 버그 워크어라운드:
+      // 초기 마운트 시 loadLocalData를 호출하여 sermon 상태를 새 객체 참조로 업데이트한다.
+      // 이를 통해 openYoutube, hitSlop 등 non-memoized prop이 새 reference로 Fabric에
+      // 전달되어 display refresh가 트리거된다.
+      // (이 호출은 init()의 loadLocalData와 동시에 실행되지만 AsyncStorage read-only라 안전하다)
+      logger.log('[Home] useFocusEffect: focus → loadLocalData');
       loadLocalData();
     }, [loadLocalData]),
   );

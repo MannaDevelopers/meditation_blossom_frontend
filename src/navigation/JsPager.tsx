@@ -98,17 +98,6 @@ export function JsPager<T extends Route>({
   const { routes, index } = navigationState;
   const panX = useAnimatedValue(0);
 
-  // Fabric(New Architecture) aria-hidden 초기 렌더 버그 워크어라운드:
-  // react-native-tab-view의 SceneView는 aria-hidden={!focused}를 설정한다.
-  // Fabric에서 aria-hidden={false}로 첫 마운트되면 view가 표시되지 않는 버그가 있다.
-  // true→false 전환이 있어야 Fabric이 정상 커밋한다.
-  // 첫 렌더에서 navigationState.index=-1을 SceneView에 전달해 aria-hidden=true로 강제한 뒤,
-  // useLayoutEffect(paint 이전)에서 true→false 전환을 발생시킨다.
-  const [ariaHiddenFixed, setAriaHiddenFixed] = React.useState(false);
-  React.useLayoutEffect(() => {
-    setAriaHiddenFixed(true);
-  }, []);
-
   // 레이아웃 경로 진단 로그 (layout.width 변경 시에만)
   const prevLayoutWidthRef = React.useRef<number>(-1);
   if (layout.width !== prevLayoutWidthRef.current) {
@@ -336,14 +325,6 @@ export function JsPager<T extends Route>({
         {React.Children.map(childrenNodes, (child, i) => {
           const route = routes[i];
           const focused = i === index;
-          // aria-hidden 전환을 위해 첫 렌더에서 navigationState.index=-1 전달
-          // (ariaHiddenFixed가 true가 되면 원래 props 그대로 사용)
-          const effectiveChild = ariaHiddenFixed
-            ? child
-            : React.cloneElement(
-                child as React.ReactElement<{ navigationState: NavigationState<T> }>,
-                { navigationState: { ...navigationState, index: -1 } },
-              );
           return (
             <View
               key={route.key}
@@ -361,7 +342,7 @@ export function JsPager<T extends Route>({
                     : null
               }
             >
-              {focused || layout.width ? effectiveChild : null}
+              {focused || layout.width ? child : null}
             </View>
           );
         })}
