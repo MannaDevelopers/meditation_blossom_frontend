@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View, SafeAreaView } from 'react-native';
 import logger from './utils/logger';
 import { logAnalytics } from './utils/analytics';
 import WidgetUpdateModule from './types/WidgetUpdateModule';
@@ -11,6 +11,7 @@ import { LinkingOptions, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types/navigation';
 import { useForceUpdate } from './hooks/useForceUpdate';
+
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -75,16 +76,16 @@ function App(): React.JSX.Element {
   }
 
   return (
-    <>
+    <SafeAreaView style={{ flex: 1, backgroundColor : '#fff' }}>
       <RootStack />
-      {needsUpdate && showFallbackModal && config && (
-        <ForceUpdateModal
-          visible
-          message={config.force_update_message}
-          onPressUpdate={startUpdate}
-        />
-      )}
-    </>
+        {needsUpdate && showFallbackModal && config && (
+          <ForceUpdateModal
+            visible
+            message={config.force_update_message}
+            onPressUpdate={startUpdate}
+          />
+        )}
+    </SafeAreaView>
   );
 }
 

@@ -22,7 +22,7 @@ import { extractContent } from '../utils/sermonParser';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
 
-const DAILY_MANNA_CHANNEL_URL = 'https://www.youtube.com/@만나';
+const DAILY_MANNA_CHANNEL_URL = encodeURI('https://www.youtube.com/@만나');
 
 const DailyMannaScreen = () => {
   const { qt, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
@@ -144,7 +144,10 @@ const DailyMannaScreen = () => {
             ) : null}
             <Text style={styles.dateText}>{qt?.date}</Text>
           </View>
-          <TouchableOpacity onPress={openYoutube}>
+          <TouchableOpacity
+            onPress={openYoutube}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <SvgIcon name="YoutubeButton" size={60} />
           </TouchableOpacity>
         </View>
@@ -152,9 +155,17 @@ const DailyMannaScreen = () => {
         <Text style={styles.titleText} numberOfLines={0}>
           {processTitleText(qt?.title)}
         </Text>
-        <Text style={styles.indexText}>{qtContent.index}</Text>
+        {qtContent.index ? (
+          <Text style={styles.indexText}>{qtContent.index}</Text>
+        ) : null}
         <View style={styles.contentDivider} />
-        <Text style={styles.contentText}>{qtContent.content}</Text>
+        {qtContent.content ? (
+          <Text style={styles.contentText}>{qtContent.content}</Text>
+        ) : (
+          <Text style={styles.contentUnavailableText}>
+            말씀 본문은 앱 업데이트 후 표시됩니다.
+          </Text>
+        )}
         {isSunday ? (
           <Text style={styles.noQuestionText}>오늘은 묵상 질문이 없습니다</Text>
         ) : meditationQuestions.length > 0 ? (
@@ -250,11 +261,18 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 32,
   },
-noQuestionText: {
+  noQuestionText: {
     color: '#A59EAE',
     fontSize: 14,
     fontFamily: 'Pretendard-Medium',
     marginBottom: 32,
+  },
+  contentUnavailableText: {
+    color: '#A59EAE',
+    fontSize: 16,
+    fontFamily: 'Pretendard-Regular',
+    marginBottom: 32,
+    fontStyle: 'italic',
   },
   questionsContainer: {
     backgroundColor: '#EBFAFF',

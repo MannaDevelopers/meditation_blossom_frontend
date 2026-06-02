@@ -25,12 +25,11 @@ import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
 
-const SUNDAY_SERMON_YOUTUBE_URL = 'https://www.youtube.com/@만나';
+const SUNDAY_SERMON_YOUTUBE_URL = encodeURI('https://www.youtube.com/@만나');
 
 const HomeScreen = () => {
   const { sermon, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useSermonData();
-  const isInitialMount = useRef(true);
 
   const sermonContent = useMemo(
     () => (sermon?.content ? extractContent(sermon.content) : { index: '', content: '' }),
@@ -47,10 +46,7 @@ const HomeScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      if (isInitialMount.current) {
-        isInitialMount.current = false;
-        return;
-      }
+      logger.log('[Home] useFocusEffect: focus → loadLocalData');
       loadLocalData();
     }, [loadLocalData]),
   );
@@ -79,18 +75,29 @@ const HomeScreen = () => {
 
   useEffect(() => {
     const init = async () => {
+      logger.log('[Home] init: start');
+      // AsyncStorage 읽기는 네이티브 브릿지 불필요 → 지연 없이 즉시 실행
+      const loaded = await loadLocalData();
+      logger.log('[Home] init: loadLocalData done, loaded=' + (loaded?.date ?? 'null'));
+
       if (Platform.OS === 'ios') {
+        // 브릿지 초기화 대기 후 App Group 동기화 (네이티브 모듈 필요)
         await new Promise(resolve => setTimeout(resolve, BRIDGE_INIT_DELAY_MS));
         await performInitialSync();
+        logger.log('[Home] init: performInitialSync done');
       }
-      const loaded = await loadLocalData();
+
       const latestDate = loaded?.date ? new Date(loaded.date) : null;
       if (isSermonDataStale(latestDate)) {
         logAnalytics.appDataSource('firestore', 'sermon');
+        logger.log('[Home] init: data stale → fetchFromServer');
         await fetchFromServer();
+        logger.log('[Home] init: fetchFromServer done');
       } else {
         logAnalytics.appDataSource(loaded ? 'cache' : 'none', 'sermon');
+        logger.log('[Home] init: data fresh, skipping fetch');
       }
+      logger.log('[Home] init: complete');
     };
     init().catch((e) => {
       logger.error('HomeScreen init failed:', e);
@@ -98,27 +105,14 @@ const HomeScreen = () => {
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- init must run once on mount; deps are stable callbacks
 
-  if (isLoading && !sermon) {
-    return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
-        <ActivityIndicator size="large" color="#A59EAE" />
-      </SafeAreaView>
-    );
-  }
-
-  if (error && !sermon) {
-    return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>데이터를 불러올 수 없습니다</Text>
-          <TouchableOpacity onPress={onRefresh} style={styles.retryButton}>
-            <Text style={styles.retryText}>다시 시도</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
+  // Fabric(New Architecture) 초기 렌더 버그 워크어라운드:
+  // SPINNER→CONTENT 분기 교체(reconciliation)를 없애고 항상 같은 컴포넌트 트리를 렌더한다.
+  // JsPager의 displayFixed가 tab 0을 display:none→flex로 전환할 때,
+  // SafeAreaView+ScrollView가 이미 마운트된 상태로 함께 전환되어 Fabric이 올바르게 커밋한다.
+  // 로딩/에러 상태는 absoluteFill overlay로 표시한다.
+  const showSpinner = isLoading && !sermon;
+  const showError = error && !sermon;
+  logger.log('[Home] rendering, sermon=' + (sermon?.date ?? 'null') + ', isLoading=' + isLoading + ', showSpinner=' + showSpinner);
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={400}>
@@ -129,7 +123,10 @@ const HomeScreen = () => {
             ) : null}
             <Text style={styles.seriesDateText}>{sermon?.date}</Text>
           </View>
-          <TouchableOpacity onPress={openYoutube}>
+          <TouchableOpacity
+            onPress={openYoutube}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <SvgIcon name="YoutubeButton" size={60} />
           </TouchableOpacity>
         </View>
@@ -141,6 +138,21 @@ const HomeScreen = () => {
         <View style={styles.contentDivider} />
         <Text style={styles.contentText}>{sermonContent.content}</Text>
       </ScrollView>
+      {showSpinner && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#A59EAE" />
+        </View>
+      )}
+      {showError && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>데이터를 불러올 수 없습니다</Text>
+            <TouchableOpacity onPress={onRefresh} style={styles.retryButton}>
+              <Text style={styles.retryText}>다시 시도</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -212,6 +224,12 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#E0E0E0',
     marginBottom: 16,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
   },
   errorContainer: {
     justifyContent: 'center',
