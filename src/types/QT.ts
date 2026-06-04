@@ -67,15 +67,16 @@ export const firestoreDocToQt = async (
   const data = doc.data();
   let content = data.content || '';
   const bibleRefs = data.bible_references;
-  if (Platform.OS === 'android' && bibleRefs) {
+  if (bibleRefs) {
+    // Android: BibleReferenceResolver(Kotlin) 호출
+    // iOS: WidgetUpdateModule.resolveBibleReferences(Swift/BibleDbHelper) 호출
+    // 두 플랫폼 모두 동일한 JS 경로 사용
     try {
       content = await WidgetUpdateModule.resolveBibleReferences(JSON.stringify(bibleRefs));
     } catch (e) {
       logger.error('firestoreDocToQt: bridge resolveBibleReferences failed', e);
       content = '';
     }
-  } else if (Platform.OS === 'ios' && bibleRefs) {
-    content = '';
   }
   return {
     id: doc.id,

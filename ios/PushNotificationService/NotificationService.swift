@@ -1,5 +1,6 @@
 import UserNotifications
 import WidgetKit
+import SQLite3 // BibleDbHelper가 사용하는 모듈 (BibleDbHelper.swift가 이 타겟에도 컴파일됨)
 
 class NotificationService: UNNotificationServiceExtension {
 
@@ -123,15 +124,59 @@ class NotificationService: UNNotificationServiceExtension {
 
     // MARK: - Sermon Parsing & Saving
 
+    // MARK: - Bible References
+
+    /// bible_references JSON 배열(서버 snake_case 키)을 DB에서 조회하여 본문 문자열로 반환.
+    /// 빈 배열([]) = 말씀 없는 날 → 빈 문자열 반환.
+    private func resolveBibleReferencesFromUserInfo(_ userInfo: [AnyHashable: Any]) -> String? {
+        guard let topic = userInfo["topic"] as? String else { return nil }
+        let shouldResolve = topic.contains("v2") || topic.contains("qt_events")
+        guard shouldResolve else { return nil }
+
+        // bible_references는 JSON 문자열 또는 이미 파싱된 배열로 도착할 수 있음
+        var refs: [[String: Any]] = []
+        if let rawString = userInfo["bible_references"] as? String,
+           let data = rawString.data(using: .utf8),
+           let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+            refs = parsed
+        } else if let rawArray = userInfo["bible_references"] as? [[String: Any]] {
+            refs = rawArray
+        }
+
+        var lines: [String] = []
+        for ref in refs {
+            guard let book = ref["book"] as? String,
+                  let chapter = ref["chapter"] as? Int,
+                  let verseStart = ref["verse_start"] as? Int,
+                  let verseEnd = ref["verse_end"] as? Int else { continue }
+            let text = BibleDbHelper.shared.getVerses(book: book, chapter: chapter,
+                                                      verseStart: verseStart, verseEnd: verseEnd)
+            if !text.isEmpty {
+                lines.append(text)
+            }
+        }
+        return lines.joined(separator: "\n\n")
+    }
+
     private func parseSermonFromUserInfo(_ userInfo: [AnyHashable: Any]) -> Sermon? {
         let id = (userInfo["source_id"] as? String) ?? (userInfo["id"] as? String) ?? generateSermonId(from: userInfo)
 
         guard let title = userInfo["title"] as? String,
-              let content = userInfo["content"] as? String,
               let date = userInfo["date"] as? String,
               let dayOfWeek = userInfo["day_of_week"] as? String else {
-            NSLog("NotificationService: parseSermonFromUserInfo failed - missing required fields (title/content/date/day_of_week)")
+            NSLog("NotificationService: parseSermonFromUserInfo failed - missing required fields (title/date/day_of_week)")
             return nil
+        }
+
+        // bible_references에서 본문 조회 시도; 없으면 content 필드 fallback
+        let content: String
+        if let resolved = resolveBibleReferencesFromUserInfo(userInfo) {
+            content = resolved
+        } else if let rawContent = userInfo["content"] as? String {
+            content = rawContent
+        } else {
+            NSLog("NotificationService: parseSermonFromUserInfo - no content or bible_references")
+            content = ""
         }
 
         let category = userInfo["category"] as? String
