@@ -398,14 +398,20 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   NSMutableDictionary *sermonData = [SermonBuilder buildFromPayload:data sourceId:sourceId];
   if (data[@"video_url"]) sermonData[@"video_url"] = data[@"video_url"];
   
-  if ([sermonData[@"topic"] containsString:@"v2"]) {
+  // sermon_events_v2 과 qt_events 모두 bible_references 배열로 말씀 데이터가 전달된다.
+  // content 필드는 FCM 4KB 제약으로 포함되지 않으며, 빈 배열([])은 말씀 없는 날을 의미한다.
+  // 서버는 snake_case 키(verse_start, verse_end)를 사용한다.
+  NSString *topic = sermonData[@"topic"] ?: @"";
+  BOOL shouldResolveBibleRefs = [topic containsString:@"v2"] || [topic containsString:@"qt_events"];
+  if (shouldResolveBibleRefs) {
     NSArray<NSDictionary *> *refs = sermonData[@"bible_references"];
     NSMutableString *builtContent = [NSMutableString string];
     for (NSDictionary *ref in refs) {
         NSString *book = [ref[@"book"] isKindOfClass:[NSString class]] ? ref[@"book"] : nil;
         NSNumber *chapterNum = [ref[@"chapter"] isKindOfClass:[NSNumber class]] ? ref[@"chapter"] : nil;
-        NSNumber *startNum = [ref[@"verseStart"] isKindOfClass:[NSNumber class]] ? ref[@"verseStart"] : nil;
-        NSNumber *endNum = [ref[@"verseEnd"] isKindOfClass:[NSNumber class]] ? ref[@"verseEnd"] : nil;
+        // 서버는 snake_case 키(verse_start, verse_end)로 전송
+        NSNumber *startNum = [ref[@"verse_start"] isKindOfClass:[NSNumber class]] ? ref[@"verse_start"] : nil;
+        NSNumber *endNum   = [ref[@"verse_end"]   isKindOfClass:[NSNumber class]] ? ref[@"verse_end"]   : nil;
 
         if (!book || !chapterNum || !startNum || !endNum) continue;
 
@@ -413,14 +419,12 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
                                                            chapter:chapterNum.intValue
                                                         verseStart:startNum.intValue
                                                           verseEnd:endNum.intValue];
-      if (text.length == 0) continue;
-      if (builtContent.length > 0) [builtContent appendString:@"\n\n"];
-      [builtContent appendString:text];
+        if (text.length == 0) continue;
+        if (builtContent.length > 0) [builtContent appendString:@"\n\n"];
+        [builtContent appendString:text];
     }
-
-    if (builtContent.length > 0) {
-      sermonData[@"content"] = builtContent;
-    }
+    // 말씀 없는 날(빈 배열)은 content를 빈 문자열로 설정
+    sermonData[@"content"] = builtContent;
   }
   
   NSError *error;

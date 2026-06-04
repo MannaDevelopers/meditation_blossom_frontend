@@ -59,7 +59,7 @@ class WidgetUpdateModule: NSObject {
           return
         }
 
-        let helper = BibleDbHelper()
+        let helper = BibleDbHelper.shared
         var lines: [String] = []
 
         for ref in refs {
