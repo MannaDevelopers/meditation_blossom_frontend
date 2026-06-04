@@ -47,9 +47,12 @@ class WidgetUpdateModule: NSObject {
   // MARK: - Bible References
 
   @objc
+  // DB 조회를 직렬화하기 위한 전용 큐 (SQLite 멀티스레드 에러 방지)
+  private static let dbQueue = DispatchQueue(label: "com.mannachurch.BibleDbHelper", qos: .userInitiated)
+
   func resolveBibleReferences(_ jsonString: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    NSLog("📖 resolveBibleReferences called, input: %@", String(jsonString.prefix(100)))
-    DispatchQueue.global(qos: .userInitiated).async {
+    NSLog("📖 resolveBibleReferences called, input: %@", String(jsonString.prefix(120)))
+    WidgetUpdateModule.dbQueue.async {
       do {
         guard let data = jsonString.data(using: .utf8),
               let refs = try JSONSerialization.jsonObject(with: data) as? [[String: Any]],
@@ -61,27 +64,52 @@ class WidgetUpdateModule: NSObject {
 
         NSLog("📖 resolveBibleReferences: %d refs to process", refs.count)
         let helper = BibleDbHelper.shared
-        var lines: [String] = []
+        var resultParts: [String] = []
 
         for ref in refs {
           guard let book = ref["book"] as? String,
                 let chapter = ref["chapter"] as? Int,
-                // Firestore/FCM 모두 snake_case 키(verse_start/verse_end) 사용
                 let fromVerse = ref["verse_start"] as? Int else {
-            NSLog("📖 resolveBibleReferences: skipping ref with missing keys: %@", ref.description)
+            NSLog("📖 skipping ref with missing book/chapter/verse_start keys")
             continue
           }
           let toVerse = ref["verse_end"] as? Int ?? fromVerse
-          NSLog("📖 querying %@ %d:%d-%d", book, chapter, fromVerse, toVerse)
+          let rangeStr = fromVerse == toVerse ? "\(chapter):\(fromVerse)" : "\(chapter):\(fromVerse)-\(toVerse)"
 
-          let text = helper.getVerses(book: book, chapter: chapter, verseStart: fromVerse, verseEnd: toVerse)
-          NSLog("📖 result: %@", text.isEmpty ? "(empty)" : String(text.prefix(50)))
-          if !text.isEmpty {
-            lines.append(text)
+          // 서버가 verses 배열로 본문을 미리 제공하면 DB 조회 불필요
+          var verseBodyLines: [String] = []
+          if let verses = ref["verses"] as? [[String: Any]], !verses.isEmpty {
+            NSLog("📖 using embedded verses for %@ %@", book, rangeStr)
+            for verse in verses {
+              guard let content = verse["content"] as? String, !content.isEmpty else { continue }
+              if let num = verse["verse_number"] as? Int {
+                verseBodyLines.append("\(num) \(content)")
+              } else {
+                verseBodyLines.append(content)
+              }
+            }
           }
+
+          // embedded verses 없으면 bible.db 직접 조회
+          if verseBodyLines.isEmpty {
+            NSLog("📖 querying DB for %@ %@", book, rangeStr)
+            let text = helper.getVerses(book: book, chapter: chapter, verseStart: fromVerse, verseEnd: toVerse)
+            NSLog("📖 DB result: %@", text.isEmpty ? "(empty)" : String(text.prefix(50)))
+            if !text.isEmpty {
+              verseBodyLines = text.components(separatedBy: "\n").filter { !$0.isEmpty }
+            }
+          }
+
+          if verseBodyLines.isEmpty { continue }
+
+          // Android BibleReferenceResolver와 동일한 포맷:
+          // "본문 : 사무엘상 17:31-37 31 어떤 사람이..."
+          // extractContent(sermonParser.ts)가 이 포맷을 파싱한다.
+          let verseBody = verseBodyLines.joined(separator: " ")
+          resultParts.append("본문 : \(book) \(rangeStr) \(verseBody)")
         }
 
-        let result = lines.joined(separator: "\n\n")
+        let result = resultParts.joined(separator: "\n\n")
         NSLog("📖 resolveBibleReferences done: %d chars", result.count)
         resolve(result)
       } catch {

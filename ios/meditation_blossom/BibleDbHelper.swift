@@ -34,7 +34,8 @@ final class BibleDbHelper: NSObject {
             return
         }
 
-        if sqlite3_open(path, &db) != SQLITE_OK {
+        // SQLITE_OPEN_FULLMUTEX: serialized 모드 (멀티스레드 안전)
+        if sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, nil) != SQLITE_OK {
             let message = db.flatMap { String(cString: sqlite3_errmsg($0)) } ?? "unknown"
             NSLog("❌ Failed to open DB: %@", message)
             if db != nil {
