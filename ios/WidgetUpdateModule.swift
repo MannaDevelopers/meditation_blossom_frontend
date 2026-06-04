@@ -51,35 +51,28 @@ class WidgetUpdateModule: NSObject {
 
   @objc
   func resolveBibleReferences(_ jsonString: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    NSLog("📖 resolveBibleReferences called, input: %@", String(jsonString.prefix(120)))
     WidgetUpdateModule.dbQueue.async {
       do {
         guard let data = jsonString.data(using: .utf8),
               let refs = try JSONSerialization.jsonObject(with: data) as? [[String: Any]],
               !refs.isEmpty else {
-          NSLog("📖 resolveBibleReferences: empty refs or parse failed → returning empty")
           resolve("")
           return
         }
 
-        NSLog("📖 resolveBibleReferences: %d refs to process", refs.count)
         let helper = BibleDbHelper.shared
         var resultParts: [String] = []
 
         for ref in refs {
           guard let book = ref["book"] as? String,
                 let chapter = ref["chapter"] as? Int,
-                let fromVerse = ref["verse_start"] as? Int else {
-            NSLog("📖 skipping ref with missing book/chapter/verse_start keys")
-            continue
-          }
+                let fromVerse = ref["verse_start"] as? Int else { continue }
           let toVerse = ref["verse_end"] as? Int ?? fromVerse
           let rangeStr = fromVerse == toVerse ? "\(chapter):\(fromVerse)" : "\(chapter):\(fromVerse)-\(toVerse)"
 
           // 서버가 verses 배열로 본문을 미리 제공하면 DB 조회 불필요
           var verseBodyLines: [String] = []
           if let verses = ref["verses"] as? [[String: Any]], !verses.isEmpty {
-            NSLog("📖 using embedded verses for %@ %@", book, rangeStr)
             for verse in verses {
               guard let content = verse["content"] as? String, !content.isEmpty else { continue }
               if let num = verse["verse_number"] as? Int {
@@ -92,9 +85,7 @@ class WidgetUpdateModule: NSObject {
 
           // embedded verses 없으면 bible.db 직접 조회
           if verseBodyLines.isEmpty {
-            NSLog("📖 querying DB for %@ %@", book, rangeStr)
             let text = helper.getVerses(book: book, chapter: chapter, verseStart: fromVerse, verseEnd: toVerse)
-            NSLog("📖 DB result: %@", text.isEmpty ? "(empty)" : String(text.prefix(50)))
             if !text.isEmpty {
               verseBodyLines = text.components(separatedBy: "\n").filter { !$0.isEmpty }
             }
@@ -109,11 +100,9 @@ class WidgetUpdateModule: NSObject {
           resultParts.append("본문 : \(book) \(rangeStr) \(verseBody)")
         }
 
-        let result = resultParts.joined(separator: "\n\n")
-        NSLog("📖 resolveBibleReferences done: %d chars", result.count)
-        resolve(result)
+        resolve(resultParts.joined(separator: "\n\n"))
       } catch {
-        NSLog("📖 resolveBibleReferences error: %@", error.localizedDescription)
+        NSLog("resolveBibleReferences error: %@", error.localizedDescription)
         reject("BIBLE_RESOLVE_ERROR", error.localizedDescription, error)
       }
     }

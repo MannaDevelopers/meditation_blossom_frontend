@@ -26,7 +26,6 @@ export async function fetchLatestQtFromAsyncStorage(): Promise<QT | null> {
     raw = await AsyncStorage.getItem(FCM_QT_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as QTRaw;
-      logger.log('[QT] AsyncStorage raw: content=' + (parsed.content ? parsed.content.slice(0, 30) + '...' : '(empty)') + ', has_bible_refs=' + !!parsed.bible_references);
       const qt = fcmDataToQt(parsed);
 
       // content가 비어 있고 bible_references가 있으면 네이티브 DB 조회
@@ -36,12 +35,10 @@ export async function fetchLatestQtFromAsyncStorage(): Promise<QT | null> {
           const refsJson = typeof parsed.bible_references === 'string'
             ? parsed.bible_references
             : JSON.stringify(parsed.bible_references);
-          logger.log('[QT] content 없음 → resolveBibleReferences 호출, refs=' + refsJson.slice(0, 80));
           const resolved = await WidgetUpdateModule.resolveBibleReferences(refsJson);
-          logger.log('[QT] resolveBibleReferences 결과: ' + (resolved ? resolved.slice(0, 50) + '...' : '(empty)'));
           return { ...qt, content: resolved };
         } catch (e) {
-          logger.error('[QT] fetchLatestQtFromAsyncStorage: resolveBibleReferences failed', e);
+          logger.error('fetchLatestQtFromAsyncStorage: resolveBibleReferences failed', e);
         }
       }
 
