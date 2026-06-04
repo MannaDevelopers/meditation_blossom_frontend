@@ -101,13 +101,22 @@ class WidgetUpdateModule: NSObject {
 
   @objc
   func getYoutubeLinkEnabled(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    let enabled = UserDefaults.standard.bool(forKey: Constants.youtubeLinkEnabledKey)
+    guard let sharedDefaults = Self.appGroupDefaults() else {
+      reject("APP_GROUP_ERROR", "App Group을 찾을 수 없습니다.", nil)
+      return
+    }
+    let enabled = sharedDefaults.bool(forKey: Constants.youtubeLinkEnabledKey)
     resolve(enabled)
   }
 
   @objc
   func setYoutubeLinkEnabled(_ enabled: Bool, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    UserDefaults.standard.set(enabled, forKey: Constants.youtubeLinkEnabledKey)
+    guard let sharedDefaults = Self.appGroupDefaults() else {
+      reject("APP_GROUP_ERROR", "App Group을 찾을 수 없습니다.", nil)
+      return
+    }
+    sharedDefaults.set(enabled, forKey: Constants.youtubeLinkEnabledKey)
+    WidgetCenter.shared.reloadAllTimelines()
     resolve(nil)
   }
 

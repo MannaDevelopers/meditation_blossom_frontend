@@ -1,10 +1,13 @@
 import React from 'react';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
-import { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
+import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet, TouchableOpacity, Text, View, Image } from 'react-native';
+import { StyleSheet, TouchableOpacity, Text, View, Image, Dimensions } from 'react-native';
+// JsPager는 metro.config.js의 resolveRequest를 통해 주입된다.
+// iOS에서 react-native-tab-view/Pager.ios → src/navigation/JsPager.tsx 로 리다이렉트되어
+// RNCViewPager 네이티브 모듈 없이 탭 전환이 동작한다.
 import SvgIcon from '../components/SvgIcon';
 import HomeScreen from '../screens/HomeScreen';
 import DailyMannaScreen from '../screens/DailyMannaScreen';
@@ -17,7 +20,7 @@ export type MainTabParamList = {
 };
 
 const Tab = createMaterialTopTabNavigator<MainTabParamList>();
-
+const SCREEN_WIDTH = Dimensions.get('window').width;
 const SharedHeader = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   return (
@@ -30,8 +33,9 @@ const SharedHeader = () => {
       <TouchableOpacity
         onPress={() => navigation.navigate('SettingsScreen')}
         style={styles.settingsButton}
+        hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
       >
-        <SvgIcon name="SettingButton" size={20} fill="black" />
+        <SvgIcon name="SettingButton" size={24} />
       </TouchableOpacity>
     </View>
   );
@@ -76,7 +80,10 @@ const MainTabNavigator = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <SharedHeader />
-      <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />}>
+      <Tab.Navigator
+        tabBar={(props) => <CustomTabBar {...props} />}
+        initialLayout={{ width: SCREEN_WIDTH }}
+      >
         <Tab.Screen name="주일 말씀" component={HomeScreen} />
         <Tab.Screen name="매일 만나" component={DailyMannaScreen} />
       </Tab.Navigator>
@@ -91,10 +98,10 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    height: 30,
+    height: 44,
     marginHorizontal: 27,
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 4,
     alignItems: 'center',
   },
   icon: {

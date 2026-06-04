@@ -1,6 +1,8 @@
-import React from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { ActivityIndicator, StyleSheet, View, SafeAreaView } from 'react-native';
 import logger from './utils/logger';
+import { logAnalytics } from './utils/analytics';
+import WidgetUpdateModule from './types/WidgetUpdateModule';
 import MainTabNavigator from './navigation/MainTabNavigator';
 import EditScreen from './screens/EditScreen';
 import SettingsScreen from './screens/SettingsScreen';
@@ -9,6 +11,7 @@ import { LinkingOptions, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types/navigation';
 import { useForceUpdate } from './hooks/useForceUpdate';
+
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -56,6 +59,14 @@ function App(): React.JSX.Element {
   const { isChecking, needsUpdate, config, showFallbackModal, startUpdate } =
     useForceUpdate();
 
+  useEffect(() => {
+    WidgetUpdateModule?.getYoutubeLinkEnabled?.()
+      .then((enabled: boolean) => {
+        logAnalytics.setWidgetLinkTarget(enabled ? 'youtube_link' : 'main_app');
+      })
+      .catch((e: unknown) => logger.warn('App: widget link target 읽기 실패', e));
+  }, []);
+
   if (isChecking) {
     return (
       <View style={styles.loading}>
@@ -65,16 +76,16 @@ function App(): React.JSX.Element {
   }
 
   return (
-    <>
+    <SafeAreaView style={{ flex: 1, backgroundColor : '#fff' }}>
       <RootStack />
-      {needsUpdate && showFallbackModal && config && (
-        <ForceUpdateModal
-          visible
-          message={config.force_update_message}
-          onPressUpdate={startUpdate}
-        />
-      )}
-    </>
+        {needsUpdate && showFallbackModal && config && (
+          <ForceUpdateModal
+            visible
+            message={config.force_update_message}
+            onPressUpdate={startUpdate}
+          />
+        )}
+    </SafeAreaView>
   );
 }
 

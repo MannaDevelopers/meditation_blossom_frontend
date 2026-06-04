@@ -1,4 +1,4 @@
-import { getAnalytics, logEvent as firebaseLogEvent } from '@react-native-firebase/analytics';
+import { getAnalytics, logEvent as firebaseLogEvent, setUserProperty } from '@react-native-firebase/analytics';
 import logger from './logger';
 
 function logEvent(name: string, params?: Record<string, string>): void {
@@ -34,4 +34,9 @@ export const logAnalytics = {
   // 앱 실행 시 데이터 소스 (cache = AsyncStorage 신선, firestore = 서버 재요청, none = 데이터 없음)
   appDataSource: (source: 'cache' | 'firestore' | 'none', type: 'sermon' | 'qt') =>
     logEvent('app_data_source', { source, type }),
+
+  // 위젯 클릭 대상 User Property (기기당 현재 설정값 — Firebase Audiences에서 분포 확인용)
+  setWidgetLinkTarget: (value: 'main_app' | 'youtube_link') =>
+    setUserProperty(getAnalytics(), 'widget_link_target', value)
+      .catch(e => logger.warn('analytics.setUserProperty(widget_link_target) failed', e)),
 };
