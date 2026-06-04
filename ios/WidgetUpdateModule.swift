@@ -46,10 +46,10 @@ class WidgetUpdateModule: NSObject {
 
   // MARK: - Bible References
 
-  @objc
   // DB 조회를 직렬화하기 위한 전용 큐 (SQLite 멀티스레드 에러 방지)
   private static let dbQueue = DispatchQueue(label: "com.mannachurch.BibleDbHelper", qos: .userInitiated)
 
+  @objc
   func resolveBibleReferences(_ jsonString: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     NSLog("📖 resolveBibleReferences called, input: %@", String(jsonString.prefix(120)))
     WidgetUpdateModule.dbQueue.async {
