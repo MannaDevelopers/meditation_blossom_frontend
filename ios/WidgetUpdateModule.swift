@@ -48,17 +48,18 @@ class WidgetUpdateModule: NSObject {
 
   @objc
   func resolveBibleReferences(_ jsonString: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    // iOS: JS 코드(QT.ts, Sermon.ts)는 Platform.OS === 'ios' 분기에서 이 함수를 호출하지 않음.
-    // 향후 사용을 위해 BibleDbHelper 를 통해 구현.
+    NSLog("📖 resolveBibleReferences called, input: %@", String(jsonString.prefix(100)))
     DispatchQueue.global(qos: .userInitiated).async {
       do {
         guard let data = jsonString.data(using: .utf8),
               let refs = try JSONSerialization.jsonObject(with: data) as? [[String: Any]],
               !refs.isEmpty else {
-          resolve(jsonString)
+          NSLog("📖 resolveBibleReferences: empty refs or parse failed → returning empty")
+          resolve("")
           return
         }
 
+        NSLog("📖 resolveBibleReferences: %d refs to process", refs.count)
         let helper = BibleDbHelper.shared
         var lines: [String] = []
 
@@ -66,17 +67,25 @@ class WidgetUpdateModule: NSObject {
           guard let book = ref["book"] as? String,
                 let chapter = ref["chapter"] as? Int,
                 // Firestore/FCM 모두 snake_case 키(verse_start/verse_end) 사용
-                let fromVerse = ref["verse_start"] as? Int else { continue }
+                let fromVerse = ref["verse_start"] as? Int else {
+            NSLog("📖 resolveBibleReferences: skipping ref with missing keys: %@", ref.description)
+            continue
+          }
           let toVerse = ref["verse_end"] as? Int ?? fromVerse
+          NSLog("📖 querying %@ %d:%d-%d", book, chapter, fromVerse, toVerse)
 
           let text = helper.getVerses(book: book, chapter: chapter, verseStart: fromVerse, verseEnd: toVerse)
+          NSLog("📖 result: %@", text.isEmpty ? "(empty)" : String(text.prefix(50)))
           if !text.isEmpty {
             lines.append(text)
           }
         }
 
-        resolve(lines.joined(separator: "\n\n"))
+        let result = lines.joined(separator: "\n\n")
+        NSLog("📖 resolveBibleReferences done: %d chars", result.count)
+        resolve(result)
       } catch {
+        NSLog("📖 resolveBibleReferences error: %@", error.localizedDescription)
         reject("BIBLE_RESOLVE_ERROR", error.localizedDescription, error)
       }
     }
