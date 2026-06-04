@@ -65,8 +65,9 @@ class WidgetUpdateModule: NSObject {
         for ref in refs {
           guard let book = ref["book"] as? String,
                 let chapter = ref["chapter"] as? Int,
-                let fromVerse = ref["from_verse"] as? Int else { continue }
-          let toVerse = ref["to_verse"] as? Int ?? fromVerse
+                // Firestore/FCM 모두 snake_case 키(verse_start/verse_end) 사용
+                let fromVerse = ref["verse_start"] as? Int else { continue }
+          let toVerse = ref["verse_end"] as? Int ?? fromVerse
 
           let text = helper.getVerses(book: book, chapter: chapter, verseStart: fromVerse, verseEnd: toVerse)
           if !text.isEmpty {
