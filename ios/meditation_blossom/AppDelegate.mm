@@ -398,29 +398,66 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   NSMutableDictionary *sermonData = [SermonBuilder buildFromPayload:data sourceId:sourceId];
   if (data[@"video_url"]) sermonData[@"video_url"] = data[@"video_url"];
   
-  if ([sermonData[@"topic"] containsString:@"v2"]) {
+  // sermon_events_v2 과 qt_events 모두 bible_references 배열로 말씀 데이터가 전달된다.
+  // content 필드는 FCM 4KB 제약으로 포함되지 않으며, 빈 배열([])은 말씀 없는 날을 의미한다.
+  // 서버는 snake_case 키(verse_start, verse_end) 사용, 또한 verses 배열로 본문을 미리 제공할 수 있다.
+  NSString *topic = sermonData[@"topic"] ?: @"";
+  BOOL shouldResolveBibleRefs = [topic containsString:@"v2"] || [topic containsString:@"qt_events"];
+  if (shouldResolveBibleRefs) {
     NSArray<NSDictionary *> *refs = sermonData[@"bible_references"];
     NSMutableString *builtContent = [NSMutableString string];
     for (NSDictionary *ref in refs) {
         NSString *book = [ref[@"book"] isKindOfClass:[NSString class]] ? ref[@"book"] : nil;
         NSNumber *chapterNum = [ref[@"chapter"] isKindOfClass:[NSNumber class]] ? ref[@"chapter"] : nil;
-        NSNumber *startNum = [ref[@"verseStart"] isKindOfClass:[NSNumber class]] ? ref[@"verseStart"] : nil;
-        NSNumber *endNum = [ref[@"verseEnd"] isKindOfClass:[NSNumber class]] ? ref[@"verseEnd"] : nil;
+        NSNumber *startNum = [ref[@"verse_start"] isKindOfClass:[NSNumber class]] ? ref[@"verse_start"] : nil;
+        NSNumber *endNum   = [ref[@"verse_end"]   isKindOfClass:[NSNumber class]] ? ref[@"verse_end"]   : nil;
 
         if (!book || !chapterNum || !startNum || !endNum) continue;
 
-        NSString *text = [[BibleDbHelper shared] getVersesWithBook:book
-                                                           chapter:chapterNum.intValue
-                                                        verseStart:startNum.intValue
-                                                          verseEnd:endNum.intValue];
-      if (text.length == 0) continue;
-      if (builtContent.length > 0) [builtContent appendString:@"\n\n"];
-      [builtContent appendString:text];
-    }
+        int from = startNum.intValue;
+        int to   = endNum.intValue;
+        NSString *rangeStr = (from == to)
+            ? [NSString stringWithFormat:@"%d:%d", chapterNum.intValue, from]
+            : [NSString stringWithFormat:@"%d:%d-%d", chapterNum.intValue, from, to];
 
-    if (builtContent.length > 0) {
-      sermonData[@"content"] = builtContent;
+        NSMutableString *verseBody = [NSMutableString string];
+
+        // 서버가 verses 배열로 본문을 미리 제공하면 DB 조회 불필요
+        NSArray *verses = [ref[@"verses"] isKindOfClass:[NSArray class]] ? ref[@"verses"] : nil;
+        if (verses.count > 0) {
+            for (NSDictionary *verse in verses) {
+                NSString *content = [verse[@"content"] isKindOfClass:[NSString class]] ? verse[@"content"] : nil;
+                if (!content || content.length == 0) continue;
+                NSNumber *verseNum = [verse[@"verse_number"] isKindOfClass:[NSNumber class]] ? verse[@"verse_number"] : nil;
+                if (verseBody.length > 0) [verseBody appendString:@" "];
+                if (verseNum) {
+                    [verseBody appendFormat:@"%@ %@", verseNum, content];
+                } else {
+                    [verseBody appendString:content];
+                }
+            }
+        }
+
+        // embedded verses 없으면 bible.db 직접 조회
+        if (verseBody.length == 0) {
+            NSString *text = [[BibleDbHelper shared] getVersesWithBook:book
+                                                               chapter:chapterNum.intValue
+                                                            verseStart:from
+                                                              verseEnd:to];
+            if (text.length > 0) {
+                [verseBody appendString:text];
+            }
+        }
+
+        if (verseBody.length == 0) continue;
+
+        // extractContent(sermonParser.ts)가 파싱할 수 있는 포맷:
+        // "본문 : 사무엘상 17:31-37 31 어떤 사람이..."
+        if (builtContent.length > 0) [builtContent appendString:@"\n\n"];
+        [builtContent appendFormat:@"본문 : %@ %@ %@", book, rangeStr, verseBody];
     }
+    // 말씀 없는 날(빈 배열)은 content를 빈 문자열로 설정
+    sermonData[@"content"] = builtContent;
   }
   
   NSError *error;

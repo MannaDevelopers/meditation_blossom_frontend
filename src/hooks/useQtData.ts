@@ -32,6 +32,22 @@ export function useQtData(): UseQtDataReturn {
       logger.log('AsyncStorage qt:', selected ? selected.date : 'null');
       setQt(selected);
       setError(null);
+
+      // content가 비어 있으면 Firestore에서 재조회
+      // (App Group → AsyncStorage 경유 시 bible_references가 없는 구 포맷 데이터일 수 있음)
+      if (selected && !selected.content) {
+        try {
+          const fresh = await fetchLatestQtFromServer();
+          if (fresh) {
+            await saveQtToAsyncStorage(fresh);
+            setQt(fresh);
+            return fresh;
+          }
+        } catch (fetchErr) {
+          logger.warn('useQtData: Firestore fallback failed (offline?)', fetchErr);
+        }
+      }
+
       return selected;
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);

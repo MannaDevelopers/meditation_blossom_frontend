@@ -34,7 +34,8 @@ final class BibleDbHelper: NSObject {
             return
         }
 
-        if sqlite3_open(path, &db) != SQLITE_OK {
+        // SQLITE_OPEN_FULLMUTEX: serialized 모드 (멀티스레드 안전)
+        if sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, nil) != SQLITE_OK {
             let message = db.flatMap { String(cString: sqlite3_errmsg($0)) } ?? "unknown"
             NSLog("❌ Failed to open DB: %@", message)
             if db != nil {
@@ -49,7 +50,12 @@ final class BibleDbHelper: NSObject {
     }
 
     private func databasePath() -> String? {
-        Bundle.main.path(forResource: "bible", ofType: "db")
+        // Bundle.main 대신 Bundle(for:) 사용:
+        // App Extension 타겟(PushNotificationService)에서는 Bundle.main이
+        // Extension 자신의 번들을 가리키므로 이 방식도 동작하지만,
+        // 명시적으로 이 클래스가 컴파일된 번들에서 찾도록 지정하여
+        // 멀티 타겟 환경에서도 안전하게 동작하도록 한다.
+        Bundle(for: BibleDbHelper.self).path(forResource: "bible", ofType: "db")
     }
 
     @objc(getVersesWithBook:chapter:verseStart:verseEnd:)

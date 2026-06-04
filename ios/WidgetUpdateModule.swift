@@ -46,36 +46,63 @@ class WidgetUpdateModule: NSObject {
 
   // MARK: - Bible References
 
+  // DB 조회를 직렬화하기 위한 전용 큐 (SQLite 멀티스레드 에러 방지)
+  private static let dbQueue = DispatchQueue(label: "com.mannachurch.BibleDbHelper", qos: .userInitiated)
+
   @objc
   func resolveBibleReferences(_ jsonString: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    // iOS: JS 코드(QT.ts, Sermon.ts)는 Platform.OS === 'ios' 분기에서 이 함수를 호출하지 않음.
-    // 향후 사용을 위해 BibleDbHelper 를 통해 구현.
-    DispatchQueue.global(qos: .userInitiated).async {
+    WidgetUpdateModule.dbQueue.async {
       do {
         guard let data = jsonString.data(using: .utf8),
               let refs = try JSONSerialization.jsonObject(with: data) as? [[String: Any]],
               !refs.isEmpty else {
-          resolve(jsonString)
+          resolve("")
           return
         }
 
-        let helper = BibleDbHelper()
-        var lines: [String] = []
+        let helper = BibleDbHelper.shared
+        var resultParts: [String] = []
 
         for ref in refs {
           guard let book = ref["book"] as? String,
                 let chapter = ref["chapter"] as? Int,
-                let fromVerse = ref["from_verse"] as? Int else { continue }
-          let toVerse = ref["to_verse"] as? Int ?? fromVerse
+                let fromVerse = ref["verse_start"] as? Int else { continue }
+          let toVerse = ref["verse_end"] as? Int ?? fromVerse
+          let rangeStr = fromVerse == toVerse ? "\(chapter):\(fromVerse)" : "\(chapter):\(fromVerse)-\(toVerse)"
 
-          let text = helper.getVerses(book: book, chapter: chapter, verseStart: fromVerse, verseEnd: toVerse)
-          if !text.isEmpty {
-            lines.append(text)
+          // 서버가 verses 배열로 본문을 미리 제공하면 DB 조회 불필요
+          var verseBodyLines: [String] = []
+          if let verses = ref["verses"] as? [[String: Any]], !verses.isEmpty {
+            for verse in verses {
+              guard let content = verse["content"] as? String, !content.isEmpty else { continue }
+              if let num = verse["verse_number"] as? Int {
+                verseBodyLines.append("\(num) \(content)")
+              } else {
+                verseBodyLines.append(content)
+              }
+            }
           }
+
+          // embedded verses 없으면 bible.db 직접 조회
+          if verseBodyLines.isEmpty {
+            let text = helper.getVerses(book: book, chapter: chapter, verseStart: fromVerse, verseEnd: toVerse)
+            if !text.isEmpty {
+              verseBodyLines = text.components(separatedBy: "\n").filter { !$0.isEmpty }
+            }
+          }
+
+          if verseBodyLines.isEmpty { continue }
+
+          // Android BibleReferenceResolver와 동일한 포맷:
+          // "본문 : 사무엘상 17:31-37 31 어떤 사람이..."
+          // extractContent(sermonParser.ts)가 이 포맷을 파싱한다.
+          let verseBody = verseBodyLines.joined(separator: " ")
+          resultParts.append("본문 : \(book) \(rangeStr) \(verseBody)")
         }
 
-        resolve(lines.joined(separator: "\n\n"))
+        resolve(resultParts.joined(separator: "\n\n"))
       } catch {
+        NSLog("resolveBibleReferences error: %@", error.localizedDescription)
         reject("BIBLE_RESOLVE_ERROR", error.localizedDescription, error)
       }
     }
