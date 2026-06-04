@@ -397,7 +397,29 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   
   NSMutableDictionary *sermonData = [SermonBuilder buildFromPayload:data sourceId:sourceId];
   if (data[@"video_url"]) sermonData[@"video_url"] = data[@"video_url"];
-  
+
+  // meditation_questions: FCM은 평문 문자열로 전달 → QT.swift가 [String] 배열로 디코딩할 수 있도록
+  // JSON 배열 문자열로 변환하여 저장한다. useQtWidgetSync.ts(앱 실행 중)와 동일한 포맷을 유지.
+  id rawQuestions = sermonData[@"meditation_questions"];
+  if ([rawQuestions isKindOfClass:[NSString class]] && [(NSString *)rawQuestions length] > 0) {
+    NSString *qStr = (NSString *)rawQuestions;
+    NSData *testData = [qStr dataUsingEncoding:NSUTF8StringEncoding];
+    id parsedTest = [NSJSONSerialization JSONObjectWithData:testData options:0 error:nil];
+    if (![parsedTest isKindOfClass:[NSArray class]]) {
+      // 평문 → 줄바꿈으로 분리해 JSON 배열로 변환
+      NSArray *lines = [qStr componentsSeparatedByString:@"\n"];
+      NSMutableArray *filtered = [NSMutableArray array];
+      for (NSString *line in lines) {
+        NSString *trimmed = [line stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (trimmed.length > 0) [filtered addObject:trimmed];
+      }
+      NSData *jsonData2 = [NSJSONSerialization dataWithJSONObject:filtered options:0 error:nil];
+      if (jsonData2) {
+        sermonData[@"meditation_questions"] = [[NSString alloc] initWithData:jsonData2 encoding:NSUTF8StringEncoding];
+      }
+    }
+  }
+
   // sermon_events_v2 과 qt_events 모두 bible_references 배열로 말씀 데이터가 전달된다.
   // content 필드는 FCM 4KB 제약으로 포함되지 않으며, 빈 배열([])은 말씀 없는 날을 의미한다.
   // 서버는 snake_case 키(verse_start, verse_end) 사용, 또한 verses 배열로 본문을 미리 제공할 수 있다.
