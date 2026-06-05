@@ -143,19 +143,32 @@ class NotificationService: UNNotificationServiceExtension {
             refs = rawArray
         }
 
-        var lines: [String] = []
+        // refs가 여러 개인 경우 Android와 동일하게 "본문 : 참조1, 참조2 구절1 구절2" 포맷으로 합침
+        var allRefStrings: [String] = []
+        var allVerseLines: [String] = []
+
         for ref in refs {
             guard let book = ref["book"] as? String,
                   let chapter = ref["chapter"] as? Int,
                   let verseStart = ref["verse_start"] as? Int,
                   let verseEnd = ref["verse_end"] as? Int else { continue }
+
+            let rangeStr = verseStart == verseEnd
+                ? "\(chapter):\(verseStart)"
+                : "\(chapter):\(verseStart)-\(verseEnd)"
+
             let text = BibleDbHelper.shared.getVerses(book: book, chapter: chapter,
                                                       verseStart: verseStart, verseEnd: verseEnd)
             if !text.isEmpty {
-                lines.append(text)
+                allRefStrings.append("\(book) \(rangeStr)")
+                allVerseLines.append(contentsOf: text.components(separatedBy: "\n").filter { !$0.isEmpty })
             }
         }
-        return lines.joined(separator: "\n\n")
+
+        guard !allRefStrings.isEmpty else { return "" }
+        let reference = allRefStrings.joined(separator: ", ")
+        let body = allVerseLines.joined(separator: " ")
+        return "본문 : \(reference) \(body)"
     }
 
     private func parseSermonFromUserInfo(_ userInfo: [AnyHashable: Any]) -> Sermon? {

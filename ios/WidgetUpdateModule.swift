@@ -61,7 +61,11 @@ class WidgetUpdateModule: NSObject {
         }
 
         let helper = BibleDbHelper.shared
-        var resultParts: [String] = []
+        // refs가 여러 개인 경우 Android BibleReferenceResolver와 동일하게:
+        // "본문 : 참조1, 참조2 구절1 구절2" 형태로 합쳐야 extractContent가 올바르게 파싱함.
+        // 각 ref를 별도의 "본문 : ..." 문자열로 만들면 두 번째 "본문 : "부터 파싱이 깨진다.
+        var allRefStrings: [String] = []
+        var allVerseLines: [String] = []
 
         for ref in refs {
           guard let book = ref["book"] as? String,
@@ -93,14 +97,20 @@ class WidgetUpdateModule: NSObject {
 
           if verseBodyLines.isEmpty { continue }
 
-          // Android BibleReferenceResolver와 동일한 포맷:
-          // "본문 : 사무엘상 17:31-37 31 어떤 사람이..."
-          // extractContent(sermonParser.ts)가 이 포맷을 파싱한다.
-          let verseBody = verseBodyLines.joined(separator: " ")
-          resultParts.append("본문 : \(book) \(rangeStr) \(verseBody)")
+          allRefStrings.append("\(book) \(rangeStr)")
+          allVerseLines.append(contentsOf: verseBodyLines)
         }
 
-        resolve(resultParts.joined(separator: "\n\n"))
+        guard !allRefStrings.isEmpty else {
+          resolve("")
+          return
+        }
+
+        // Android 포맷: "본문 : 참조1, 참조2 31 구절1 32 구절2 25 구절3..."
+        // extractContent(sermonParser.ts)의 bookNameRegex가 쉼표 구분 참조를 지원한다.
+        let reference = allRefStrings.joined(separator: ", ")
+        let body = allVerseLines.joined(separator: " ")
+        resolve("본문 : \(reference) \(body)")
       } catch {
         NSLog("resolveBibleReferences error: %@", error.localizedDescription)
         reject("BIBLE_RESOLVE_ERROR", error.localizedDescription, error)
