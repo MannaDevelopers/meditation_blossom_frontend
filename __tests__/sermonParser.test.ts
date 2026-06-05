@@ -35,4 +35,33 @@ describe('extractContent', () => {
     expect(result.index).toBe('갈라디아서 5:22');
     expect(result.content).toContain('22 오직 성령의 열매는');
   });
+
+  // iOS 신규 포맷: 참조 쉼표 병합, 본문 이어붙임
+  it('복수 참조가 쉼표로 합쳐진 신규 포맷을 정상 파싱한다', () => {
+    const input =
+      '본문 : 사무엘상 21:10-15, 사무엘상 22:1-2 10 그 날에 다윗이 11 아기스의 신하들이 1 그러므로 다윗이 2 환난 당한 모든 자와';
+    const result = extractContent(input);
+    expect(result.index).toBe('사무엘상 21:10-15, 사무엘상 22:1-2');
+    expect(result.content).toContain('10 그 날에 다윗이');
+    expect(result.content).toContain('11 아기스의 신하들이');
+    expect(result.content).toContain('1 그러므로 다윗이');
+    expect(result.content).toContain('2 환난 당한 모든 자와');
+  });
+
+  // iOS 구 포맷: 각 참조가 "본문 : "\n\n"본문 : " 패턴으로 저장됨
+  it('iOS 구 포맷 (복수 "본문 :" 섹션)을 각 섹션별로 파싱해 합산한다', () => {
+    const oldFormat =
+      '본문 : 사무엘상 21:10-15 10 그 날에 다윗이 11 아기스의 신하들이\n\n본문 : 사무엘상 22:1-2 1 그러므로 다윗이 2 환난 당한 모든 자와';
+    const result = extractContent(oldFormat);
+    // 두 참조가 쉼표로 합쳐져야 한다
+    expect(result.index).toContain('사무엘상 21:10-15');
+    expect(result.index).toContain('사무엘상 22:1-2');
+    // 두 섹션의 본문이 모두 포함되어야 한다
+    expect(result.content).toContain('10 그 날에 다윗이');
+    expect(result.content).toContain('11 아기스의 신하들이');
+    expect(result.content).toContain('1 그러므로 다윗이');
+    expect(result.content).toContain('2 환난 당한 모든 자와');
+    // 두 번째 "본문 :" 텍스트가 본문에 포함되지 않아야 한다
+    expect(result.content).not.toContain('본문');
+  });
 });
