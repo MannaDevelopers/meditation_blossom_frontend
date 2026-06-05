@@ -427,7 +427,12 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   BOOL shouldResolveBibleRefs = [topic containsString:@"v2"] || [topic containsString:@"qt_events"];
   if (shouldResolveBibleRefs) {
     NSArray<NSDictionary *> *refs = sermonData[@"bible_references"];
-    NSMutableString *builtContent = [NSMutableString string];
+    // refs가 여러 개인 경우 Android BibleReferenceResolver와 동일하게
+    // "본문 : 참조1, 참조2 구절1 구절2" 형태로 합친다.
+    // 각 ref를 별도 "본문 : ..." 문자열로 만들면 두 번째부터 파싱이 깨진다.
+    NSMutableArray<NSString *> *allRefStrings = [NSMutableArray array];
+    NSMutableString *allVerseBody = [NSMutableString string];
+
     for (NSDictionary *ref in refs) {
         NSString *book = [ref[@"book"] isKindOfClass:[NSString class]] ? ref[@"book"] : nil;
         NSNumber *chapterNum = [ref[@"chapter"] isKindOfClass:[NSNumber class]] ? ref[@"chapter"] : nil;
@@ -473,13 +478,20 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
 
         if (verseBody.length == 0) continue;
 
-        // extractContent(sermonParser.ts)가 파싱할 수 있는 포맷:
-        // "본문 : 사무엘상 17:31-37 31 어떤 사람이..."
-        if (builtContent.length > 0) [builtContent appendString:@"\n\n"];
-        [builtContent appendFormat:@"본문 : %@ %@ %@", book, rangeStr, verseBody];
+        [allRefStrings addObject:[NSString stringWithFormat:@"%@ %@", book, rangeStr]];
+        if (allVerseBody.length > 0) [allVerseBody appendString:@" "];
+        [allVerseBody appendString:verseBody];
     }
-    // 말씀 없는 날(빈 배열)은 content를 빈 문자열로 설정
-    sermonData[@"content"] = builtContent;
+
+    // Android 포맷: "본문 : 참조1, 참조2 31 구절1 32 구절2 25 구절3..."
+    // extractContent(sermonParser.ts)의 bookNameRegex가 쉼표 구분 참조를 지원한다.
+    if (allRefStrings.count > 0) {
+        NSString *reference = [allRefStrings componentsJoinedByString:@", "];
+        sermonData[@"content"] = [NSString stringWithFormat:@"본문 : %@ %@", reference, allVerseBody];
+    } else {
+        // 말씀 없는 날(빈 배열)
+        sermonData[@"content"] = @"";
+    }
   }
   
   NSError *error;
