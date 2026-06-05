@@ -2,7 +2,8 @@
 const bookNameRegex = /(본문\s*[:：]?\s*)?([^\d\s]+ ?\d+:\d+(?:-\d+)?(?:,\s*[^\d\s]+ ?\d+:\d+(?:-\d+)?)*)/;
 const verseNumberRegex = /\d+/g;
 
-export const extractContent = (text: string): { index: string; content: string } => {
+/** 단일 "참조 구절" 블록을 파싱 */
+function parseSingleSection(text: string): { index: string; content: string } {
   const match = text.match(bookNameRegex);
   if (!match) {
     return { index: '본문을 찾을 수 없습니다.', content: '' };
@@ -47,4 +48,45 @@ export const extractContent = (text: string): { index: string; content: string }
     index: bookName,
     content: verseTexts.join('\n\n'),
   };
+}
+
+/**
+ * 말씀 본문 텍스트를 { index: 참조, content: 구절 } 형태로 파싱.
+ *
+ * 정상 포맷 (Android / iOS 신규):
+ *   "본문 : 참조1, 참조2 31 구절1 32 구절2 25 구절3..."
+ *
+ * 구 포맷 (iOS 이전 버전 캐시):
+ *   "본문 : 참조1 31 구절1\n\n본문 : 참조2 1 구절2..."
+ *   → \n\n본문 : 을 구분자로 각 섹션을 분리해 처리 후 합산
+ */
+export const extractContent = (text: string): { index: string; content: string } => {
+  // iOS 구 포맷 감지: "\n\n본문 :" 구분자가 2개 이상 섹션을 만드는 경우
+  const oldFormatSeparator = /\n\n본문\s*[:：]/;
+  if (oldFormatSeparator.test(text)) {
+    // "\n\n본문 :" 직전에서 분리 → 각 섹션은 독립적으로 파싱
+    const sections = text.split(/\n\n(?=본문\s*[:：])/);
+    const allRefs: string[] = [];
+    const allContents: string[] = [];
+
+    for (const section of sections) {
+      const parsed = parseSingleSection(section);
+      if (parsed.index && parsed.index !== '본문을 찾을 수 없습니다.') {
+        allRefs.push(parsed.index);
+      }
+      if (parsed.content) {
+        allContents.push(parsed.content);
+      }
+    }
+
+    if (allRefs.length > 0) {
+      return {
+        index: allRefs.join(', '),
+        content: allContents.join('\n\n'),
+      };
+    }
+  }
+
+  // 정상 포맷: 단일 파싱
+  return parseSingleSection(text);
 };
