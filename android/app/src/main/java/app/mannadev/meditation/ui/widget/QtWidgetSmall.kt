@@ -30,6 +30,7 @@ import app.mannadev.meditation.R
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.di.getWidgetDependencies
 import app.mannadev.meditation.ui.widget.qt.QtWidgetUiModel
+import app.mannadev.meditation.ui.widget.qt.prefixQuestions
 import app.mannadev.meditation.ui.widget.theme.Typography
 import timber.log.Timber
 
@@ -121,7 +122,7 @@ private fun QtWidgetSmallContent(ui: QtWidgetUiModel, clickAction: Action) {
                     )
                 }
                 if (ui.questions.isNotEmpty()) {
-                    val bulletedQuestions = ui.questions.map { question -> "• $question" }
+                    val prefixed = prefixQuestions(ui.questions)
                     item { Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap)) }
                     item {
                         Box(
@@ -149,7 +150,7 @@ private fun QtWidgetSmallContent(ui: QtWidgetUiModel, clickAction: Action) {
                     }
                     item { Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap)) }
 
-                    bulletedQuestions.forEachIndexed { index, question ->
+                    prefixed.forEachIndexed { index, question ->
                         item {
                             Text(
                                 modifier = GlanceModifier
@@ -159,7 +160,7 @@ private fun QtWidgetSmallContent(ui: QtWidgetUiModel, clickAction: Action) {
                                 style = Typography.bodyMedium,
                             )
                         }
-                        if (index < bulletedQuestions.size - 1) {
+                        if (index < prefixed.size - 1) {
                             item { Spacer(GlanceModifier.height(VerseSmallQtDimens.sectionGap)) }
                         }
                     }
