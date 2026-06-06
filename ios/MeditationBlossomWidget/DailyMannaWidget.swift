@@ -140,7 +140,7 @@ struct QTProvider: TimelineProvider {
       mergedTitle: qt.mergedTitle,
       dateLabel: qt.dateLabel,
       reference: reference,
-      verses: verses.isEmpty ? [qt.content] : verses,
+      verses: verses.isEmpty ? (qt.content.isEmpty ? ["오늘 말씀은 책을 참고해주세요"] : [qt.content]) : verses,
       meditationQuestions: qt.meditationQuestions,
       isSunday: qt.isSunday,
       videoUrl: qt.videoUrl,

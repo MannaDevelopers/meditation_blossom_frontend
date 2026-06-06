@@ -44,7 +44,8 @@ data class QtWidgetUiModel(
                 title = titleMerged,
                 dateLabel = formatDateLabel(dto.date, dto.dayOfWeek),
                 reference = parsed?.bookName.orEmpty(),
-                verses = parsed?.verses ?: listOf(dto.content),
+                verses = if (dto.content.isBlank()) listOf("오늘 말씀은 책을 참고해주세요")
+                         else parsed?.verses ?: listOf(dto.content),
                 questions = dto.meditationQuestions,
                 videoUrl = dto.videoUrl,
             )
@@ -64,4 +65,10 @@ internal fun formatDateLabel(date: String, dayOfWeek: String): String {
     val day = DAY_OF_WEEK_KO[dayOfWeek.uppercase(Locale.ROOT)] ?: return ""
     val parsedDate = runCatching { DATE_INPUT_FORMAT.parse(date) }.getOrNull() ?: return day
     return "${DATE_OUTPUT_FORMAT.format(parsedDate)} · $day"
+}
+
+internal fun prefixQuestions(questions: List<String>): List<String> = when {
+    questions.isEmpty() -> emptyList()
+    questions.size == 1 -> listOf("• ${questions[0]}")
+    else -> questions.mapIndexed { index, q -> "${index + 1}. $q" }
 }
