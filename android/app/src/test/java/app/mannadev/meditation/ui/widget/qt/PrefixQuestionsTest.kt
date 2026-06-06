@@ -9,7 +9,7 @@ class PrefixQuestionsTest {
     fun `single question uses asterisk prefix`() {
         val questions = listOf("하나님이 보이지 않을 때 나의 시선은 어디를 향합니까?")
         val result = prefixQuestions(questions)
-        assertEquals(listOf("* 하나님이 보이지 않을 때 나의 시선은 어디를 향합니까?"), result)
+        assertEquals(listOf("• 하나님이 보이지 않을 때 나의 시선은 어디를 향합니까?"), result)
     }
 
     @Test

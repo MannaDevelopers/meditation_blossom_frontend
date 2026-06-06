@@ -69,6 +69,6 @@ internal fun formatDateLabel(date: String, dayOfWeek: String): String {
 
 internal fun prefixQuestions(questions: List<String>): List<String> = when {
     questions.isEmpty() -> emptyList()
-    questions.size == 1 -> listOf("* ${questions[0]}")
+    questions.size == 1 -> listOf("• ${questions[0]}")
     else -> questions.mapIndexed { index, q -> "${index + 1}. $q" }
 }
