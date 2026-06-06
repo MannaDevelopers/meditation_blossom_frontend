@@ -44,7 +44,8 @@ data class QtWidgetUiModel(
                 title = titleMerged,
                 dateLabel = formatDateLabel(dto.date, dto.dayOfWeek),
                 reference = parsed?.bookName.orEmpty(),
-                verses = parsed?.verses ?: listOf(dto.content),
+                verses = if (dto.content.isBlank()) listOf("오늘 말씀은 책을 참고해주세요")
+                         else parsed?.verses ?: listOf(dto.content),
                 questions = dto.meditationQuestions,
                 videoUrl = dto.videoUrl,
             )

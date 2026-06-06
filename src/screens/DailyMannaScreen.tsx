@@ -163,7 +163,7 @@ const DailyMannaScreen = () => {
           <Text style={styles.contentText}>{qtContent.content}</Text>
         ) : (
           <Text style={styles.contentUnavailableText}>
-            말씀 본문은 앱 업데이트 후 표시됩니다.
+            오늘 말씀은 책을 참고해주세요
           </Text>
         )}
         {isSunday ? (
