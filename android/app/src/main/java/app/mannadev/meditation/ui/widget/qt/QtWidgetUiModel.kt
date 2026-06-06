@@ -66,3 +66,9 @@ internal fun formatDateLabel(date: String, dayOfWeek: String): String {
     val parsedDate = runCatching { DATE_INPUT_FORMAT.parse(date) }.getOrNull() ?: return day
     return "${DATE_OUTPUT_FORMAT.format(parsedDate)} · $day"
 }
+
+internal fun prefixQuestions(questions: List<String>): List<String> = when {
+    questions.isEmpty() -> emptyList()
+    questions.size == 1 -> listOf("• ${questions[0]}")
+    else -> questions.mapIndexed { index, q -> "${index + 1}. $q" }
+}
