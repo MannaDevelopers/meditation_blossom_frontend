@@ -240,7 +240,7 @@ struct DailyMannaContentEntryView: View {
 
       Spacer(minLength: 0)
     }
-    .padding(WT.outerPad)
+    .padding(EdgeInsets(top: WT.outerPad, leading: 20, bottom: WT.outerPad, trailing: 20))
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
   }
 
@@ -364,7 +364,7 @@ struct DailyMannaMeditationEntryView: View {
 
       Spacer(minLength: 0)
     }
-    .padding(WT.outerPad)
+    .padding(EdgeInsets(top: WT.outerPad, leading: 20, bottom: WT.outerPad, trailing: 20))
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
   }
 
