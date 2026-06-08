@@ -224,7 +224,7 @@ struct MeditationBlossomWidgetEntryView : View {
 
             Spacer(minLength: 0)
           }
-          .padding(EdgeInsets(top: 18, leading: 20, bottom: 18, trailing: 20))
+          .padding(EdgeInsets(top: 18, leading: 24, bottom: 18, trailing: 24))
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
 
