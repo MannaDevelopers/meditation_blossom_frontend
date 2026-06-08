@@ -168,6 +168,8 @@ struct MeditationBlossomWidget: Widget {
           .widgetURL(entry.targetURL)
       }
     }
+    .configurationDisplayName("주일 말씀")
+    .description("이번 주 말씀을 홈 화면에서 바로 확인하세요.")
     .supportedFamilies([.systemMedium, .systemLarge])
   }
 }
@@ -197,8 +199,6 @@ struct MeditationBlossomWidgetEntryView : View {
               .font(.system(size: 18, weight: .bold))
               .foregroundColor(primaryText)
               .lineLimit(2)
-              .padding(.top, 18)
-              .padding(.horizontal, 18)
 
             // 본문 참조
             if !entry.verse.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -206,7 +206,6 @@ struct MeditationBlossomWidgetEntryView : View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(accentText)
                 .padding(.top, 6)
-                .padding(.horizontal, 18)
             }
 
             // 구분선
@@ -214,7 +213,6 @@ struct MeditationBlossomWidgetEntryView : View {
               .fill(dividerColor)
               .frame(height: 1)
               .padding(.top, 10)
-              .padding(.horizontal, 18)
 
             // 본문
             Text(entry.quote)
@@ -223,10 +221,10 @@ struct MeditationBlossomWidgetEntryView : View {
               .lineLimit(9)
               .lineSpacing(2)
               .padding(.top, 10)
-              .padding(.horizontal, 18)
 
-            Spacer(minLength: 18)
+            Spacer(minLength: 0)
           }
+          .padding(18)
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
 
