@@ -348,7 +348,7 @@ struct DailyMannaMeditationEntryView: View {
       if hasQuestions {
         VStack(alignment: .leading, spacing: 6) {
           ForEach(Array(meditationLines.prefix(6).enumerated()), id: \.offset) { idx, line in
-            HStack(alignment: .top, spacing: 8) {
+            HStack(alignment: .top, spacing: 2) {
               Text(idx == 0 ? "•" : "")
                 .font(.system(size: WT.questionFontSize, weight: .semibold))
                 .foregroundColor(WT.accentText)
@@ -398,7 +398,7 @@ struct DailyMannaMeditationEntryView: View {
       if hasQuestions {
         VStack(alignment: .leading, spacing: 5) {
           ForEach(Array(meditationLines.prefix(4).enumerated()), id: \.offset) { idx, line in
-            HStack(alignment: .top, spacing: 7) {
+            HStack(alignment: .top, spacing: 2) {
               Text(idx == 0 ? "•" : "")
                 .font(.system(size: WT.questionFontSize, weight: .semibold))
                 .foregroundColor(WT.accentText)
