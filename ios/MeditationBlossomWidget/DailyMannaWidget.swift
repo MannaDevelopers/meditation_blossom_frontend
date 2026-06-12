@@ -307,6 +307,14 @@ struct DailyMannaMeditationEntryView: View {
     entry.isSunday ? "주일은 묵상 질문이 없습니다" : "오늘은 묵상 질문이 없습니다"
   }
 
+  // meditationQuestions의 각 항목은 "주요 질문\n❶ 하위 질문\n❷ 하위 질문" 형태로
+  // 줄바꿈이 포함된 경우가 있어, 줄 단위로 펼쳐서 메인 앱과 동일하게 표시한다.
+  private var meditationLines: [String] {
+    entry.meditationQuestions.flatMap { question in
+      question.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
+    }
+  }
+
   var body: some View {
     ZStack(alignment: .topLeading) {
       QTWidgetBackground(family: family)
@@ -338,17 +346,17 @@ struct DailyMannaMeditationEntryView: View {
         .padding(.top, WT.innerGap)
 
       if hasQuestions {
-        VStack(alignment: .leading, spacing: 10) {
-          ForEach(Array(entry.meditationQuestions.prefix(5).enumerated()), id: \.offset) { idx, q in
+        VStack(alignment: .leading, spacing: 6) {
+          ForEach(Array(meditationLines.prefix(6).enumerated()), id: \.offset) { idx, line in
             HStack(alignment: .top, spacing: 8) {
               Text(idx == 0 ? "•" : "")
                 .font(.system(size: WT.questionFontSize, weight: .semibold))
                 .foregroundColor(WT.accentText)
                 .frame(width: 18, alignment: .leading)
-              Text(q)
+              Text(line)
                 .font(.system(size: WT.questionFontSize))
                 .foregroundColor(WT.primaryText)
-                .lineLimit(3)
+                .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -388,17 +396,17 @@ struct DailyMannaMeditationEntryView: View {
         .padding(.horizontal, WT.outerPad)
 
       if hasQuestions {
-        VStack(alignment: .leading, spacing: 7) {
-          ForEach(Array(entry.meditationQuestions.prefix(3).enumerated()), id: \.offset) { idx, q in
+        VStack(alignment: .leading, spacing: 5) {
+          ForEach(Array(meditationLines.prefix(4).enumerated()), id: \.offset) { idx, line in
             HStack(alignment: .top, spacing: 7) {
               Text(idx == 0 ? "•" : "")
                 .font(.system(size: WT.questionFontSize, weight: .semibold))
                 .foregroundColor(WT.accentText)
                 .frame(width: 16, alignment: .leading)
-              Text(q)
+              Text(line)
                 .font(.system(size: WT.questionFontSize))
                 .foregroundColor(WT.primaryText)
-                .lineLimit(2)
+                .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
           }
