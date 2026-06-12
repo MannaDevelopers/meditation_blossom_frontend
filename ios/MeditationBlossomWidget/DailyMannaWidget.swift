@@ -211,30 +211,25 @@ struct DailyMannaContentEntryView: View {
         Text(entry.dateLabel)
           .font(.system(size: WT.dateFontSize, weight: .medium))
           .foregroundColor(WT.secondaryText)
-          .padding(.top, WT.outerPad)
-          .padding(.horizontal, WT.outerPad)
       }
 
       Text(entry.mergedTitle)
         .font(.system(size: WT.titleFontSizeLarge, weight: .bold))
         .foregroundColor(WT.primaryText)
         .lineLimit(2)
-        .padding(.top, entry.dateLabel.isEmpty ? WT.outerPad : WT.innerGap)
-        .padding(.horizontal, WT.outerPad)
+        .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
 
       if !entry.reference.isEmpty {
         Text(entry.reference)
           .font(.system(size: WT.refFontSize, weight: .semibold))
           .foregroundColor(WT.accentText)
           .padding(.top, WT.innerGap)
-          .padding(.horizontal, WT.outerPad)
       }
 
       Rectangle()
         .fill(WT.dividerColor)
         .frame(height: 1)
         .padding(.top, WT.sectionGap)
-        .padding(.horizontal, WT.outerPad)
 
       Text(entry.verses.prefix(5).joined(separator: "\n\n"))
         .font(.system(size: WT.verseFontSizeLarge))
@@ -242,10 +237,10 @@ struct DailyMannaContentEntryView: View {
         .lineLimit(8)
         .lineSpacing(2)
         .padding(.top, WT.sectionGap)
-        .padding(.horizontal, WT.outerPad)
 
-      Spacer(minLength: WT.outerPad)
+      Spacer(minLength: 0)
     }
+    .padding(EdgeInsets(top: WT.outerPad, leading: 24, bottom: WT.outerPad, trailing: 24))
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
   }
 
@@ -326,26 +321,21 @@ struct DailyMannaMeditationEntryView: View {
         Text(entry.dateLabel)
           .font(.system(size: WT.dateFontSize, weight: .medium))
           .foregroundColor(WT.secondaryText)
-          .padding(.top, WT.outerPad)
-          .padding(.horizontal, WT.outerPad)
       }
 
       Text(entry.mergedTitle)
         .font(.system(size: WT.titleFontSizeLarge, weight: .bold))
         .foregroundColor(WT.primaryText)
         .lineLimit(2)
-        .padding(.top, entry.dateLabel.isEmpty ? WT.outerPad : WT.innerGap)
-        .padding(.horizontal, WT.outerPad)
+        .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
 
       SectionHeader(title: "묵상 질문")
         .padding(.top, WT.sectionGap)
-        .padding(.horizontal, WT.outerPad)
 
       Rectangle()
         .fill(WT.dividerColor)
         .frame(height: 1)
         .padding(.top, WT.innerGap)
-        .padding(.horizontal, WT.outerPad)
 
       if hasQuestions {
         VStack(alignment: .leading, spacing: 10) {
@@ -365,17 +355,16 @@ struct DailyMannaMeditationEntryView: View {
           }
         }
         .padding(.top, WT.sectionGap)
-        .padding(.horizontal, WT.outerPad)
       } else {
         Text(noQuestionsText)
           .font(.system(size: WT.questionFontSize))
           .foregroundColor(WT.secondaryText)
           .padding(.top, WT.sectionGap)
-          .padding(.horizontal, WT.outerPad)
       }
 
-      Spacer(minLength: WT.outerPad)
+      Spacer(minLength: 0)
     }
+    .padding(EdgeInsets(top: WT.outerPad, leading: 24, bottom: WT.outerPad, trailing: 24))
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
   }
 
