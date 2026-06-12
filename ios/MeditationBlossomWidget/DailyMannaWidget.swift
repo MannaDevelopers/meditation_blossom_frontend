@@ -341,14 +341,14 @@ struct DailyMannaMeditationEntryView: View {
         VStack(alignment: .leading, spacing: 10) {
           ForEach(Array(entry.meditationQuestions.prefix(5).enumerated()), id: \.offset) { idx, q in
             HStack(alignment: .top, spacing: 8) {
-              Text("\(idx + 1).")
+              Text(idx == 0 ? "•" : "")
                 .font(.system(size: WT.questionFontSize, weight: .semibold))
                 .foregroundColor(WT.accentText)
-                .frame(width: 18, alignment: .trailing)
+                .frame(width: 18, alignment: .leading)
               Text(q)
                 .font(.system(size: WT.questionFontSize))
                 .foregroundColor(WT.primaryText)
-                .lineLimit(2)
+                .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -391,10 +391,10 @@ struct DailyMannaMeditationEntryView: View {
         VStack(alignment: .leading, spacing: 7) {
           ForEach(Array(entry.meditationQuestions.prefix(3).enumerated()), id: \.offset) { idx, q in
             HStack(alignment: .top, spacing: 7) {
-              Text("\(idx + 1).")
+              Text(idx == 0 ? "•" : "")
                 .font(.system(size: WT.questionFontSize, weight: .semibold))
                 .foregroundColor(WT.accentText)
-                .frame(width: 16, alignment: .trailing)
+                .frame(width: 16, alignment: .leading)
               Text(q)
                 .font(.system(size: WT.questionFontSize))
                 .foregroundColor(WT.primaryText)
