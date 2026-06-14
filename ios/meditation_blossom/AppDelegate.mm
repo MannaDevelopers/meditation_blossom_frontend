@@ -4,6 +4,7 @@
 #import <React/RCTBridge.h>
 #import <React/RCTRootView.h>
 #import <React/RCTLog.h>
+#import <React/RCTLinkingManager.h>
 #import <FirebaseCore/FirebaseCore.h>
 #import <FirebaseMessaging/FirebaseMessaging.h>
 #import <FirebaseInAppMessaging/FirebaseInAppMessaging.h>
@@ -114,6 +115,24 @@
 #endif
   
   return result;
+}
+
+#pragma mark - Deep Link (URL Scheme)
+
+// 위젯/외부에서 meditationblossom:// 딥링크로 앱을 열 때, URL을 React Native(Linking)로 전달.
+// 이 전달이 없으면 App.tsx의 linking(getStateFromPath)이 동작하지 않아 마지막 화면만 복귀됨.
+- (BOOL)application:(UIApplication *)application
+            openURL:(NSURL *)url
+            options:(NSDictionary<UIApplicationOpenURLOptionsKey, id> *)options {
+  // WidgetKit 제약: 위젯은 외부 URL(유튜브 등)을 직접 못 열고 항상 호스트 앱을 먼저 띄운다.
+  // 따라서 위젯이 https/http URL로 앱을 열면, 앱이 그 URL을 받아 직접 외부 브라우저로 넘긴다.
+  if ([url.scheme isEqualToString:@"http"] || [url.scheme isEqualToString:@"https"]) {
+    [application openURL:url options:@{} completionHandler:nil];
+    return YES;
+  }
+
+  // meditationblossom:// 딥링크는 React Native(Linking)로 전달.
+  return [RCTLinkingManager application:application openURL:url options:options];
 }
 
 #pragma mark - React Native Notification Handlers
