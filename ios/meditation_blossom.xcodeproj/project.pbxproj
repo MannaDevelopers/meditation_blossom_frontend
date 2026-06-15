@@ -35,7 +35,6 @@
 		35CF0001AAAA0001AAAAAAAA /* RCTView+ColorFix.m in Sources */ = {isa = PBXBuildFile; fileRef = 35CF0000AAAA0001AAAAAAAA /* RCTView+ColorFix.m */; };
 		35D57CC72E4E12CF006A8872 /* MyEventModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 35D57CC62E4E12C1006A8872 /* MyEventModule.m */; };
 		35DF7D9B2F87741F004FEDA3 /* BibleDbHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35DF7D9A2F87741F004FEDA3 /* BibleDbHelper.swift */; };
-		92C5C884FCF54E7ABBCD3904 /* BibleDbHelper.swift in Sources (PushNotificationService) */ = {isa = PBXBuildFile; fileRef = 35DF7D9A2F87741F004FEDA3; };
 		36D0ABAEB660494094DD9C97 /* Pretendard-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = F7AF6C1D72CD4A66B58C33B8 /* Pretendard-Bold.otf */; };
 		3C0090A2347247CC84AEF51C /* Pretendard-Thin.otf in Resources */ = {isa = PBXBuildFile; fileRef = FA817E704269452E9C720D87 /* Pretendard-Thin.otf */; };
 		4BF67687D54E4D26AF6361BE /* Pretendard-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 9C169B17C3504C6E8ED9A33A /* Pretendard-SemiBold.otf */; };
@@ -44,6 +43,7 @@
 		5FFA7AF4CB71498989F6EAC3 /* Pretendard-Light.otf in Resources */ = {isa = PBXBuildFile; fileRef = 24B4574C15E64071AE2213F2 /* Pretendard-Light.otf */; };
 		648990BED925AB88A487D541 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		92C5C884FCF54E7ABBCD3904 /* BibleDbHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35DF7D9A2F87741F004FEDA3 /* BibleDbHelper.swift */; };
 		B31C3428F30D34E28BBC910F /* Pods_meditation_blossom_meditation_blossomTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E2F272DB449267E51D19031 /* Pods_meditation_blossom_meditation_blossomTests.framework */; };
 		BF8AB1B43579418E9CD3C825 /* Pretendard-Black.otf in Resources */ = {isa = PBXBuildFile; fileRef = CA374A4D4D014BAEA21D5B01 /* Pretendard-Black.otf */; };
 		E1BCE842198A45EC0E2E6A5A /* Pods_meditation_blossom.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5999A83A0184DE1717910ED3 /* Pods_meditation_blossom.framework */; };
@@ -776,7 +776,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-
 				92C5C884FCF54E7ABBCD3904 /* BibleDbHelper.swift in Sources */,
 				35A99CA72E5F502B0087CB5B /* Sermon.swift in Sources */,
 			);
