@@ -211,30 +211,25 @@ struct DailyMannaContentEntryView: View {
         Text(entry.dateLabel)
           .font(.system(size: WT.dateFontSize, weight: .medium))
           .foregroundColor(WT.secondaryText)
-          .padding(.top, WT.outerPad)
-          .padding(.horizontal, WT.outerPad)
       }
 
       Text(entry.mergedTitle)
         .font(.system(size: WT.titleFontSizeLarge, weight: .bold))
         .foregroundColor(WT.primaryText)
         .lineLimit(2)
-        .padding(.top, entry.dateLabel.isEmpty ? WT.outerPad : WT.innerGap)
-        .padding(.horizontal, WT.outerPad)
+        .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
 
       if !entry.reference.isEmpty {
         Text(entry.reference)
           .font(.system(size: WT.refFontSize, weight: .semibold))
           .foregroundColor(WT.accentText)
           .padding(.top, WT.innerGap)
-          .padding(.horizontal, WT.outerPad)
       }
 
       Rectangle()
         .fill(WT.dividerColor)
         .frame(height: 1)
         .padding(.top, WT.sectionGap)
-        .padding(.horizontal, WT.outerPad)
 
       Text(entry.verses.prefix(5).joined(separator: "\n\n"))
         .font(.system(size: WT.verseFontSizeLarge))
@@ -242,10 +237,10 @@ struct DailyMannaContentEntryView: View {
         .lineLimit(8)
         .lineSpacing(2)
         .padding(.top, WT.sectionGap)
-        .padding(.horizontal, WT.outerPad)
 
-      Spacer(minLength: WT.outerPad)
+      Spacer(minLength: 0)
     }
+    .padding(EdgeInsets(top: WT.outerPad, leading: 24, bottom: WT.outerPad, trailing: 24))
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
   }
 
@@ -312,6 +307,14 @@ struct DailyMannaMeditationEntryView: View {
     entry.isSunday ? "주일은 묵상 질문이 없습니다" : "오늘은 묵상 질문이 없습니다"
   }
 
+  // meditationQuestions의 각 항목은 "주요 질문\n❶ 하위 질문\n❷ 하위 질문" 형태로
+  // 줄바꿈이 포함된 경우가 있어, 줄 단위로 펼쳐서 메인 앱과 동일하게 표시한다.
+  private var meditationLines: [String] {
+    entry.meditationQuestions.flatMap { question in
+      question.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
+    }
+  }
+
   var body: some View {
     ZStack(alignment: .topLeading) {
       QTWidgetBackground(family: family)
@@ -326,36 +329,31 @@ struct DailyMannaMeditationEntryView: View {
         Text(entry.dateLabel)
           .font(.system(size: WT.dateFontSize, weight: .medium))
           .foregroundColor(WT.secondaryText)
-          .padding(.top, WT.outerPad)
-          .padding(.horizontal, WT.outerPad)
       }
 
       Text(entry.mergedTitle)
         .font(.system(size: WT.titleFontSizeLarge, weight: .bold))
         .foregroundColor(WT.primaryText)
         .lineLimit(2)
-        .padding(.top, entry.dateLabel.isEmpty ? WT.outerPad : WT.innerGap)
-        .padding(.horizontal, WT.outerPad)
+        .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
 
       SectionHeader(title: "묵상 질문")
         .padding(.top, WT.sectionGap)
-        .padding(.horizontal, WT.outerPad)
 
       Rectangle()
         .fill(WT.dividerColor)
         .frame(height: 1)
         .padding(.top, WT.innerGap)
-        .padding(.horizontal, WT.outerPad)
 
       if hasQuestions {
-        VStack(alignment: .leading, spacing: 10) {
-          ForEach(Array(entry.meditationQuestions.prefix(5).enumerated()), id: \.offset) { idx, q in
-            HStack(alignment: .top, spacing: 8) {
-              Text("\(idx + 1).")
+        VStack(alignment: .leading, spacing: 6) {
+          ForEach(Array(meditationLines.prefix(6).enumerated()), id: \.offset) { idx, line in
+            HStack(alignment: .top, spacing: 2) {
+              Text(idx == 0 ? "•" : "")
                 .font(.system(size: WT.questionFontSize, weight: .semibold))
                 .foregroundColor(WT.accentText)
-                .frame(width: 18, alignment: .trailing)
-              Text(q)
+                .frame(width: 18, alignment: .leading)
+              Text(line)
                 .font(.system(size: WT.questionFontSize))
                 .foregroundColor(WT.primaryText)
                 .lineLimit(2)
@@ -365,17 +363,16 @@ struct DailyMannaMeditationEntryView: View {
           }
         }
         .padding(.top, WT.sectionGap)
-        .padding(.horizontal, WT.outerPad)
       } else {
         Text(noQuestionsText)
           .font(.system(size: WT.questionFontSize))
           .foregroundColor(WT.secondaryText)
           .padding(.top, WT.sectionGap)
-          .padding(.horizontal, WT.outerPad)
       }
 
-      Spacer(minLength: WT.outerPad)
+      Spacer(minLength: 0)
     }
+    .padding(EdgeInsets(top: WT.outerPad, leading: 24, bottom: WT.outerPad, trailing: 24))
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
   }
 
@@ -399,17 +396,17 @@ struct DailyMannaMeditationEntryView: View {
         .padding(.horizontal, WT.outerPad)
 
       if hasQuestions {
-        VStack(alignment: .leading, spacing: 7) {
-          ForEach(Array(entry.meditationQuestions.prefix(3).enumerated()), id: \.offset) { idx, q in
-            HStack(alignment: .top, spacing: 7) {
-              Text("\(idx + 1).")
+        VStack(alignment: .leading, spacing: 5) {
+          ForEach(Array(meditationLines.prefix(4).enumerated()), id: \.offset) { idx, line in
+            HStack(alignment: .top, spacing: 2) {
+              Text(idx == 0 ? "•" : "")
                 .font(.system(size: WT.questionFontSize, weight: .semibold))
                 .foregroundColor(WT.accentText)
-                .frame(width: 16, alignment: .trailing)
-              Text(q)
+                .frame(width: 16, alignment: .leading)
+              Text(line)
                 .font(.system(size: WT.questionFontSize))
                 .foregroundColor(WT.primaryText)
-                .lineLimit(2)
+                .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
           }
