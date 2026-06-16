@@ -5,6 +5,7 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -115,21 +116,22 @@ const HomeScreen = () => {
   logger.log('[Home] rendering, sermon=' + (sermon?.date ?? 'null') + ', isLoading=' + isLoading + ', showSpinner=' + showSpinner);
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.seriesCard}>
-        <View style={styles.seriesCardText}>
-          {sermon?.category ? (
-            <Text style={styles.cardTitleText}>{sermon.category}</Text>
-          ) : null}
-          <Text style={styles.seriesDateText}>{sermon?.date}</Text>
-        </View>
-        <TouchableOpacity
-          onPress={openYoutube}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <SvgIcon name="YoutubeButton" size={60} />
-        </TouchableOpacity>
-      </View>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={400}>
+        <View style={styles.seriesCard}>
+          <View style={styles.seriesCardText}>
+            {sermon?.category ? (
+              <Text style={styles.cardTitleText}>{sermon.category}</Text>
+            ) : null}
+            <Text style={styles.seriesDateText}>{sermon?.date}</Text>
+          </View>
+          <Pressable
+            onPress={openYoutube}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            cancelable={false}
+          >
+            <SvgIcon name="YoutubeButton" size={60} />
+          </Pressable>
+        </View>
         <View style={styles.smallDivider} />
         <Text style={styles.titleText} numberOfLines={0}>
           {processTitleText(sermon?.title)}

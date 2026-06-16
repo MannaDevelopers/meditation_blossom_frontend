@@ -83,7 +83,6 @@ const MainTabNavigator = () => {
       <Tab.Navigator
         tabBar={(props) => <CustomTabBar {...props} />}
         initialLayout={{ width: SCREEN_WIDTH }}
-        swipeEnabled={false}
       >
         <Tab.Screen name="주일 말씀" component={HomeScreen} />
         <Tab.Screen name="매일 만나" component={DailyMannaScreen} />
