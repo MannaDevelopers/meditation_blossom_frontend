@@ -69,7 +69,9 @@ type PagerAdapterProps<T extends Route> = {
 
 // ─── PanResponderAdapter (JS 페이저) ─────────────────────────────────────────
 
-const DEAD_ZONE = 12;
+// 12px에서 40px로 높임: 작은 손가락 떨림이 스와이프로 인식되어
+// 버튼 onPress를 탈취하는 문제 방지 (의도적인 스와이프는 40px로도 충분히 인식됨)
+const DEAD_ZONE = 40;
 
 const DefaultTransitionSpec = {
   timing: Animated.spring,
@@ -254,7 +256,9 @@ export function JsPager<T extends Route>({
 
   const panResponder = PanResponder.create({
     onMoveShouldSetPanResponder: canMoveScreen,
-    onMoveShouldSetPanResponderCapture: canMoveScreen,
+    // Capture 단계 제거: 자식 버튼이 onStartShouldSetResponder로 먼저 터치를 확보한 경우,
+    // Capture 단계에서 스와이프 제스처가 가로채지 않도록 한다.
+    // 스와이프는 버블 단계(onMoveShouldSetPanResponder)와 확장된 DEAD_ZONE으로 처리.
     onPanResponderGrant: startGesture,
     onPanResponderMove: respondToGesture,
     onPanResponderTerminate: finishGesture,
