@@ -138,21 +138,19 @@ const DailyMannaScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={400}>
-        <View style={styles.seriesCard}>
+        <Pressable
+          style={styles.seriesCard}
+          onPress={openYoutube}
+          cancelable={false}
+        >
           <View style={styles.seriesCardText}>
             {qt?.series_title ? (
               <Text style={styles.seriesTitleText}>{qt.series_title}</Text>
             ) : null}
             <Text style={styles.dateText}>{qt?.date}</Text>
           </View>
-          <Pressable
-            onPress={openYoutube}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            cancelable={false}
-          >
-            <SvgIcon name="YoutubeButton" size={60} />
-          </Pressable>
-        </View>
+          <SvgIcon name="YoutubeButton" size={60} />
+        </Pressable>
         <View style={styles.smallDivider} />
         <Text style={styles.titleText} numberOfLines={0}>
           {processTitleText(qt?.title)}
