@@ -136,21 +136,21 @@ const DailyMannaScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={400}>
-        <View style={styles.seriesCard}>
-          <View style={styles.seriesCardText}>
-            {qt?.series_title ? (
-              <Text style={styles.seriesTitleText}>{qt.series_title}</Text>
-            ) : null}
-            <Text style={styles.dateText}>{qt?.date}</Text>
-          </View>
-          <TouchableOpacity
-            onPress={openYoutube}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <SvgIcon name="YoutubeButton" size={60} />
-          </TouchableOpacity>
+      <View style={styles.seriesCard}>
+        <View style={styles.seriesCardText}>
+          {qt?.series_title ? (
+            <Text style={styles.seriesTitleText}>{qt.series_title}</Text>
+          ) : null}
+          <Text style={styles.dateText}>{qt?.date}</Text>
         </View>
+        <TouchableOpacity
+          onPress={openYoutube}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <SvgIcon name="YoutubeButton" size={60} />
+        </TouchableOpacity>
+      </View>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={400}>
         <View style={styles.smallDivider} />
         <Text style={styles.titleText} numberOfLines={0}>
           {processTitleText(qt?.title)}
