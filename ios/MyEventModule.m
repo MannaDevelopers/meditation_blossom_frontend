@@ -36,7 +36,6 @@ RCT_EXPORT_MODULE(MyEventModule);
   return @[@"ON_SERMON_UPDATE", @"ON_QT_UPDATE"];
 }
 
-// RN 0.65+ 규약: 리스너 카운트 관리 (없어도 동작은 하지만 경고 방지)
 - (void)startObserving
 {
   hasListeners = YES;
@@ -47,21 +46,21 @@ RCT_EXPORT_MODULE(MyEventModule);
   hasListeners = NO;
 }
 
-- (void)addListener:(NSString *)eventName {}
-- (void)removeListeners:(double)count {}
+// addListener:/removeListeners: 를 override하지 않음.
+// base class(RCTEventEmitter)가 리스너 카운트를 관리하고
+// startObserving/stopObserving을 호출해 hasListeners를 올바르게 설정한다.
+// 빈 override가 있으면 startObserving이 호출되지 않아 hasListeners = NO 고정 → 이벤트 폐기.
 
 #pragma mark - Public APIs (JS에서 호출 가능)
 
 RCT_EXPORT_METHOD(trigger:(NSString *)message)
 {
-  if (!hasListeners) { return; }
   if (message == nil) { message = @""; }
   [self sendEventWithName:@"ON_SERMON_UPDATE" body:@{ @"message": message }];
 }
 
 RCT_EXPORT_METHOD(triggerQtUpdate:(NSString *)message)
 {
-  if (!hasListeners) { return; }
   if (message == nil) { message = @""; }
   [self sendEventWithName:@"ON_QT_UPDATE" body:@{ @"message": message }];
 }
