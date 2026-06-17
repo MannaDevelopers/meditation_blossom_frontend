@@ -4,6 +4,7 @@ import {
   Linking,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -144,12 +145,13 @@ const DailyMannaScreen = () => {
             ) : null}
             <Text style={styles.dateText}>{qt?.date}</Text>
           </View>
-          <TouchableOpacity
+          <Pressable
             onPress={openYoutube}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            cancelable={false}
           >
-            <SvgIcon name="YoutubeButton" size={60} />
-          </TouchableOpacity>
+            <SvgIcon name="YoutubeButton" size={60} pointerEvents="none" />
+          </Pressable>
         </View>
         <View style={styles.smallDivider} />
         <Text style={styles.titleText} numberOfLines={0}>
