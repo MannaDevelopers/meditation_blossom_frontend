@@ -149,7 +149,7 @@ const DailyMannaScreen = () => {
             ) : null}
             <Text style={styles.dateText}>{qt?.date}</Text>
           </View>
-          <SvgIcon name="YoutubeButton" size={60} />
+          <SvgIcon name="YoutubeButton" size={60} pointerEvents="none" />
         </Pressable>
         <View style={styles.smallDivider} />
         <Text style={styles.titleText} numberOfLines={0}>
