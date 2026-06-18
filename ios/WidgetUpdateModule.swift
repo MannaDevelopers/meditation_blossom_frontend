@@ -27,9 +27,8 @@ class WidgetUpdateModule: NSObject {
       return
     }
     sharedDefaults.set(sermonData, forKey: Constants.displaySermonKey)
-    // synchronize()로 위젯 extension 프로세스에 즉시 가시화한 뒤 reload
     sharedDefaults.synchronize()
-    WidgetCenter.shared.reloadAllTimelines()
+    WidgetUpdateModule.reloadWidgets()
     resolve("Widget updated successfully")
   }
 
@@ -43,7 +42,7 @@ class WidgetUpdateModule: NSObject {
     }
     sharedDefaults.set(qtData, forKey: Constants.fcmQtKey)
     sharedDefaults.synchronize()
-    WidgetCenter.shared.reloadAllTimelines()
+    WidgetUpdateModule.reloadWidgets()
     resolve(true)
   }
 
@@ -156,7 +155,7 @@ class WidgetUpdateModule: NSObject {
       return
     }
     sharedDefaults.set(enabled, forKey: Constants.youtubeLinkEnabledKey)
-    WidgetCenter.shared.reloadAllTimelines()
+    WidgetUpdateModule.reloadWidgets()
     resolve(nil)
   }
 
@@ -174,7 +173,7 @@ class WidgetUpdateModule: NSObject {
     sharedDefaults.removeObject(forKey: Constants.fcmQtKey)
     sharedDefaults.synchronize()
 
-    WidgetCenter.shared.reloadAllTimelines()
+    WidgetUpdateModule.reloadWidgets()
 
     resolve("Cleared successfully")
   }
