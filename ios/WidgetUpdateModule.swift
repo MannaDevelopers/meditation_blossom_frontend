@@ -27,6 +27,8 @@ class WidgetUpdateModule: NSObject {
       return
     }
     sharedDefaults.set(sermonData, forKey: Constants.displaySermonKey)
+    // synchronize()로 위젯 extension 프로세스에 즉시 가시화한 뒤 reload
+    sharedDefaults.synchronize()
     WidgetCenter.shared.reloadAllTimelines()
     resolve("Widget updated successfully")
   }
@@ -40,6 +42,7 @@ class WidgetUpdateModule: NSObject {
       return
     }
     sharedDefaults.set(qtData, forKey: Constants.fcmQtKey)
+    sharedDefaults.synchronize()
     WidgetCenter.shared.reloadAllTimelines()
     resolve(true)
   }
