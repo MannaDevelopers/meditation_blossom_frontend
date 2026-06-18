@@ -4,6 +4,7 @@
 #import <React/RCTBridge.h>
 #import <React/RCTRootView.h>
 #import <React/RCTLog.h>
+#import <React/RCTUtils.h>
 #import <FirebaseCore/FirebaseCore.h>
 #import <FirebaseMessaging/FirebaseMessaging.h>
 #import <FirebaseInAppMessaging/FirebaseInAppMessaging.h>
@@ -13,18 +14,15 @@
 #import <ifaddrs.h>
 #import <arpa/inet.h>
 #import <string.h>
-#import <CommonCrypto/CommonDigest.h>
 
 // Hermes 엔진 확인을 위한 헤더
 #if __has_include(<hermes/hermes.h>)
+#import <hermes/hermes.h>
 #import <hermes/hermes.h>
 #define HERMES_AVAILABLE 1
 #else
 #define HERMES_AVAILABLE 0
 #endif
-
-// AsyncStorage 저장을 위한 헤더
-#import <sqlite3.h>
 
 #import "SermonBuilder.h"
 #import "meditation_blossom-Swift.h"
@@ -37,6 +35,15 @@
 
 @interface AppDelegate () <UNUserNotificationCenterDelegate, FIRMessagingDelegate>
 @end
+
+static NSString *MBAsyncStorageDirectory(void)
+{
+  NSString *appSupportDir = NSSearchPathForDirectoriesInDomains(
+      NSApplicationSupportDirectory, NSUserDomainMask, YES).firstObject;
+  NSString *bundleId = [[NSBundle mainBundle] bundleIdentifier];
+  return [[appSupportDir stringByAppendingPathComponent:bundleId]
+      stringByAppendingPathComponent:@"RCTAsyncLocalStorage_V1"];
+}
 
 @implementation AppDelegate
 
@@ -107,10 +114,7 @@
   RCTSetLogThreshold(RCTLogLevelInfo);
   
 #if DEBUG
-  NSString *libDir = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES).firstObject;
-  NSString *dbPath = [[libDir stringByAppendingPathComponent:@"Application Support"]
-                                 stringByAppendingPathComponent:@"RKStorage"];
-  NSLog(@"📁 DB path: %@", dbPath);
+  NSLog(@"📁 AsyncStorage path: %@", MBAsyncStorageDirectory());
 #endif
   
   return result;
@@ -136,45 +140,106 @@
 
 #pragma mark - AsyncStorage Storage Helper
 
-// AsyncStorage 저장 (타이밍 이슈 방지 재시도 로직 포함)
+// Bridgeless 환경에서 JS bridge에 의존하지 않고 AsyncStorage 파일에 직접 저장
 - (void)saveToAsyncStorageDirect:(NSString *)jsonString forKey:(NSString *)key {
+  NSLog(@"🚀 saveToAsyncStorageDirect called");
+  
   if (!jsonString || !key) {
     NSLog(@"❌ AsyncStorage save skipped: key or value is nil");
     return;
   }
 
-  NSString *libDir = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES).firstObject;
-    NSString *dbPath = [[libDir stringByAppendingPathComponent:@"Application Support"]
-                                 stringByAppendingPathComponent:@"RKStorage"];
-    
-    NSLog(@"📁 DB path: %@", dbPath);
-    
-    // DB 파일 없으면 생성 (테이블도 같이)
-    sqlite3 *db;
-    if (sqlite3_open([dbPath UTF8String], &db) != SQLITE_OK) {
-      NSLog(@"❌ Failed to open DB: %s", sqlite3_errmsg(db));
+  NSString *storageDir = MBAsyncStorageDirectory();
+  NSString *manifestPath = [storageDir stringByAppendingPathComponent:@"manifest.json"];
+
+  NSFileManager *fm = [NSFileManager defaultManager];
+  NSError *dirError = nil;
+  if (![fm fileExistsAtPath:storageDir]) {
+    [fm createDirectoryAtPath:storageDir
+  withIntermediateDirectories:YES
+                   attributes:nil
+                        error:&dirError];
+    if (dirError) {
+      NSLog(@"❌ Failed to create storage dir: %@", dirError.localizedDescription);
       return;
     }
-    
-    // 테이블 없으면 생성
-    const char *createSQL = "CREATE TABLE IF NOT EXISTS catalystLocalStorage (key TEXT PRIMARY KEY, value TEXT NOT NULL)";
-    sqlite3_exec(db, createSQL, nil, nil, nil);
-    
-    // upsert
-    const char *upsertSQL = "INSERT OR REPLACE INTO catalystLocalStorage (key, value) VALUES (?, ?)";
-    sqlite3_stmt *stmt;
-    if (sqlite3_prepare_v2(db, upsertSQL, -1, &stmt, nil) == SQLITE_OK) {
-      sqlite3_bind_text(stmt, 1, [key UTF8String], -1, SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 2, [jsonString UTF8String], -1, SQLITE_TRANSIENT);
-      
-      if (sqlite3_step(stmt) == SQLITE_DONE) {
-        NSLog(@"✅ DB write success for key: %@", key);
-      } else {
-        NSLog(@"❌ DB write failed: %s", sqlite3_errmsg(db));
+  }
+
+  // manifest 읽기
+  NSMutableDictionary *manifest = [NSMutableDictionary dictionary];
+  if ([fm fileExistsAtPath:manifestPath]) {
+    NSData *data = [NSData dataWithContentsOfFile:manifestPath];
+    if (data) {
+      NSError *parseError = nil;
+      NSDictionary *existing = [NSJSONSerialization JSONObjectWithData:data
+                                                               options:0
+                                                                 error:&parseError];
+      if (existing && !parseError) {
+        [manifest addEntriesFromDictionary:existing];
       }
-      sqlite3_finalize(stmt);
     }
-    sqlite3_close(db);
+  }
+
+  // ✅ 저장 전 현재 manifest 내용 출력
+  NSLog(@"===== 저장 전 AsyncStorage 현황 =====");
+  if (manifest.count == 0) {
+    NSLog(@"   (비어 있음)");
+  } else {
+    [manifest enumerateKeysAndObjectsUsingBlock:^(NSString *k, id v, BOOL *stop) {
+      if ([v isKindOfClass:[NSNull class]]) {
+        // 별도 파일에 저장된 큰 값 → 파일 읽어서 출력
+        NSString *hashedKey = RCTMD5Hash(k);
+        NSString *valuePath = [storageDir stringByAppendingPathComponent:hashedKey];
+        NSString *fileValue = [NSString stringWithContentsOfFile:valuePath
+                                                        encoding:NSUTF8StringEncoding
+                                                           error:nil];
+        NSLog(@"   [FILE] key: %@", k);
+        NSLog(@"          val: %@", fileValue ?: @"(읽기 실패)");
+      } else {
+        NSLog(@"   [INLINE] key: %@", k);
+        NSLog(@"            val: %@", v);
+      }
+    }];
+  }
+  NSLog(@"========================================");
+
+  // upsert
+  static const NSUInteger kInlineValueThreshold = 1024;
+
+  if (jsonString.length <= kInlineValueThreshold) {
+    manifest[key] = jsonString;
+  } else {
+    NSString *hashedKey = RCTMD5Hash(key);
+    NSString *valuePath = [storageDir stringByAppendingPathComponent:hashedKey];
+    NSError *writeError = nil;
+    [jsonString writeToFile:valuePath
+                 atomically:YES
+                   encoding:NSUTF8StringEncoding
+                      error:&writeError];
+    if (writeError) {
+      NSLog(@"❌ Failed to write value file: %@", writeError.localizedDescription);
+      return;
+    }
+    manifest[key] = [NSNull null];
+  }
+
+  // manifest.json 쓰기
+  NSError *jsonError = nil;
+  NSData *manifestData = [NSJSONSerialization dataWithJSONObject:manifest
+                                                         options:0
+                                                           error:&jsonError];
+  if (jsonError || !manifestData) {
+    NSLog(@"❌ Failed to serialize manifest: %@", jsonError.localizedDescription);
+    return;
+  }
+
+  NSError *writeError = nil;
+  [manifestData writeToFile:manifestPath options:NSDataWritingAtomic error:&writeError];
+  if (writeError) {
+    NSLog(@"❌ Failed to write manifest: %@", writeError.localizedDescription);
+  } else {
+    NSLog(@"✅ manifest.json write success for key: %@", key);
+  }
 }
 
 #pragma mark - Bundle URL & Debugging (유지됨)
@@ -428,6 +493,8 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   if (jsonData) {
     NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
     BOOL shouldUpdateDisplaySermon = [self isSermonStorageKey:storageKey];
+    
+    NSLog(@"jsonStrng \n%@", jsonString);
     
     // 1. App Group에 저장
     NSUserDefaults *sharedDefaults = [[NSUserDefaults alloc] initWithSuiteName:@"group.mannachurch.meditationblossom"];
