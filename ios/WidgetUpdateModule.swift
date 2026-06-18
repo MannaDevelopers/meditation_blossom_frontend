@@ -26,10 +26,39 @@ class WidgetUpdateModule: NSObject {
       reject("APP_GROUP_ERROR", "App Group을 찾을 수 없습니다.", nil)
       return
     }
-    sharedDefaults.set(sermonData, forKey: Constants.displaySermonKey)
+    // JS Sermon 타입의 {seconds, nanoseconds} 타임스탬프를 ISO 문자열로 변환.
+    // 위젯 Swift Sermon.init(from:)이 두 포맷을 모두 처리하지만,
+    // Extension/AppDelegate 경로와 포맷을 통일해 크로스 프로세스 파싱 안정성을 높인다.
+    let normalized = WidgetUpdateModule.normalizeTimestamps(sermonData) ?? sermonData
+    sharedDefaults.set(normalized, forKey: Constants.displaySermonKey)
     sharedDefaults.synchronize()
     WidgetUpdateModule.reloadWidgets()
     resolve("Widget updated successfully")
+  }
+
+  // MARK: - Timestamp Normalization
+
+  // JS JSON의 {seconds, nanoseconds} 타임스탬프 필드를 ISO 8601 문자열로 변환
+  private static func normalizeTimestamps(_ jsonString: String) -> String? {
+    guard let data = jsonString.data(using: .utf8),
+          var dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+      return nil
+    }
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    for key in ["created_at", "updated_at"] {
+      if let ts = dict[key] as? [String: Any],
+         let seconds = (ts["seconds"] as? NSNumber)?.doubleValue {
+        let nanos = (ts["nanoseconds"] as? NSNumber)?.doubleValue ?? 0
+        let date = Date(timeIntervalSince1970: seconds + nanos / 1_000_000_000)
+        dict[key] = formatter.string(from: date)
+      }
+    }
+    guard let normalized = try? JSONSerialization.data(withJSONObject: dict),
+          let result = String(data: normalized, encoding: .utf8) else {
+      return nil
+    }
+    return result
   }
 
   // MARK: - QT
