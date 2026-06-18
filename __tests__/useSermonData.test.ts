@@ -157,6 +157,54 @@ describe('useSermonData', () => {
     });
   });
 
+  describe('loadLocalData video_url 보충 (forced fetch)', () => {
+    const localNoVideo = {
+      id: 's1',
+      title: '설교',
+      content: '본문 내용',
+      date: '2026-06-13',
+      created_at: { seconds: 0, nanoseconds: 0 },
+      updated_at: { seconds: 1000, nanoseconds: 0 },
+    };
+
+    it('로컬에 video_url이 없으면 서버에서 보충해 채운다', async () => {
+      const serverWithVideo = { ...localNoVideo, video_url: 'https://youtu.be/abc' };
+      mockFetchFromAsyncStorage.mockResolvedValue(localNoVideo);
+      mockFetchFromServer.mockResolvedValue(serverWithVideo);
+      mockSaveSermonToAsyncStorage.mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => { await result.current.loadLocalData(); });
+
+      expect(mockFetchFromServer).toHaveBeenCalledTimes(1);
+      expect(result.current.sermon?.video_url).toBe('https://youtu.be/abc');
+      expect(mockSaveSermonToAsyncStorage).toHaveBeenCalled();
+    });
+
+    it('video_url이 이미 있으면 서버 보충 조회를 하지 않는다', async () => {
+      const localWithVideo = { ...localNoVideo, video_url: 'https://youtu.be/zzz' };
+      mockFetchFromAsyncStorage.mockResolvedValue(localWithVideo);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => { await result.current.loadLocalData(); });
+
+      expect(mockFetchFromServer).not.toHaveBeenCalled();
+      expect(result.current.sermon).toEqual(localWithVideo);
+    });
+
+    it('보충 조회는 세션당 1회만 시도한다 (반복 호출해도 추가 조회 없음)', async () => {
+      mockFetchFromAsyncStorage.mockResolvedValue(localNoVideo);
+      mockFetchFromServer.mockResolvedValue(null); // 서버에도 없음 → 못 채움
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => { await result.current.loadLocalData(); });
+      await act(async () => { await result.current.loadLocalData(); });
+      await act(async () => { await result.current.loadLocalData(); });
+
+      expect(mockFetchFromServer).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('subscribeToLatestSermon (onSnapshot)', () => {
     const olderSermon = {
       id: 'older-1',

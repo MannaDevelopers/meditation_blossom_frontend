@@ -1,4 +1,6 @@
-jest.mock('@react-native-firebase/crashlytics', () => () => ({
+// logger.ts가 모듈러 API(getCrashlytics/log/recordError named export)를 사용하므로 그에 맞춰 mock
+jest.mock('@react-native-firebase/crashlytics', () => ({
+  getCrashlytics: jest.fn(() => ({})),
   log: jest.fn(),
   recordError: jest.fn(),
 }));

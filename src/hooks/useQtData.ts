@@ -8,6 +8,7 @@ import {
 } from '../services/qtService';
 import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
+import { reconcileFreshDoc } from '../utils/reconcileFreshDoc';
 
 export interface UseQtDataReturn {
   qt: QT | null;
@@ -25,6 +26,8 @@ export function useQtData(): UseQtDataReturn {
   const [error, setError] = useState<string | null>(null);
   const qtRef = useRef<QT | null>(null);
   qtRef.current = qt;
+  // video_url/content 보충용 서버 강제 조회를 세션당 1회로 제한 (영상이 원래 없는 항목에서 반복 조회 방지)
+  const triedServerFill = useRef(false);
 
   const loadLocalData = useCallback(async (): Promise<QT | null> => {
     try {
@@ -33,18 +36,21 @@ export function useQtData(): UseQtDataReturn {
       setQt(selected);
       setError(null);
 
-      // content가 비어 있으면 Firestore에서 재조회
-      // (App Group → AsyncStorage 경유 시 bible_references가 없는 구 포맷 데이터일 수 있음)
-      if (selected && !selected.content) {
+      // 로컬에 video_url/content가 비면 Firestore 강제 조회로 보충 (onSnapshot은 웜스타트 캐시 시 안 옴).
+      // reconcileFreshDoc로 빈 칸만 머지, 세션당 1회. useSermonData와 동일 동작.
+      if (selected && (!selected.video_url || !selected.content) && !triedServerFill.current) {
+        triedServerFill.current = true;
         try {
           const fresh = await fetchLatestQtFromServer();
-          if (fresh) {
-            await saveQtToAsyncStorage(fresh);
-            setQt(fresh);
-            return fresh;
+          const next = fresh ? reconcileFreshDoc(fresh, selected, compareQt) : null;
+          if (next) {
+            logger.log('[loadLocalData] 로컬 qt video_url/content 누락 → 서버에서 보충함');
+            await saveQtToAsyncStorage(next);
+            setQt(next);
+            return next;
           }
-        } catch (fetchErr) {
-          logger.warn('useQtData: Firestore fallback failed (offline?)', fetchErr);
+        } catch (fillErr) {
+          logger.warn('useQtData: 서버 보충 조회 실패 (offline?)', fillErr);
         }
       }
 
