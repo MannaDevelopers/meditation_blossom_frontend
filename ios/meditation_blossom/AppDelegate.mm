@@ -30,11 +30,6 @@
 #import "SermonBuilder.h"
 #import "meditation_blossom-Swift.h"
 
-// MyEventModule 클래스 선언
-@interface MyEventModule : NSObject
-- (void)trigger:(NSString *)message;
-- (void)triggerQtUpdate:(NSString *)message;
-@end
 
 @interface AppDelegate () <UNUserNotificationCenterDelegate, FIRMessagingDelegate>
 @end
@@ -542,31 +537,17 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
 }
 
 - (void)sendSermonUpdateEvent {
-  UIApplicationState state = [[UIApplication sharedApplication] applicationState];
-  if (state == UIApplicationStateActive) {
-    if (self.bridge) {
-      MyEventModule *eventModule = [self.bridge moduleForClass:[MyEventModule class]];
-      if (eventModule) {
-        [eventModule trigger:@"New sermon received from FCM"];
-        return;
-      }
-    }
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"FCM_SERMON_UPDATE" object:nil];
-  }
+  // MyEventModule이 FCM_SERMON_UPDATE_INTERNAL를 구독하고 있다.
+  // self.bridge 의존 없이 모듈 자신의 bridge로 JS에 emit → New Architecture 호환.
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"FCM_SERMON_UPDATE_INTERNAL" object:nil];
+  });
 }
 
 - (void)sendQtUpdateEvent {
-  UIApplicationState state = [[UIApplication sharedApplication] applicationState];
-  if (state == UIApplicationStateActive) {
-    if (self.bridge) {
-      MyEventModule *eventModule = [self.bridge moduleForClass:[MyEventModule class]];
-      if (eventModule) {
-        [eventModule triggerQtUpdate:@"New QT received from FCM"];
-        return;
-      }
-    }
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"FCM_QT_UPDATE" object:nil];
-  }
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"FCM_QT_UPDATE_INTERNAL" object:nil];
+  });
 }
 
 #pragma mark - UNUserNotificationCenterDelegate
