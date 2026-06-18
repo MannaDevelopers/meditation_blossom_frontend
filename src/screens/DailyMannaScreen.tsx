@@ -4,6 +4,7 @@ import {
   Linking,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -144,12 +145,13 @@ const DailyMannaScreen = () => {
             ) : null}
             <Text style={styles.dateText}>{qt?.date}</Text>
           </View>
-          <TouchableOpacity
+          <Pressable
             onPress={openYoutube}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            cancelable={false}
           >
-            <SvgIcon name="YoutubeButton" size={60} />
-          </TouchableOpacity>
+            <SvgIcon name="YoutubeButton" size={60} pointerEvents="none" />
+          </Pressable>
         </View>
         <View style={styles.smallDivider} />
         <Text style={styles.titleText} numberOfLines={0}>
@@ -163,7 +165,7 @@ const DailyMannaScreen = () => {
           <Text style={styles.contentText}>{qtContent.content}</Text>
         ) : (
           <Text style={styles.contentUnavailableText}>
-            말씀 본문은 앱 업데이트 후 표시됩니다.
+            오늘 말씀은 책을 참고해주세요
           </Text>
         )}
         {isSunday ? (

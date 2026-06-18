@@ -5,6 +5,7 @@
 #import <React/RCTRootView.h>
 #import <React/RCTLog.h>
 #import <React/RCTUtils.h>
+#import <React/RCTLinkingManager.h>
 #import <FirebaseCore/FirebaseCore.h>
 #import <FirebaseMessaging/FirebaseMessaging.h>
 #import <FirebaseInAppMessaging/FirebaseInAppMessaging.h>
@@ -118,6 +119,24 @@ static NSString *MBAsyncStorageDirectory(void)
 #endif
   
   return result;
+}
+
+#pragma mark - Deep Link (URL Scheme)
+
+// 위젯/외부에서 meditationblossom:// 딥링크로 앱을 열 때, URL을 React Native(Linking)로 전달.
+// 이 전달이 없으면 App.tsx의 linking(getStateFromPath)이 동작하지 않아 마지막 화면만 복귀됨.
+- (BOOL)application:(UIApplication *)application
+            openURL:(NSURL *)url
+            options:(NSDictionary<UIApplicationOpenURLOptionsKey, id> *)options {
+  // WidgetKit 제약: 위젯은 외부 URL(유튜브 등)을 직접 못 열고 항상 호스트 앱을 먼저 띄운다.
+  // 따라서 위젯이 https/http URL로 앱을 열면, 앱이 그 URL을 받아 직접 외부 브라우저로 넘긴다.
+  if ([url.scheme isEqualToString:@"http"] || [url.scheme isEqualToString:@"https"]) {
+    [application openURL:url options:@{} completionHandler:nil];
+    return YES;
+  }
+
+  // meditationblossom:// 딥링크는 React Native(Linking)로 전달.
+  return [RCTLinkingManager application:application openURL:url options:options];
 }
 
 #pragma mark - React Native Notification Handlers
@@ -462,29 +481,100 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   
   NSMutableDictionary *sermonData = [SermonBuilder buildFromPayload:data sourceId:sourceId];
   if (data[@"video_url"]) sermonData[@"video_url"] = data[@"video_url"];
-  
-  if ([sermonData[@"topic"] containsString:@"v2"]) {
+
+  // meditation_questions: FCM은 평문 문자열로 전달 → QT.swift가 [String] 배열로 디코딩할 수 있도록
+  // JSON 배열 문자열로 변환하여 저장한다. useQtWidgetSync.ts(앱 실행 중)와 동일한 포맷을 유지.
+  id rawQuestions = sermonData[@"meditation_questions"];
+  if ([rawQuestions isKindOfClass:[NSString class]] && [(NSString *)rawQuestions length] > 0) {
+    NSString *qStr = (NSString *)rawQuestions;
+    NSData *testData = [qStr dataUsingEncoding:NSUTF8StringEncoding];
+    id parsedTest = [NSJSONSerialization JSONObjectWithData:testData options:0 error:nil];
+    if (![parsedTest isKindOfClass:[NSArray class]]) {
+      // 평문 → 줄바꿈으로 분리해 JSON 배열로 변환
+      NSArray *lines = [qStr componentsSeparatedByString:@"\n"];
+      NSMutableArray *filtered = [NSMutableArray array];
+      for (NSString *line in lines) {
+        NSString *trimmed = [line stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (trimmed.length > 0) [filtered addObject:trimmed];
+      }
+      NSData *jsonData2 = [NSJSONSerialization dataWithJSONObject:filtered options:0 error:nil];
+      if (jsonData2) {
+        sermonData[@"meditation_questions"] = [[NSString alloc] initWithData:jsonData2 encoding:NSUTF8StringEncoding];
+      }
+    }
+  }
+
+  // sermon_events_v2 과 qt_events 모두 bible_references 배열로 말씀 데이터가 전달된다.
+  // content 필드는 FCM 4KB 제약으로 포함되지 않으며, 빈 배열([])은 말씀 없는 날을 의미한다.
+  // 서버는 snake_case 키(verse_start, verse_end) 사용, 또한 verses 배열로 본문을 미리 제공할 수 있다.
+  NSString *topic = sermonData[@"topic"] ?: @"";
+  BOOL shouldResolveBibleRefs = [topic containsString:@"v2"] || [topic containsString:@"qt_events"];
+  if (shouldResolveBibleRefs) {
     NSArray<NSDictionary *> *refs = sermonData[@"bible_references"];
-    NSMutableString *builtContent = [NSMutableString string];
+    // refs가 여러 개인 경우 Android BibleReferenceResolver와 동일하게
+    // "본문 : 참조1, 참조2 구절1 구절2" 형태로 합친다.
+    // 각 ref를 별도 "본문 : ..." 문자열로 만들면 두 번째부터 파싱이 깨진다.
+    NSMutableArray<NSString *> *allRefStrings = [NSMutableArray array];
+    NSMutableString *allVerseBody = [NSMutableString string];
+
     for (NSDictionary *ref in refs) {
         NSString *book = [ref[@"book"] isKindOfClass:[NSString class]] ? ref[@"book"] : nil;
         NSNumber *chapterNum = [ref[@"chapter"] isKindOfClass:[NSNumber class]] ? ref[@"chapter"] : nil;
-        NSNumber *startNum = [ref[@"verseStart"] isKindOfClass:[NSNumber class]] ? ref[@"verseStart"] : nil;
-        NSNumber *endNum = [ref[@"verseEnd"] isKindOfClass:[NSNumber class]] ? ref[@"verseEnd"] : nil;
+        NSNumber *startNum = [ref[@"verse_start"] isKindOfClass:[NSNumber class]] ? ref[@"verse_start"] : nil;
+        NSNumber *endNum   = [ref[@"verse_end"]   isKindOfClass:[NSNumber class]] ? ref[@"verse_end"]   : nil;
 
         if (!book || !chapterNum || !startNum || !endNum) continue;
 
-        NSString *text = [[BibleDbHelper shared] getVersesWithBook:book
-                                                           chapter:chapterNum.intValue
-                                                        verseStart:startNum.intValue
-                                                          verseEnd:endNum.intValue];
-      if (text.length == 0) continue;
-      if (builtContent.length > 0) [builtContent appendString:@"\n\n"];
-      [builtContent appendString:text];
+        int from = startNum.intValue;
+        int to   = endNum.intValue;
+        NSString *rangeStr = (from == to)
+            ? [NSString stringWithFormat:@"%d:%d", chapterNum.intValue, from]
+            : [NSString stringWithFormat:@"%d:%d-%d", chapterNum.intValue, from, to];
+
+        NSMutableString *verseBody = [NSMutableString string];
+
+        // 서버가 verses 배열로 본문을 미리 제공하면 DB 조회 불필요
+        NSArray *verses = [ref[@"verses"] isKindOfClass:[NSArray class]] ? ref[@"verses"] : nil;
+        if (verses.count > 0) {
+            for (NSDictionary *verse in verses) {
+                NSString *content = [verse[@"content"] isKindOfClass:[NSString class]] ? verse[@"content"] : nil;
+                if (!content || content.length == 0) continue;
+                NSNumber *verseNum = [verse[@"verse_number"] isKindOfClass:[NSNumber class]] ? verse[@"verse_number"] : nil;
+                if (verseBody.length > 0) [verseBody appendString:@" "];
+                if (verseNum) {
+                    [verseBody appendFormat:@"%@ %@", verseNum, content];
+                } else {
+                    [verseBody appendString:content];
+                }
+            }
+        }
+
+        // embedded verses 없으면 bible.db 직접 조회
+        if (verseBody.length == 0) {
+            NSString *text = [[BibleDbHelper shared] getVersesWithBook:book
+                                                               chapter:chapterNum.intValue
+                                                            verseStart:from
+                                                              verseEnd:to];
+            if (text.length > 0) {
+                [verseBody appendString:text];
+            }
+        }
+
+        if (verseBody.length == 0) continue;
+
+        [allRefStrings addObject:[NSString stringWithFormat:@"%@ %@", book, rangeStr]];
+        if (allVerseBody.length > 0) [allVerseBody appendString:@" "];
+        [allVerseBody appendString:verseBody];
     }
 
-    if (builtContent.length > 0) {
-      sermonData[@"content"] = builtContent;
+    // Android 포맷: "본문 : 참조1, 참조2 31 구절1 32 구절2 25 구절3..."
+    // extractContent(sermonParser.ts)의 bookNameRegex가 쉼표 구분 참조를 지원한다.
+    if (allRefStrings.count > 0) {
+        NSString *reference = [allRefStrings componentsJoinedByString:@", "];
+        sermonData[@"content"] = [NSString stringWithFormat:@"본문 : %@ %@", reference, allVerseBody];
+    } else {
+        // 말씀 없는 날(빈 배열)
+        sermonData[@"content"] = @"";
     }
   }
   

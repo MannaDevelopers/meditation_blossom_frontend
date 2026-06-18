@@ -16,6 +16,7 @@ import {
   QT,
   QTRaw,
 } from '../types/QT';
+import WidgetUpdateModule from '../types/WidgetUpdateModule';
 import logger from '../utils/logger';
 
 
@@ -24,7 +25,24 @@ export async function fetchLatestQtFromAsyncStorage(): Promise<QT | null> {
   try {
     raw = await AsyncStorage.getItem(FCM_QT_KEY);
     if (raw) {
-      return fcmDataToQt(JSON.parse(raw) as QTRaw);
+      const parsed = JSON.parse(raw) as QTRaw;
+      const qt = fcmDataToQt(parsed);
+
+      // content가 비어 있고 bible_references가 있으면 네이티브 DB 조회
+      // (FCM v2 포맷: content 없이 bible_references만 전달, native가 못 처리한 경우)
+      if (!qt.content && parsed.bible_references) {
+        try {
+          const refsJson = typeof parsed.bible_references === 'string'
+            ? parsed.bible_references
+            : JSON.stringify(parsed.bible_references);
+          const resolved = await WidgetUpdateModule.resolveBibleReferences(refsJson);
+          return { ...qt, content: resolved };
+        } catch (e) {
+          logger.error('fetchLatestQtFromAsyncStorage: resolveBibleReferences failed', e);
+        }
+      }
+
+      return qt;
     }
   } catch (error) {
     logger.warn('Failed to load QT from AsyncStorage, clearing corrupted data');

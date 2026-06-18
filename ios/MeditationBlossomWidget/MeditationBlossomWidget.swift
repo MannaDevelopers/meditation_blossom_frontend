@@ -168,6 +168,8 @@ struct MeditationBlossomWidget: Widget {
           .widgetURL(entry.targetURL)
       }
     }
+    .configurationDisplayName("주일 말씀")
+    .description("이번 주 말씀을 홈 화면에서 바로 확인하세요.")
     .supportedFamilies([.systemMedium, .systemLarge])
   }
 }
@@ -176,6 +178,12 @@ struct MeditationBlossomWidgetEntryView : View {
   var entry: SimpleEntry
   @Environment(\.widgetFamily) var family
 
+  // 매일만나 위젯과 통일된 색상 토큰
+  private let primaryText = Color(red: 0.10, green: 0.10, blue: 0.10)
+  private let secondaryText = Color(red: 0.10, green: 0.10, blue: 0.10).opacity(0.50)
+  private let accentText = Color(red: 0.18, green: 0.42, blue: 0.25)
+  private let dividerColor = Color(red: 0.10, green: 0.10, blue: 0.10).opacity(0.12)
+
   var body: some View {
     Group {
       switch family {
@@ -183,54 +191,89 @@ struct MeditationBlossomWidgetEntryView : View {
         ZStack(alignment: .topLeading) {
           Image("background_364_382")
             .resizable()
-            .frame(width:364, height:382)
+            .aspectRatio(contentMode: .fill)
 
-          VStack (alignment: .leading) {
+          VStack(alignment: .leading, spacing: 0) {
+            // 제목
             Text(entry.title)
-              .font(.system(size:20, weight: .bold))
-              .foregroundColor(.black)
-              .padding(.top)
-              .padding(.leading)
+              .font(.system(size: 18, weight: .bold))
+              .foregroundColor(primaryText)
+              .lineLimit(2)
 
-            Spacer().frame(height: 20)
+            // 본문 참조
+            if !entry.verse.trimmingCharacters(in: .whitespaces).isEmpty {
+              Text(entry.verse)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(accentText)
+                .padding(.top, 6)
+            }
 
+            // 구분선
+            Rectangle()
+              .fill(dividerColor)
+              .frame(height: 1)
+              .padding(.top, 10)
+
+            // 본문
             Text(entry.quote)
-              .font(.system(size:18, weight: .semibold))
-              .foregroundColor(.black)
-              .padding(.leading)
-              .padding(.trailing)
+              .font(.system(size: 15))
+              .foregroundColor(primaryText)
+              .lineLimit(9)
+              .lineSpacing(2)
+              .padding(.top, 10)
 
-            Spacer().frame(height: 20)
-
-            Text(entry.verse)
-              .font(.system(size:16))
-              .foregroundColor(.black)
-              .padding(.leading)
+            Spacer(minLength: 0)
           }
-          .padding(EdgeInsets(top: 30, leading: 30, bottom: 30, trailing: 30))
+          .padding(EdgeInsets(top: 18, leading: 24, bottom: 18, trailing: 24))
+          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+
       case .systemMedium:
-        ZStack {
+        ZStack(alignment: .topLeading) {
           Image("background_364_170")
             .resizable()
-            .frame(width:364, height:170);
-          VStack{
+            .aspectRatio(contentMode: .fill)
+
+          VStack(alignment: .leading, spacing: 6) {
+            // 제목 + 참조 행
+            HStack(alignment: .firstTextBaseline) {
+              Text(entry.title)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(primaryText)
+                .lineLimit(1)
+              if !entry.verse.trimmingCharacters(in: .whitespaces).isEmpty {
+                Spacer(minLength: 4)
+                Text(entry.verse)
+                  .font(.system(size: 12, weight: .semibold))
+                  .foregroundColor(accentText)
+                  .lineLimit(1)
+              }
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 18)
+
+            // 구분선
+            Rectangle()
+              .fill(dividerColor)
+              .frame(height: 1)
+              .padding(.horizontal, 18)
+
+            // 본문
             Text(entry.quote)
-              .font(.system(size:22, weight: .semibold))
-              .foregroundColor(.black)
-              .frame(width:300, height:100)
-              .offset(y:3)
-            Text(entry.verse)
-              .font(.system(size:15))
-              .foregroundColor(.black)
-              .frame(width:180, height:20, alignment:.trailing)
-              .offset(x:69)
+              .font(.system(size: 14))
+              .foregroundColor(primaryText)
+              .lineLimit(4)
+              .lineSpacing(1.5)
+              .padding(.horizontal, 18)
+
+            Spacer(minLength: 18)
           }
+          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+
       default:
         ZStack {
-          Color.white
-          Text("Error occured")
+          Color.clear
         }
       }
     }
