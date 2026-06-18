@@ -180,7 +180,12 @@ class WidgetUpdateModule: NSObject {
 
   @objc
   static func reloadWidgets() {
-    WidgetCenter.shared.reloadAllTimelines()
+    // WidgetCenter.reloadAllTimelines()는 반드시 메인 스레드에서 호출해야 한다.
+    // AppDelegate FCM 핸들러(백그라운드 스레드)에서 호출될 경우 silent no-op가 되므로
+    // 항상 main queue로 dispatch 한다.
+    DispatchQueue.main.async {
+      WidgetCenter.shared.reloadAllTimelines()
+    }
   }
 
   @objc
