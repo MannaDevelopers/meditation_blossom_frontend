@@ -12,7 +12,13 @@
  * Sermon, QT 양쪽 onSnapshot에서 동일하게 사용해 두 화면 동작을 통일한다.
  */
 export function reconcileFreshDoc<
-  T extends { date: string; content: string; video_url?: string },
+  T extends {
+    date: string;
+    content: string;
+    video_url?: string;
+    series_title?: string;
+    meditation_questions?: string;
+  },
 >(
   fresh: T,
   current: T | null,
@@ -21,12 +27,19 @@ export function reconcileFreshDoc<
   if (compare(fresh, current) > 0) return fresh;
   if (!current || fresh.date !== current.date) return null;
 
+  // QT 전용 필드(series_title, meditation_questions)는 iOS FCM 저장 경로에서 누락될 수 있어
+  // 같은 날짜의 서버 문서 값으로 빈 칸만 보충한다(#144). Sermon에는 없는 필드라 undefined로 무시됨.
   const merged: T = {
     ...current,
     content: current.content || fresh.content,
     video_url: current.video_url || fresh.video_url,
+    series_title: current.series_title || fresh.series_title,
+    meditation_questions: current.meditation_questions || fresh.meditation_questions,
   };
   const changed =
-    merged.content !== current.content || merged.video_url !== current.video_url;
+    merged.content !== current.content ||
+    merged.video_url !== current.video_url ||
+    merged.series_title !== current.series_title ||
+    merged.meditation_questions !== current.meditation_questions;
   return changed ? merged : null;
 }

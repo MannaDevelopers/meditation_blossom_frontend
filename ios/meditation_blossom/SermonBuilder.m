@@ -21,6 +21,7 @@
         @"title": data[@"title"] ?: @"",
         @"content": data[@"content"] ?: @"",
         @"category": data[@"category"] ?: @"",
+        @"series_title": data[@"series_title"] ?: @"",
         @"bible_references": parsedBibleReferences ?: @[],
         @"meditation_questions": data[@"meditation_questions"] ?: @"",
         @"date": data[@"date"] ?: @"",
