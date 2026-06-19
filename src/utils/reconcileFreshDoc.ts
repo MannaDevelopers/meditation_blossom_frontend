@@ -24,16 +24,11 @@ export function reconcileFreshDoc<
   current: T | null,
   compare: (a: T | null, b: T | null) => number,
 ): T | null {
-  if (!current) return fresh;
+  if (compare(fresh, current) > 0) return fresh;
+  if (!current || fresh.date !== current.date) return null;
 
-  // 다른 날짜: 더 최신 날짜 문서가 통째로 canonical (새 항목은 자체 데이터로 교체)
-  if (fresh.date !== current.date) {
-    return compare(fresh, current) > 0 ? fresh : null;
-  }
-
-  // 같은 날짜(같은 항목): updated_at이 더 최신이어도 통째 교체하지 않고 빈 칸만 보충한다.
-  // 서버 qt 문서에 없는 FCM 전용 필드(meditation_questions, series_title)가 서버 snapshot
-  // 도착 시 유실되는 것을 방지한다(#144). Sermon에는 없는 필드라 undefined로 무시됨.
+  // QT 전용 필드(series_title, meditation_questions)는 iOS FCM 저장 경로에서 누락될 수 있어
+  // 같은 날짜의 서버 문서 값으로 빈 칸만 보충한다(#144). Sermon에는 없는 필드라 undefined로 무시됨.
   const merged: T = {
     ...current,
     content: current.content || fresh.content,
