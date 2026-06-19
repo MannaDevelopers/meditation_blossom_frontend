@@ -11,6 +11,7 @@ export function useWidgetSync(sermon: Sermon | null): void {
       return;
     }
 
+    logger.log('[useWidgetSync] onSermonUpdated called, date=' + sermon.date);
     WidgetUpdateModule.onSermonUpdated(JSON.stringify(sermon)).catch((error) => {
       logger.error('Failed to update widget:', error);
     });
