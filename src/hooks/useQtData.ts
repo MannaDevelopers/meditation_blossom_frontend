@@ -93,10 +93,13 @@ export function useQtData(): UseQtDataReturn {
   useEffect(() => {
     return subscribeToLatestQt(
       async (fresh) => {
-        if (compareQt(fresh, qtRef.current) > 0) {
-          logger.log('onSnapshot: newer QT received, updating');
-          await saveQtToAsyncStorage(fresh);
-          setQt(fresh);
+        // 통째 교체 대신 reconcileFreshDoc로 머지: 같은 날짜의 서버 snapshot이
+        // FCM에서 온 meditation_questions/series_title를 덮어 유실시키지 않도록 한다(#144).
+        const next = reconcileFreshDoc(fresh, qtRef.current, compareQt);
+        if (next) {
+          logger.log('onSnapshot: QT reconciled, updating');
+          await saveQtToAsyncStorage(next);
+          setQt(next);
         }
       },
       (e) => logger.error('Firestore QT subscription error:', e),

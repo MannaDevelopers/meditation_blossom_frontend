@@ -107,4 +107,21 @@ describe('reconcileFreshDoc', () => {
     const fresh = make({ series_title: '서버 시리즈' });
     expect(reconcileFreshDoc(fresh, current, compare)).toBeNull();
   });
+
+  // #144 회귀: 같은 날짜인데 서버 updated_at이 더 최신이어도, 서버에 없는
+  // meditation_questions를 통째 교체로 유실시키지 않고 보존해야 함
+  it('같은 날짜 + 서버 updated_at 최신 + 서버에 묵상질문 없음 → 로컬 묵상질문 보존', () => {
+    const current = make({
+      meditation_questions: '["질문1","질문2"]',
+      updated_at: { seconds: 1000, nanoseconds: 0 },
+    });
+    const fresh = make({
+      meditation_questions: undefined,
+      updated_at: { seconds: 2000, nanoseconds: 0 }, // 서버가 더 최신
+    });
+    const result = reconcileFreshDoc(fresh, current, compare);
+    // 보존할 값이 있으면 머지 결과 반환, 변화 없으면 null — 어느 쪽이든 질문은 유실되지 않아야 함
+    const resolved = result ?? current;
+    expect(resolved.meditation_questions).toBe('["질문1","질문2"]');
+  });
 });
