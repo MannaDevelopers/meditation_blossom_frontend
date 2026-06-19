@@ -9,13 +9,16 @@
 #import <React/RCTEventEmitter.h>
 #import <React/RCTBridgeModule.h>
 
+// AppDelegate가 이 이름으로 NSNotification을 post하면
+// MyEventModule이 받아서 JS에 emit한다.
+// self.bridge 의존 없이 New Architecture에서도 동작.
+NSString *const FCMSermonUpdateNotification = @"FCM_SERMON_UPDATE_INTERNAL";
+NSString *const FCMQtUpdateNotification     = @"FCM_QT_UPDATE_INTERNAL";
+
 @interface MyEventModule : RCTEventEmitter <RCTBridgeModule>
 @end
 
 @implementation MyEventModule
-{
-  BOOL hasListeners;
-}
 
 #pragma mark - Module Registration
 
@@ -24,8 +27,42 @@ RCT_EXPORT_MODULE(MyEventModule);
 
 + (BOOL)requiresMainQueueSetup
 {
-  // UI/알림 등 메인스레드 리소스 접근 가능성을 고려해 true
   return YES;
+}
+
+#pragma mark - Lifecycle
+
+- (instancetype)init
+{
+  self = [super init];
+  if (self) {
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(onSermonUpdate)
+                                                 name:FCMSermonUpdateNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(onQtUpdate)
+                                                 name:FCMQtUpdateNotification
+                                               object:nil];
+  }
+  return self;
+}
+
+- (void)dealloc
+{
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+#pragma mark - NSNotification handlers
+
+- (void)onSermonUpdate
+{
+  [self sendEventWithName:@"ON_SERMON_UPDATE" body:@{@"message": @"FCM sermon update"}];
+}
+
+- (void)onQtUpdate
+{
+  [self sendEventWithName:@"ON_QT_UPDATE" body:@{@"message": @"FCM qt update"}];
 }
 
 #pragma mark - RCTEventEmitter overrides
@@ -36,35 +73,19 @@ RCT_EXPORT_MODULE(MyEventModule);
   return @[@"ON_SERMON_UPDATE", @"ON_QT_UPDATE"];
 }
 
-// RN 0.65+ 규약: 리스너 카운트 관리 (없어도 동작은 하지만 경고 방지)
-- (void)startObserving
-{
-  hasListeners = YES;
-}
+- (void)startObserving {}
+- (void)stopObserving  {}
 
-- (void)stopObserving
-{
-  hasListeners = NO;
-}
-
-- (void)addListener:(NSString *)eventName {}
-- (void)removeListeners:(double)count {}
-
-#pragma mark - Public APIs (JS에서 호출 가능)
+#pragma mark - Public APIs (JS에서 직접 호출 가능)
 
 RCT_EXPORT_METHOD(trigger:(NSString *)message)
 {
-  if (!hasListeners) { return; }
-  if (message == nil) { message = @""; }
-  [self sendEventWithName:@"ON_SERMON_UPDATE" body:@{ @"message": message }];
+  [self sendEventWithName:@"ON_SERMON_UPDATE" body:@{@"message": message ?: @""}];
 }
 
 RCT_EXPORT_METHOD(triggerQtUpdate:(NSString *)message)
 {
-  if (!hasListeners) { return; }
-  if (message == nil) { message = @""; }
-  [self sendEventWithName:@"ON_QT_UPDATE" body:@{ @"message": message }];
+  [self sendEventWithName:@"ON_QT_UPDATE" body:@{@"message": message ?: @""}];
 }
 
 @end
-

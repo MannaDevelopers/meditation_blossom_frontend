@@ -112,7 +112,9 @@ async function sendSermonEvent(token, dataType = 'sermon_events', label = null) 
     android: { priority: 'normal', data: dataFields },
     apns: {
       headers: { 'apns-push-type': 'alert', 'apns-priority': '10' },
-      payload: { aps: { 'content-available': 1, alert: { title: '', body: '' }, badge: 0 }, ...dataFields },
+      // mutable-content: 1 이 있어야 UNNotificationServiceExtension 이 실행된다.
+      // 확장이 App Group 저장 + reloadTimelines 를 담당하므로 위젯 업데이트에 필수.
+      payload: { aps: { 'content-available': 1, 'mutable-content': 1, alert: { title: '', body: '' }, badge: 0 }, ...dataFields },
     },
   });
 }

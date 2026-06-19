@@ -14,7 +14,7 @@
 #import <ifaddrs.h>
 #import <arpa/inet.h>
 #import <string.h>
-#import <CommonCrypto/CommonDigest.h>
+#import <React/RCTUtils.h>
 
 // Hermes 엔진 확인을 위한 헤더
 #if __has_include(<hermes/hermes.h>)
@@ -24,17 +24,18 @@
 #define HERMES_AVAILABLE 0
 #endif
 
-// AsyncStorage 저장을 위한 헤더
-#import <sqlite3.h>
-
 #import "SermonBuilder.h"
 #import "meditation_blossom-Swift.h"
 
-// MyEventModule 클래스 선언
-@interface MyEventModule : NSObject
-- (void)trigger:(NSString *)message;
-- (void)triggerQtUpdate:(NSString *)message;
-@end
+// RCTAsyncLocalStorage_V1 디렉토리 경로 (RN 0.78 파일 기반 AsyncStorage)
+static NSString *MBAsyncStorageDirectory(void)
+{
+  NSString *appSupportDir = NSSearchPathForDirectoriesInDomains(
+      NSApplicationSupportDirectory, NSUserDomainMask, YES).firstObject;
+  NSString *bundleId = [[NSBundle mainBundle] bundleIdentifier];
+  return [[appSupportDir stringByAppendingPathComponent:bundleId]
+      stringByAppendingPathComponent:@"RCTAsyncLocalStorage_V1"];
+}
 
 @interface AppDelegate () <UNUserNotificationCenterDelegate, FIRMessagingDelegate>
 @end
@@ -108,10 +109,7 @@
   RCTSetLogThreshold(RCTLogLevelInfo);
   
 #if DEBUG
-  NSString *libDir = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES).firstObject;
-  NSString *dbPath = [[libDir stringByAppendingPathComponent:@"Application Support"]
-                                 stringByAppendingPathComponent:@"RKStorage"];
-  NSLog(@"📁 DB path: %@", dbPath);
+  NSLog(@"📁 AsyncStorage path: %@", MBAsyncStorageDirectory());
 #endif
   
   return result;
@@ -155,45 +153,71 @@
 
 #pragma mark - AsyncStorage Storage Helper
 
-// AsyncStorage 저장 (타이밍 이슈 방지 재시도 로직 포함)
+// Bridgeless 환경에서 JS bridge에 의존하지 않고 AsyncStorage 파일에 직접 저장
+// RN 0.78 파일 기반 AsyncStorage: manifest.json + 값 파일 (1KB 초과 시)
 - (void)saveToAsyncStorageDirect:(NSString *)jsonString forKey:(NSString *)key {
   if (!jsonString || !key) {
     NSLog(@"❌ AsyncStorage save skipped: key or value is nil");
     return;
   }
 
-  NSString *libDir = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES).firstObject;
-    NSString *dbPath = [[libDir stringByAppendingPathComponent:@"Application Support"]
-                                 stringByAppendingPathComponent:@"RKStorage"];
-    
-    NSLog(@"📁 DB path: %@", dbPath);
-    
-    // DB 파일 없으면 생성 (테이블도 같이)
-    sqlite3 *db;
-    if (sqlite3_open([dbPath UTF8String], &db) != SQLITE_OK) {
-      NSLog(@"❌ Failed to open DB: %s", sqlite3_errmsg(db));
+  NSString *storageDir = MBAsyncStorageDirectory();
+  NSString *manifestPath = [storageDir stringByAppendingPathComponent:@"manifest.json"];
+  NSFileManager *fm = [NSFileManager defaultManager];
+
+  NSError *dirError = nil;
+  if (![fm fileExistsAtPath:storageDir]) {
+    [fm createDirectoryAtPath:storageDir
+  withIntermediateDirectories:YES
+                   attributes:nil
+                        error:&dirError];
+    if (dirError) {
+      NSLog(@"❌ Failed to create storage dir: %@", dirError.localizedDescription);
       return;
     }
-    
-    // 테이블 없으면 생성
-    const char *createSQL = "CREATE TABLE IF NOT EXISTS catalystLocalStorage (key TEXT PRIMARY KEY, value TEXT NOT NULL)";
-    sqlite3_exec(db, createSQL, nil, nil, nil);
-    
-    // upsert
-    const char *upsertSQL = "INSERT OR REPLACE INTO catalystLocalStorage (key, value) VALUES (?, ?)";
-    sqlite3_stmt *stmt;
-    if (sqlite3_prepare_v2(db, upsertSQL, -1, &stmt, nil) == SQLITE_OK) {
-      sqlite3_bind_text(stmt, 1, [key UTF8String], -1, SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 2, [jsonString UTF8String], -1, SQLITE_TRANSIENT);
-      
-      if (sqlite3_step(stmt) == SQLITE_DONE) {
-        NSLog(@"✅ DB write success for key: %@", key);
-      } else {
-        NSLog(@"❌ DB write failed: %s", sqlite3_errmsg(db));
-      }
-      sqlite3_finalize(stmt);
+  }
+
+  // manifest 읽기
+  NSMutableDictionary *manifest = [NSMutableDictionary dictionary];
+  if ([fm fileExistsAtPath:manifestPath]) {
+    NSData *data = [NSData dataWithContentsOfFile:manifestPath];
+    if (data) {
+      NSDictionary *existing = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+      if (existing) [manifest addEntriesFromDictionary:existing];
     }
-    sqlite3_close(db);
+  }
+
+  static const NSUInteger kInlineValueThreshold = 1024;
+
+  if (jsonString.length <= kInlineValueThreshold) {
+    manifest[key] = jsonString;
+  } else {
+    // 큰 값은 별도 파일에 저장하고 manifest에 NSNull 마커
+    NSString *hashedKey = RCTMD5Hash(key);
+    NSString *valuePath = [storageDir stringByAppendingPathComponent:hashedKey];
+    NSError *writeError = nil;
+    [jsonString writeToFile:valuePath atomically:YES encoding:NSUTF8StringEncoding error:&writeError];
+    if (writeError) {
+      NSLog(@"❌ Failed to write value file: %@", writeError.localizedDescription);
+      return;
+    }
+    manifest[key] = [NSNull null];
+  }
+
+  NSError *jsonError = nil;
+  NSData *manifestData = [NSJSONSerialization dataWithJSONObject:manifest options:0 error:&jsonError];
+  if (jsonError || !manifestData) {
+    NSLog(@"❌ Failed to serialize manifest: %@", jsonError.localizedDescription);
+    return;
+  }
+
+  NSError *writeError = nil;
+  [manifestData writeToFile:manifestPath options:NSDataWritingAtomic error:&writeError];
+  if (writeError) {
+    NSLog(@"❌ Failed to write manifest: %@", writeError.localizedDescription);
+  } else {
+    NSLog(@"✅ AsyncStorage write success for key: %@", key);
+  }
 }
 
 #pragma mark - Bundle URL & Debugging (유지됨)
@@ -542,31 +566,17 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
 }
 
 - (void)sendSermonUpdateEvent {
-  UIApplicationState state = [[UIApplication sharedApplication] applicationState];
-  if (state == UIApplicationStateActive) {
-    if (self.bridge) {
-      MyEventModule *eventModule = [self.bridge moduleForClass:[MyEventModule class]];
-      if (eventModule) {
-        [eventModule trigger:@"New sermon received from FCM"];
-        return;
-      }
-    }
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"FCM_SERMON_UPDATE" object:nil];
-  }
+  // MyEventModule이 FCM_SERMON_UPDATE_INTERNAL를 구독하고 있다.
+  // self.bridge 의존 없이 모듈 자신의 bridge로 JS에 emit → New Architecture 호환.
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"FCM_SERMON_UPDATE_INTERNAL" object:nil];
+  });
 }
 
 - (void)sendQtUpdateEvent {
-  UIApplicationState state = [[UIApplication sharedApplication] applicationState];
-  if (state == UIApplicationStateActive) {
-    if (self.bridge) {
-      MyEventModule *eventModule = [self.bridge moduleForClass:[MyEventModule class]];
-      if (eventModule) {
-        [eventModule triggerQtUpdate:@"New QT received from FCM"];
-        return;
-      }
-    }
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"FCM_QT_UPDATE" object:nil];
-  }
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"FCM_QT_UPDATE_INTERNAL" object:nil];
+  });
 }
 
 #pragma mark - UNUserNotificationCenterDelegate
