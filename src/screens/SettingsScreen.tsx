@@ -169,7 +169,9 @@ const SettingsScreen = ({ navigation }: Props) => {
           style={styles.backButton}
           hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
         >
-          <Text style={styles.backText}>‹</Text>
+          {/* 텍스트 '‹' 글리프가 폰트에 따라 깨져 보이는 문제로 BackButton SVG로 교체.
+              pointerEvents="none"으로 아이콘 직접 탭도 부모로 통과시킨다(ISSUE-138 패턴). */}
+          <SvgIcon name="BackButton" size={24} pointerEvents="none" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>설정</Text>
       </View>
@@ -282,17 +284,11 @@ const styles = StyleSheet.create({
     height: 30,
   },
   backButton: {
-    // 좁은 '‹' 글리프 주변에 실제 터치 패딩을 더해 탭 영역을 넓힌다(hitSlop과 병행).
+    // 아이콘 주변에 실제 터치 패딩을 더해 탭 영역을 넓힌다(hitSlop과 병행).
     paddingVertical: 8,
     paddingHorizontal: 10,
     marginRight: 8,
     marginLeft: -10,
-  },
-  backText: {
-    color: '#49454F',
-    fontSize: 32,
-    fontFamily: 'Pretendard-Bold',
-    lineHeight: 32,
   },
   headerTitle: {
     color: '#49454F',

@@ -35,7 +35,10 @@ const SharedHeader = () => {
         style={styles.settingsButton}
         hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
       >
-        <SvgIcon name="SettingButton" size={24} />
+        {/* iOS에서 react-native-svg가 자체 터치 responder가 되어 아이콘을 직접 누르면
+            터치를 삼키는 문제가 있어, pointerEvents="none"으로 부모 TouchableOpacity에 통과시킨다.
+            (YouTube 버튼과 동일한 ISSUE-138 패턴) */}
+        <SvgIcon name="SettingButton" size={24} pointerEvents="none" />
       </TouchableOpacity>
     </View>
   );
