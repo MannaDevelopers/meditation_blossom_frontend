@@ -114,27 +114,13 @@ const DailyMannaScreen = () => {
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (isLoading && !qt) {
-    return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
-        <ActivityIndicator size="large" color="#A59EAE" />
-      </SafeAreaView>
-    );
-  }
-
-  if (error && !qt) {
-    return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>데이터를 불러올 수 없습니다</Text>
-          <TouchableOpacity onPress={onRefresh} style={styles.retryButton}>
-            <Text style={styles.retryText}>다시 시도</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
+  // Fabric(New Architecture) 초기 렌더 버그 워크어라운드 (HomeScreen과 동일):
+  // SPINNER/ERROR→CONTENT 분기 교체(reconciliation)를 없애고 항상 같은 컴포넌트 트리를 렌더한다.
+  // 위젯 딥링크로 매일 만나 탭에 곧바로 진입(콜드 스타트)하면 분기 교체 트리가
+  // 첫 커밋되지 않아 탭 전환 전까지 빈 화면이 되는 문제를 방지한다.
+  // 로딩/에러 상태는 absoluteFill overlay로 표시한다.
+  const showSpinner = isLoading && !qt;
+  const showError = error && !qt;
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={400}>
@@ -184,6 +170,21 @@ const DailyMannaScreen = () => {
           </View>
         ) : null}
       </ScrollView>
+      {showSpinner && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#A59EAE" />
+        </View>
+      )}
+      {showError && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>데이터를 불러올 수 없습니다</Text>
+            <TouchableOpacity onPress={onRefresh} style={styles.retryButton}>
+              <Text style={styles.retryText}>다시 시도</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -299,6 +300,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: 'Pretendard-SemiBold',
     lineHeight: 24,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
   },
   errorContainer: { justifyContent: 'center', alignItems: 'center' },
   errorText: {
