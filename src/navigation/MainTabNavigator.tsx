@@ -33,9 +33,12 @@ const SharedHeader = () => {
       <TouchableOpacity
         onPress={() => navigation.navigate('SettingsScreen')}
         style={styles.settingsButton}
-        hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+        hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
       >
-        <SvgIcon name="SettingButton" size={24} />
+        {/* iOS에서 react-native-svg가 자체 터치 responder가 되어 아이콘을 직접 누르면
+            터치를 삼키는 문제가 있어, pointerEvents="none"으로 부모 TouchableOpacity에 통과시킨다.
+            (YouTube 버튼과 동일한 ISSUE-138 패턴) */}
+        <SvgIcon name="SettingButton" size={24} pointerEvents="none" />
       </TouchableOpacity>
     </View>
   );
@@ -117,6 +120,10 @@ const styles = StyleSheet.create({
   },
   settingsButton: {
     marginLeft: 'auto',
+    // 아이콘(24px) 주변에 실제 터치 가능한 패딩을 더해 탭 영역을 넓힌다.
+    // 우측 끝에 위치해 hitSlop만으로는 화면 밖으로 잘려 효과가 제한적이므로 패딩을 병행.
+    padding: 10,
+    marginRight: -10,
   },
   tabBarContainer: {
     flexDirection: 'row',
