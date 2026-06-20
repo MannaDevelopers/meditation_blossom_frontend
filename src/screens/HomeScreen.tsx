@@ -117,21 +117,22 @@ const HomeScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={400}>
-        <View style={styles.seriesCard}>
+        {/* 카드(카테고리/날짜/유튜브 아이콘) 전체를 유튜브 바로가기 터치 영역으로 확장.
+            cancelable={false}로 스크롤/스와이프 제스처가 터치를 탈취하지 못하게 하고,
+            SVG는 pointerEvents="none"으로 터치를 부모 Pressable에 통과시킨다. */}
+        <Pressable
+          style={styles.seriesCard}
+          onPress={openYoutube}
+          cancelable={false}
+        >
           <View style={styles.seriesCardText}>
             {sermon?.category ? (
               <Text style={styles.cardTitleText}>{sermon.category}</Text>
             ) : null}
             <Text style={styles.seriesDateText}>{sermon?.date}</Text>
           </View>
-          <Pressable
-            onPress={openYoutube}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            cancelable={false}
-          >
-            <SvgIcon name="YoutubeButton" size={60} pointerEvents="none" />
-          </Pressable>
-        </View>
+          <SvgIcon name="YoutubeButton" size={60} pointerEvents="none" />
+        </Pressable>
         <View style={styles.smallDivider} />
         <Text style={styles.titleText} numberOfLines={0}>
           {processTitleText(sermon?.title)}
