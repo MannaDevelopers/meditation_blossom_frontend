@@ -4,6 +4,8 @@ type Doc = {
   date: string;
   content: string;
   video_url?: string;
+  series_title?: string;
+  meditation_questions?: string;
   updated_at: { seconds: number; nanoseconds: number };
 };
 
@@ -80,6 +82,29 @@ describe('reconcileFreshDoc', () => {
   it('같은 날짜 + 로컬에 content/video_url 모두 채워져 있으면 null', () => {
     const current = make({ content: '본문 내용', video_url: 'https://youtu.be/x' });
     const fresh = make({ content: '다른 본문', video_url: 'https://youtu.be/y' });
+    expect(reconcileFreshDoc(fresh, current, compare)).toBeNull();
+  });
+
+  // QT 전용 필드 보충 (#144): iOS FCM 저장 경로에서 series_title/meditation_questions가 누락된 경우
+  it('같은 날짜 + 로컬 series_title 없음 + 서버 있음 → series_title 보충', () => {
+    const current = make({ series_title: '' });
+    const fresh = make({ series_title: '하나님의 손길' });
+    const result = reconcileFreshDoc(fresh, current, compare);
+    expect(result).not.toBeNull();
+    expect(result!.series_title).toBe('하나님의 손길');
+  });
+
+  it('같은 날짜 + 로컬 meditation_questions 없음 + 서버 있음 → 보충', () => {
+    const current = make({ meditation_questions: undefined });
+    const fresh = make({ meditation_questions: '["질문1","질문2"]' });
+    const result = reconcileFreshDoc(fresh, current, compare);
+    expect(result).not.toBeNull();
+    expect(result!.meditation_questions).toBe('["질문1","질문2"]');
+  });
+
+  it('같은 날짜 + 로컬에 series_title 있으면 서버 값으로 덮지 않음(기존 보존)', () => {
+    const current = make({ series_title: '로컬 시리즈' });
+    const fresh = make({ series_title: '서버 시리즈' });
     expect(reconcileFreshDoc(fresh, current, compare)).toBeNull();
   });
 });

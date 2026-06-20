@@ -28,7 +28,8 @@ export interface QTRaw {
   day_of_week?: string;
   dayOfWeek?: string;
   bible_references?: string;
-  meditation_questions?: string;
+  // App Group(위젯 포맷)은 배열로, FCM/Firestore 경로는 문자열로 저장하므로 두 타입 모두 허용
+  meditation_questions?: string | string[];
   video_url?: string;
   source_id?: string;
   created_at?: FirestoreTimestamp | string;
@@ -46,6 +47,16 @@ function resolveTimestamp(
   return snakeCase || camelCase || { seconds: 0, nanoseconds: 0 };
 }
 
+// meditation_questions를 항상 문자열로 정규화한다.
+// App Group(위젯) 경로는 배열로 저장하는데, performInitialSync/useQtFCMListener가
+// 이를 AsyncStorage로 그대로 복사하면 화면 파서(JSON.parse(string) 기대)가 깨져
+// 묵상질문이 사라진다(#144). 배열은 JSON 문자열로 변환해 일관된 문자열 불변식을 유지한다.
+function normalizeMeditationQuestions(value: string | string[] | undefined): string | undefined {
+  if (value == null) return undefined;
+  if (Array.isArray(value)) return JSON.stringify(value);
+  return value;
+}
+
 export function fcmDataToQt(raw: QTRaw): QT {
   return {
     id: raw.id || '',
@@ -55,7 +66,7 @@ export function fcmDataToQt(raw: QTRaw): QT {
     date: raw.date || '',
     day_of_week: raw.day_of_week || raw.dayOfWeek,
     video_url: raw.video_url,
-    meditation_questions: raw.meditation_questions,
+    meditation_questions: normalizeMeditationQuestions(raw.meditation_questions),
     created_at: resolveTimestamp(raw.created_at, raw.createdAt),
     updated_at: resolveTimestamp(raw.updated_at, raw.updatedAt),
   };

@@ -36,9 +36,15 @@ export function useQtData(): UseQtDataReturn {
       setQt(selected);
       setError(null);
 
-      // 로컬에 video_url/content가 비면 Firestore 강제 조회로 보충 (onSnapshot은 웜스타트 캐시 시 안 옴).
-      // reconcileFreshDoc로 빈 칸만 머지, 세션당 1회. useSermonData와 동일 동작.
-      if (selected && (!selected.video_url || !selected.content) && !triedServerFill.current) {
+      // 로컬에 video_url/content/series_title/meditation_questions가 비면 Firestore 강제 조회로 보충
+      // (onSnapshot은 웜스타트 캐시 시 안 옴). reconcileFreshDoc로 빈 칸만 머지, 세션당 1회.
+      // series_title/meditation_questions는 iOS FCM 저장 경로에서 누락될 수 있어 첫 설치 시 빈 채로 남는다(#144).
+      const missingField =
+        !selected?.video_url ||
+        !selected?.content ||
+        !selected?.series_title ||
+        !selected?.meditation_questions;
+      if (selected && missingField && !triedServerFill.current) {
         triedServerFill.current = true;
         try {
           const fresh = await fetchLatestQtFromServer();

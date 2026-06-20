@@ -217,12 +217,20 @@ class NotificationService: UNNotificationServiceExtension {
 
         do {
             let encodedData = try JSONEncoder().encode(sermon)
-            guard let jsonString = String(data: encodedData, encoding: .utf8) else {
+            guard var jsonString = String(data: encodedData, encoding: .utf8) else {
                 NSLog("NotificationService: Failed to convert encoded data to string")
                 return
             }
 
             let storageKey = asyncStorageKey(for: userInfo)
+
+            // QT는 공용 Sermon 구조체가 표현하지 못하는 series_title / meditation_questions를
+            // FCM userInfo에서 직접 보강한다. 누락 시 첫 설치 화면에서 카테고리·묵상질문이 비게 된다.
+            if storageKey == Constants.fcmQtKey,
+               let qtJson = qtJsonWithExtraFields(from: jsonString, userInfo: userInfo) {
+                jsonString = qtJson
+            }
+
             userDefaults.set(jsonString, forKey: storageKey)
             if storageKey == Constants.fcmSermonKey {
                 userDefaults.set(jsonString, forKey: Constants.displaySermonKey)
@@ -234,6 +242,26 @@ class NotificationService: UNNotificationServiceExtension {
         } catch {
             NSLog("NotificationService: Failed to encode sermon: %@", error.localizedDescription)
         }
+    }
+
+    // 공용 Sermon 인코딩 JSON에 QT 전용 필드(series_title, meditation_questions)를 보강한다.
+    // 두 필드는 Sermon 구조체에 없어 누락되며, JS(fcmDataToQt)와 위젯(QT)이 이를 요구한다.
+    // meditation_questions는 JS 화면이 문자열(JSON 배열 문자열 또는 평문)로 파싱하므로
+    // AppDelegate 경로와 동일하게 userInfo의 원본 문자열을 그대로 보존한다.
+    private func qtJsonWithExtraFields(from jsonString: String, userInfo: [AnyHashable: Any]) -> String? {
+        guard let data = jsonString.data(using: .utf8),
+              var dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        dict["series_title"] = (userInfo["series_title"] as? String) ?? ""
+        if let questions = userInfo["meditation_questions"] as? String {
+            dict["meditation_questions"] = questions
+        }
+        guard let merged = try? JSONSerialization.data(withJSONObject: dict),
+              let result = String(data: merged, encoding: .utf8) else {
+            return nil
+        }
+        return result
     }
 
     // MARK: - Notification Suppression

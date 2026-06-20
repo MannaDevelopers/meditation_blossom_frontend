@@ -62,6 +62,16 @@ describe('fcmDataToQt', () => {
     };
     expect(fcmDataToQt(raw).meditation_questions).toBeUndefined();
   });
+
+  // #144: App Group(위젯) 경로는 meditation_questions를 배열로 저장하는데,
+  // 이 배열이 AsyncStorage로 복사돼 들어오면 문자열로 정규화해야 화면 파서가 깨지지 않는다.
+  it('정규화: meditation_questions가 배열이면 JSON 문자열로 변환', () => {
+    const raw = {
+      id: '1', title: 'T', series_title: '', content: 'C', date: '2026-04-17',
+      meditation_questions: ['질문1', '질문2'],
+    } as unknown as QTRaw;
+    expect(fcmDataToQt(raw).meditation_questions).toBe('["질문1","질문2"]');
+  });
 });
 
 describe('compareQt', () => {
