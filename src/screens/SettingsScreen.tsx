@@ -225,8 +225,9 @@ const SettingsScreen = ({ navigation }: Props) => {
           </View>
         </View>
 
-        {/* 앱 관리 섹션 */}
-        <TouchableOpacity onPress={toggleDeveloperMenu}>
+        {/* 앱 관리 섹션 (여러 번 탭하면 숨겨진 개발자 메뉴가 열린다)
+            activeOpacity={1}로 누름 효과를 없애 버튼임을 인지하지 못하게 한다. */}
+        <TouchableOpacity onPress={toggleDeveloperMenu} activeOpacity={1}>
           <Text style={styles.sectionLabel}>앱 관리</Text>
         </TouchableOpacity>
         <View style={styles.sectionCard}>
