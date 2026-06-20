@@ -173,7 +173,7 @@ const SettingsScreen = ({ navigation }: Props) => {
           {/* 텍스트 '‹'는 폰트에 따라 깨져 보이고, BackButton.svg는 흰색 PNG라
               밝은 배경에서 안 보인다. 헤더 텍스트 색(#49454F)으로 인라인 셰브론을 그린다.
               pointerEvents="none"으로 아이콘 직접 탭도 부모로 통과시킨다(ISSUE-138 패턴). */}
-          <Svg width={13} height={22} viewBox="0 0 13 22" pointerEvents="none">
+          <Svg width={9} height={15} viewBox="0 0 13 22" pointerEvents="none">
             <Path
               d="M11 2 L3 11 L11 20"
               stroke="#49454F"
