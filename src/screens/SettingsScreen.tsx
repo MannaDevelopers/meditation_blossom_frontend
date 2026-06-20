@@ -164,7 +164,11 @@ const SettingsScreen = ({ navigation }: Props) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+        >
           <Text style={styles.backText}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>설정</Text>
@@ -278,7 +282,11 @@ const styles = StyleSheet.create({
     height: 30,
   },
   backButton: {
+    // 좁은 '‹' 글리프 주변에 실제 터치 패딩을 더해 탭 영역을 넓힌다(hitSlop과 병행).
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     marginRight: 8,
+    marginLeft: -10,
   },
   backText: {
     color: '#49454F',
