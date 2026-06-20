@@ -21,6 +21,7 @@ import {
   AuthorizationStatus,
 } from '@react-native-firebase/messaging';
 import DeviceInfo from 'react-native-device-info';
+import Svg, { Path } from 'react-native-svg';
 import SvgIcon from '../components/SvgIcon';
 import { RootStackParamList } from '../types/navigation';
 import { FCM_SERMON_KEY } from '../types/Sermon';
@@ -169,9 +170,19 @@ const SettingsScreen = ({ navigation }: Props) => {
           style={styles.backButton}
           hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
         >
-          {/* 텍스트 '‹' 글리프가 폰트에 따라 깨져 보이는 문제로 BackButton SVG로 교체.
+          {/* 텍스트 '‹'는 폰트에 따라 깨져 보이고, BackButton.svg는 흰색 PNG라
+              밝은 배경에서 안 보인다. 헤더 텍스트 색(#49454F)으로 인라인 셰브론을 그린다.
               pointerEvents="none"으로 아이콘 직접 탭도 부모로 통과시킨다(ISSUE-138 패턴). */}
-          <SvgIcon name="BackButton" size={24} pointerEvents="none" />
+          <Svg width={13} height={22} viewBox="0 0 13 22" pointerEvents="none">
+            <Path
+              d="M11 2 L3 11 L11 20"
+              stroke="#49454F"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          </Svg>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>설정</Text>
       </View>
