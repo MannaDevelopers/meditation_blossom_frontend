@@ -307,6 +307,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'Pretendard-SemiBold',
     letterSpacing: -1,
+    // Android는 includeFontPadding으로 비대칭 padding을 더해 시스템 글자 크기/굵게 설정 시
+    // 제목이 헤더 중앙보다 아래로 쳐진다. iOS는 해당 개념이 없어 항상 중앙 정렬된다.
+    // Android에서만 padding을 끄고 수직 중앙 정렬을 강제한다(두 속성 모두 iOS에서는 무시됨).
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   scrollContent: {
     flexGrow: 1,
