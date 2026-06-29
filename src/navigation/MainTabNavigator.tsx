@@ -153,6 +153,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'Pretendard-Bold',
     color: '#919191',
+    // Android는 폰트 ascent/descent에 따라 비대칭 padding(includeFontPadding)을 더해,
+    // 시스템 글자 크기/굵게 설정 시 글자가 테두리 중앙보다 아래로 쳐진다.
+    // iOS에는 해당 개념이 없어 항상 중앙 정렬된다. Android에서만 padding을 끄고
+    // textAlignVertical로 수직 중앙 정렬을 강제한다(두 속성 모두 iOS에서는 무시됨).
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   tabLabelActive: {
     color: '#00A8DE',

@@ -293,7 +293,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 27,
     marginTop: 16,
     marginBottom: 24,
-    height: 30,
+    // height(고정값)로는 시스템 글자 크기 확대 시 제목 텍스트의 실제 렌더링 높이가
+    // 컨테이너를 넘어서며 Android에서 하단이 잘린다(iOS는 넘쳐도 자르지 않아 문제없음).
+    // minHeight로 바꿔 글자 크기에 따라 컨테이너 높이도 함께 늘어나게 한다.
+    minHeight: 30,
   },
   backButton: {
     // 아이콘 주변에 실제 터치 패딩을 더해 탭 영역을 넓힌다(hitSlop과 병행).
@@ -307,6 +310,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'Pretendard-SemiBold',
     letterSpacing: -1,
+    // Android는 includeFontPadding으로 비대칭 padding을 더해 시스템 글자 크기/굵게 설정 시
+    // 제목이 헤더 중앙보다 아래로 쳐진다. iOS는 해당 개념이 없어 항상 중앙 정렬된다.
+    // Android에서만 padding을 끄고 수직 중앙 정렬을 강제한다(두 속성 모두 iOS에서는 무시됨).
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   scrollContent: {
     flexGrow: 1,
