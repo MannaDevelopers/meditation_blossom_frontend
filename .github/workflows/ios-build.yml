@@ -81,11 +81,11 @@ jobs:
           <key>provisioningProfiles</key>
           <dict>
             <key>mannachurch.meditationblossom</key>
-            <string>iOS Team Store Provisioning Profile: mannachurch.meditationblossom</string>
+            <string>Meditation Blossom App Store Manual</string>
             <key>mannachurch.meditationblossom.MeditationBlossomWidgetExtension</key>
-            <string>iOS Team Store Provisioning Profile: mannachurch.meditationblossom.MeditationBlossomWidgetExtension</string>
+            <string>Meditation Blossom Widget App Store Manual</string>
             <key>mannachurch.meditationblossom.PushNotificationService</key>
-            <string>iOS Team Store Provisioning Profile: mannachurch.meditationblossom.PushNotificationService</string>
+            <string>Meditation Blossom Push App Store Manual</string>
           </dict>
           <key>uploadSymbols</key>
           <true/>
