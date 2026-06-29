@@ -3,6 +3,7 @@ name: iOS Build
 on:
   push:
     tags: [ "v*" ]  # v로 시작하는 태그만 트리거 (android-build.yml과 동일)
+  workflow_dispatch: {}  # GitHub UI/gh CLI에서 수동 실행 (태그 없이 단독 테스트용)
 
 env:
   WORKSPACE: ios/meditation_blossom.xcworkspace
