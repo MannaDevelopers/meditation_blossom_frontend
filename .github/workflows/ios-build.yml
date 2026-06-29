@@ -12,7 +12,7 @@ env:
 
 jobs:
   build:
-    runs-on: macos-14  # iOS 빌드는 반드시 macOS 러너
+    runs-on: macos-15  # 프로젝트가 objectVersion 77(Xcode 16.1+ 동기화 그룹) 사용 → macos-14의 기본 Xcode 15.4로는 열 수 없음
 
     steps:
     - uses: actions/checkout@v4
