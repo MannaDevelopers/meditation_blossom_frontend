@@ -50,6 +50,19 @@ jobs:
       run: |
         echo "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" > "$RUNNER_TEMP/AuthKey.p8"
 
+    # Export 단계에서 쓸 배포용(Store) 프로비저닝 프로파일 3개를 설치
+    # (Export는 수동 서명으로 처리 → API 키에 Admin 권한이 필요 없음)
+    - name: Install provisioning profiles
+      run: |
+        PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+        mkdir -p "$PROFILE_DIR"
+        echo "${{ secrets.IOS_PROVISIONING_PROFILE_APP_BASE64 }}" | base64 --decode \
+          > "$PROFILE_DIR/app.mobileprovision"
+        echo "${{ secrets.IOS_PROVISIONING_PROFILE_WIDGET_BASE64 }}" | base64 --decode \
+          > "$PROFILE_DIR/widget.mobileprovision"
+        echo "${{ secrets.IOS_PROVISIONING_PROFILE_PUSH_BASE64 }}" | base64 --decode \
+          > "$PROFILE_DIR/push.mobileprovision"
+
     - name: Create ExportOptions.plist
       run: |
         cat << EOF > "$RUNNER_TEMP/ExportOptions.plist"
@@ -62,7 +75,18 @@ jobs:
           <key>teamID</key>
           <string>${{ env.TEAM_ID }}</string>
           <key>signingStyle</key>
-          <string>automatic</string>
+          <string>manual</string>
+          <key>signingCertificate</key>
+          <string>Apple Distribution</string>
+          <key>provisioningProfiles</key>
+          <dict>
+            <key>mannachurch.meditationblossom</key>
+            <string>iOS Team Store Provisioning Profile: mannachurch.meditationblossom</string>
+            <key>mannachurch.meditationblossom.MeditationBlossomWidgetExtension</key>
+            <string>iOS Team Store Provisioning Profile: mannachurch.meditationblossom.MeditationBlossomWidgetExtension</string>
+            <key>mannachurch.meditationblossom.PushNotificationService</key>
+            <string>iOS Team Store Provisioning Profile: mannachurch.meditationblossom.PushNotificationService</string>
+          </dict>
           <key>uploadSymbols</key>
           <true/>
         </dict>
@@ -90,11 +114,7 @@ jobs:
         xcodebuild -exportArchive \
           -archivePath "$RUNNER_TEMP/app.xcarchive" \
           -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
-          -exportPath "$RUNNER_TEMP/export" \
-          -allowProvisioningUpdates \
-          -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" \
-          -authenticationKeyID "${{ secrets.APPSTORE_API_KEY_ID }}" \
-          -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}"
+          -exportPath "$RUNNER_TEMP/export"
 
     - name: Upload IPA artifact
       uses: actions/upload-artifact@v4
