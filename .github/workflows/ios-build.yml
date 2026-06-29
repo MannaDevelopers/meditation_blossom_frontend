@@ -1,0 +1,111 @@
+name: iOS Build
+
+on:
+  push:
+    tags: [ "v*" ]  # v로 시작하는 태그만 트리거 (android-build.yml과 동일)
+
+env:
+  WORKSPACE: ios/meditation_blossom.xcworkspace
+  SCHEME: meditation_blossom
+  TEAM_ID: FYUDUBX5E5
+
+jobs:
+  build:
+    runs-on: macos-14  # iOS 빌드는 반드시 macOS 러너
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Ruby (CocoaPods)
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.3.3'
+        bundler-cache: true
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18.20.6'
+
+    - name: Install dependencies
+      run: yarn install --frozen-lockfile
+
+    - name: Install CocoaPods
+      run: cd ios && bundle exec pod install
+
+    # TestFlight는 빌드 번호가 항상 증가해야 함 → 실행 번호로 설정
+    - name: Set build number
+      run: cd ios && agvtool new-version -all ${{ github.run_number }}
+
+    # 배포용 인증서(.p12)를 임시 키체인에 등록
+    - name: Import signing certificate
+      uses: apple-actions/import-codesign-certs@v3
+      with:
+        p12-file-base64: ${{ secrets.IOS_DIST_CERT_BASE64 }}
+        p12-password: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+
+    # App Store Connect API 키(.p8)를 파일로 저장 (자동 서명 + 업로드에 사용)
+    - name: Prepare App Store Connect API key
+      run: |
+        echo "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" > "$RUNNER_TEMP/AuthKey.p8"
+
+    - name: Create ExportOptions.plist
+      run: |
+        cat << EOF > "$RUNNER_TEMP/ExportOptions.plist"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+          <key>method</key>
+          <string>app-store</string>
+          <key>teamID</key>
+          <string>${{ env.TEAM_ID }}</string>
+          <key>signingStyle</key>
+          <string>automatic</string>
+          <key>uploadSymbols</key>
+          <true/>
+        </dict>
+        </plist>
+        EOF
+
+    # 자동 서명으로 아카이브 (-allowProvisioningUpdates 로 위젯/푸시 익스텐션 프로파일까지 자동 처리)
+    - name: Build archive
+      run: |
+        xcodebuild \
+          -workspace "${{ env.WORKSPACE }}" \
+          -scheme "${{ env.SCHEME }}" \
+          -configuration Release \
+          -sdk iphoneos \
+          -destination 'generic/platform=iOS' \
+          -archivePath "$RUNNER_TEMP/app.xcarchive" \
+          clean archive \
+          -allowProvisioningUpdates \
+          -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" \
+          -authenticationKeyID "${{ secrets.APPSTORE_API_KEY_ID }}" \
+          -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}"
+
+    - name: Export IPA
+      run: |
+        xcodebuild -exportArchive \
+          -archivePath "$RUNNER_TEMP/app.xcarchive" \
+          -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+          -exportPath "$RUNNER_TEMP/export" \
+          -allowProvisioningUpdates \
+          -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" \
+          -authenticationKeyID "${{ secrets.APPSTORE_API_KEY_ID }}" \
+          -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}"
+
+    - name: Upload IPA artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-ios-release
+        path: ${{ runner.temp }}/export/*.ipa
+
+    # App Store Connect API 키로 TestFlight 업로드
+    - name: Upload to TestFlight
+      uses: apple-actions/upload-testflight-build@v3
+      with:
+        app-path: ${{ runner.temp }}/export/${{ env.SCHEME }}.ipa
+        issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+        api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
+        api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
