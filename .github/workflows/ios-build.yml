@@ -17,6 +17,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    # App Store Connect는 iOS 26 SDK(Xcode 26+)로 빌드한 앱만 받음. macos-15 러너 기본값(16.4)은 너무 낮음
+    - name: Select Xcode 26
+      run: sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
+
     - name: Set up Ruby (CocoaPods)
       uses: ruby/setup-ruby@v1
       with:
