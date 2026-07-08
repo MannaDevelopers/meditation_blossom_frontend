@@ -45,6 +45,16 @@ class QtWidgetLarge : GlanceAppWidget(
             QtWidgetLargeContent(uiModel, clickAction)
         }
     }
+
+    override fun onCompositionError(
+        context: Context,
+        glanceId: GlanceId,
+        appWidgetId: Int,
+        throwable: Throwable,
+    ) {
+        CrashlyticsHelper.recordException(throwable, "QtWidgetLarge: uncaught composition error")
+        super.onCompositionError(context, glanceId, appWidgetId, throwable)
+    }
 }
 
 private object VerseLargeQtDimens {

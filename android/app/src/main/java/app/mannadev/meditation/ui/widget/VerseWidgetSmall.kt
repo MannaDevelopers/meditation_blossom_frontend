@@ -28,6 +28,7 @@ import androidx.glance.layout.padding
 import androidx.glance.text.Text
 import app.mannadev.meditation.Constants
 import app.mannadev.meditation.R
+import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.di.getWidgetDependencies
 import app.mannadev.meditation.model.Sermon
 import app.mannadev.meditation.ui.widget.theme.Typography
@@ -43,6 +44,16 @@ class VerseWidgetSmall : GlanceAppWidget(
             val clickAction = widgetClickAction(sermon.videoUrl, Constants.DEEP_LINK_SUNDAY_SERMON)
             VerseWidgetSmallContent(sermon, clickAction)
         }
+    }
+
+    override fun onCompositionError(
+        context: Context,
+        glanceId: GlanceId,
+        appWidgetId: Int,
+        throwable: Throwable,
+    ) {
+        CrashlyticsHelper.recordException(throwable, "VerseWidgetSmall: uncaught composition error")
+        super.onCompositionError(context, glanceId, appWidgetId, throwable)
     }
 }
 

@@ -49,6 +49,16 @@ class QtWidgetSmall : GlanceAppWidget(
             QtWidgetSmallContent(uiModel, clickAction)
         }
     }
+
+    override fun onCompositionError(
+        context: Context,
+        glanceId: GlanceId,
+        appWidgetId: Int,
+        throwable: Throwable,
+    ) {
+        CrashlyticsHelper.recordException(throwable, "QtWidgetSmall: uncaught composition error")
+        super.onCompositionError(context, glanceId, appWidgetId, throwable)
+    }
 }
 
 private object VerseSmallQtDimens {
