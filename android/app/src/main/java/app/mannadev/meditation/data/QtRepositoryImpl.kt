@@ -19,7 +19,6 @@ class QtRepositoryImpl @Inject constructor(
     private val prefsSource: QtPrefsSource,
     private val remoteSource: QtRemoteSource,
     private val widgetUpdateNotifier: WidgetUpdateNotifier,
-    private val appLaunchState: AppLaunchState,
 ) : QtRepository {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -38,7 +37,7 @@ class QtRepositoryImpl @Inject constructor(
                     if (dto != null) {
                         WidgetContentState.Data(dto)
                     } else {
-                        WidgetContentState.NoDataYet(appLaunchState.hasEverLaunched())
+                        WidgetContentState.NoDataYet
                     }
                 },
                 onFailure = { e -> WidgetContentState.Error(e) },
@@ -53,14 +52,22 @@ class QtRepositoryImpl @Inject constructor(
 
     override suspend fun clear() {
         prefsSource.clearDisplayQt()
-        _qtState.value = WidgetContentState.NoDataYet(appLaunchState.hasEverLaunched())
+        _qtState.value = WidgetContentState.NoDataYet
         widgetUpdateNotifier.notifyQtChanged()
     }
 
     override suspend fun syncFromRemote() {
-        val fetched = remoteSource.fetchLatestQt()
+        val fetched = runCatching { remoteSource.fetchLatestQt() }
+            .onFailure { e ->
+                _qtState.value = WidgetContentState.Error(e)
+                widgetUpdateNotifier.notifyQtChanged()
+            }
+            .getOrThrow()
         if (fetched != null) {
             save(fetched)
+        } else {
+            _qtState.value = WidgetContentState.NoDataYet
+            widgetUpdateNotifier.notifyQtChanged()
         }
     }
 }

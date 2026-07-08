@@ -29,10 +29,6 @@ class SermonRepositoryImplTest {
         }
     }
 
-    private class FakeAppLaunchState(private val launched: Boolean) : AppLaunchState {
-        override fun hasEverLaunched(): Boolean = launched
-    }
-
     private class FakeWidgetUpdateNotifier : WidgetUpdateNotifier {
         var sermonNotifyCount = 0
         var qtNotifyCount = 0
@@ -56,7 +52,6 @@ class SermonRepositoryImplTest {
             prefsSource = prefs,
             remoteSource = FakeSermonRemoteSource(null),
             widgetUpdateNotifier = notifier,
-            appLaunchState = FakeAppLaunchState(true),
         )
 
         repository.save(sampleDto)
@@ -77,64 +72,65 @@ class SermonRepositoryImplTest {
             prefsSource = prefs,
             remoteSource = FakeSermonRemoteSource(sampleDto),
             widgetUpdateNotifier = notifier,
-            appLaunchState = FakeAppLaunchState(false),
         )
 
         repository.syncFromRemote()
 
         assertEquals(sampleDto, prefs.stored)
+        assertTrue(repository.sermonState.value is WidgetContentState.Data)
         assertEquals(1, notifier.sermonNotifyCount)
     }
 
     @Test
-    fun `syncFromRemote does nothing when remote genuinely has no documents`() = runTest {
+    fun `syncFromRemote sets NoDataYet and notifies when remote genuinely has no documents`() = runTest {
         val prefs = FakeSermonPrefsSource()
         val notifier = FakeWidgetUpdateNotifier()
         val repository = SermonRepositoryImpl(
             prefsSource = prefs,
             remoteSource = FakeSermonRemoteSource(null),
             widgetUpdateNotifier = notifier,
-            appLaunchState = FakeAppLaunchState(false),
         )
 
         repository.syncFromRemote()
 
         assertEquals(null, prefs.stored)
-        assertEquals(0, notifier.sermonNotifyCount)
+        assertTrue(repository.sermonState.value is WidgetContentState.NoDataYet)
+        assertEquals(1, notifier.sermonNotifyCount)
     }
 
-    @Test(expected = RuntimeException::class)
-    fun `syncFromRemote propagates remote failure so caller can retry`() = runTest {
+    @Test
+    fun `syncFromRemote sets Error and notifies, then rethrows, when remote fetch fails`() = runTest {
+        val notifier = FakeWidgetUpdateNotifier()
         val remote = FakeSermonRemoteSource(null).apply {
             throwOnFetch = RuntimeException("network down")
         }
         val repository = SermonRepositoryImpl(
             prefsSource = FakeSermonPrefsSource(),
             remoteSource = remote,
-            widgetUpdateNotifier = FakeWidgetUpdateNotifier(),
-            appLaunchState = FakeAppLaunchState(false),
+            widgetUpdateNotifier = notifier,
         )
 
-        repository.syncFromRemote()
+        val thrown = runCatching { repository.syncFromRemote() }.exceptionOrNull()
+
+        assertEquals("network down", thrown?.message)
+        assertTrue(repository.sermonState.value is WidgetContentState.Error)
+        assertEquals(1, notifier.sermonNotifyCount)
     }
 
     @Test
-    fun `clear resets state to NoDataYet carrying launch flag, and notifies`() = runTest {
+    fun `clear resets state to NoDataYet and notifies`() = runTest {
         val prefs = FakeSermonPrefsSource().apply { stored = sampleDto }
         val notifier = FakeWidgetUpdateNotifier()
         val repository = SermonRepositoryImpl(
             prefsSource = prefs,
             remoteSource = FakeSermonRemoteSource(null),
             widgetUpdateNotifier = notifier,
-            appLaunchState = FakeAppLaunchState(true),
         )
 
         repository.clear()
 
         assertEquals(null, prefs.stored)
-        val state = repository.sermonState.value
-        assertTrue(state is WidgetContentState.NoDataYet)
-        assertTrue((state as WidgetContentState.NoDataYet).hasAppEverLaunched)
+        assertTrue(repository.sermonState.value is WidgetContentState.NoDataYet)
         assertEquals(1, notifier.sermonNotifyCount)
     }
 }

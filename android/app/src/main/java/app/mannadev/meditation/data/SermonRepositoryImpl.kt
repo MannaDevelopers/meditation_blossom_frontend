@@ -20,7 +20,6 @@ class SermonRepositoryImpl @Inject constructor(
     private val prefsSource: SermonPrefsSource,
     private val remoteSource: SermonRemoteSource,
     private val widgetUpdateNotifier: WidgetUpdateNotifier,
-    private val appLaunchState: AppLaunchState,
 ) : SermonRepository {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -39,7 +38,7 @@ class SermonRepositoryImpl @Inject constructor(
                     if (dto != null) {
                         WidgetContentState.Data(Sermon.fromDto(dto))
                     } else {
-                        WidgetContentState.NoDataYet(appLaunchState.hasEverLaunched())
+                        WidgetContentState.NoDataYet
                     }
                 },
                 onFailure = { e -> WidgetContentState.Error(e) },
@@ -54,14 +53,22 @@ class SermonRepositoryImpl @Inject constructor(
 
     override suspend fun clear() {
         prefsSource.clearDisplaySermon()
-        _sermonState.value = WidgetContentState.NoDataYet(appLaunchState.hasEverLaunched())
+        _sermonState.value = WidgetContentState.NoDataYet
         widgetUpdateNotifier.notifySermonChanged()
     }
 
     override suspend fun syncFromRemote() {
-        val fetched = remoteSource.fetchLatestSermon()
+        val fetched = runCatching { remoteSource.fetchLatestSermon() }
+            .onFailure { e ->
+                _sermonState.value = WidgetContentState.Error(e)
+                widgetUpdateNotifier.notifySermonChanged()
+            }
+            .getOrThrow()
         if (fetched != null) {
             save(fetched)
+        } else {
+            _sermonState.value = WidgetContentState.NoDataYet
+            widgetUpdateNotifier.notifySermonChanged()
         }
     }
 }

@@ -25,10 +25,6 @@ class QtRepositoryImplTest {
         }
     }
 
-    private class FakeAppLaunchState(private val launched: Boolean) : AppLaunchState {
-        override fun hasEverLaunched(): Boolean = launched
-    }
-
     private class FakeWidgetUpdateNotifier : WidgetUpdateNotifier {
         var sermonNotifyCount = 0
         var qtNotifyCount = 0
@@ -54,7 +50,6 @@ class QtRepositoryImplTest {
             prefsSource = prefs,
             remoteSource = FakeQtRemoteSource(null),
             widgetUpdateNotifier = notifier,
-            appLaunchState = FakeAppLaunchState(true),
         )
 
         repository.save(sampleDto)
@@ -70,46 +65,69 @@ class QtRepositoryImplTest {
     @Test
     fun `syncFromRemote saves fetched qt when remote has data`() = runTest {
         val prefs = FakeQtPrefsSource()
+        val notifier = FakeWidgetUpdateNotifier()
         val repository = QtRepositoryImpl(
             prefsSource = prefs,
             remoteSource = FakeQtRemoteSource(sampleDto),
-            widgetUpdateNotifier = FakeWidgetUpdateNotifier(),
-            appLaunchState = FakeAppLaunchState(false),
+            widgetUpdateNotifier = notifier,
         )
 
         repository.syncFromRemote()
 
         assertEquals(sampleDto, prefs.stored)
+        assertEquals(1, notifier.qtNotifyCount)
     }
 
-    @Test(expected = RuntimeException::class)
-    fun `syncFromRemote propagates remote failure`() = runTest {
+    @Test
+    fun `syncFromRemote sets NoDataYet and notifies when remote genuinely has no documents`() = runTest {
+        val prefs = FakeQtPrefsSource()
+        val notifier = FakeWidgetUpdateNotifier()
+        val repository = QtRepositoryImpl(
+            prefsSource = prefs,
+            remoteSource = FakeQtRemoteSource(null),
+            widgetUpdateNotifier = notifier,
+        )
+
+        repository.syncFromRemote()
+
+        assertEquals(null, prefs.stored)
+        assertTrue(repository.qtState.value is WidgetContentState.NoDataYet)
+        assertEquals(1, notifier.qtNotifyCount)
+    }
+
+    @Test
+    fun `syncFromRemote sets Error and notifies, then rethrows, when remote fetch fails`() = runTest {
+        val notifier = FakeWidgetUpdateNotifier()
         val remote = FakeQtRemoteSource(null).apply {
             throwOnFetch = RuntimeException("network down")
         }
         val repository = QtRepositoryImpl(
             prefsSource = FakeQtPrefsSource(),
             remoteSource = remote,
-            widgetUpdateNotifier = FakeWidgetUpdateNotifier(),
-            appLaunchState = FakeAppLaunchState(false),
+            widgetUpdateNotifier = notifier,
         )
 
-        repository.syncFromRemote()
+        val thrown = runCatching { repository.syncFromRemote() }.exceptionOrNull()
+
+        assertEquals("network down", thrown?.message)
+        assertTrue(repository.qtState.value is WidgetContentState.Error)
+        assertEquals(1, notifier.qtNotifyCount)
     }
 
     @Test
-    fun `clear resets state to NoDataYet`() = runTest {
+    fun `clear resets state to NoDataYet and notifies`() = runTest {
         val prefs = FakeQtPrefsSource().apply { stored = sampleDto }
+        val notifier = FakeWidgetUpdateNotifier()
         val repository = QtRepositoryImpl(
             prefsSource = prefs,
             remoteSource = FakeQtRemoteSource(null),
-            widgetUpdateNotifier = FakeWidgetUpdateNotifier(),
-            appLaunchState = FakeAppLaunchState(false),
+            widgetUpdateNotifier = notifier,
         )
 
         repository.clear()
 
         assertEquals(null, prefs.stored)
         assertTrue(repository.qtState.value is WidgetContentState.NoDataYet)
+        assertEquals(1, notifier.qtNotifyCount)
     }
 }

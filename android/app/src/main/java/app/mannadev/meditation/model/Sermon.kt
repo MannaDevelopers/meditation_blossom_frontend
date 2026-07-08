@@ -20,21 +20,12 @@ data class Sermon(
             bookName = ""
         )
 
-        /**
-         * prefs/Firestore 어디서도 데이터를 전혀 못 가져왔을 때 사용한다.
-         * @param hasAppEverLaunched false면 메인 앱을 한 번도 실행한 적이 없다는 뜻이므로
-         * (아직 위젯이 활성화되지 않은 정상적인 상태) 안내 문구를, true면 (앱은 열었지만
-         * 데이터를 못 가져온 진짜 에러) 새로고침 유도 문구를 보여준다.
-         */
-        fun noData(hasAppEverLaunched: Boolean): Sermon = if (hasAppEverLaunched) {
-            errorSermon
-        } else {
-            Sermon(
-                verses = listOf(Constants.WIDGET_FIRST_LAUNCH_GUIDE_MESSAGE),
-                title = Constants.WIDGET_FIRST_LAUNCH_TITLE,
-                bookName = "",
-            )
-        }
+        /** prefs/Firestore 어디서도 데이터를 아직 한 번도 동기화하지 못했을 때 사용하는 최초 실행 안내. */
+        val noData: Sermon = Sermon(
+            verses = listOf(Constants.WIDGET_FIRST_LAUNCH_GUIDE_MESSAGE),
+            title = Constants.WIDGET_FIRST_LAUNCH_TITLE,
+            bookName = "",
+        )
 
         fun fromDto(dto: SermonDto): Sermon =
             try {
@@ -46,4 +37,3 @@ data class Sermon(
             }
     }
 }
-
