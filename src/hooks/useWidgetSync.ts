@@ -1,18 +1,13 @@
 import { useEffect } from 'react';
 import { Sermon } from '../types/Sermon';
-import WidgetUpdateModule from '../types/WidgetUpdateModule';
+import { pushSermonToWidget } from '../services/sermonService';
 import logger from '../utils/logger';
 
 export function useWidgetSync(sermon: Sermon | null): void {
   useEffect(() => {
     if (!sermon) return;
-    if (!WidgetUpdateModule) {
-      logger.error('WidgetUpdateModule is not available');
-      return;
-    }
-
     logger.log('[useWidgetSync] onSermonUpdated called, date=' + sermon.date);
-    WidgetUpdateModule.onSermonUpdated(JSON.stringify(sermon)).catch((error) => {
+    pushSermonToWidget(sermon).catch((error) => {
       logger.error('Failed to update widget:', error);
     });
   }, [sermon]);

@@ -65,6 +65,14 @@ export async function saveSermonToAsyncStorage(sermon: Sermon): Promise<void> {
   await AsyncStorage.setItem(FCM_SERMON_KEY, JSON.stringify(sermon));
 }
 
+export async function pushSermonToWidget(sermon: Sermon): Promise<void> {
+  if (!WidgetUpdateModule?.onSermonUpdated) {
+    logger.error('WidgetUpdateModule.onSermonUpdated is not available');
+    return;
+  }
+  await WidgetUpdateModule.onSermonUpdated(JSON.stringify(sermon));
+}
+
 export async function fetchLatestSermonFromServer(): Promise<Sermon | null> {
   const db = getFirestore();
   const q = query(

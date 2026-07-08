@@ -27,8 +27,8 @@ import { RootStackParamList } from '../types/navigation';
 import { FCM_SERMON_KEY } from '../types/Sermon';
 import { FCM_QT_KEY } from '../types/QT';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
-import { fetchLatestSermonFromServer } from '../services/sermonService';
-import { fetchLatestQtFromServer } from '../services/qtService';
+import { fetchLatestSermonFromServer, pushSermonToWidget } from '../services/sermonService';
+import { fetchLatestQtFromServer, pushQtToWidget } from '../services/qtService';
 import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
 
@@ -84,7 +84,14 @@ const SettingsScreen = ({ navigation }: Props) => {
       await AsyncStorage.multiRemove(keysToRemove);
       if (sermon) await AsyncStorage.setItem(FCM_SERMON_KEY, JSON.stringify(sermon));
       if (qt) await AsyncStorage.setItem(FCM_QT_KEY, JSON.stringify(qt));
-      if (WidgetUpdateModule) await WidgetUpdateModule.onClear();
+      await Promise.all([
+        sermon
+          ? pushSermonToWidget(sermon).catch((e) => logger.error('위젯(설교) 갱신 실패:', e))
+          : Promise.resolve(),
+        qt
+          ? pushQtToWidget(qt).catch((e) => logger.error('위젯(QT) 갱신 실패:', e))
+          : Promise.resolve(),
+      ]);
       Alert.alert('완료', '데이터를 새로 불러왔습니다.');
     } catch (error) {
       logger.error('Error refreshing data:', error);
