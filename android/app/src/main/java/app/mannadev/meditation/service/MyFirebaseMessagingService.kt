@@ -2,7 +2,6 @@ package app.mannadev.meditation.service
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import androidx.glance.appwidget.updateAll
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import app.mannadev.meditation.BuildConfig
 import app.mannadev.meditation.Constants.ACTION_QT_UPDATE_EVENT
@@ -15,16 +14,11 @@ import app.mannadev.meditation.analytics.AnalyticsHelper
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.analytics.SermonEventSource
 import app.mannadev.meditation.data.AsyncStorage
-import app.mannadev.meditation.domain.usecase.SaveDisplayQtUseCase
-import app.mannadev.meditation.domain.usecase.SaveDisplaySermonUseCase
+import app.mannadev.meditation.domain.repository.QtRepository
+import app.mannadev.meditation.domain.repository.SermonRepository
 import app.mannadev.meditation.dto.QtDto
 import app.mannadev.meditation.dto.SermonDto
 import app.mannadev.meditation.model.BibleReferenceResolver
-import app.mannadev.meditation.ui.widget.VerseWidgetLarge
-import app.mannadev.meditation.ui.widget.QtWidgetLarge
-import app.mannadev.meditation.ui.widget.QtWidgetSmall
-import app.mannadev.meditation.ui.widget.VerseWidgetSmall
-import app.mannadev.meditation.widget.enqueueWidgetInitialSync
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import dagger.hilt.android.AndroidEntryPoint
@@ -58,8 +52,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         private val ALLOWED_QT_TOPICS = setOf(QT_SUBJECT, "qt_events_test")
     }
 
-    @Inject lateinit var saveDisplaySermonUseCase: SaveDisplaySermonUseCase
-    @Inject lateinit var saveDisplayQtUseCase: SaveDisplayQtUseCase
+    @Inject lateinit var sermonRepository: SermonRepository
+    @Inject lateinit var qtRepository: QtRepository
     @Inject lateinit var asyncStorage: AsyncStorage
     @Inject lateinit var bibleReferenceResolver: BibleReferenceResolver
 
@@ -109,21 +103,11 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         runCatching {
             withContext(NonCancellable) {
-                saveDisplaySermonUseCase(sermonDto)
+                sermonRepository.save(sermonDto)
                 AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.FCM_TOPIC)
             }
         }.onFailure { e ->
             CrashlyticsHelper.recordException(e, "Failed to save sermon v2: $sermonDto")
-        }
-
-        runCatching {
-            VerseWidgetLarge().updateAll(applicationContext)
-            VerseWidgetSmall().updateAll(applicationContext)
-            AnalyticsHelper.logWidgetUpdated("verse_large")
-            AnalyticsHelper.logWidgetUpdated("verse_small")
-            enqueueWidgetInitialSync(applicationContext)
-        }.onFailure { e ->
-            CrashlyticsHelper.recordException(e, "Failed to update sermon widgets")
         }
 
         runCatching {
@@ -157,20 +141,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         runCatching {
             withContext(NonCancellable) {
-                saveDisplayQtUseCase(qtDto)
+                qtRepository.save(qtDto)
             }
         }.onFailure { e ->
             CrashlyticsHelper.recordException(e, "Failed to save qt: $qtDto")
-        }
-
-        runCatching {
-            QtWidgetLarge().updateAll(applicationContext)
-            QtWidgetSmall().updateAll(applicationContext)
-            AnalyticsHelper.logWidgetUpdated("qt_large")
-            AnalyticsHelper.logWidgetUpdated("qt_small")
-            enqueueWidgetInitialSync(applicationContext)
-        }.onFailure { e ->
-            CrashlyticsHelper.recordException(e, "Failed to update qt widgets")
         }
 
         runCatching {
