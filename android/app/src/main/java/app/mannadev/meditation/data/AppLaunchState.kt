@@ -2,6 +2,9 @@ package app.mannadev.meditation.data
 
 import android.content.Context
 import androidx.core.content.edit
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
 private const val PREFS_NAME = "app_launch_prefs"
 private const val KEY_HAS_LAUNCHED = "has_launched"
@@ -20,3 +23,15 @@ fun markAppLaunched(context: Context) {
  */
 fun hasAppEverLaunched(context: Context): Boolean =
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getBoolean(KEY_HAS_LAUNCHED, false)
+
+/** Repository가 실제 Context 없이 단위 테스트 가능하도록 감싼 인터페이스. */
+interface AppLaunchState {
+    fun hasEverLaunched(): Boolean
+}
+
+@Singleton
+class AppLaunchStateImpl @Inject constructor(
+    @ApplicationContext private val context: Context,
+) : AppLaunchState {
+    override fun hasEverLaunched(): Boolean = hasAppEverLaunched(context)
+}

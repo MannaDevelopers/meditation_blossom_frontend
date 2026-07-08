@@ -5,6 +5,7 @@ import app.mannadev.meditation.dto.SermonDto
 import app.mannadev.meditation.model.BibleReferenceResolver
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.Source
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -17,14 +18,14 @@ class FirestoreFetchException(message: String, cause: Throwable? = null) : Excep
 class SermonFirestoreDataSource @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val bibleReferenceResolver: BibleReferenceResolver,
-) {
+) : SermonRemoteSource {
     /** 위젯이 prefs 없이 단독 설치됐을 때를 위한 fallback. Firestore에서 최신 설교 1건을 직접 조회한다. */
-    suspend fun fetchLatestSermon(): SermonDto? = withContext(Dispatchers.IO) {
+    override suspend fun fetchLatestSermon(): SermonDto? = withContext(Dispatchers.IO) {
         val snapshot = try {
             firestore.collection("sermons")
                 .orderBy("date", Query.Direction.DESCENDING)
                 .limit(1)
-                .get()
+                .get(Source.SERVER)
                 .await()
         } catch (e: Exception) {
             throw FirestoreFetchException("Error fetching sermon from Firestore", e)
