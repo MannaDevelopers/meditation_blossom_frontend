@@ -5,11 +5,17 @@ package app.mannadev.meditation.di
 import androidx.annotation.Keep
 import app.mannadev.meditation.data.AppLaunchState
 import app.mannadev.meditation.data.AppLaunchStateImpl
+import app.mannadev.meditation.data.QtFirestoreDataSource
+import app.mannadev.meditation.data.QtPrefsDataSource
+import app.mannadev.meditation.data.QtPrefsSource
+import app.mannadev.meditation.data.QtRemoteSource
+import app.mannadev.meditation.data.QtRepositoryImpl
 import app.mannadev.meditation.data.SermonFirestoreDataSource
 import app.mannadev.meditation.data.SermonPrefsDataSource
 import app.mannadev.meditation.data.SermonPrefsSource
 import app.mannadev.meditation.data.SermonRemoteSource
 import app.mannadev.meditation.data.SermonRepositoryImpl
+import app.mannadev.meditation.domain.repository.QtRepository
 import app.mannadev.meditation.domain.repository.SermonRepository
 import app.mannadev.meditation.widget.WidgetUpdateNotifier
 import app.mannadev.meditation.widget.WidgetUpdateNotifierImpl
@@ -45,4 +51,16 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindWidgetUpdateNotifier(impl: WidgetUpdateNotifierImpl): WidgetUpdateNotifier
+
+    @Binds
+    @Singleton
+    abstract fun bindQtRepository(qtRepositoryImpl: QtRepositoryImpl): QtRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindQtPrefsSource(impl: QtPrefsDataSource): QtPrefsSource
+
+    @Binds
+    @Singleton
+    abstract fun bindQtRemoteSource(impl: QtFirestoreDataSource): QtRemoteSource
 }

@@ -13,7 +13,7 @@ import javax.inject.Singleton
 @Singleton
 class QtPrefsDataSource @Inject constructor(
     @ApplicationContext context: Context
-) {
+) : QtPrefsSource {
     companion object {
         private const val PREFS_NAME = "qt_prefs"
         private const val KEY_DISPLAY_QT_JSON = "display_qt_json"
@@ -23,7 +23,7 @@ class QtPrefsDataSource @Inject constructor(
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    suspend fun getDisplayQt(): QtDto? = withContext(Dispatchers.IO) {
+    override suspend fun getDisplayQt(): QtDto? = withContext(Dispatchers.IO) {
         val jsonString = prefs.getString(KEY_DISPLAY_QT_JSON, null)
         if (jsonString.isNullOrBlank()) return@withContext null
         try {
@@ -33,13 +33,13 @@ class QtPrefsDataSource @Inject constructor(
         }
     }
 
-    suspend fun saveDisplayQt(qt: QtDto) = withContext(Dispatchers.IO) {
+    override suspend fun saveDisplayQt(qt: QtDto) = withContext(Dispatchers.IO) {
         prefs.edit {
             putString(KEY_DISPLAY_QT_JSON, json.encodeToString(qt))
         }
     }
 
-    suspend fun clearDisplayQt() = withContext(Dispatchers.IO) {
+    override suspend fun clearDisplayQt() = withContext(Dispatchers.IO) {
         prefs.edit { remove(KEY_DISPLAY_QT_JSON) }
     }
 }
