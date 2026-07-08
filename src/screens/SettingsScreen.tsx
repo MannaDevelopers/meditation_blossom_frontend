@@ -84,14 +84,14 @@ const SettingsScreen = ({ navigation }: Props) => {
       await AsyncStorage.multiRemove(keysToRemove);
       if (sermon) await AsyncStorage.setItem(FCM_SERMON_KEY, JSON.stringify(sermon));
       if (qt) await AsyncStorage.setItem(FCM_QT_KEY, JSON.stringify(qt));
-      await Promise.all([
-        sermon
-          ? pushSermonToWidget(sermon).catch((e) => logger.error('위젯(설교) 갱신 실패:', e))
-          : Promise.resolve(),
-        qt
-          ? pushQtToWidget(qt).catch((e) => logger.error('위젯(QT) 갱신 실패:', e))
-          : Promise.resolve(),
-      ]);
+      // 두 위젯을 동시에 갱신하면(Promise.all) 네이티브 쪽 위젯 갱신 요청이 겹쳐 일부가
+      // 누락되는 것처럼 보이는 경우가 있어, 순차적으로 호출해 각각 확실히 반영되게 한다.
+      if (sermon) {
+        await pushSermonToWidget(sermon).catch((e) => logger.error('위젯(설교) 갱신 실패:', e));
+      }
+      if (qt) {
+        await pushQtToWidget(qt).catch((e) => logger.error('위젯(QT) 갱신 실패:', e));
+      }
       Alert.alert('완료', '데이터를 새로 불러왔습니다.');
     } catch (error) {
       logger.error('Error refreshing data:', error);

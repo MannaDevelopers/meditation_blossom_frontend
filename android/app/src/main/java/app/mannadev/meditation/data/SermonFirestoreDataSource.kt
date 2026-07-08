@@ -1,5 +1,6 @@
 package app.mannadev.meditation.data
 
+import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.dto.SermonDto
 import app.mannadev.meditation.model.BibleReferenceResolver
 import com.google.firebase.firestore.FirebaseFirestore
@@ -28,11 +29,29 @@ class SermonFirestoreDataSource @Inject constructor(
         } catch (e: Exception) {
             throw FirestoreFetchException("Error fetching sermon from Firestore", e)
         }
-        if (snapshot.isEmpty) return@withContext null
+        if (snapshot.isEmpty) {
+            CrashlyticsHelper.recordException(
+                FirestoreFetchException("sermons collection returned no documents"),
+                "SermonFirestoreDataSource: empty snapshot",
+            )
+            return@withContext null
+        }
         val data = snapshot.documents.first().data ?: return@withContext null
 
-        val date = data["date"] as? String ?: return@withContext null
-        val title = data["title"] as? String ?: return@withContext null
+        val date = data["date"] as? String ?: run {
+            CrashlyticsHelper.recordException(
+                FirestoreFetchException("sermon doc missing/invalid 'date' field. keys=${data.keys}"),
+                "SermonFirestoreDataSource: date field missing",
+            )
+            return@withContext null
+        }
+        val title = data["title"] as? String ?: run {
+            CrashlyticsHelper.recordException(
+                FirestoreFetchException("sermon doc missing/invalid 'title' field. keys=${data.keys}"),
+                "SermonFirestoreDataSource: title field missing",
+            )
+            return@withContext null
+        }
 
         SermonDto(
             date = date,
