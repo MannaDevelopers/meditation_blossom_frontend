@@ -24,6 +24,7 @@ import app.mannadev.meditation.ui.widget.VerseWidgetLarge
 import app.mannadev.meditation.ui.widget.QtWidgetLarge
 import app.mannadev.meditation.ui.widget.QtWidgetSmall
 import app.mannadev.meditation.ui.widget.VerseWidgetSmall
+import app.mannadev.meditation.widget.enqueueWidgetInitialSync
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import dagger.hilt.android.AndroidEntryPoint
@@ -120,6 +121,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             VerseWidgetSmall().updateAll(applicationContext)
             AnalyticsHelper.logWidgetUpdated("verse_large")
             AnalyticsHelper.logWidgetUpdated("verse_small")
+            enqueueWidgetInitialSync(applicationContext)
         }.onFailure { e ->
             CrashlyticsHelper.recordException(e, "Failed to update sermon widgets")
         }
@@ -166,6 +168,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             QtWidgetSmall().updateAll(applicationContext)
             AnalyticsHelper.logWidgetUpdated("qt_large")
             AnalyticsHelper.logWidgetUpdated("qt_small")
+            enqueueWidgetInitialSync(applicationContext)
         }.onFailure { e ->
             CrashlyticsHelper.recordException(e, "Failed to update qt widgets")
         }

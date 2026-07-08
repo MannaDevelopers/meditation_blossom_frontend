@@ -12,6 +12,7 @@ import app.mannadev.meditation.ui.widget.VerseWidgetLarge
 import app.mannadev.meditation.ui.widget.QtWidgetLarge
 import app.mannadev.meditation.ui.widget.QtWidgetSmall
 import app.mannadev.meditation.ui.widget.VerseWidgetSmall
+import app.mannadev.meditation.widget.enqueueWidgetInitialSync
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -241,6 +242,9 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
         log.d("Updating widgets...")
         VerseWidgetLarge().updateAll(context)
         VerseWidgetSmall().updateAll(context)
+        // updateAll()이 위젯이 에러 상태에 머물러 있을 때 등 드물게 반영되지 않는 경우를
+        // 대비해, WorkManager로 한 번 더 확실하게 재갱신을 예약한다(중복 실행은 KEEP으로 방지).
+        enqueueWidgetInitialSync(context)
     }
 
     private suspend fun updateQtWidgets() {
@@ -248,6 +252,7 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
         log.d("Updating QT widgets...")
         QtWidgetLarge().updateAll(context)
         QtWidgetSmall().updateAll(context)
+        enqueueWidgetInitialSync(context)
     }
 
 }
