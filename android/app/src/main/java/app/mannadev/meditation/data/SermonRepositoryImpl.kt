@@ -60,8 +60,10 @@ class SermonRepositoryImpl @Inject constructor(
     override suspend fun syncFromRemote() {
         val fetched = runCatching { remoteSource.fetchLatestSermon() }
             .onFailure { e ->
-                _sermonState.value = WidgetContentState.Error(e)
-                widgetUpdateNotifier.notifySermonChanged()
+                if (_sermonState.value !is WidgetContentState.Data) {
+                    _sermonState.value = WidgetContentState.Error(e)
+                    widgetUpdateNotifier.notifySermonChanged()
+                }
             }
             .getOrThrow()
         if (fetched != null) {

@@ -59,8 +59,10 @@ class QtRepositoryImpl @Inject constructor(
     override suspend fun syncFromRemote() {
         val fetched = runCatching { remoteSource.fetchLatestQt() }
             .onFailure { e ->
-                _qtState.value = WidgetContentState.Error(e)
-                widgetUpdateNotifier.notifyQtChanged()
+                if (_qtState.value !is WidgetContentState.Data) {
+                    _qtState.value = WidgetContentState.Error(e)
+                    widgetUpdateNotifier.notifyQtChanged()
+                }
             }
             .getOrThrow()
         if (fetched != null) {

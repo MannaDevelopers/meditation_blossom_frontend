@@ -118,6 +118,31 @@ class SermonRepositoryImplTest {
     }
 
     @Test
+    fun `syncFromRemote keeps existing Data and does not notify, but still rethrows, when fetch fails after data was already present`() = runTest {
+        val prefs = FakeSermonPrefsSource()
+        val notifier = FakeWidgetUpdateNotifier()
+        val remote = FakeSermonRemoteSource(null)
+        val repository = SermonRepositoryImpl(
+            prefsSource = prefs,
+            remoteSource = remote,
+            widgetUpdateNotifier = notifier,
+        )
+
+        repository.save(sampleDto)
+        val notifyCountAfterSave = notifier.sermonNotifyCount
+
+        remote.throwOnFetch = RuntimeException("network down")
+        val thrown = runCatching { repository.syncFromRemote() }.exceptionOrNull()
+
+        assertEquals("network down", thrown?.message)
+        val state = repository.sermonState.value
+        assertTrue(state is WidgetContentState.Data)
+        assertEquals(sampleDto, prefs.stored)
+        assertEquals("테스트 설교", (state as WidgetContentState.Data).value.title)
+        assertEquals(notifyCountAfterSave, notifier.sermonNotifyCount)
+    }
+
+    @Test
     fun `clear resets state to NoDataYet and notifies`() = runTest {
         val prefs = FakeSermonPrefsSource().apply { stored = sampleDto }
         val notifier = FakeWidgetUpdateNotifier()

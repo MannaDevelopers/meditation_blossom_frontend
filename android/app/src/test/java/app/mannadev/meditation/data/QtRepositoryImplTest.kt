@@ -115,6 +115,31 @@ class QtRepositoryImplTest {
     }
 
     @Test
+    fun `syncFromRemote keeps existing Data and does not notify, but still rethrows, when fetch fails after data was already present`() = runTest {
+        val prefs = FakeQtPrefsSource()
+        val notifier = FakeWidgetUpdateNotifier()
+        val remote = FakeQtRemoteSource(null)
+        val repository = QtRepositoryImpl(
+            prefsSource = prefs,
+            remoteSource = remote,
+            widgetUpdateNotifier = notifier,
+        )
+
+        repository.save(sampleDto)
+        val notifyCountAfterSave = notifier.qtNotifyCount
+
+        remote.throwOnFetch = RuntimeException("network down")
+        val thrown = runCatching { repository.syncFromRemote() }.exceptionOrNull()
+
+        assertEquals("network down", thrown?.message)
+        val state = repository.qtState.value
+        assertTrue(state is WidgetContentState.Data)
+        assertEquals(sampleDto, prefs.stored)
+        assertEquals(sampleDto, (state as WidgetContentState.Data).value)
+        assertEquals(notifyCountAfterSave, notifier.qtNotifyCount)
+    }
+
+    @Test
     fun `clear resets state to NoDataYet and notifies`() = runTest {
         val prefs = FakeQtPrefsSource().apply { stored = sampleDto }
         val notifier = FakeWidgetUpdateNotifier()
