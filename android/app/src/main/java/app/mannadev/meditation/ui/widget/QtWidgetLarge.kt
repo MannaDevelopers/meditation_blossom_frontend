@@ -2,6 +2,8 @@ package app.mannadev.meditation.ui.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -35,23 +37,13 @@ class QtWidgetLarge : GlanceAppWidget(
     errorUiLayout = R.layout.verse_widget_qt_large_error,
 ) {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val dependencies = getWidgetDependencies(context)
-        val getDisplayQtUseCase = dependencies.getDisplayQtUseCase()
-        val launched = hasAppEverLaunched(context)
-        val qt = getDisplayQtUseCase() ?: run {
-            Timber.w("QtWidgetLarge: No QT data, using error fallback")
-            if (launched) {
-                CrashlyticsHelper.recordException(
-                    IllegalStateException("QtWidgetLarge: getDisplayQtUseCase returned null"),
-                    "QT widget displayed error fallback due to missing data"
-                )
-            }
-            null
+        val qtRepository = getWidgetDependencies(context).qtRepository()
+        provideContent {
+            val state by qtRepository.qtState.collectAsState()
+            val uiModel = state.toDisplayQtUiModel()
+            val clickAction = widgetClickAction(uiModel.videoUrl, Constants.DEEP_LINK_DAILY_MANNA)
+            QtWidgetLargeContent(uiModel, clickAction)
         }
-        val uiModel = qt?.let(QtWidgetUiModel::fromDto) ?: QtWidgetUiModel.error(launched)
-        val clickAction = widgetClickAction(uiModel.videoUrl, Constants.DEEP_LINK_DAILY_MANNA)
-
-        provideContent { QtWidgetLargeContent(uiModel, clickAction) }
     }
 }
 
