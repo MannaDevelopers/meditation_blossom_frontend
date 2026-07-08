@@ -3,8 +3,6 @@
 package app.mannadev.meditation.di
 
 import androidx.annotation.Keep
-import app.mannadev.meditation.data.AppLaunchState
-import app.mannadev.meditation.data.AppLaunchStateImpl
 import app.mannadev.meditation.data.QtFirestoreDataSource
 import app.mannadev.meditation.data.QtPrefsDataSource
 import app.mannadev.meditation.data.QtPrefsSource
@@ -43,10 +41,6 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindSermonRemoteSource(impl: SermonFirestoreDataSource): SermonRemoteSource
-
-    @Binds
-    @Singleton
-    abstract fun bindAppLaunchState(impl: AppLaunchStateImpl): AppLaunchState
 
     @Binds
     @Singleton
