@@ -35,7 +35,6 @@ import app.mannadev.meditation.di.getWidgetDependencies
 import app.mannadev.meditation.ui.widget.qt.QtWidgetUiModel
 import app.mannadev.meditation.ui.widget.qt.prefixQuestions
 import app.mannadev.meditation.ui.widget.theme.Typography
-import timber.log.Timber
 
 class QtWidgetSmall : GlanceAppWidget(
     errorUiLayout = R.layout.verse_widget_qt_small_error,

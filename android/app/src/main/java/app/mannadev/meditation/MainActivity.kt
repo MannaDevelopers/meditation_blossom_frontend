@@ -2,24 +2,20 @@ package app.mannadev.meditation
 
 import android.os.Bundle
 import app.mannadev.meditation.data.markAppLaunched
+import app.mannadev.meditation.di.getWidgetDependencies
 import app.mannadev.meditation.widget.enqueueWidgetInitialSync
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
 import com.facebook.react.defaults.DefaultReactActivityDelegate
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ReactActivity() {
 
-    /**
-     * Returns the name of the main component registered from JavaScript. This is used to schedule
-     * rendering of the component.
-     */
     override fun getMainComponentName(): String = "meditation_blossom"
 
-    /**
-     * Returns the instance of the [ReactActivityDelegate]. We use [DefaultReactActivityDelegate]
-     * which allows you to enable New Architecture with a single boolean flags [fabricEnabled]
-     */
     override fun createReactActivityDelegate(): ReactActivityDelegate =
         DefaultReactActivityDelegate(
             this,
@@ -35,5 +31,17 @@ class MainActivity : ReactActivity() {
         // 앱을 실제로 연 이 시점(foreground)에는 조회가 성공하므로, 동일한 초기 동기화 worker를
         // 여기서 한 번 더 발동해 remote fetch → prefs 저장 → 위젯 재렌더 경로를 확실히 태운다.
         enqueueWidgetInitialSync(this)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // 위젯 탭 등으로 앱이 warm 진입하면 onCreate가 다시 호출되지 않는다. 위젯은
+        // Repository의 StateFlow를 collectAsState()로 구독하므로, 여기서는 Glance 세션을
+        // 여는 것(updateAll 1회)만 하면 된다 — 세션이 열리는 순간 현재 state를 그대로 반영한다.
+        val notifier = getWidgetDependencies(this).widgetUpdateNotifier()
+        CoroutineScope(Dispatchers.Default).launch {
+            notifier.notifySermonChanged()
+            notifier.notifyQtChanged()
+        }
     }
 }
