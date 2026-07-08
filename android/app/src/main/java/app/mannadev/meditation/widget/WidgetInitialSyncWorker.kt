@@ -16,6 +16,8 @@ import app.mannadev.meditation.ui.widget.QtWidgetLarge
 import app.mannadev.meditation.ui.widget.QtWidgetSmall
 import app.mannadev.meditation.ui.widget.VerseWidgetLarge
 import app.mannadev.meditation.ui.widget.VerseWidgetSmall
+import kotlinx.coroutines.delay
+import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
 /**
@@ -36,6 +38,11 @@ class WidgetInitialSyncWorker(
 
     companion object {
         const val WORK_NAME = "widget_initial_sync"
+
+        // 위젯이 에러 상태에 머물러 있던 직후에는 updateAll()을 단 한 번만 호출하는 것으로는
+        // 재렌더가 반영되지 않는 경우가 실기기 테스트에서 관찰됐다(정확한 OS/런처 원인은
+        // 미확인). 짧은 간격으로 여러 번 재호출해 성공 확률을 높인다.
+        private val REDRAW_DELAYS_MS = listOf(0L, 3_000L, 8_000L)
     }
 
     override suspend fun doWork(): Result {
@@ -44,10 +51,14 @@ class WidgetInitialSyncWorker(
             dependencies.getDisplaySermonUseCase()()
             dependencies.getDisplayQtUseCase()()
 
-            VerseWidgetLarge().updateAll(applicationContext)
-            VerseWidgetSmall().updateAll(applicationContext)
-            QtWidgetLarge().updateAll(applicationContext)
-            QtWidgetSmall().updateAll(applicationContext)
+            REDRAW_DELAYS_MS.forEachIndexed { attempt, delayMs ->
+                if (delayMs > 0) delay(delayMs)
+                Timber.d("WidgetInitialSyncWorker: redraw attempt #${attempt + 1}")
+                VerseWidgetLarge().updateAll(applicationContext)
+                VerseWidgetSmall().updateAll(applicationContext)
+                QtWidgetLarge().updateAll(applicationContext)
+                QtWidgetSmall().updateAll(applicationContext)
+            }
 
             Result.success()
         } catch (e: Exception) {
