@@ -12,6 +12,7 @@ class VerseWidgetLargeReceiver : GlanceAppWidgetReceiver() {
     override fun onEnabled(context: Context) {
         super.onEnabled(context)
         AnalyticsHelper.logWidgetInstalled("verse_large")
+        enqueueWidgetInitialSync(context)
     }
 
     override fun onDisabled(context: Context) {

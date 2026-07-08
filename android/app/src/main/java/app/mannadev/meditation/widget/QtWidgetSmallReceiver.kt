@@ -12,6 +12,7 @@ class QtWidgetSmallReceiver : GlanceAppWidgetReceiver() {
     override fun onEnabled(context: Context) {
         super.onEnabled(context)
         AnalyticsHelper.logWidgetInstalled("qt_small")
+        enqueueWidgetInitialSync(context)
     }
 
     override fun onDisabled(context: Context) {
