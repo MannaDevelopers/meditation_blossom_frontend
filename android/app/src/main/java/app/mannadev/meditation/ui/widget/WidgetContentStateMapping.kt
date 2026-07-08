@@ -12,8 +12,7 @@ import app.mannadev.meditation.widget.state.WidgetContentState
  */
 fun WidgetContentState<Sermon>.toDisplaySermon(): Sermon = when (this) {
     is WidgetContentState.Data -> value
-    is WidgetContentState.Loading -> Sermon.noData(hasAppEverLaunched = false)
-    is WidgetContentState.NoDataYet -> Sermon.noData(hasAppEverLaunched)
+    is WidgetContentState.Loading, is WidgetContentState.NoDataYet -> Sermon.noData
     is WidgetContentState.Error -> Sermon.errorSermon
 }
 
@@ -24,7 +23,6 @@ fun WidgetContentState<Sermon>.toDisplaySermon(): Sermon = when (this) {
  */
 fun WidgetContentState<QtDto>.toDisplayQtUiModel(): QtWidgetUiModel = when (this) {
     is WidgetContentState.Data -> QtWidgetUiModel.fromDto(value)
-    is WidgetContentState.Loading -> QtWidgetUiModel.error(hasAppEverLaunched = false)
-    is WidgetContentState.NoDataYet -> QtWidgetUiModel.error(hasAppEverLaunched)
-    is WidgetContentState.Error -> QtWidgetUiModel.error(hasAppEverLaunched = true)
+    is WidgetContentState.Loading, is WidgetContentState.NoDataYet -> QtWidgetUiModel.noData
+    is WidgetContentState.Error -> QtWidgetUiModel.error
 }
