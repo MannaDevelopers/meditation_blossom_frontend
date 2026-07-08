@@ -28,6 +28,7 @@ import androidx.glance.unit.ColorProvider
 import app.mannadev.meditation.Constants
 import app.mannadev.meditation.R
 import app.mannadev.meditation.analytics.CrashlyticsHelper
+import app.mannadev.meditation.data.hasAppEverLaunched
 import app.mannadev.meditation.di.getWidgetDependencies
 import app.mannadev.meditation.ui.widget.qt.QtWidgetUiModel
 import app.mannadev.meditation.ui.widget.qt.prefixQuestions
@@ -40,15 +41,18 @@ class QtWidgetSmall : GlanceAppWidget(
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val dependencies = getWidgetDependencies(context)
         val getDisplayQtUseCase = dependencies.getDisplayQtUseCase()
+        val launched = hasAppEverLaunched(context)
         val qt = getDisplayQtUseCase() ?: run {
             Timber.w("QtWidgetSmall: No QT data, using error fallback")
-            CrashlyticsHelper.recordException(
-                IllegalStateException("QtWidgetSmall: getDisplayQtUseCase returned null"),
-                "QT widget displayed error fallback due to missing data"
-            )
+            if (launched) {
+                CrashlyticsHelper.recordException(
+                    IllegalStateException("QtWidgetSmall: getDisplayQtUseCase returned null"),
+                    "QT widget displayed error fallback due to missing data"
+                )
+            }
             null
         }
-        val uiModel = qt?.let(QtWidgetUiModel::fromDto) ?: QtWidgetUiModel.error
+        val uiModel = qt?.let(QtWidgetUiModel::fromDto) ?: QtWidgetUiModel.error(launched)
         val clickAction = widgetClickAction(uiModel.videoUrl, Constants.DEEP_LINK_DAILY_MANNA)
 
         provideContent { QtWidgetSmallContent(uiModel, clickAction) }

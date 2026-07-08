@@ -24,6 +24,7 @@ import androidx.glance.text.Text
 import app.mannadev.meditation.Constants
 import app.mannadev.meditation.R
 import app.mannadev.meditation.analytics.CrashlyticsHelper
+import app.mannadev.meditation.data.hasAppEverLaunched
 import app.mannadev.meditation.di.getWidgetDependencies
 import app.mannadev.meditation.model.Sermon
 import app.mannadev.meditation.ui.widget.theme.Typography
@@ -35,13 +36,16 @@ class VerseWidgetLarge : GlanceAppWidget(
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val widgetDependencies = getWidgetDependencies(context)
         val getDisplaySermonUseCase = widgetDependencies.getDisplaySermonUseCase()
+        val launched = hasAppEverLaunched(context)
         val verse = getDisplaySermonUseCase() ?: run {
             Timber.w("VerseWidgetLarge: No sermon data available, using error fallback")
-            CrashlyticsHelper.recordException(
-                IllegalStateException("VerseWidgetLarge: getDisplaySermonUseCase returned null"),
-                "Widget displayed error fallback due to missing sermon data"
-            )
-            Sermon.errorSermon
+            if (launched) {
+                CrashlyticsHelper.recordException(
+                    IllegalStateException("VerseWidgetLarge: getDisplaySermonUseCase returned null"),
+                    "Widget displayed error fallback due to missing sermon data"
+                )
+            }
+            Sermon.noData(launched)
         }
         val clickAction = widgetClickAction(verse.videoUrl, Constants.DEEP_LINK_SUNDAY_SERMON)
 

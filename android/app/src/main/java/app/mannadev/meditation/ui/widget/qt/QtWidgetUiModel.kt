@@ -16,14 +16,30 @@ data class QtWidgetUiModel(
     val videoUrl: String?,
 ) {
     companion object {
-        val error: QtWidgetUiModel = QtWidgetUiModel(
-            title = "QT를 불러오지 못했습니다",
-            dateLabel = "",
-            reference = "",
-            verses = listOf(Constants.WIDGET_ERROR_GUIDE_MESSAGE),
-            questions = emptyList(),
-            videoUrl = null,
-        )
+        /**
+         * @param hasAppEverLaunched 메인 앱을 한 번이라도 실행한 적이 있는지. false면
+         * "아직 활성화 전" 안내를, true면 (앱은 열었지만 데이터를 못 가져온) 새로고침
+         * 유도 안내를 보여준다.
+         */
+        fun error(hasAppEverLaunched: Boolean): QtWidgetUiModel = if (hasAppEverLaunched) {
+            QtWidgetUiModel(
+                title = "QT를 불러오지 못했습니다",
+                dateLabel = "",
+                reference = "",
+                verses = listOf(Constants.WIDGET_ERROR_GUIDE_MESSAGE),
+                questions = emptyList(),
+                videoUrl = null,
+            )
+        } else {
+            QtWidgetUiModel(
+                title = Constants.WIDGET_FIRST_LAUNCH_TITLE,
+                dateLabel = "",
+                reference = "",
+                verses = listOf(Constants.WIDGET_FIRST_LAUNCH_GUIDE_MESSAGE),
+                questions = emptyList(),
+                videoUrl = null,
+            )
+        }
 
         fun fromDto(dto: QtDto): QtWidgetUiModel {
             val titleMerged = if (dto.seriesTitle.isNotBlank())

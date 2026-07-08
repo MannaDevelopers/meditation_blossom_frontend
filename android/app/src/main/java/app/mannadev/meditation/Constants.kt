@@ -20,4 +20,8 @@ object Constants {
     const val DEEP_LINK_DAILY_MANNA = "meditationblossom://open?tab=daily_manna"
 
     const val WIDGET_ERROR_GUIDE_MESSAGE = "묵상만개 앱 설정탭에서 데이터 새로고침 버튼을 눌러주세요"
+
+    const val WIDGET_FIRST_LAUNCH_TITLE = "말씀 위젯 설치 완료!"
+    const val WIDGET_FIRST_LAUNCH_GUIDE_MESSAGE =
+        "묵상만개 앱을 한 번 실행해서 위젯을 활성화 해주세요. 말씀이 자동으로 업데이트 됩니다."
 }
