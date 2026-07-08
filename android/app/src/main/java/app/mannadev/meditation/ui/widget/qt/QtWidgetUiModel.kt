@@ -1,5 +1,6 @@
 package app.mannadev.meditation.ui.widget.qt
 
+import app.mannadev.meditation.Constants
 import app.mannadev.meditation.dto.QtDto
 import app.mannadev.meditation.dto.SermonDto
 import app.mannadev.meditation.model.VerseParser
@@ -19,7 +20,7 @@ data class QtWidgetUiModel(
             title = "QT를 불러오지 못했습니다",
             dateLabel = "",
             reference = "",
-            verses = emptyList(),
+            verses = listOf(Constants.WIDGET_ERROR_GUIDE_MESSAGE),
             questions = emptyList(),
             videoUrl = null,
         )

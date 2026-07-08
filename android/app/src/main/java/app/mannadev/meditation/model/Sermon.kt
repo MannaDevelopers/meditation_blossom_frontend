@@ -1,6 +1,7 @@
 package app.mannadev.meditation.model
 
 import app.mannadev.meditation.analytics.CrashlyticsHelper
+import app.mannadev.meditation.Constants
 import app.mannadev.meditation.dto.SermonDto
 import timber.log.Timber
 
@@ -13,7 +14,7 @@ data class Sermon(
     companion object Companion {
 
         val errorSermon = Sermon(
-            verses = listOf("내용을 불러올 수 없습니다."),
+            verses = listOf("내용을 불러올 수 없습니다.", Constants.WIDGET_ERROR_GUIDE_MESSAGE),
             title = "",
             bookName = ""
         )

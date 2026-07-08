@@ -18,4 +18,6 @@ object Constants {
 
     const val DEEP_LINK_SUNDAY_SERMON = "meditationblossom://open?tab=sunday_sermon"
     const val DEEP_LINK_DAILY_MANNA = "meditationblossom://open?tab=daily_manna"
+
+    const val WIDGET_ERROR_GUIDE_MESSAGE = "묵상만개 앱 설정탭에서 데이터 새로고침 버튼을 눌러주세요"
 }
