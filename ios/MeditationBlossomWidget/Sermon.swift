@@ -104,4 +104,21 @@ extension UserDefaults {
             return nil
         }
     }
+
+    /// 메인 앱을 한 번도 실행한 적 없는, 완전히 새로운 설치인지 판단한다.
+    ///
+    /// WidgetKit 익스텐션은 메인 앱과 별도 프로세스라 위젯을 추가하는 것만으로는
+    /// `hasAppLaunched`가 세팅되지 않는다(메인 앱을 실제로 열어야만 세팅됨). 그래서
+    /// 이 플래그가 아직 없는 앱 버전(v1.1.11 이전)을 쓰던 기존 사용자가 업데이트 후
+    /// 앱을 다시 열기 전에 예전에 안 쓰던 위젯 타입(예: QT)을 처음 추가하면, 실제로는
+    /// 오래된 사용자인데도 `hasAppLaunched`만 보면 "신규 설치"로 잘못 판단하게 된다.
+    /// 그래서 다른 위젯 타입의 데이터가 이미 있는지도 함께 확인해, 하나라도 있으면
+    /// (기존 사용자로 보고) 신규 설치로 간주하지 않는다.
+    func isFreshWidgetInstall() -> Bool {
+        if bool(forKey: "hasAppLaunched") { return false }
+        if string(forKey: "displaySermon") != nil { return false }
+        if string(forKey: "fcm_sermon") != nil { return false }
+        if string(forKey: "fcm_qt") != nil { return false }
+        return true
+    }
 }

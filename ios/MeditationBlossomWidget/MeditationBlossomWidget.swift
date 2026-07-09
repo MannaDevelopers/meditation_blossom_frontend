@@ -16,7 +16,6 @@ private enum WidgetConstants {
   static let displaySermonKey = "displaySermon"
   static let fcmSermonKey = "fcm_sermon"
   static let youtubeLinkEnabledKey = "youtube_link_enabled"
-  static let hasAppLaunchedKey = "hasAppLaunched"
   static let fallbackYoutubeUrl = URL(string: "https://www.youtube.com/@만나")!
   static let widgetKind = "MeditationBlossomWidget"
   static let deepLinkSundaySermon = URL(string: "meditationblossom://open?tab=sunday_sermon")!
@@ -90,8 +89,7 @@ struct Provider: TimelineProvider {
     }
 
     guard let sermon = sermon else {
-      let hasLaunched = sharedDefaults.bool(forKey: WidgetConstants.hasAppLaunchedKey)
-      return hasLaunched ? emptyEntry : widgetInstalledEntry
+      return sharedDefaults.isFreshWidgetInstall() ? widgetInstalledEntry : emptyEntry
     }
 
     NSLog("Widget: Found sermon - %@ (ID: %@)", sermon.title, sermon.id)
