@@ -13,6 +13,7 @@ private enum DailyMannaWidgetConstants {
   static let appGroupId = "group.mannachurch.meditationblossom"
   static let fcmQtKey = "fcm_qt"
   static let youtubeLinkEnabledKey = "youtube_link_enabled"
+  static let hasAppLaunchedKey = "hasAppLaunched"
   static let fallbackYoutubeUrl = URL(string: "https://www.youtube.com/@만나")!
   static let deepLinkDailyManna = URL(string: "meditationblossom://open?tab=daily_manna")!
   static let contentWidgetKind = "DailyMannaContentWidget"
@@ -147,7 +148,8 @@ struct QTProvider: TimelineProvider {
       return emptyQTEntry
     }
     guard let qt: QT = defaults.getObjectFromString(forKey: DailyMannaWidgetConstants.fcmQtKey, castTo: QT.self) else {
-      return defaults.isFreshWidgetInstall() ? widgetInstalledQTEntry : emptyQTEntry
+      let hasLaunched = defaults.bool(forKey: DailyMannaWidgetConstants.hasAppLaunchedKey)
+      return hasLaunched ? emptyQTEntry : widgetInstalledQTEntry
     }
 
     let (reference, verses) = parseQTContent(qt.content)
