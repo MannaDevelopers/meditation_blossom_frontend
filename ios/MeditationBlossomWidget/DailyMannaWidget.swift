@@ -66,11 +66,11 @@ struct QTEntry: TimelineEntry {
 
 private let emptyQTEntry = QTEntry(
   date: Date(),
-  mergedTitle: "묵상만개",
+  mergedTitle: "QT 위젯 설치 완료!",
   dateLabel: "",
   reference: "",
-  verses: ["아직 등록된 QT가 없습니다"],
-  meditationQuestions: [],
+  verses: [],
+  meditationQuestions: ["묵상만개 앱을 한 번 실행해서 위젯을 활성화 해주세요. 내용이 자동으로 업데이트 됩니다"],
   isSunday: false,
   videoUrl: nil,
   youtubeLinkEnabled: false
