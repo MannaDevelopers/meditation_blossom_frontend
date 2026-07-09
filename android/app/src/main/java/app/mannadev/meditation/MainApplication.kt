@@ -3,6 +3,7 @@ package app.mannadev.meditation
 import android.app.Application
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.rnmodule.MyReactPackage
+import app.mannadev.meditation.widget.enqueueWidgetPeriodicSync
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -50,6 +51,9 @@ class MainApplication : Application(), ReactApplication {
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }
+
+        // 위젯 FCM push 누락 대비 1일 1회 안전망 동기화 등록 (멱등)
+        enqueueWidgetPeriodicSync(this)
 
         // 기존 토픽 구독 해제 (중복 알림 방지)
         FirebaseMessaging.getInstance()

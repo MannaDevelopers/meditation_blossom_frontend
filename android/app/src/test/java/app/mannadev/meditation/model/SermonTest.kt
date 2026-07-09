@@ -6,14 +6,15 @@ import org.junit.Test
 
 class SermonTest {
 
-    @Test fun `앱을 실행한 적 있으면 기존 에러 안내를 반환`() {
-        val result = Sermon.noData(hasAppEverLaunched = true)
-        assertEquals(Sermon.errorSermon, result)
+    @Test fun `noData는 최초 실행 안내를 반환`() {
+        val result = Sermon.noData
+        assertEquals("말씀 위젯 설치 완료!", result.title)
+        assertEquals(listOf(Constants.WIDGET_FIRST_LAUNCH_GUIDE_MESSAGE), result.verses)
     }
 
-    @Test fun `앱을 실행한 적 없으면 최초 실행 안내를 반환`() {
-        val result = Sermon.noData(hasAppEverLaunched = false)
-        assertEquals(Constants.WIDGET_FIRST_LAUNCH_TITLE, result.title)
-        assertEquals(listOf(Constants.WIDGET_FIRST_LAUNCH_GUIDE_MESSAGE), result.verses)
+    @Test fun `errorSermon은 새로고침 유도 안내를 반환`() {
+        val result = Sermon.errorSermon
+        assertEquals("말씀을 불러오지 못했습니다", result.title)
+        assertEquals(listOf(Constants.WIDGET_ERROR_GUIDE_MESSAGE), result.verses)
     }
 }

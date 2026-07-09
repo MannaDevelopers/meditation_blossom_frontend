@@ -2,6 +2,8 @@ package app.mannadev.meditation.ui.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -24,34 +26,32 @@ import androidx.glance.text.Text
 import app.mannadev.meditation.Constants
 import app.mannadev.meditation.R
 import app.mannadev.meditation.analytics.CrashlyticsHelper
-import app.mannadev.meditation.data.hasAppEverLaunched
 import app.mannadev.meditation.di.getWidgetDependencies
 import app.mannadev.meditation.ui.widget.qt.QtWidgetUiModel
 import app.mannadev.meditation.ui.widget.qt.prefixQuestions
 import app.mannadev.meditation.ui.widget.theme.Typography
-import timber.log.Timber
 
 class QtWidgetLarge : GlanceAppWidget(
     errorUiLayout = R.layout.verse_widget_qt_large_error,
 ) {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val dependencies = getWidgetDependencies(context)
-        val getDisplayQtUseCase = dependencies.getDisplayQtUseCase()
-        val launched = hasAppEverLaunched(context)
-        val qt = getDisplayQtUseCase() ?: run {
-            Timber.w("QtWidgetLarge: No QT data, using error fallback")
-            if (launched) {
-                CrashlyticsHelper.recordException(
-                    IllegalStateException("QtWidgetLarge: getDisplayQtUseCase returned null"),
-                    "QT widget displayed error fallback due to missing data"
-                )
-            }
-            null
+        val qtRepository = getWidgetDependencies(context).qtRepository()
+        provideContent {
+            val state by qtRepository.qtState.collectAsState()
+            val uiModel = state.toDisplayQtUiModel()
+            val clickAction = widgetClickAction(uiModel.videoUrl, Constants.DEEP_LINK_DAILY_MANNA)
+            QtWidgetLargeContent(uiModel, clickAction)
         }
-        val uiModel = qt?.let(QtWidgetUiModel::fromDto) ?: QtWidgetUiModel.error(launched)
-        val clickAction = widgetClickAction(uiModel.videoUrl, Constants.DEEP_LINK_DAILY_MANNA)
+    }
 
-        provideContent { QtWidgetLargeContent(uiModel, clickAction) }
+    override fun onCompositionError(
+        context: Context,
+        glanceId: GlanceId,
+        appWidgetId: Int,
+        throwable: Throwable,
+    ) {
+        CrashlyticsHelper.recordException(throwable, "QtWidgetLarge: uncaught composition error")
+        super.onCompositionError(context, glanceId, appWidgetId, throwable)
     }
 }
 

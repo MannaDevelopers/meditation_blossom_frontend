@@ -1,29 +1,76 @@
 package app.mannadev.meditation.data
 
-import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.domain.repository.SermonRepository
+import app.mannadev.meditation.dto.SermonDto
 import app.mannadev.meditation.model.Sermon
+import app.mannadev.meditation.widget.WidgetUpdateNotifier
+import app.mannadev.meditation.widget.state.WidgetContentState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class SermonRepositoryImpl @Inject constructor(
-    private val prefsDataSource: SermonPrefsDataSource,
-    private val firestoreDataSource: SermonFirestoreDataSource
+    private val prefsSource: SermonPrefsSource,
+    private val remoteSource: SermonRemoteSource,
+    private val widgetUpdateNotifier: WidgetUpdateNotifier,
 ) : SermonRepository {
 
-    override suspend fun getDisplaySermon(): Sermon? {
-        prefsDataSource.getDisplaySermon()?.let { return Sermon.fromDto(it) }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val _sermonState =
+        MutableStateFlow<WidgetContentState<Sermon>>(WidgetContentState.Loading)
+    override val sermonState: StateFlow<WidgetContentState<Sermon>> = _sermonState.asStateFlow()
 
-        // prefs가 비어있음 (예: 메인 앱을 한 번도 열지 않고 위젯만 설치한 경우).
-        // Firestore에서 직접 최신 설교를 가져와 prefs를 채운 뒤 반환한다.
-        return runCatching { firestoreDataSource.fetchLatestSermon() }
-            .onFailure { e ->
-                CrashlyticsHelper.recordException(e, "Sermon widget: Firestore fallback fetch failed")
-            }
-            .getOrNull()
-            ?.also { prefsDataSource.saveDisplaySermon(it) }
-            ?.let { Sermon.fromDto(it) }
+    init {
+        scope.launch { loadFromPrefs() }
     }
 
+    private suspend fun loadFromPrefs() {
+        _sermonState.value = runCatching { prefsSource.getDisplaySermon() }
+            .fold(
+                onSuccess = { dto ->
+                    if (dto != null) {
+                        WidgetContentState.Data(Sermon.fromDto(dto))
+                    } else {
+                        WidgetContentState.NoDataYet
+                    }
+                },
+                onFailure = { e -> WidgetContentState.Error(e) },
+            )
+    }
+
+    override suspend fun save(dto: SermonDto) {
+        prefsSource.saveDisplaySermon(dto)
+        _sermonState.value = WidgetContentState.Data(Sermon.fromDto(dto))
+        widgetUpdateNotifier.notifySermonChanged()
+    }
+
+    override suspend fun clear() {
+        prefsSource.clearDisplaySermon()
+        _sermonState.value = WidgetContentState.NoDataYet
+        widgetUpdateNotifier.notifySermonChanged()
+    }
+
+    override suspend fun syncFromRemote() {
+        val fetched = runCatching { remoteSource.fetchLatestSermon() }
+            .onFailure { e ->
+                if (_sermonState.value !is WidgetContentState.Data) {
+                    _sermonState.value = WidgetContentState.Error(e)
+                    widgetUpdateNotifier.notifySermonChanged()
+                }
+            }
+            .getOrThrow()
+        if (fetched != null) {
+            save(fetched)
+        } else {
+            _sermonState.value = WidgetContentState.NoDataYet
+            widgetUpdateNotifier.notifySermonChanged()
+        }
+    }
 }

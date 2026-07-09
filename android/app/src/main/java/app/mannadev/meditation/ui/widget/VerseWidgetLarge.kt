@@ -2,6 +2,8 @@ package app.mannadev.meditation.ui.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -24,34 +26,31 @@ import androidx.glance.text.Text
 import app.mannadev.meditation.Constants
 import app.mannadev.meditation.R
 import app.mannadev.meditation.analytics.CrashlyticsHelper
-import app.mannadev.meditation.data.hasAppEverLaunched
 import app.mannadev.meditation.di.getWidgetDependencies
 import app.mannadev.meditation.model.Sermon
 import app.mannadev.meditation.ui.widget.theme.Typography
-import timber.log.Timber
 
 class VerseWidgetLarge : GlanceAppWidget(
     errorUiLayout = R.layout.verse_widget_large_error,
 ) {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val widgetDependencies = getWidgetDependencies(context)
-        val getDisplaySermonUseCase = widgetDependencies.getDisplaySermonUseCase()
-        val launched = hasAppEverLaunched(context)
-        val verse = getDisplaySermonUseCase() ?: run {
-            Timber.w("VerseWidgetLarge: No sermon data available, using error fallback")
-            if (launched) {
-                CrashlyticsHelper.recordException(
-                    IllegalStateException("VerseWidgetLarge: getDisplaySermonUseCase returned null"),
-                    "Widget displayed error fallback due to missing sermon data"
-                )
-            }
-            Sermon.noData(launched)
-        }
-        val clickAction = widgetClickAction(verse.videoUrl, Constants.DEEP_LINK_SUNDAY_SERMON)
-
+        val sermonRepository = getWidgetDependencies(context).sermonRepository()
         provideContent {
-            VerseWidgetLargeContent(verse, clickAction)
+            val state by sermonRepository.sermonState.collectAsState()
+            val sermon = state.toDisplaySermon()
+            val clickAction = widgetClickAction(sermon.videoUrl, Constants.DEEP_LINK_SUNDAY_SERMON)
+            VerseWidgetLargeContent(sermon, clickAction)
         }
+    }
+
+    override fun onCompositionError(
+        context: Context,
+        glanceId: GlanceId,
+        appWidgetId: Int,
+        throwable: Throwable,
+    ) {
+        CrashlyticsHelper.recordException(throwable, "VerseWidgetLarge: uncaught composition error")
+        super.onCompositionError(context, glanceId, appWidgetId, throwable)
     }
 }
 

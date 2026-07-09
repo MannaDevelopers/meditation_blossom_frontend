@@ -5,6 +5,7 @@ import app.mannadev.meditation.dto.QtDto
 import app.mannadev.meditation.model.BibleReferenceResolver
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.Source
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -15,14 +16,14 @@ import javax.inject.Singleton
 class QtFirestoreDataSource @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val bibleReferenceResolver: BibleReferenceResolver,
-) {
+) : QtRemoteSource {
     /** 위젯이 prefs 없이 단독 설치됐을 때를 위한 fallback. Firestore에서 최신 QT 1건을 직접 조회한다. */
-    suspend fun fetchLatestQt(): QtDto? = withContext(Dispatchers.IO) {
+    override suspend fun fetchLatestQt(): QtDto? = withContext(Dispatchers.IO) {
         val snapshot = try {
             firestore.collection("qt")
                 .orderBy("date", Query.Direction.DESCENDING)
                 .limit(1)
-                .get()
+                .get(Source.SERVER)
                 .await()
         } catch (e: Exception) {
             throw FirestoreFetchException("Error fetching QT from Firestore", e)

@@ -1,18 +1,12 @@
 package app.mannadev.meditation.rnmodule
 
 import androidx.annotation.Keep
-import androidx.glance.appwidget.updateAll
 import app.mannadev.meditation.analytics.AnalyticsHelper
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.analytics.SermonEventSource
 import app.mannadev.meditation.di.getRNModuleDependencies
 import app.mannadev.meditation.dto.QtDto
 import app.mannadev.meditation.dto.SermonDto
-import app.mannadev.meditation.ui.widget.VerseWidgetLarge
-import app.mannadev.meditation.ui.widget.QtWidgetLarge
-import app.mannadev.meditation.ui.widget.QtWidgetSmall
-import app.mannadev.meditation.ui.widget.VerseWidgetSmall
-import app.mannadev.meditation.widget.enqueueWidgetInitialSync
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -63,10 +57,9 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
     @ReactMethod
     fun onClear(promise: Promise) {
         moduleScope.launch {
-            //clear widget preferences
             val result = runCatching {
-                log.d("Clear Widget Preferences...")
-                moduleDependencies.getClearWidgetPreferences().invoke()
+                log.d("Clearing sermon widget preference...")
+                moduleDependencies.sermonRepository().clear()
             }.onFailure { e ->
                 CrashlyticsHelper.recordException(
                     e,
@@ -74,14 +67,6 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
                     tag = TAG
                 )
             }
-            runCatching { updateWidgets() }
-                .onFailure {
-                    CrashlyticsHelper.recordException(
-                        it,
-                        "Error updating widgets after clearing preferences: ${it.message}",
-                        tag = TAG
-                    )
-                }
 
             result
                 .onSuccess { promise.resolve(null) }
@@ -101,10 +86,8 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
     @ReactMethod
     fun onSermonUpdated(sermonData: String, promise: Promise) {
         moduleScope.launch {
-            //optional: save sermon to prefs
             val saveSermonToPrefs = runCatching {
                 log.d("Saving sermon to Widget Preference...")
-                val saveSermonUseCase = moduleDependencies.getSaveDisplaySermonUseCase()
                 val resolver = moduleDependencies.getBibleReferenceResolver()
                 val sermonDto = json.decodeFromString<SermonDto>(sermonData)
                 log.d("SermonDto: $sermonDto")
@@ -117,7 +100,7 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
                         )
                     }
                     .getOrNull() ?: return@runCatching
-                saveSermonUseCase(resolvedDto)
+                moduleDependencies.sermonRepository().save(resolvedDto)
                 AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.RN_MODULE)
                 log.d("Sermon saved to prefs successfully")
             }.onFailure { e ->
@@ -127,15 +110,6 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
                     tag = TAG
                 )
             }
-
-            runCatching { updateWidgets() }
-                .onFailure {
-                    CrashlyticsHelper.recordException(
-                        it,
-                        "Error updating widgets after saving sermon: ${it.message}",
-                        tag = TAG
-                    )
-                }
 
             saveSermonToPrefs
                 .onSuccess { promise.resolve(true) }
@@ -212,22 +186,12 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
         moduleScope.launch {
             val saveResult = runCatching {
                 log.d("Saving QT to Widget Preference...")
-                val saveQtUseCase = moduleDependencies.getSaveDisplayQtUseCase()
                 val qtDto = json.decodeFromString<QtDto>(qtData)
-                saveQtUseCase(qtDto)
+                moduleDependencies.qtRepository().save(qtDto)
                 log.d("QT saved to prefs successfully")
             }.onFailure { e ->
                 CrashlyticsHelper.recordException(e, "Error saving QT data: ${e.message}", tag = TAG)
             }
-
-            runCatching { updateQtWidgets() }
-                .onFailure {
-                    CrashlyticsHelper.recordException(
-                        it,
-                        "Error updating QT widgets after saving: ${it.message}",
-                        tag = TAG,
-                    )
-                }
 
             saveResult
                 .onSuccess { promise.resolve(true) }
@@ -235,24 +199,6 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
                     promise.reject("QT_UPDATE_ERROR", e.message, e)
                 }
         }
-    }
-
-    private suspend fun updateWidgets() {
-        val context = reactApplicationContext
-        log.d("Updating widgets...")
-        VerseWidgetLarge().updateAll(context)
-        VerseWidgetSmall().updateAll(context)
-        // updateAll()이 위젯이 에러 상태에 머물러 있을 때 등 드물게 반영되지 않는 경우를
-        // 대비해, WorkManager로 한 번 더 확실하게 재갱신을 예약한다(중복 실행은 KEEP으로 방지).
-        enqueueWidgetInitialSync(context)
-    }
-
-    private suspend fun updateQtWidgets() {
-        val context = reactApplicationContext
-        log.d("Updating QT widgets...")
-        QtWidgetLarge().updateAll(context)
-        QtWidgetSmall().updateAll(context)
-        enqueueWidgetInitialSync(context)
     }
 
 }
