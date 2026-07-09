@@ -40,7 +40,9 @@ struct SimpleEntry: TimelineEntry {
   }
 }
 
-private let emptyEntry = SimpleEntry(date: Date(), title: " ", quote: "등록된 설교가 없습니다", verse: " ", videoUrl: nil, youtubeLinkEnabled: false)
+private let emptyEntry = SimpleEntry(date: Date(), title: "말씀 위젯 설치 완료!",
+                                     quote: "묵상만개 앱을 한 번 실행해서 위젯을 활성화 해주세요. 말씀이 자동으로 업데이트 됩니다.",
+                                     verse: " ", videoUrl: nil, youtubeLinkEnabled: false)
 
 @available(iOS 16.0, *)
 struct Provider: TimelineProvider {
