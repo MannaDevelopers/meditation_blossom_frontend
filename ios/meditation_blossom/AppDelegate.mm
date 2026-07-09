@@ -47,7 +47,14 @@ static NSString *MBAsyncStorageDirectory(void)
   NSLog(@"🎯 ========================================");
   NSLog(@"🎯 AppDelegate: didFinishLaunchingWithOptions");
   NSLog(@"🎯 App launch options: %@", launchOptions);
-  
+
+  // 0. 위젯이 "메인 앱을 한 번도 실행한 적 없는 상태"를 구분할 수 있도록 App Group에 기록.
+  // 위젯만 먼저 설치된 경우, 위젯 Extension은 이 플래그가 없다는 걸 보고 일반 에러 문구 대신
+  // "앱을 한 번 실행해주세요" 안내를 보여준다 (Android AppLaunchState와 동일한 목적).
+  NSUserDefaults *launchDefaults = [[NSUserDefaults alloc] initWithSuiteName:@"group.mannachurch.meditationblossom"];
+  [launchDefaults setBool:YES forKey:@"hasAppLaunched"];
+  [launchDefaults synchronize];
+
   // 1. 네이티브 모듈(AsyncStorage 등) 초기화 완료 이벤트를 감지할 리스너 등록
   [[NSNotificationCenter defaultCenter] addObserver:self
                                            selector:@selector(handleJavaScriptDidLoad:)

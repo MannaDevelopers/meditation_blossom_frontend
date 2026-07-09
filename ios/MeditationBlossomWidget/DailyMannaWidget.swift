@@ -13,6 +13,7 @@ private enum DailyMannaWidgetConstants {
   static let appGroupId = "group.mannachurch.meditationblossom"
   static let fcmQtKey = "fcm_qt"
   static let youtubeLinkEnabledKey = "youtube_link_enabled"
+  static let hasAppLaunchedKey = "hasAppLaunched"
   static let fallbackYoutubeUrl = URL(string: "https://www.youtube.com/@만나")!
   static let deepLinkDailyManna = URL(string: "meditationblossom://open?tab=daily_manna")!
   static let contentWidgetKind = "DailyMannaContentWidget"
@@ -76,6 +77,19 @@ private let emptyQTEntry = QTEntry(
   youtubeLinkEnabled: false
 )
 
+// 메인 앱을 한 번도 실행한 적 없이 위젯만 먼저 설치된 경우를 위한 안내 (Android와 동일한 문구).
+private let widgetInstalledQTEntry = QTEntry(
+  date: Date(),
+  mergedTitle: "말씀 위젯 설치 완료!",
+  dateLabel: "",
+  reference: "",
+  verses: ["묵상만개 앱을 한 번 실행해서 위젯을 활성화 해주세요. 말씀이 자동으로 업데이트 됩니다."],
+  meditationQuestions: [],
+  isSunday: false,
+  videoUrl: nil,
+  youtubeLinkEnabled: false
+)
+
 // MARK: - Verse Parser
 
 private func parseQTContent(_ content: String) -> (reference: String, verses: [String]) {
@@ -130,9 +144,13 @@ struct QTProvider: TimelineProvider {
   }
 
   private func createQTEntry() -> QTEntry {
-    guard let defaults = UserDefaults(suiteName: DailyMannaWidgetConstants.appGroupId),
-          let qt: QT = defaults.getObjectFromString(forKey: DailyMannaWidgetConstants.fcmQtKey, castTo: QT.self)
-    else { return emptyQTEntry }
+    guard let defaults = UserDefaults(suiteName: DailyMannaWidgetConstants.appGroupId) else {
+      return emptyQTEntry
+    }
+    guard let qt: QT = defaults.getObjectFromString(forKey: DailyMannaWidgetConstants.fcmQtKey, castTo: QT.self) else {
+      let hasLaunched = defaults.bool(forKey: DailyMannaWidgetConstants.hasAppLaunchedKey)
+      return hasLaunched ? emptyQTEntry : widgetInstalledQTEntry
+    }
 
     let (reference, verses) = parseQTContent(qt.content)
     return QTEntry(
