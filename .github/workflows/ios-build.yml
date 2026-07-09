@@ -49,11 +49,6 @@ jobs:
         p12-file-base64: ${{ secrets.IOS_DIST_CERT_BASE64 }}
         p12-password: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
 
-    # App Store Connect API 키(.p8)를 파일로 저장 (자동 서명 + 업로드에 사용)
-    - name: Prepare App Store Connect API key
-      run: |
-        echo "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" > "$RUNNER_TEMP/AuthKey.p8"
-
     # Export 단계에서 쓸 배포용(Store) 프로비저닝 프로파일 3개를 설치
     # (Export는 수동 서명으로 처리 → API 키에 Admin 권한이 필요 없음)
     - name: Install provisioning profiles
@@ -97,7 +92,11 @@ jobs:
         </plist>
         EOF
 
-    # 자동 서명으로 아카이브 (-allowProvisioningUpdates 로 위젯/푸시 익스텐션 프로파일까지 자동 처리)
+    # 수동 서명으로 아카이브 (project.pbxproj의 Release 설정이 CODE_SIGN_STYLE=Manual +
+    # 이미 임포트된 배포용 인증서/프로파일을 명시). -allowProvisioningUpdates는 쓰지 않는다 —
+    # 이 옵션이 있으면 로컬 키체인에 딱 맞는 게 없을 때 Xcode가 API로 새 인증서 발급을
+    # 시도하는데, 이게 반복되며 Apple 계정의 인증서 개수 한도를 소진해 빌드가 실패한 적
+    # 있다(ISSUE-164). 수동 서명은 이미 있는 인증서/프로파일만 사용하므로 이 문제가 없다.
     - name: Build archive
       run: |
         xcodebuild \
@@ -107,11 +106,7 @@ jobs:
           -sdk iphoneos \
           -destination 'generic/platform=iOS' \
           -archivePath "$RUNNER_TEMP/app.xcarchive" \
-          clean archive \
-          -allowProvisioningUpdates \
-          -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" \
-          -authenticationKeyID "${{ secrets.APPSTORE_API_KEY_ID }}" \
-          -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}"
+          clean archive
 
     - name: Export IPA
       run: |
