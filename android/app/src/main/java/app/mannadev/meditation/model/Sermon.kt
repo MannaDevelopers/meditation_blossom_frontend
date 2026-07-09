@@ -15,8 +15,8 @@ data class Sermon(
 
         /** 데이터는 받았지만(parse 실패 등) 표시할 수 없을 때의 공통 에러 표시. */
         val errorSermon = Sermon(
-            verses = listOf("내용을 불러올 수 없습니다.", Constants.WIDGET_ERROR_GUIDE_MESSAGE),
-            title = "",
+            verses = listOf(Constants.WIDGET_ERROR_GUIDE_MESSAGE),
+            title = "말씀을 불러오지 못했습니다",
             bookName = ""
         )
 
