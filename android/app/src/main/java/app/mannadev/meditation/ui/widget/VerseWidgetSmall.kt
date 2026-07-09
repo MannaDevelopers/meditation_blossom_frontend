@@ -29,6 +29,7 @@ import androidx.glance.text.Text
 import app.mannadev.meditation.Constants
 import app.mannadev.meditation.R
 import app.mannadev.meditation.analytics.CrashlyticsHelper
+import app.mannadev.meditation.data.hasAppEverLaunched
 import app.mannadev.meditation.di.getWidgetDependencies
 import app.mannadev.meditation.model.Sermon
 import app.mannadev.meditation.ui.widget.theme.Typography
@@ -40,7 +41,7 @@ class VerseWidgetSmall : GlanceAppWidget(
         val sermonRepository = getWidgetDependencies(context).sermonRepository()
         provideContent {
             val state by sermonRepository.sermonState.collectAsState()
-            val sermon = state.toDisplaySermon()
+            val sermon = state.toDisplaySermon(hasAppEverLaunched(context))
             val clickAction = widgetClickAction(sermon.videoUrl, Constants.DEEP_LINK_SUNDAY_SERMON)
             VerseWidgetSmallContent(sermon, clickAction)
         }
