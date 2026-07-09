@@ -64,13 +64,19 @@ struct QTEntry: TimelineEntry {
   }
 }
 
+// 매일만나 말씀(DailyMannaContentEntryView)과 묵상질문(DailyMannaMeditationEntryView)
+// 위젯이 이 emptyQTEntry를 공유한다. 말씀 위젯은 verses를, 묵상질문 위젯은
+// meditationQuestions를 본문에 표시하므로, 안내 문구를 두 필드 모두에 넣어야
+// 두 위젯 모두에서 보인다.
+private let widgetInstalledGuideMessage = "묵상만개 앱을 한 번 실행해서 위젯을 활성화 해주세요. 내용이 자동으로 업데이트 됩니다"
+
 private let emptyQTEntry = QTEntry(
   date: Date(),
   mergedTitle: "QT 위젯 설치 완료!",
   dateLabel: "",
   reference: "",
-  verses: [],
-  meditationQuestions: ["묵상만개 앱을 한 번 실행해서 위젯을 활성화 해주세요. 내용이 자동으로 업데이트 됩니다"],
+  verses: [widgetInstalledGuideMessage],
+  meditationQuestions: [widgetInstalledGuideMessage],
   isSunday: false,
   videoUrl: nil,
   youtubeLinkEnabled: false
