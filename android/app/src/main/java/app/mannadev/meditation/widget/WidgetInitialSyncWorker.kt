@@ -12,18 +12,31 @@ import androidx.work.WorkerParameters
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.di.getWidgetDependencies
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 
 /**
  * Sermon/QT 원격 동기화를 실행하고 성공/실패를 [Result]로 감싼다.
  * [WidgetInitialSyncWorker]/[WidgetPeriodicSyncWorker] 양쪽에서 공유하며,
  * 순수 람다만 받으므로 Hilt 없이도 단위 테스트 가능하다.
+ *
+ * 두 동기화는 서로 다른 Firestore 컬렉션을 다루고 의존 관계가 없으므로,
+ * 한쪽이 실패해도 다른 쪽이 항상 시도되도록 각각 독립적으로(runCatching)
+ * 병렬 실행한다. 성공은 둘 다 성공했을 때만이며, 실패 시 설교 쪽 예외를
+ * 우선한다(결정적 동작을 위해).
  */
 suspend fun runWidgetSync(
     syncSermon: suspend () -> Unit,
     syncQt: suspend () -> Unit,
-): kotlin.Result<Unit> = runCatching {
-    syncSermon()
-    syncQt()
+): kotlin.Result<Unit> = coroutineScope {
+    val sermonDeferred = async { runCatching { syncSermon() } }
+    val qtDeferred = async { runCatching { syncQt() } }
+    val sermonOutcome = sermonDeferred.await()
+    val qtOutcome = qtDeferred.await()
+
+    sermonOutcome.exceptionOrNull()?.let { return@coroutineScope kotlin.Result.failure<Unit>(it) }
+    qtOutcome.exceptionOrNull()?.let { return@coroutineScope kotlin.Result.failure<Unit>(it) }
+    kotlin.Result.success(Unit)
 }
 
 class WidgetInitialSyncWorker(

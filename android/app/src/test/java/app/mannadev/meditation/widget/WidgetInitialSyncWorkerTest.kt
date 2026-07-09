@@ -32,4 +32,26 @@ class WidgetInitialSyncWorkerTest {
         )
         assertTrue(result.isFailure)
     }
+
+    @Test
+    fun `runSync still invokes qt sync when sermon sync throws`() = runTest {
+        var qtWasCalled = false
+        val result = runWidgetSync(
+            syncSermon = { throw RuntimeException("network down") },
+            syncQt = { qtWasCalled = true },
+        )
+        assertTrue(qtWasCalled)
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun `runSync still invokes sermon sync when qt sync throws`() = runTest {
+        var sermonWasCalled = false
+        val result = runWidgetSync(
+            syncSermon = { sermonWasCalled = true },
+            syncQt = { throw RuntimeException("network down") },
+        )
+        assertTrue(sermonWasCalled)
+        assertTrue(result.isFailure)
+    }
 }
