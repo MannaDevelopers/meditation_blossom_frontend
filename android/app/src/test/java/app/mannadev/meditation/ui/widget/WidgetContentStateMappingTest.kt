@@ -1,6 +1,5 @@
 package app.mannadev.meditation.ui.widget
 
-import app.mannadev.meditation.Constants
 import app.mannadev.meditation.dto.QtDto
 import app.mannadev.meditation.model.Sermon
 import app.mannadev.meditation.widget.state.WidgetContentState
@@ -42,8 +41,8 @@ class WidgetContentStateMappingTest {
     }
 
     @Test fun `Qt Loading과 NoDataYet은 최초 실행 안내를 보여준다`() {
-        assertEquals(Constants.WIDGET_FIRST_LAUNCH_TITLE, WidgetContentState.Loading.toDisplayQtUiModel().title)
-        assertEquals(Constants.WIDGET_FIRST_LAUNCH_TITLE, WidgetContentState.NoDataYet.toDisplayQtUiModel().title)
+        assertEquals("QT 위젯 설치 완료!", WidgetContentState.Loading.toDisplayQtUiModel().title)
+        assertEquals("QT 위젯 설치 완료!", WidgetContentState.NoDataYet.toDisplayQtUiModel().title)
     }
 
     @Test fun `Qt Error는 새로고침 유도 문구를 보여준다`() {

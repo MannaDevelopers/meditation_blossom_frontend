@@ -23,7 +23,7 @@ data class Sermon(
         /** prefs/Firestore 어디서도 데이터를 아직 한 번도 동기화하지 못했을 때 사용하는 최초 실행 안내. */
         val noData: Sermon = Sermon(
             verses = listOf(Constants.WIDGET_FIRST_LAUNCH_GUIDE_MESSAGE),
-            title = Constants.WIDGET_FIRST_LAUNCH_TITLE,
+            title = "말씀 위젯 설치 완료!",
             bookName = "",
         )
 

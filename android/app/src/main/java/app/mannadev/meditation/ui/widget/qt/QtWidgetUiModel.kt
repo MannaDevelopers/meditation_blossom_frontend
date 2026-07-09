@@ -18,7 +18,7 @@ data class QtWidgetUiModel(
     companion object {
         /** 아직 한 번도 QT를 동기화하지 못했을 때의 최초 실행 안내. */
         val noData: QtWidgetUiModel = QtWidgetUiModel(
-            title = Constants.WIDGET_FIRST_LAUNCH_TITLE,
+            title = "QT 위젯 설치 완료!",
             dateLabel = "",
             reference = "",
             verses = listOf(Constants.WIDGET_FIRST_LAUNCH_GUIDE_MESSAGE),

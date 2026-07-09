@@ -8,7 +8,7 @@ class SermonTest {
 
     @Test fun `noData는 최초 실행 안내를 반환`() {
         val result = Sermon.noData
-        assertEquals(Constants.WIDGET_FIRST_LAUNCH_TITLE, result.title)
+        assertEquals("말씀 위젯 설치 완료!", result.title)
         assertEquals(listOf(Constants.WIDGET_FIRST_LAUNCH_GUIDE_MESSAGE), result.verses)
     }
 
