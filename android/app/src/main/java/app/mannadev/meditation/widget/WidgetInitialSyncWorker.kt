@@ -28,15 +28,13 @@ import kotlinx.coroutines.coroutineScope
 suspend fun runWidgetSync(
     syncSermon: suspend () -> Unit,
     syncQt: suspend () -> Unit,
-): kotlin.Result<Unit> = coroutineScope {
-    val sermonDeferred = async { runCatching { syncSermon() } }
-    val qtDeferred = async { runCatching { syncQt() } }
-    val sermonOutcome = sermonDeferred.await()
-    val qtOutcome = qtDeferred.await()
-
-    sermonOutcome.exceptionOrNull()?.let { return@coroutineScope kotlin.Result.failure<Unit>(it) }
-    qtOutcome.exceptionOrNull()?.let { return@coroutineScope kotlin.Result.failure<Unit>(it) }
-    kotlin.Result.success(Unit)
+): Result<Unit> = coroutineScope {
+    val sermonResult = async { runCatching { syncSermon() } }
+    val qtResult = async { runCatching { syncQt() } }
+    listOf(sermonResult.await(), qtResult.await())
+        .firstNotNullOfOrNull { it.exceptionOrNull() }
+        ?.let { Result.failure(it) }
+        ?: Result.success(Unit)
 }
 
 class WidgetInitialSyncWorker(
