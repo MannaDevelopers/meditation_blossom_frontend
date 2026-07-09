@@ -30,6 +30,7 @@ import androidx.glance.unit.ColorProvider
 import app.mannadev.meditation.Constants
 import app.mannadev.meditation.R
 import app.mannadev.meditation.analytics.CrashlyticsHelper
+import app.mannadev.meditation.data.hasAppEverLaunched
 import app.mannadev.meditation.di.getWidgetDependencies
 import app.mannadev.meditation.ui.widget.qt.QtWidgetUiModel
 import app.mannadev.meditation.ui.widget.qt.prefixQuestions
@@ -42,7 +43,7 @@ class QtWidgetSmall : GlanceAppWidget(
         val qtRepository = getWidgetDependencies(context).qtRepository()
         provideContent {
             val state by qtRepository.qtState.collectAsState()
-            val uiModel = state.toDisplayQtUiModel()
+            val uiModel = state.toDisplayQtUiModel(hasAppEverLaunched(context))
             val clickAction = widgetClickAction(uiModel.videoUrl, Constants.DEEP_LINK_DAILY_MANNA)
             QtWidgetSmallContent(uiModel, clickAction)
         }
