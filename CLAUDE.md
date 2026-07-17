@@ -12,8 +12,6 @@ yarn lint                    # ESLint
 yarn ios                     # iOS 실행 (사전: cd ios && pod install && cd ..)
 yarn android                 # Android 실행
 yarn start                   # Metro 번들러
-yarn fcm                     # FCM / Firestore 로컬 QA 시나리오 테스트 실행
-yarn harness                 # 이슈 처리 자동화 하네스 실행 (queue|start|pr|clean)
 ```
 
 릴리스: `git tag v1.0.0 && git push origin v1.0.0` → GitHub Actions 자동 빌드. 로컬 빌드 시 `android/app/release.keystore`, `android/app/secrets.properties` 필요 (git 미포함).
@@ -118,22 +116,6 @@ App Group ID: `group.mannachurch.meditationblossom` (앱 + Widget Extension + No
 - Jest 설정: `jest.config.js` (preset: `react-native`, setup: `jest.setup.js`)
 - `jest.setup.js`에 Firebase, AsyncStorage, Crashlytics 등 mock 포함
 - 순수 함수 중심 테스트: `Sermon.ts` 변환 함수, `sermonService.ts` staleness 체크, `normalize.ts`, `textFormatting.ts`
-
-## Issue Processing Harness
-
-이 프로젝트는 이슈 처리를 구조화하고 메인 에이전트의 컨텍스트를 보존하기 위해 자동화 하네스를 사용합니다.
-
-1. **이슈 정렬 및 큐 생성**:
-   `yarn harness queue` 명령을 실행하면 GitHub 이슈를 읽어 의존성 순으로 정렬한 `issue_queue.json`을 자동 구성합니다.
-2. **독립된 작업 영역(Worktree) 생성**:
-   `yarn harness start [이슈번호]` 명령을 실행하면 `.worktrees/issue-[이슈번호]` 디렉토리에 최신 `origin/main` 기반의 독립된 작업 공간과 브랜치가 생성됩니다.
-3. **Subagent 오케스트레이션**:
-   - 메인 에이전트는 직접 코드를 작성하지 않고, `define_subagent`로 `IssueWorker` subagent를 선언한 뒤 작업을 위임합니다.
-   - subagent는 생성된 `.worktrees/issue-[이슈번호]` 디렉토리 내에서 TDD/SDD 규칙을 따르며 작업을 수행하고 검증합니다.
-4. **리뷰 및 PR 생성**:
-   작업이 완료되면 `git push`와 `gh pr create` 명령어로 upstream PR을 열고 리뷰를 요청합니다.
-5. **정리**:
-   PR이 머지되면 `yarn harness clean` 명령을 실행해 해당 worktree와 로컬 브랜치를 깔끔하게 삭제합니다.
 
 ## Environment
 

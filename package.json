@@ -9,8 +9,6 @@
     "start": "react-native start",
     "test": "jest",
     "fcm": "node scripts/test_fcm.js",
-    "issue": "node scripts/issue.js",
-    "harness": "node scripts/issue_harness.js",
     "postinstall": "patch-package"
   },
   "dependencies": {
