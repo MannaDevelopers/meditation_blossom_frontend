@@ -127,3 +127,9 @@ NativeModules.WidgetUpdateModule = {
 };
 NativeModules.MyEventModule = { getName: () => 'MyEventModule' };
 
+const reactNative = require('react-native');
+reactNative.NativeEventEmitter = jest.fn().mockImplementation(() => ({
+  addListener: jest.fn(() => ({ remove: jest.fn() })),
+  removeAllListeners: jest.fn(),
+}));
+
