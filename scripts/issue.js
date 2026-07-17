@@ -160,7 +160,16 @@ async function pr() {
     ]);
 
     const title = `[ISSUE-${issue.number}] ${issue.title}`;
-    const body = `## 작업내용\n<!--주요 작업 내용에 대해 설명해주세요-->\n\n## 관련 이슈\nCloses #${issue.number}\n\n## 체크리스트\n- [ ] 불필요한 console.log를 제거했나요?\n- [ ] 테스트를 진행했나요?\n- [ ] 문서를 업데이트했나요?`;
+    
+    // Load PR template from .github/PULL_REQUEST_TEMPLATE.md if exists
+    const templatePath = path.join(__dirname, '../.github/PULL_REQUEST_TEMPLATE.md');
+    let body = '';
+    if (fs.existsSync(templatePath)) {
+      const templateContent = fs.readFileSync(templatePath, 'utf8');
+      body = templateContent.replace(/Closes\s+#\s*$/m, `Closes #${issue.number}`);
+    } else {
+      body = `## 작업내용\n<!--주요 작업 내용에 대해 설명해주세요-->\n\n## 관련 이슈\nCloses #${issue.number}\n\n## 체크리스트\n- [ ] 불필요한 console.log를 제거했나요?\n- [ ] 테스트를 진행했나요?\n- [ ] 문서를 업데이트했나요?`;
+    }
 
     // 임시 파일에 body 저장 (공백 및 개행 유지)
     const tempBodyFile = path.join(__dirname, '../.pr_body.md');
