@@ -263,6 +263,87 @@ async function updateFirestoreAndSendFcm(token, dataType = 'sermon_events', labe
   });
 }
 
+// 주간 전체 5개 예배 일괄 등록 + FCM 전송
+async function sendWeeklySermonsScenario(token, topic = 'sermon_events') {
+  const db = admin.firestore();
+  
+  const today = new Date();
+  const diffToSunday = 7 - today.getDay();
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() + (diffToSunday === 7 ? 0 : diffToSunday));
+  const dateStr = sunday.toISOString().split('T')[0];
+
+  console.log(`\n📅 주간 말씀 공통 날짜 키: ${dateStr}`);
+
+  const worshipOptions = [
+    { type: 'THU_EVE', dayOffset: -3, dayLabel: '목요일 저녁 예배' },
+    { type: 'SAT_PM', dayOffset: -1, dayLabel: '토요일 오후 예배' },
+    { type: 'SUN_1000', dayOffset: 0, dayLabel: '주일 10:00 예배' },
+    { type: 'SUN_1200', dayOffset: 0, dayLabel: '주일 12:00 예배' },
+    { type: 'SUN_1430', dayOffset: 0, dayLabel: '주일 14:30 예배' },
+  ];
+
+  const createdDocs = [];
+
+  for (const opt of worshipOptions) {
+    const actual = new Date(sunday);
+    actual.setDate(sunday.getDate() + opt.dayOffset);
+    const actualStr = actual.toISOString().split('T')[0];
+
+    const docData = {
+      title: `[${opt.dayLabel}] 생명의 말씀`,
+      content: `이것은 ${opt.dayLabel} 말씀 요약입니다. (${actualStr})`,
+      date: dateStr,
+      actual_date: actualStr,
+      worship_type: opt.type,
+      category: '설교',
+      day_of_week: opt.type.startsWith('THU') ? '목' : opt.type.startsWith('SAT') ? '토' : '일',
+      video_url: 'https://www.youtube.com/watch?v=mock',
+      created_at: admin.firestore.FieldValue.serverTimestamp(),
+      updated_at: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    console.log(`  🔥 Firestore '${opt.type}' 문서 등록 중...`);
+    const docRef = await db.collection('sermons').add(docData);
+    console.log(`  ✅ '${opt.type}' 등록 완료! (ID: ${docRef.id})`);
+    createdDocs.push({ id: docRef.id, ...docData });
+  }
+
+  const representative = createdDocs.find(d => d.worship_type === 'SUN_1000');
+  const payload = {
+    id: representative.id,
+    source_id: representative.id,
+    title: representative.title,
+    content: representative.content,
+    date: dateStr,
+    actual_date: representative.actual_date,
+    worship_type: representative.worship_type,
+    day_of_week: representative.day_of_week,
+    video_url: representative.video_url,
+    topic: topic,
+  };
+
+  const dataFields = toStr(payload);
+
+  console.log(`  📤 FCM 푸시 알림 전송 중...`);
+  return admin.messaging().send({
+    ...(token ? { token } : { topic: topic }),
+    android: { priority: 'high', data: dataFields },
+    apns: {
+      headers: { 'apns-push-type': 'alert', 'apns-priority': '10' },
+      payload: {
+        aps: {
+          alert: {
+            title: '새로운 말씀이 등록되었습니다',
+            body: representative.title,
+          },
+          sound: 'default',
+        },
+      },
+    },
+  });
+}
+
 // ── 메뉴 정의 ────────────────────────────────────────────────
 const METHODS = [
   { label: 'sendSermonEvent  — 실제 서버 방식 (권장)', fn: sendSermonEvent },
@@ -270,6 +351,7 @@ const METHODS = [
   { label: 'sendNotification — 알림 포함', fn: sendNotification },
   { label: 'sendWidgetKitPush — 위젯만 업데이트 (2단계)', fn: sendWidgetKitPush },
   { label: 'updateFirestoreAndSendFcm — Firestore 데이터 등록 후 FCM 발송', fn: updateFirestoreAndSendFcm },
+  { label: 'sendWeeklySermonsScenario — 5개 예배 일괄 등록 후 FCM 발송', fn: sendWeeklySermonsScenario },
 ];
 
 const TOPICS = [
@@ -398,6 +480,8 @@ if (!command) {
     sendNotification: sendNotification,
     sendWidgetKitPush: sendWidgetKitPush,
     updateFirestoreAndSendFcm: updateFirestoreAndSendFcm,
+    sendWeeklySermonsScenario: sendWeeklySermonsScenario,
+    weekly: sendWeeklySermonsScenario,
   };
 
   const fn = fnMap[command];
@@ -405,7 +489,7 @@ if (!command) {
     console.error(`❌ 알 수 없는 명령어: ${command}`);
     console.log('사용법: yarn fcm  (인터랙티브 모드)');
     console.log('        node test_fcm.js save-token TOKEN');
-    console.log('        node test_fcm.js [sendSermonEvent|sendDataOnly|sendNotification|sendWidgetKitPush|updateFirestoreAndSendFcm] [TOKEN|TOPIC] [sermon_events|qt_events]');
+    console.log('        node test_fcm.js [sendSermonEvent|sendDataOnly|sendNotification|sendWidgetKitPush|updateFirestoreAndSendFcm|sendWeeklySermonsScenario] [TOKEN|TOPIC] [sermon_events|qt_events]');
     process.exit(1);
   }
 
