@@ -1,7 +1,15 @@
 import { useCallback, useEffect } from 'react';
 import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { APP_GROUP_DISPLAY_SERMON_KEY } from '../constants';
-import { readAppGroupData, syncAppGroupToAsyncStorage } from '../services/sermonService';
+import {
+  readAppGroupData,
+  syncAppGroupToAsyncStorage,
+  fetchLatestWeeklySermonsFromServer,
+  saveWeeklySermonsToAsyncStorage,
+  syncSelectedSermonToWidget,
+} from '../services/sermonService';
+import { WorshipType } from '../types/Sermon';
 import logger from '../utils/logger';
 
 export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
@@ -19,6 +27,18 @@ export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
         logger.warn('useFCMListener: App Group displaySermon이 유효한 JSON이 아님, 건너뜀');
       }
     }
+
+    try {
+      const weekly = await fetchLatestWeeklySermonsFromServer();
+      if (weekly && weekly.length > 0) {
+        await saveWeeklySermonsToAsyncStorage(weekly);
+        const worshipSetting = (await AsyncStorage.getItem('user_worship_setting')) as WorshipType || 'SUN_1000';
+        await syncSelectedSermonToWidget(worshipSetting);
+      }
+    } catch (e) {
+      logger.error('useFCMListener: Failed to fetch and sync weekly sermons on FCM update', e);
+    }
+
     await onUpdate();
   }, [onUpdate]);
 
