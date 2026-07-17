@@ -24,10 +24,10 @@ import DeviceInfo from 'react-native-device-info';
 import Svg, { Path } from 'react-native-svg';
 import SvgIcon from '../components/SvgIcon';
 import { RootStackParamList } from '../types/navigation';
-import { FCM_SERMON_KEY } from '../types/Sermon';
+import { FCM_SERMON_KEY, WorshipType, WORSHIP_TYPES } from '../types/Sermon';
 import { FCM_QT_KEY } from '../types/QT';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
-import { fetchLatestSermonFromServer, pushSermonToWidget } from '../services/sermonService';
+import { fetchLatestSermonFromServer, pushSermonToWidget, syncSelectedSermonToWidget } from '../services/sermonService';
 import { fetchLatestQtFromServer, pushQtToWidget } from '../services/qtService';
 import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
@@ -40,6 +40,17 @@ const SettingsScreen = ({ navigation }: Props) => {
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [youtubeLinkEnabled, setYoutubeLinkEnabled] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedWorship, setSelectedWorship] = useState<WorshipType>('SUN_1000');
+
+  const handleWorshipChange = async (type: WorshipType) => {
+    setSelectedWorship(type);
+    try {
+      await AsyncStorage.setItem('user_worship_setting', type);
+      await syncSelectedSermonToWidget(type);
+    } catch (error) {
+      logger.error('예배 시간 설정 저장 실패:', error);
+    }
+  };
 
   const toggleDeveloperMenu = () => {
     const newTapCount = tapCount + 1;
@@ -137,6 +148,20 @@ const SettingsScreen = ({ navigation }: Props) => {
   }, []);
 
   useEffect(() => {
+    const loadWorshipSetting = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('user_worship_setting');
+        if (saved) {
+          setSelectedWorship(saved as WorshipType);
+        }
+      } catch (error) {
+        logger.error('예배 시간 설정 불러오기 실패:', error);
+      }
+    };
+    loadWorshipSetting();
+  }, []);
+
+  useEffect(() => {
     const getFCMToken = async () => {
       try {
         if (Platform.OS === 'ios') {
@@ -229,6 +254,48 @@ const SettingsScreen = ({ navigation }: Props) => {
                 {youtubeLinkEnabled && <View style={styles.radioInner} />}
               </View>
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 예배 시간 설정 섹션 */}
+        <Text style={styles.sectionLabel}>예배 시간 설정</Text>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionDescription}>
+            참석하시는 예배 시간에 맞게 말씀을 표시합니다.
+          </Text>
+          <View style={styles.worshipGrid}>
+            {WORSHIP_TYPES.map((w) => {
+              const isSelected = selectedWorship === w.key;
+              const formattedLabel =
+                w.key === 'THU_EVE' ? '목요일 저녁' :
+                w.key === 'SAT_PM' ? '토요일 오후' :
+                w.key === 'SUN_1000' ? '주일 10:00' :
+                w.key === 'SUN_1200' ? '주일 12:00' :
+                w.key === 'SUN_1430' ? '주일 14:30' : w.label;
+
+              return (
+                <TouchableOpacity
+                  key={w.key}
+                  style={[
+                    styles.worshipCard,
+                    isSelected && styles.worshipCardActive,
+                  ]}
+                  onPress={() => handleWorshipChange(w.key)}
+                >
+                  <Text
+                    style={[
+                      styles.worshipCardText,
+                      isSelected && styles.worshipCardTextActive,
+                    ]}
+                  >
+                    {formattedLabel}
+                  </Text>
+                  <View style={styles.radioButton}>
+                    {isSelected && <View style={styles.radioInner} />}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -469,6 +536,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     fontFamily: 'Pretendard-Regular',
+  },
+  worshipGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  worshipCard: {
+    width: '48%',
+    minWidth: 140,
+    flexGrow: 1,
+    height: 75,
+    backgroundColor: '#F4F4F4',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: '#F4F4F4',
+  },
+  worshipCardActive: {
+    borderColor: '#00A8DE',
+    backgroundColor: '#E6F7FD',
+  },
+  worshipCardText: {
+    color: '#A59EAE',
+    fontSize: 14,
+    fontFamily: 'Pretendard-Bold',
+    textAlign: 'center',
+  },
+  worshipCardTextActive: {
+    color: '#00A8DE',
   },
   aboutSection: {
     backgroundColor: '#E1E5F7',

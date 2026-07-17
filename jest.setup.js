@@ -5,6 +5,12 @@ jest.mock('@react-native-firebase/crashlytics', () => ({
   recordError: jest.fn(),
 }));
 
+jest.mock('@react-native-firebase/analytics', () => ({
+  getAnalytics: jest.fn(() => ({})),
+  logEvent: jest.fn(() => Promise.resolve()),
+  setUserProperty: jest.fn(() => Promise.resolve()),
+}));
+
 jest.mock('@react-native-firebase/firestore', () => ({
   collection: jest.fn(),
   getDocsFromCache: jest.fn(),
