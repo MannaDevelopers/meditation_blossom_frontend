@@ -1,5 +1,8 @@
 # 📋 예배 시간 설정 및 주보 기반 말씀 안내 개발 계획서 (Plan)
 
+- **Epic Issue**: [#184](https://github.com/MannaDevelopers/meditation_blossom_frontend/issues/184)
+- **관련 기획**: [기획] 예배시간 설정 ([#168](https://github.com/MannaDevelopers/meditation_blossom_frontend/issues/168))
+
 이 계획서는 만나교회 주보 크롤링 데이터와 매핑하여 사용자가 설정한 예배 시간에 맞추어 말씀 및 위젯을 제공하기 위한 설계안 및 태스크 분할(Epic/Issue) 문서입니다.
 
 ---
@@ -72,9 +75,10 @@ interface Sermon {
 
 ## 3. 에픽 및 이슈 분할 (Epic & Issues)
 
-### [EPIC-1] 예배 시간 설정 및 주보 기반 말씀 불러오기
+### [EPIC-1] 예배 시간 설정 및 주보 기반 말씀 불러오기 ([#184](https://github.com/MannaDevelopers/meditation_blossom_frontend/issues/184))
+- **관련 기획**: [기획] 예배시간 설정 ([#168](https://github.com/MannaDevelopers/meditation_blossom_frontend/issues/168))
 
-#### 🎫 Issue 1: Firestore 데이터 모델 정의 및 클라이언트 타입 정의
+#### 🎫 Issue 1: Firestore 데이터 모델 정의 및 클라이언트 타입 정의 ([#175](https://github.com/MannaDevelopers/meditation_blossom_frontend/issues/175))
 - **작업 내용**:
   - `src/types/Sermon.ts` 파일의 `Sermon` 및 `SermonRaw` 인터페이스에 `worship_type` 필드와 `actual_date` 추가.
   - Firestore 쿼리 필터링에 사용할 `WorshipType` 상수 선언.
@@ -82,7 +86,7 @@ interface Sermon {
   - [ ] `Sermon` 타입 확장 완료
   - [ ] `WorshipType` 타입 및 Enum 정의 완료
 
-#### 🎫 Issue 2: AsyncStorage 주간 말씀 캐시 도입 및 서비스 함수 구현
+#### 🎫 Issue 2: AsyncStorage 주간 말씀 캐시 도입 및 서비스 함수 구현 ([#176](https://github.com/MannaDevelopers/meditation_blossom_frontend/issues/176))
 - **작업 내용**:
   - `src/services/sermonService.ts`에 주간 전체 말씀을 로컬에 캐싱하는 로직 추가.
     - 신규 캐시 키: `weekly_sermons`
@@ -93,7 +97,7 @@ interface Sermon {
   - [ ] 최신 주간 말씀 일괄 Fetch 함수 작성
   - [ ] 사용자 설정 기반 레거시 동기화 및 위젯 노티 모듈 구현
 
-#### 🎫 Issue 3: SettingsScreen 내 예배 시간 설정 UI 개발
+#### 🎫 Issue 3: SettingsScreen 내 예배 시간 설정 UI 개발 ([#177](https://github.com/MannaDevelopers/meditation_blossom_frontend/issues/177))
 - **작업 내용**:
   - `src/screens/SettingsScreen.tsx`에 "예배 시간 설정" 섹션 추가.
   - 그리드 카드 디자인으로 5가지 예배 옵션을 미려하게 렌더링.
@@ -103,7 +107,7 @@ interface Sermon {
   - [ ] 선택 변경 시 AsyncStorage 저장 및 동기화 처리 연동
   - [ ] 데이터 새로고침 기능 실행 시에도 설정된 예배 시간이 유효하게 반영되는지 확인
 
-#### 🎫 Issue 4: HomeScreen 및 useSermonData 훅 수정
+#### 🎫 Issue 4: HomeScreen 및 useSermonData 훅 수정 ([#178](https://github.com/MannaDevelopers/meditation_blossom_frontend/issues/178))
 - **작업 내용**:
   - `src/hooks/useSermonData.ts` 수정:
     - 로컬 캐시를 검사할 때 `weekly_sermons`에서 사용자 설정(`user_worship_setting`)에 부합하는 예배 말씀 데이터를 먼저 반환하도록 수정.
@@ -112,14 +116,14 @@ interface Sermon {
   - [ ] `useSermonData` 캐시 로딩 우선순위 수정 완료
   - [ ] Firestore 구독 및 동기화 로직 갱신 완료
 
-#### 🎫 Issue 5: FCM 푸시 리스너 업데이트
+#### 🎫 Issue 5: FCM 푸시 리스너 업데이트 ([#179](https://github.com/MannaDevelopers/meditation_blossom_frontend/issues/179))
 - **작업 내용**:
   - 백그라운드 및 포그라운드에서 주보 업데이트 알림(FCM) 수신 시, 알림 속 날짜 기준으로 Firestore에서 5개 예배 데이터를 일괄 Fetch하여 `weekly_sermons` 캐시를 업데이트하고 설정된 예배 말씀 정보를 갱신하도록 리스너 보강.
 - **체크리스트**:
   - [ ] FCM 수신 시 로컬 캐시 동기화 로직 연동 완료
   - [ ] 백그라운드 수신 후 위젯 트리거 갱신 여부 테스트
 
-#### 🎫 Issue 6: 로컬 QA 및 test_fcm.js 시나리오 모킹 추가
+#### 🎫 Issue 6: 로컬 QA 및 test_fcm.js 시나리오 모킹 추가 ([#180](https://github.com/MannaDevelopers/meditation_blossom_frontend/issues/180))
 - **작업 내용**:
   - [test_fcm.js](file:///Users/minchul/Projects/meditation_blossom_frontend/scripts/test_fcm.js)에 신규 5개 예배 타임 데이터를 각각 Firestore 에뮬레이터/실제 DB에 모의 등록하는 코드 추가.
   - 사용자가 설정을 바꿀 때 화면과 위젯에 반영되는지 통합 테스트 검증 진행.
