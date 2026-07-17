@@ -7,6 +7,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  where,
 } from '@react-native-firebase/firestore';
 import { Platform } from 'react-native';
 import { STALE_DATA_THRESHOLD_DAYS } from '../constants';
@@ -16,6 +17,7 @@ import {
   firestoreDocToSermon,
   Sermon,
   SermonRaw,
+  WorshipType,
 } from '../types/Sermon';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
 import logger from '../utils/logger';
@@ -124,4 +126,58 @@ export function isSermonDataStale(
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - thresholdDays);
   return sermonDate <= cutoff;
+}
+
+export const WEEKLY_SERMONS_KEY = 'weekly_sermons';
+
+export async function fetchLatestWeeklySermonsFromAsyncStorage(): Promise<Sermon[]> {
+  try {
+    const raw = await AsyncStorage.getItem(WEEKLY_SERMONS_KEY);
+    if (raw) {
+      return JSON.parse(raw) as Sermon[];
+    }
+  } catch (error) {
+    logger.warn('Failed to load weekly sermons from AsyncStorage, clearing corrupted data');
+    await AsyncStorage.removeItem(WEEKLY_SERMONS_KEY).catch(() => {});
+  }
+  return [];
+}
+
+export async function saveWeeklySermonsToAsyncStorage(sermons: Sermon[]): Promise<void> {
+  await AsyncStorage.setItem(WEEKLY_SERMONS_KEY, JSON.stringify(sermons));
+}
+
+export async function syncSelectedSermonToWidget(worshipType: WorshipType): Promise<void> {
+  const weekly = await fetchLatestWeeklySermonsFromAsyncStorage();
+  const matched = weekly.find(s => s.worship_type === worshipType);
+  if (matched) {
+    await saveSermonToAsyncStorage(matched);
+    await pushSermonToWidget(matched);
+  } else {
+    logger.warn(`No sermon found matching worship type: ${worshipType}`);
+  }
+}
+
+export async function fetchLatestWeeklySermonsFromServer(): Promise<Sermon[]> {
+  const db = getFirestore();
+  const latest = await fetchLatestSermonFromServer();
+  if (!latest) return [];
+
+  const q = query(
+    collection(db, 'sermons'),
+    where('date', '==', latest.date)
+  );
+  const snapshot = await getDocsFromServer(q);
+  if (snapshot.empty) return [];
+
+  const sermons: Sermon[] = [];
+  for (const doc of snapshot.docs) {
+    try {
+      const s = await firestoreDocToSermon(doc);
+      sermons.push(s);
+    } catch (e) {
+      logger.error('Failed to parse weekly sermon doc', e);
+    }
+  }
+  return sermons;
 }
