@@ -9,4 +9,9 @@ module.exports = {
   fakeTimers: {
     enableGlobally: true,
   },
+  modulePathIgnorePatterns: [
+    '<rootDir>/.claude/',
+    '<rootDir>/.worktrees/',
+    '<rootDir>/vendor/',
+  ],
 };

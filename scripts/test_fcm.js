@@ -13,10 +13,29 @@ const TOKEN_FILE = path.join(__dirname, '.fcm_token.local');
 const COUNTER_FILE = path.join(__dirname, '.fcm_counter.local');
 const DATA_FILE = path.join(__dirname, 'fcm_test_data.json');
 
-if (fs.existsSync(LOCAL_SA)) {
+let serviceAccountPath = LOCAL_SA;
+if (!fs.existsSync(serviceAccountPath)) {
+  const SECRETS_DIR = path.join(__dirname, '../.secrets');
+  if (fs.existsSync(SECRETS_DIR)) {
+    try {
+      const files = fs.readdirSync(SECRETS_DIR);
+      const matched = files.find(f => f.startsWith('muksang-mangae') && f.endsWith('.json'));
+      if (matched) {
+        serviceAccountPath = path.join(SECRETS_DIR, matched);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+}
+
+if (fs.existsSync(serviceAccountPath)) {
   // eslint-disable-next-line global-require, import/no-dynamic-require
-  admin.initializeApp({ credential: admin.credential.cert(require(LOCAL_SA)), projectId: process.env.FIREBASE_PROJECT_ID || 'muksang-mangae' });
-  console.log('🔐 firebase-service-account.json 사용');
+  admin.initializeApp({
+    credential: admin.credential.cert(require(serviceAccountPath)),
+    projectId: process.env.FIREBASE_PROJECT_ID || 'muksang-mangae',
+  });
+  console.log(`🔐 Service Account 사용: ${path.basename(serviceAccountPath)}`);
 } else {
   admin.initializeApp({ credential: admin.credential.applicationDefault(), projectId: process.env.FIREBASE_PROJECT_ID || 'muksang-mangae' });
   console.log('🔐 Application Default Credentials 사용');
@@ -186,12 +205,71 @@ async function sendWidgetKitPush(token, dataType = 'sermon_events', label = null
   });
 }
 
+// Firestore 데이터 등록 + FCM 전송
+async function updateFirestoreAndSendFcm(token, dataType = 'sermon_events', label = null) {
+  const rawData = loadData(dataType, label);
+  const db = admin.firestore();
+  const collectionName = dataType === 'qt_events' ? 'qt' : 'sermons';
+
+  // Firestore 문서 데이터 준비
+  const docData = {
+    title: rawData.title,
+    date: rawData.date || new Date().toISOString().split('T')[0],
+    day_of_week: rawData.day_of_week || '',
+    video_url: rawData.video_url || '',
+    created_at: admin.firestore.FieldValue.serverTimestamp(),
+    updated_at: admin.firestore.FieldValue.serverTimestamp(),
+  };
+
+  if (dataType === 'qt_events') {
+    docData.series_title = rawData.series_title || '';
+    if (rawData.meditation_questions) {
+      try {
+        docData.meditation_questions = JSON.parse(rawData.meditation_questions);
+      } catch (e) {
+        docData.meditation_questions = rawData.meditation_questions.split('\n').filter(Boolean);
+      }
+    }
+  } else {
+    docData.category = rawData.category || '';
+  }
+
+  if (rawData.bible_references) {
+    try {
+      docData.bible_references = JSON.parse(rawData.bible_references);
+    } catch (e) {
+      docData.bible_references = [];
+    }
+  }
+
+  console.log(`  🔥 Step 1: Firestore 컬렉션 '${collectionName}'에 문서 등록 중...`);
+  const docRef = await db.collection(collectionName).add(docData);
+  console.log(`  ✅ Firestore 문서 등록 완료! (ID: ${docRef.id})`);
+
+  // FCM 메시지 전송 데이터에 새로 생성된 문서 ID 반영
+  rawData.id = docRef.id;
+  rawData.source_id = docRef.id;
+
+  const dataFields = toStr(rawData);
+
+  console.log(`  📤 Step 2: FCM 전송 중...`);
+  return admin.messaging().send({
+    ...(token ? { token } : { topic: rawData.topic }),
+    android: { priority: 'high', data: dataFields },
+    apns: {
+      headers: { 'apns-push-type': 'alert', 'apns-priority': '10' },
+      payload: { aps: { 'content-available': 1, 'mutable-content': 1, alert: { title: '', body: '' }, badge: 0 }, ...dataFields },
+    },
+  });
+}
+
 // ── 메뉴 정의 ────────────────────────────────────────────────
 const METHODS = [
   { label: 'sendSermonEvent  — 실제 서버 방식 (권장)', fn: sendSermonEvent },
   { label: 'sendDataOnly     — data-only, 백그라운드', fn: sendDataOnly },
   { label: 'sendNotification — 알림 포함', fn: sendNotification },
   { label: 'sendWidgetKitPush — 위젯만 업데이트 (2단계)', fn: sendWidgetKitPush },
+  { label: 'updateFirestoreAndSendFcm — Firestore 데이터 등록 후 FCM 발송', fn: updateFirestoreAndSendFcm },
 ];
 
 const TOPICS = [
@@ -319,6 +397,7 @@ if (!command) {
     sendDataOnly: sendDataOnly,
     sendNotification: sendNotification,
     sendWidgetKitPush: sendWidgetKitPush,
+    updateFirestoreAndSendFcm: updateFirestoreAndSendFcm,
   };
 
   const fn = fnMap[command];
@@ -326,7 +405,7 @@ if (!command) {
     console.error(`❌ 알 수 없는 명령어: ${command}`);
     console.log('사용법: yarn fcm  (인터랙티브 모드)');
     console.log('        node test_fcm.js save-token TOKEN');
-    console.log('        node test_fcm.js [sendSermonEvent|sendDataOnly|sendNotification|sendWidgetKitPush] [TOKEN|TOPIC] [sermon_events|qt_events]');
+    console.log('        node test_fcm.js [sendSermonEvent|sendDataOnly|sendNotification|sendWidgetKitPush|updateFirestoreAndSendFcm] [TOKEN|TOPIC] [sermon_events|qt_events]');
     process.exit(1);
   }
 

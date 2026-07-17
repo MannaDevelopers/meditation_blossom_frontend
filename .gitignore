@@ -84,6 +84,7 @@ firebase-service-account.json
 firebase-debug.log
 .fcm_token.local
 .fcm_counter.local
+.active_issue.json
 
 # claude worktrees
 .claude/worktrees/
