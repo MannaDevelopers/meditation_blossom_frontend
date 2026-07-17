@@ -141,31 +141,31 @@ const DailyMannaScreen = () => {
           <SvgIcon name="YoutubeButton" size={60} pointerEvents="none" />
         </Pressable>
         <View style={styles.smallDivider} />
-        <Text style={styles.titleText} numberOfLines={0}>
+        <Text selectable style={styles.titleText} numberOfLines={0}>
           {processTitleText(qt?.title)}
         </Text>
         {qtContent.index ? (
-          <Text style={styles.indexText}>{qtContent.index}</Text>
+          <Text selectable style={styles.indexText}>{qtContent.index}</Text>
         ) : null}
         <View style={styles.contentDivider} />
         {qtContent.content ? (
-          <Text style={styles.contentText}>{qtContent.content}</Text>
+          <Text selectable style={styles.contentText}>{qtContent.content}</Text>
         ) : (
-          <Text style={styles.contentUnavailableText}>
+          <Text selectable style={styles.contentUnavailableText}>
             오늘 말씀은 책을 참고해주세요
           </Text>
         )}
         {isSunday ? (
-          <Text style={styles.noQuestionText}>오늘은 묵상 질문이 없습니다</Text>
+          <Text selectable style={styles.noQuestionText}>오늘은 묵상 질문이 없습니다</Text>
         ) : meditationQuestions.length > 0 ? (
           <View style={styles.questionsContainer}>
-            <Text style={styles.questionsSectionTitle}>묵상 질문</Text>
+            <Text selectable style={styles.questionsSectionTitle}>묵상 질문</Text>
             {meditationQuestions.map((question, index) => (
               <View key={index} style={styles.questionCard}>
-                <Text style={styles.questionNumber}>
+                <Text selectable style={styles.questionNumber}>
                   {index === 0 ? '•' : ''}
                 </Text>
-                <Text style={styles.questionText}>{question}</Text>
+                <Text selectable style={styles.questionText}>{question}</Text>
               </View>
             ))}
           </View>

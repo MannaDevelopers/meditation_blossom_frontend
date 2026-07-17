@@ -134,12 +134,12 @@ const HomeScreen = () => {
           <SvgIcon name="YoutubeButton" size={60} pointerEvents="none" />
         </Pressable>
         <View style={styles.smallDivider} />
-        <Text style={styles.titleText} numberOfLines={0}>
+        <Text selectable style={styles.titleText} numberOfLines={0}>
           {processTitleText(sermon?.title)}
         </Text>
-        <Text style={styles.indexText}>{sermonContent.index}</Text>
+        <Text selectable style={styles.indexText}>{sermonContent.index}</Text>
         <View style={styles.contentDivider} />
-        <Text style={styles.contentText}>{sermonContent.content}</Text>
+        <Text selectable style={styles.contentText}>{sermonContent.content}</Text>
       </ScrollView>
       {showSpinner && (
         <View style={styles.loadingOverlay}>
