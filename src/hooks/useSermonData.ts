@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { compareSermon, Sermon, WorshipType } from '../types/Sermon';
+import { compareSermon, Sermon, WorshipType, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
 import {
   fetchLatestSermonFromAsyncStorage,
   fetchLatestSermonFromServer,
@@ -36,7 +36,7 @@ export function useSermonData(): UseSermonDataReturn {
 
   const loadLocalData = useCallback(async (): Promise<Sermon | null> => {
     try {
-      const worshipSetting = (await AsyncStorage.getItem('user_worship_setting')) as WorshipType || 'SUN_1000';
+      const worshipSetting = (await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipType || DEFAULT_WORSHIP_TYPE;
       const weeklySermons = (await fetchLatestWeeklySermonsFromAsyncStorage()) || [];
       let selected = weeklySermons.find(s => s.worship_type === worshipSetting) || null;
 
@@ -99,7 +99,7 @@ export function useSermonData(): UseSermonDataReturn {
       logger.log('[SermonData] fetchFromServer: result count=' + weeklyResults.length);
       if (weeklyResults.length > 0) {
         await saveWeeklySermonsToAsyncStorage(weeklyResults);
-        const worshipSetting = (await AsyncStorage.getItem('user_worship_setting')) as WorshipType || 'SUN_1000';
+        const worshipSetting = (await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipType || DEFAULT_WORSHIP_TYPE;
         const matched = weeklyResults.find(s => s.worship_type === worshipSetting) || weeklyResults[0];
 
         await saveSermonToAsyncStorage(matched);
@@ -134,7 +134,7 @@ export function useSermonData(): UseSermonDataReturn {
             const weeklySermons = await fetchLatestWeeklySermonsFromServer();
             if (weeklySermons.length > 0) {
               await saveWeeklySermonsToAsyncStorage(weeklySermons);
-              const worshipSetting = (await AsyncStorage.getItem('user_worship_setting')) as WorshipType || 'SUN_1000';
+              const worshipSetting = (await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipType || DEFAULT_WORSHIP_TYPE;
               const matched = weeklySermons.find(s => s.worship_type === worshipSetting) || weeklySermons[0];
               await saveSermonToAsyncStorage(matched);
               await pushSermonToWidget(matched);

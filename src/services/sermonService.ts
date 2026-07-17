@@ -149,35 +149,34 @@ export async function saveWeeklySermonsToAsyncStorage(sermons: Sermon[]): Promis
 
 export async function syncSelectedSermonToWidget(worshipType: WorshipType): Promise<void> {
   const weekly = await fetchLatestWeeklySermonsFromAsyncStorage();
-  const matched = weekly.find(s => s.worship_type === worshipType);
-  if (matched) {
-    await saveSermonToAsyncStorage(matched);
-    await pushSermonToWidget(matched);
-  } else {
-    logger.warn(`No sermon found matching worship type: ${worshipType}`);
-  }
+  if (weekly.length === 0) return;
+
+  const matched = weekly.find(s => s.worship_type === worshipType) || weekly[0];
+  await saveSermonToAsyncStorage(matched);
+  await pushSermonToWidget(matched);
 }
 
 export async function fetchLatestWeeklySermonsFromServer(): Promise<Sermon[]> {
   const db = getFirestore();
-  const latest = await fetchLatestSermonFromServer();
-  if (!latest) return [];
-
   const q = query(
     collection(db, 'sermons'),
-    where('date', '==', latest.date)
+    orderBy('date', 'desc'),
+    limit(6)
   );
   const snapshot = await getDocsFromServer(q);
   if (snapshot.empty) return [];
 
-  const sermons: Sermon[] = [];
+  const allSermons: Sermon[] = [];
   for (const doc of snapshot.docs) {
     try {
       const s = await firestoreDocToSermon(doc);
-      sermons.push(s);
+      allSermons.push(s);
     } catch (e) {
       logger.error('Failed to parse weekly sermon doc', e);
     }
   }
-  return sermons;
+
+  if (allSermons.length === 0) return [];
+  const latestDate = allSermons[0].date;
+  return allSermons.filter(s => s.date === latestDate);
 }

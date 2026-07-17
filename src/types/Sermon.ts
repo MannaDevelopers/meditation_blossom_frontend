@@ -57,6 +57,8 @@ export interface SermonMetadata {
 
 // 스토리지 키
 export const FCM_SERMON_KEY = 'fcm_sermon';
+export const USER_WORSHIP_SETTING_KEY = 'user_worship_setting';
+export const DEFAULT_WORSHIP_TYPE: WorshipType = 'SUN_1000';
 
 
 export function convertStringToTimestamp(isoString: string | null | undefined): FirestoreTimestamp {

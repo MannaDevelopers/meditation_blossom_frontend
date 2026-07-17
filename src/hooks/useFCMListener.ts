@@ -9,7 +9,7 @@ import {
   saveWeeklySermonsToAsyncStorage,
   syncSelectedSermonToWidget,
 } from '../services/sermonService';
-import { WorshipType } from '../types/Sermon';
+import { WorshipType, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
 import logger from '../utils/logger';
 
 export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
@@ -32,7 +32,7 @@ export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
       const weekly = await fetchLatestWeeklySermonsFromServer();
       if (weekly && weekly.length > 0) {
         await saveWeeklySermonsToAsyncStorage(weekly);
-        const worshipSetting = (await AsyncStorage.getItem('user_worship_setting')) as WorshipType || 'SUN_1000';
+        const worshipSetting = (await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipType || DEFAULT_WORSHIP_TYPE;
         await syncSelectedSermonToWidget(worshipSetting);
       }
     } catch (e) {

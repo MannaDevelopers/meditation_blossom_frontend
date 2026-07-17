@@ -24,7 +24,7 @@ import DeviceInfo from 'react-native-device-info';
 import Svg, { Path } from 'react-native-svg';
 import SvgIcon from '../components/SvgIcon';
 import { RootStackParamList } from '../types/navigation';
-import { FCM_SERMON_KEY, WorshipType, WORSHIP_TYPES } from '../types/Sermon';
+import { FCM_SERMON_KEY, WorshipType, WORSHIP_TYPES, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
 import { FCM_QT_KEY } from '../types/QT';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
 import { fetchLatestSermonFromServer, pushSermonToWidget, syncSelectedSermonToWidget } from '../services/sermonService';
@@ -40,12 +40,12 @@ const SettingsScreen = ({ navigation }: Props) => {
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [youtubeLinkEnabled, setYoutubeLinkEnabled] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedWorship, setSelectedWorship] = useState<WorshipType>('SUN_1000');
+  const [selectedWorship, setSelectedWorship] = useState<WorshipType>(DEFAULT_WORSHIP_TYPE);
 
   const handleWorshipChange = async (type: WorshipType) => {
     setSelectedWorship(type);
     try {
-      await AsyncStorage.setItem('user_worship_setting', type);
+      await AsyncStorage.setItem(USER_WORSHIP_SETTING_KEY, type);
       await syncSelectedSermonToWidget(type);
     } catch (error) {
       logger.error('예배 시간 설정 저장 실패:', error);
@@ -150,7 +150,7 @@ const SettingsScreen = ({ navigation }: Props) => {
   useEffect(() => {
     const loadWorshipSetting = async () => {
       try {
-        const saved = await AsyncStorage.getItem('user_worship_setting');
+        const saved = await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY);
         if (saved) {
           setSelectedWorship(saved as WorshipType);
         }
