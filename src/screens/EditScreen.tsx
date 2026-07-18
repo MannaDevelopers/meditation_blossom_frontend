@@ -1,4 +1,4 @@
-import { View, TouchableOpacity, Text } from 'react-native';
+import { View, TouchableOpacity, Text, StatusBar } from 'react-native';
 import WidgetPreview from '../components/WidgetPreview';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
@@ -43,7 +43,8 @@ const EditScreen = ({navigation, route}: Props) => {
   const sermon = route.params?.sermon;
   return (
     <View style={{flex: 1, backgroundColor:'black'}}>
-    <View style={{ flex: 1, backgroundColor: 'black', marginHorizontal: 35, marginVertical: 60, justifyContent: 'center', alignItems: 'center' }}>
+      <StatusBar barStyle="light-content" backgroundColor="black" />
+      <View style={{ flex: 1, backgroundColor: 'black', marginHorizontal: 35, marginVertical: 60, justifyContent: 'center', alignItems: 'center' }}>
       <View style={{backgroundColor: 'transparent', width: 305, height: 26, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
         <TouchableOpacity onPress={() => {navigation.goBack();}}><SvgIcon name="BackButton" size={20} /></TouchableOpacity>
         <TouchableOpacity><Text style={{color: 'white', fontWeight: 'bold', fontSize: 20, textAlign: 'center', textAlignVertical: 'center'}}>저장</Text></TouchableOpacity>

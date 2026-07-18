@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View, SafeAreaView } from 'react-native';
+import { ActivityIndicator, StyleSheet, View, SafeAreaView, StatusBar } from 'react-native';
 import logger from './utils/logger';
 import { logAnalytics } from './utils/analytics';
 import WidgetUpdateModule from './types/WidgetUpdateModule';
@@ -77,6 +77,7 @@ function App(): React.JSX.Element {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor : '#fff' }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <RootStack />
         {needsUpdate && showFallbackModal && config && (
           <ForceUpdateModal
