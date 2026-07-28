@@ -5,8 +5,11 @@ import com.google.common.annotations.VisibleForTesting
 
 object VerseParser {
 
+    // 책 이름 토큰은 \S+로 매칭 (공백으로만 구분) — "요한1서"처럼 이름에 숫자가
+    // 포함된 경우 [^\d\s]+(숫자 제외)로는 "1" 앞에서 끊겨 "서 4:1"처럼 잘못
+    // 파싱되는 문제가 있어 수정함
     internal const val BOOK_NAME_REGEX_PATTERN =
-        """(본문\s*[:：]?\s*)?(?<bookName>[^\d\s]+ ?\d+:\d+(?:-\d+)?(?:,\s*[^\d\s]+ ?\d+:\d+(?:-\d+)?)*)"""
+        """(본문\s*[:：]?\s*)?(?<bookName>\S+ ?\d+:\d+(?:-\d+)?(?:,\s*\S+ ?\d+:\d+(?:-\d+)?)*)"""
     internal val BOOK_NAME_REGEX = Regex(BOOK_NAME_REGEX_PATTERN)
 
     internal val VERSE_RANGE_REGEX = Regex("""(\d+):(\d+)(?:-(\d+))?""") // Compile once
