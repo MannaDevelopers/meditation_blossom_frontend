@@ -1,0 +1,26 @@
+<svg viewBox="0 0 240 300" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+  <rect width="240" height="300" rx="18" fill="#000000"/>
+
+  <rect x="0" y="0" width="240" height="300" fill="#3A6E8F"/>
+  <circle cx="70" cy="90" r="55" fill="#2E5A78"/>
+  <rect x="0" y="190" width="240" height="110" fill="#7A9A5C"/>
+  <circle cx="185" cy="70" r="22" fill="#F2D479"/>
+
+  <rect x="0" y="0" width="240" height="300" fill="#000000" opacity="0.55"/>
+  <rect x="10" y="86" width="220" height="103" fill="#3A6E8F"/>
+  <circle cx="80" cy="176" r="55" fill="#2E5A78"/>
+  <rect x="10" y="190" width="220" height="0" fill="#7A9A5C"/>
+  <rect x="10" y="86" width="220" height="103" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+
+  <path d="M18 86 v-8 h8 M222 86 h8 v8 M18 189 v8 h8 M222 189 h8 v-8" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+  <text x="16" y="24" fill="#FFFFFF" font-size="12" font-weight="700">취소</text>
+  <text x="224" y="24" fill="#FFFFFF" font-size="12" font-weight="700" text-anchor="end">적용</text>
+  <text x="120" y="24" fill="#FFFFFF" font-size="11" text-anchor="middle">배경 사진 조정</text>
+
+  <g transform="translate(64,255)">
+    <line x1="0" y1="0" x2="112" y2="0" stroke="#5A5A5A" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="46" cy="0" r="7" fill="#FFFFFF"/>
+  </g>
+  <text x="120" y="278" fill="#C9C9CC" font-size="10" text-anchor="middle">핀치 또는 슬라이더로 확대·축소, 드래그로 이동</text>
+</svg>
