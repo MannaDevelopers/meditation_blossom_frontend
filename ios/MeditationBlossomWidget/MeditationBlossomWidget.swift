@@ -91,7 +91,9 @@ struct Provider: TimelineProvider {
 
     // Android와 동일한 파싱 로직
     // 1. 책 이름과 장:절 추출 (예: "본문 : 로마서 13:11-14")
-    let bookNamePattern = #"(본문\s*[:：]?\s*)?([^\d\s]+ ?\d+:\d+(?:-\d+)?(?:,\s*[^\d\s]+ ?\d+:\d+(?:-\d+)?)*)"#
+    // 책 이름 토큰은 \S+로 매칭 — "요한1서"처럼 이름에 숫자가 포함된 경우
+    // [^\d\s]+(숫자 제외)로는 "1" 앞에서 끊겨 "서 4:1"처럼 잘못 파싱되는 문제가 있어 수정함
+    let bookNamePattern = #"(본문\s*[:：]?\s*)?(\S+ ?\d+:\d+(?:-\d+)?(?:,\s*\S+ ?\d+:\d+(?:-\d+)?)*)"#
 
     if let bookNameRegex = try? NSRegularExpression(pattern: bookNamePattern, options: []),
        let match = bookNameRegex.firstMatch(in: sermon.content, options: [], range: NSRange(sermon.content.startIndex..., in: sermon.content)) {

@@ -48,6 +48,17 @@ describe('extractContent', () => {
     expect(result.content).toContain('2 환난 당한 모든 자와');
   });
 
+  // 책 이름에 숫자가 포함된 경우 (예: 요한1서) 정상 파싱되는지 확인
+  it('책 이름에 숫자가 포함되어도 정상 분리한다', () => {
+    const input =
+      '요한1서 4:1 사랑하는 자들아 영을 다 믿지 말고 오직 영들이 하나님께 속하였나 분별하라 많은 거짓 선지자가 세상에 나왔음이라';
+    const result = extractContent(input);
+    expect(result.index).toBe('요한1서 4:1');
+    expect(result.content).toBe(
+      '사랑하는 자들아 영을 다 믿지 말고 오직 영들이 하나님께 속하였나 분별하라 많은 거짓 선지자가 세상에 나왔음이라',
+    );
+  });
+
   // iOS 구 포맷: 각 참조가 "본문 : "\n\n"본문 : " 패턴으로 저장됨
   it('iOS 구 포맷 (복수 "본문 :" 섹션)을 각 섹션별로 파싱해 합산한다', () => {
     const oldFormat =
