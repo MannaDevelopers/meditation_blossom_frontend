@@ -14,7 +14,7 @@
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		1C3EE8771088DB7C1EB864B8 /* Pods_MeditationBlossomWidgetExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A9635F5505F850465FED39C /* Pods_MeditationBlossomWidgetExtension.framework */; };
 		35449F6D2E5EF66F005824B9 /* PushNotificationService.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 35449F662E5EF66F005824B9 /* PushNotificationService.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		354EC78E2E13D06F00E2A018 /* WidgetUpdateModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 354EC78C2E13D06F00E2A018 /* WidgetUpdateModule.m */; };
+		354EC78E2E13D06F00E2A018 /* WidgetUpdateModule.mm in Sources */ = {isa = PBXBuildFile; fileRef = 354EC78C2E13D06F00E2A018 /* WidgetUpdateModule.mm */; };
 		354EC78F2E13D06F00E2A018 /* WidgetUpdateModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 354EC78D2E13D06F00E2A018 /* WidgetUpdateModule.swift */; };
 		35570001BBBB0001BBBBBBBB /* QT.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35570000BBBB0001BBBBBBBB /* QT.swift */; };
 		35570003BBBB0001BBBBBBBB /* DailyMannaWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35570002BBBB0001BBBBBBBB /* DailyMannaWidget.swift */; };
@@ -105,7 +105,7 @@
 		2A9635F5505F850465FED39C /* Pods_MeditationBlossomWidgetExtension.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_MeditationBlossomWidgetExtension.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3256181C03F96D58BB23C4F0 /* Pods-MeditationBlossomWidgetExtension.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MeditationBlossomWidgetExtension.release.xcconfig"; path = "Target Support Files/Pods-MeditationBlossomWidgetExtension/Pods-MeditationBlossomWidgetExtension.release.xcconfig"; sourceTree = "<group>"; };
 		35449F662E5EF66F005824B9 /* PushNotificationService.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PushNotificationService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		354EC78C2E13D06F00E2A018 /* WidgetUpdateModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WidgetUpdateModule.m; sourceTree = "<group>"; };
+		354EC78C2E13D06F00E2A018 /* WidgetUpdateModule.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = WidgetUpdateModule.mm; sourceTree = "<group>"; };
 		354EC78D2E13D06F00E2A018 /* WidgetUpdateModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetUpdateModule.swift; sourceTree = "<group>"; };
 		35570000BBBB0001BBBBBBBB /* QT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QT.swift; sourceTree = "<group>"; };
 		35570002BBBB0001BBBBBBBB /* DailyMannaWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyMannaWidget.swift; sourceTree = "<group>"; };
@@ -231,7 +231,7 @@
 				35DF7D9A2F87741F004FEDA3 /* BibleDbHelper.swift */,
 				3586FEA22E66DC780003ADE5 /* GoogleService-Info.plist */,
 				35D57CC62E4E12C1006A8872 /* MyEventModule.m */,
-				354EC78C2E13D06F00E2A018 /* WidgetUpdateModule.m */,
+				354EC78C2E13D06F00E2A018 /* WidgetUpdateModule.mm */,
 				354EC78D2E13D06F00E2A018 /* WidgetUpdateModule.swift */,
 				358368DD2E01989500AC2237 /* meditation_blossom.entitlements */,
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
@@ -765,7 +765,7 @@
 				35CF0001AAAA0001AAAAAAAA /* RCTView+ColorFix.m in Sources */,
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				35D57CC72E4E12CF006A8872 /* MyEventModule.m in Sources */,
-				354EC78E2E13D06F00E2A018 /* WidgetUpdateModule.m in Sources */,
+				354EC78E2E13D06F00E2A018 /* WidgetUpdateModule.mm in Sources */,
 				354EC78F2E13D06F00E2A018 /* WidgetUpdateModule.swift in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				35DF7D9B2F87741F004FEDA3 /* BibleDbHelper.swift in Sources */,

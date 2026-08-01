@@ -1,31 +1,85 @@
+#import <Foundation/Foundation.h>
 #import <React/RCTBridgeModule.h>
+#import <ReactCodegen/AppSpecs/AppSpecs.h>
 
-@interface RCT_EXTERN_MODULE(WidgetUpdateModule, NSObject)
+#import "meditation_blossom-Swift.h"
 
-RCT_EXTERN_METHOD(onSermonUpdated:(NSString *)sermonData
-                  resolver:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject)
+NS_ASSUME_NONNULL_BEGIN
 
-RCT_EXTERN_METHOD(onQtUpdated:(NSString *)qtData
-                  resolver:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject)
+@interface WidgetUpdateModule : NativeWidgetUpdateModuleSpecBase <NativeWidgetUpdateModuleSpec>
+@end
 
-RCT_EXTERN_METHOD(resolveBibleReferences:(NSString *)jsonString
-                  resolver:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject)
+@implementation WidgetUpdateModule {
+  WidgetUpdateModuleImpl *_impl;
+}
 
-RCT_EXTERN_METHOD(getAppGroupData:(NSString *)key
-                  resolver:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXPORT_MODULE(WidgetUpdateModule)
 
-RCT_EXTERN_METHOD(getYoutubeLinkEnabled:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject)
+- (instancetype)init
+{
+  if (self = [super init]) {
+    _impl = [WidgetUpdateModuleImpl new];
+  }
+  return self;
+}
 
-RCT_EXTERN_METHOD(setYoutubeLinkEnabled:(BOOL)enabled
-                  resolver:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject)
++ (BOOL)requiresMainQueueSetup
+{
+  return YES;
+}
 
-RCT_EXTERN_METHOD(onClear:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject)
+- (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:(const facebook::react::ObjCTurboModule::InitParams &)params
+{
+  return std::make_shared<facebook::react::NativeWidgetUpdateModuleSpecJSI>(params);
+}
+
+- (void)onSermonUpdated:(NSString *)sermonData
+                 resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl onSermonUpdated:sermonData resolver:resolve rejecter:reject];
+}
+
+- (void)onQtUpdated:(NSString *)qtData
+             resolve:(RCTPromiseResolveBlock)resolve
+              reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl onQtUpdated:qtData resolver:resolve rejecter:reject];
+}
+
+- (void)resolveBibleReferences:(NSString *)jsonString
+                        resolve:(RCTPromiseResolveBlock)resolve
+                         reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl resolveBibleReferences:jsonString resolver:resolve rejecter:reject];
+}
+
+- (void)onClear:(RCTPromiseResolveBlock)resolve
+         reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl onClear:resolve rejecter:reject];
+}
+
+- (void)getAppGroupData:(NSString *)key
+                 resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl getAppGroupData:key resolver:resolve rejecter:reject];
+}
+
+- (void)setYoutubeLinkEnabled:(BOOL)enabled
+                       resolve:(RCTPromiseResolveBlock)resolve
+                        reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl setYoutubeLinkEnabled:enabled resolver:resolve rejecter:reject];
+}
+
+- (void)getYoutubeLinkEnabled:(RCTPromiseResolveBlock)resolve
+                        reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl getYoutubeLinkEnabled:resolve rejecter:reject];
+}
 
 @end
+
+NS_ASSUME_NONNULL_END

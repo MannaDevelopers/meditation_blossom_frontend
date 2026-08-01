@@ -555,7 +555,7 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
     [self saveToAsyncStorageDirect:jsonString forKey:storageKey];
 
     // 3. 위젯 갱신
-    [WidgetUpdateModule reloadWidgets];
+    [WidgetUpdateModuleImpl reloadWidgets];
 
     if (shouldUpdateDisplaySermon) {
       [self sendSermonUpdateEvent];
@@ -608,9 +608,9 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     
     if (displaySermon || fcmSermon) {
       dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [WidgetUpdateModule reloadWidgets];
+        [WidgetUpdateModuleImpl reloadWidgets];
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-          [WidgetUpdateModule reloadWidgets];
+          [WidgetUpdateModuleImpl reloadWidgets];
         });
       });
     }

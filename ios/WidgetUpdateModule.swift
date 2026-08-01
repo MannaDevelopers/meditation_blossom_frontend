@@ -4,8 +4,10 @@ import WidgetKit
 typealias RCTPromiseResolveBlock = @convention(block) (Any?) -> Void
 typealias RCTPromiseRejectBlock = @convention(block) (String, String, Error?) -> Void
 
-@objc(WidgetUpdateModule)
-class WidgetUpdateModule: NSObject {
+// TurboModule 프로토콜 구현은 WidgetUpdateModule.mm(ObjC++ shim)이 담당하고,
+// 이 클래스는 실제 비즈니스 로직만 가진다 (RN 공식 Swift TurboModule 패턴).
+@objc(WidgetUpdateModuleImpl)
+class WidgetUpdateModuleImpl: NSObject {
   private enum Constants {
     static let appGroupId = "group.mannachurch.meditationblossom"
     static let displaySermonKey = "displaySermon"
@@ -29,10 +31,10 @@ class WidgetUpdateModule: NSObject {
     // JS Sermon 타입의 {seconds, nanoseconds} 타임스탬프를 ISO 문자열로 변환.
     // 위젯 Swift Sermon.init(from:)이 두 포맷을 모두 처리하지만,
     // Extension/AppDelegate 경로와 포맷을 통일해 크로스 프로세스 파싱 안정성을 높인다.
-    let normalized = WidgetUpdateModule.normalizeTimestamps(sermonData) ?? sermonData
+    let normalized = WidgetUpdateModuleImpl.normalizeTimestamps(sermonData) ?? sermonData
     sharedDefaults.set(normalized, forKey: Constants.displaySermonKey)
     sharedDefaults.synchronize()
-    WidgetUpdateModule.reloadWidgets()
+    WidgetUpdateModuleImpl.reloadWidgets()
     resolve("Widget updated successfully")
   }
 
@@ -71,7 +73,7 @@ class WidgetUpdateModule: NSObject {
     }
     sharedDefaults.set(qtData, forKey: Constants.fcmQtKey)
     sharedDefaults.synchronize()
-    WidgetUpdateModule.reloadWidgets()
+    WidgetUpdateModuleImpl.reloadWidgets()
     resolve(true)
   }
 
@@ -82,7 +84,7 @@ class WidgetUpdateModule: NSObject {
 
   @objc
   func resolveBibleReferences(_ jsonString: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    WidgetUpdateModule.dbQueue.async {
+    WidgetUpdateModuleImpl.dbQueue.async {
       do {
         guard let data = jsonString.data(using: .utf8),
               let refs = try JSONSerialization.jsonObject(with: data) as? [[String: Any]],
@@ -184,7 +186,7 @@ class WidgetUpdateModule: NSObject {
       return
     }
     sharedDefaults.set(enabled, forKey: Constants.youtubeLinkEnabledKey)
-    WidgetUpdateModule.reloadWidgets()
+    WidgetUpdateModuleImpl.reloadWidgets()
     resolve(nil)
   }
 
@@ -202,7 +204,7 @@ class WidgetUpdateModule: NSObject {
     sharedDefaults.removeObject(forKey: Constants.fcmQtKey)
     sharedDefaults.synchronize()
 
-    WidgetUpdateModule.reloadWidgets()
+    WidgetUpdateModuleImpl.reloadWidgets()
 
     resolve("Cleared successfully")
   }
@@ -217,10 +219,5 @@ class WidgetUpdateModule: NSObject {
     DispatchQueue.main.async {
       WidgetCenter.shared.reloadAllTimelines()
     }
-  }
-
-  @objc
-  static func requiresMainQueueSetup() -> Bool {
-    return true
   }
 }
