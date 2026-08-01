@@ -2,6 +2,14 @@
   "name": "meditation_blossom",
   "version": "1.1.16",
   "private": true,
+  "codegenConfig": {
+    "name": "AppSpecs",
+    "type": "modules",
+    "jsSrcsDir": "src/specs",
+    "android": {
+      "javaPackageName": "app.mannadev.meditation.specs"
+    }
+  },
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",

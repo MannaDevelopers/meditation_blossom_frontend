@@ -7,10 +7,9 @@ import app.mannadev.meditation.analytics.SermonEventSource
 import app.mannadev.meditation.di.getRNModuleDependencies
 import app.mannadev.meditation.dto.QtDto
 import app.mannadev.meditation.dto.SermonDto
+import app.mannadev.meditation.specs.NativeWidgetUpdateModuleSpec
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
-import com.facebook.react.bridge.ReactContextBaseJavaModule
-import com.facebook.react.bridge.ReactMethod
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,7 +20,7 @@ import timber.log.Timber
 
 @Keep
 class WidgetUpdateModule(reactContext: ReactApplicationContext) :
-    ReactContextBaseJavaModule(reactContext) {
+    NativeWidgetUpdateModuleSpec(reactContext) {
     companion object {
         val json: Json by lazy {
             Json {
@@ -29,6 +28,7 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
             }
         }
 
+        const val NAME = "WidgetUpdateModule"
         private const val TAG = "WidgetUpdateModule"
         private val log = Timber.tag(TAG)
     }
@@ -38,7 +38,7 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
     val moduleDependencies by lazy { getRNModuleDependencies(context = reactApplicationContext) }
 
 
-    override fun getName(): String = "WidgetUpdateModule"
+    override fun getName(): String = NAME
 
     override fun initialize() {
         super.initialize()
@@ -52,10 +52,7 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
         }
     }
 
-    @Suppress("unused")
-    @Keep
-    @ReactMethod
-    fun onClear(promise: Promise) {
+    override fun onClear(promise: Promise) {
         moduleScope.launch {
             val result = runCatching {
                 log.d("Clearing sermon widget preference...")
@@ -81,10 +78,7 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
         }
     }
 
-    @Suppress("unused")
-    @Keep
-    @ReactMethod
-    fun onSermonUpdated(sermonData: String, promise: Promise) {
+    override fun onSermonUpdated(sermonData: String, promise: Promise) {
         moduleScope.launch {
             val saveSermonToPrefs = runCatching {
                 log.d("Saving sermon to Widget Preference...")
@@ -124,10 +118,7 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
         }
     }
 
-    @Suppress("unused")
-    @Keep
-    @ReactMethod
-    fun resolveBibleReferences(jsonString: String, promise: Promise) {
+    override fun resolveBibleReferences(jsonString: String, promise: Promise) {
         moduleScope.launch {
             runCatching {
                 val resolver = moduleDependencies.getBibleReferenceResolver()
@@ -145,10 +136,7 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
         }
     }
 
-    @Suppress("unused")
-    @Keep
-    @ReactMethod
-    fun getYoutubeLinkEnabled(promise: Promise) {
+    override fun getYoutubeLinkEnabled(promise: Promise) {
         runCatching { moduleDependencies.getWidgetPrefs().isEnabled() }
             .onSuccess { promise.resolve(it) }
             .onFailure { e ->
@@ -161,10 +149,7 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
             }
     }
 
-    @Suppress("unused")
-    @Keep
-    @ReactMethod
-    fun setYoutubeLinkEnabled(enabled: Boolean, promise: Promise) {
+    override fun setYoutubeLinkEnabled(enabled: Boolean, promise: Promise) {
         moduleScope.launch {
             runCatching { moduleDependencies.getWidgetPrefs().setEnabled(enabled) }
                 .onSuccess { promise.resolve(null) }
@@ -179,10 +164,12 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
         }
     }
 
-    @Suppress("unused")
-    @Keep
-    @ReactMethod
-    fun onQtUpdated(qtData: String, promise: Promise) {
+    // iOS 전용 (App Group 조회). Android에는 App Group 개념이 없어 항상 null.
+    override fun getAppGroupData(key: String, promise: Promise) {
+        promise.resolve(null)
+    }
+
+    override fun onQtUpdated(qtData: String, promise: Promise) {
         moduleScope.launch {
             val saveResult = runCatching {
                 log.d("Saving QT to Widget Preference...")
