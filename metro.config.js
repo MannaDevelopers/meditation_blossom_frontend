@@ -63,6 +63,22 @@ const config = {
           type: "sourceFile",
         };
       }
+      /**
+       * axios(sp-react-native-in-app-updates → react-native-siren → apisauce →
+       * axios 의존 체인, 강제 업데이트 기능에 사용)의 package.json은 "main"이
+       * Node.js 전용 빌드(dist/node/axios.cjs, crypto/http 등 Node core 모듈 require)를
+       * 가리키고, RN 호환 빌드(dist/browser/axios.cjs)로의 리다이렉트는 "exports" 맵의
+       * react-native/browser 조건에만 있다. unstable_enablePackageExports를 꺼둔 상태라
+       * 이 조건이 적용되지 않아 Metro가 Node 빌드를 골라 "Unable to resolve module
+       * crypto"로 번들링이 실패한다. axios 진입점만 명시적으로 browser 빌드로 리다이렉트.
+       */
+      if (moduleName === "axios") {
+        return context.resolveRequest(
+          context,
+          "axios/dist/browser/axios.cjs",
+          platform
+        );
+      }
       return context.resolveRequest(context, moduleName, platform);
     },
   }
