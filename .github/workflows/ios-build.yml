@@ -30,7 +30,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18.20.6'
+        node-version: '20.19.4'  # RN 0.86 최소 요구사항 대비
 
     - name: Install dependencies
       run: yarn install --frozen-lockfile
