@@ -10,18 +10,21 @@ import app.mannadev.meditation.Constants.ACTION_SERMON_UPDATE_EVENT
 import app.mannadev.meditation.Constants.MESSAGE_QT_UPDATE_EVENT
 import app.mannadev.meditation.Constants.MESSAGE_SERMON_UPDATE_EVENT
 import app.mannadev.meditation.analytics.CrashlyticsHelper
+import app.mannadev.meditation.specs.NativeMyEventModuleSpec
 import com.facebook.react.bridge.ReactApplicationContext
-import com.facebook.react.bridge.ReactContextBaseJavaModule
-import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.common.LifecycleState
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import timber.log.Timber
 
 class NativeEventModule(reactContext: ReactApplicationContext) :
-    ReactContextBaseJavaModule(reactContext) {
+    NativeMyEventModuleSpec(reactContext) {
 
-    override fun getName() = "MyEventModule"
+    companion object {
+        const val NAME = "MyEventModule"
+    }
+
+    override fun getName() = NAME
 
     override fun initialize() {
         super.initialize()
@@ -52,8 +55,8 @@ class NativeEventModule(reactContext: ReactApplicationContext) :
     }
 
     // NativeEventEmitter가 요구하는 메서드 (RN 0.65+)
-    @ReactMethod fun addListener(eventName: String) {}
-    @ReactMethod fun removeListeners(count: Double) {}
+    override fun addListener(eventName: String) {}
+    override fun removeListeners(count: Double) {}
 
     fun sendEventToJS(eventName: String, params: WritableMap? = null) {
         if (reactApplicationContext.lifecycleState == LifecycleState.BEFORE_CREATE) return

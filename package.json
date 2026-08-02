@@ -2,6 +2,14 @@
   "name": "meditation_blossom",
   "version": "1.1.16",
   "private": true,
+  "codegenConfig": {
+    "name": "AppSpecs",
+    "type": "modules",
+    "jsSrcsDir": "src/specs",
+    "android": {
+      "javaPackageName": "app.mannadev.meditation.specs"
+    }
+  },
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
@@ -10,8 +18,7 @@
     "test": "jest",
     "fcm": "node scripts/test_fcm.js",
     "issue": "node scripts/issue.js",
-    "harness": "node scripts/issue_harness.js",
-    "postinstall": "patch-package"
+    "harness": "node scripts/issue_harness.js"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -30,8 +37,8 @@
     "@react-navigation/native": "^7.1.6",
     "@react-navigation/native-stack": "^7.3.10",
     "false": "^0.0.4",
-    "react": "19.0.0",
-    "react-native": "0.78.1",
+    "react": "19.2.3",
+    "react-native": "0.86.2",
     "react-native-device-info": "^15.0.1",
     "react-native-gesture-handler": "^2.25.0",
     "react-native-pager-view": "^8.0.0",
@@ -47,29 +54,29 @@
     "@babel/core": "^7.26.10",
     "@babel/preset-env": "^7.26.9",
     "@babel/runtime": "^7.26.10",
-    "@react-native-community/cli": "19.1.2",
-    "@react-native/babel-preset": "0.78.1",
-    "@react-native/eslint-config": "0.78.1",
-    "@react-native/metro-config": "0.78.1",
-    "@react-native/typescript-config": "0.78.1",
+    "@react-native-community/cli": "20.1.0",
+    "@react-native/babel-preset": "0.86.2",
+    "@react-native/eslint-config": "0.86.2",
+    "@react-native/jest-preset": "0.86.2",
+    "@react-native/metro-config": "0.86.2",
+    "@react-native/typescript-config": "0.86.2",
     "@testing-library/react-native": "^13.3.3",
     "@tsconfig/react-native": "^3.0.5",
     "@types/jest": "^29.5.14",
-    "@types/react": "^19.0.12",
+    "@types/react": "^19.2.0",
     "@types/react-native-vector-icons": "^6.4.18",
-    "@types/react-test-renderer": "^19.0.0",
+    "@types/react-test-renderer": "^19.1.0",
     "babel-jest": "^29.7.0",
     "eslint": "^9.23.0",
     "firebase-admin": "^13.5.0",
     "jest": "^29.7.0",
-    "patch-package": "^8.0.1",
     "prettier": "3.5.3",
     "react-native-svg-transformer": "^1.5.1",
-    "react-test-renderer": "19.0.0",
-    "typescript": "^5.8.2"
+    "react-test-renderer": "19.2.3",
+    "typescript": "^5.8.3"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.11.0"
   },
   "packageManager": "yarn@1.22.22"
 }
