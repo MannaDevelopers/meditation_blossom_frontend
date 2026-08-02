@@ -59,6 +59,17 @@ target 'meditation_blossom' do
           config.build_settings['OTHER_LDFLAGS'] << '-ObjC'
         end
       end
+
+      # RN 0.78.1이 고정한 fmt 11.0.2가 Xcode 26.4+(Apple clang 21)의 강화된 consteval
+      # 상수식 검사를 통과하지 못해 format-inl.h에서 컴파일 에러 발생.
+      # (facebook/react-native#55601, fmtlib/fmt#4740). 공식 수정은 fmt 12.1.0에 있고
+      # RN 0.85.0+ 부터 번들됨 — 그 버전으로 업그레이드하면 이 블록은 제거 가능.
+      # 그 전까지는 fmt pod만 C++17로 컴파일해 consteval 경로 자체를 회피.
+      if target.name == 'fmt'
+        target.build_configurations.each do |config|
+          config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+        end
+      end
     end
   end
 end
