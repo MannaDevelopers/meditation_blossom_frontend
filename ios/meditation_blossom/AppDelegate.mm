@@ -15,6 +15,7 @@
 #import <arpa/inet.h>
 #import <string.h>
 #import <React/RCTUtils.h>
+#import <ReactAppDependencyProvider/RCTAppDependencyProvider.h>
 
 // Hermes 엔진 확인을 위한 헤더
 #if __has_include(<hermes/hermes.h>)
@@ -84,6 +85,11 @@ static NSString *MBAsyncStorageDirectory(void)
   [FIRApp configure];
   self.moduleName = @"meditation_blossom";
   self.initialProps = @{};
+  // New Architecture(Fabric)에서 react-native-screens/react-native-svg/safe-area-context 등
+  // 서드파티 컴포넌트를 Fabric 네이티브로 등록하기 위해 필요. 이게 없으면 RCTComponentViewFactory가
+  // thirdPartyFabricComponentsProvider를 못 찾아 전부 Legacy View Manager Interop(plain RCTView)로
+  // 빠지고, 그 결과 RCT_EXPORT_VIEW_PROPERTY로 등록된 prop이 setXxx: 리플렉션 디스패치되며 크래시난다.
+  self.dependencyProvider = [RCTAppDependencyProvider new];
 
   [FIRInAppMessaging inAppMessaging].messageDisplaySuppressed = NO;
   [FIRInAppMessaging inAppMessaging].automaticDataCollectionEnabled = YES;
