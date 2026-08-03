@@ -88,7 +88,7 @@
 
 | Package 명 | Version | Description |
 | :--- | :--- | :--- |
-| **Node** | `v18.18.0` | * [React Native 환경 설정 가이드](https://reactnative.dev/docs/0.78/environment-setup)<br>* [Node.js v18.18.0 릴리스 노트](https://nodejs.org/ko/blog/release/v18.18.0) |
+| **Node** | `>=22.11.0` (권장 `v22.14.0`, `.nvmrc` 참고) | * [React Native 환경 설정 가이드](https://reactnative.dev/docs/environment-setup)<br>* RN 0.86 업그레이드로 `package.json`의 `engines.node` 요구사항이 상향됨 |
 | **React Native** | `v0.75` → **`v0.78`** | * 24.08.15 릴리스 기반 (Android SDK 대응을 위해 v0.78로 변경)<br>* Native Code 수정 가능성을 고려하여 **Expo 제외**|
 | **Android SDK** | `targetSdk 35`<br>`minSdk 28` | * **targetSdk**: Android 15 (API 35) 수준 사용 (최근 정규 릴리스 적용)<br>* **minSdk**: API 28 (Android 9.0) - 카카오톡 기준과 동일<br>* 2024년 1월 기준 기기의 약 90%가 API 28 이상 사용 중<br>* [Google Play 대상 API 수준 요구사항](https://support.google.com/googleplay/android-developer/answer/11926878?hl=ko) |
 | **iOS Version** | `Min 16` | * 최신 4년간 출시 기기의 95%가 iOS 17 이상 사용 중<br>* 전체 기기의 87%가 iOS 17 이상 사용 중<br>* 카카오톡 기준(iOS 16+)에 맞춰 하위 호환성 확보<br>* [App Store 지원 버전 통계](https://developer.apple.com/kr/support/app-store/) |
@@ -121,19 +121,39 @@ App Store에서 Xcode 검색 후 설치
 export NVM_DIR="$HOME/.nvm"
 [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
 [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
+
+# 프로젝트 폴더의 .nvmrc를 감지해 자동으로 nvm use 실행 (권장)
+autoload -U add-zsh-hook
+load-nvmrc() {
+  local nvmrc_path
+  nvmrc_path="$(nvm_find_nvmrc)"
+  if [ -n "$nvmrc_path" ]; then
+    local nvmrc_node_version
+    nvmrc_node_version=$(nvm version "$(cat "${nvmrc_path}")")
+    if [ "$nvmrc_node_version" = "N/A" ]; then
+      nvm install "$(cat "${nvmrc_path}")"
+    elif [ "$nvmrc_node_version" != "$(nvm version)" ]; then
+      nvm use "$(cat "${nvmrc_path}")" --silent
+    fi
+  fi
+}
+add-zsh-hook chpwd load-nvmrc
+load-nvmrc
 ```
 저장 후 종료 (```:wq```)
 
 * 3.2.7. 설정 반영  
 ```source ~/.zshenv```
 
-* 3.2.8. Node.js 18.18.0 설치
+* 3.2.8. Node.js 설치 (프로젝트 루트의 `.nvmrc` 기준)
 ```
-nvm install 18.18.0
-nvm use 18.18.0
-node -v   # v18.18.0 출력되어야 함
+cd meditation_blossom_frontend   # .nvmrc가 있는 프로젝트 폴더로 이동
+nvm install   # .nvmrc에 명시된 버전을 자동으로 설치
+nvm use       # .nvmrc에 명시된 버전으로 전환
+node -v       # .nvmrc와 동일한 버전이 출력되어야 함
 nvm -v
 ```
+> 💡 위 3.2.6의 auto-use 훅을 설정했다면, 이후로는 프로젝트 폴더로 `cd`할 때마다 Node 버전이 자동으로 전환됩니다.
 
 * 3.2.9. Ruby 설치 (CocoaPods 용)  
 ```brew install ruby```  
@@ -198,7 +218,10 @@ cd ..
 | `iOS devices or simulators not detected` | `sudo xcodebuild -runFirstLaunch` 실행 |
 | `command not found: pod` | 터미널 재시작 후 `pod --version` 확인. 안 되면 Ruby PATH 설정 확인 |
 | `database is locked` | `rm -rf ~/Library/Developer/Xcode/DerivedData/*` 후 재빌드 |
+| `error ... The engine "node" is incompatible with this module` (`yarn install`) | Node 버전이 `.nvmrc` 요구사항(`>=22.11.0`)보다 낮음. `nvm install && nvm use`로 `.nvmrc` 버전 설치/전환 후 재시도 |
 | `Failed to build ios project` | 1. `cd ios && rm -rf Pods Podfile.lock && pod install && cd ..`<br>2. `rm -rf node_modules && yarn install`<br>3. `yarn ios` |
+| Xcode 빌드 시 `Command PhaseScriptExecution failed with a nonzero exit code` | `ios/.xcode.env.local`(버전 관리 제외 파일)에 예전 Node 경로가 하드코딩되어 있는지 확인. 있다면 삭제하거나 `export NODE_BINARY=$(command -v node)`로 교체 후 Clean Build |
+| Xcode 빌드 시 `the package manifest at '.../SourcePackages/checkouts/...' cannot be accessed` | SwiftPM 캐시 손상. `rm -rf ~/Library/Developer/Xcode/DerivedData/<프로젝트>/SourcePackages` 후 Xcode에서 File → Packages → Resolve Package Versions |
 | `Ruby 버전이 2.6` | Ruby 3.0 이상 설치 필요  |
 | `CocoaPods 설치했는데 pod 명령어 안 됨` | gem bin PATH 추가 필요 (환경 변수 설정 확인) |
 
@@ -215,10 +238,11 @@ cd ..
    ```
    246  nvm -v
    247  nvm ls
-   248  nvm install 18.18.0
+   248  nvm install 22.14.0
    249  nvm ls
-   250  nvm use 18.18.0
+   250  nvm use 22.14.0
    ```
+   * 저장소 루트의 `.nvmrc` 파일에 프로젝트가 요구하는 정확한 버전이 명시되어 있습니다.
 Reference : [\[Node.js\] 윈도우에서 nvm 설치하기](https://velog.io/@februaar/Node.js-윈도우에서-nvm-설치하기)
 
 * 3.3.2. 저장소 클론 및 의존성 설치
