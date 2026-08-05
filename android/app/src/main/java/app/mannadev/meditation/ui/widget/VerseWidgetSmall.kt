@@ -20,11 +20,13 @@ import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.layout.width
 import androidx.glance.text.Text
 import app.mannadev.meditation.Constants
 import app.mannadev.meditation.R
@@ -39,11 +41,12 @@ class VerseWidgetSmall : GlanceAppWidget(
 ) {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val sermonRepository = getWidgetDependencies(context).sermonRepository()
+        val youtubeLinkEnabled = getWidgetDependencies(context).getWidgetPrefs().isEnabled()
         provideContent {
             val state by sermonRepository.sermonState.collectAsState()
             val sermon = state.toDisplaySermon(hasAppEverLaunched(context))
             val clickAction = widgetClickAction(sermon.videoUrl, Constants.DEEP_LINK_SUNDAY_SERMON)
-            VerseWidgetSmallContent(sermon, clickAction)
+            VerseWidgetSmallContent(sermon, clickAction, youtubeLinkEnabled)
         }
     }
 
@@ -69,7 +72,7 @@ private object VerseSmallWidgetDimens {
 }
 
 @Composable
-private fun VerseWidgetSmallContent(sermon: Sermon, clickAction: Action) {
+private fun VerseWidgetSmallContent(sermon: Sermon, clickAction: Action, youtubeLinkEnabled: Boolean) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -79,16 +82,26 @@ private fun VerseWidgetSmallContent(sermon: Sermon, clickAction: Action) {
         horizontalAlignment = Alignment.Start,
         verticalAlignment = Alignment.Top
     ) {
-        Text(
+        Row(
             modifier = GlanceModifier
+                .fillMaxWidth()
                 .padding(
                     horizontal = VerseSmallWidgetDimens.horizontalPadding,
                     vertical = VerseSmallWidgetDimens.appBarVerticalPadding
                 ),
-            text = sermon.title,
-            style = Typography.titleMedium,
-            maxLines = 2
-        )
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                modifier = GlanceModifier.defaultWeight(),
+                text = sermon.title,
+                style = Typography.titleMedium,
+                maxLines = 2
+            )
+            if (youtubeLinkEnabled) {
+                Spacer(GlanceModifier.width(6.dp))
+                YoutubeMarker()
+            }
+        }
         Box(
             GlanceModifier
                 .padding(horizontal = VerseSmallWidgetDimens.widgetPadding)
