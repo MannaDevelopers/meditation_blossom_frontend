@@ -228,7 +228,9 @@ struct DailyMannaContentEntryView: View {
           .lineLimit(2)
         Spacer(minLength: 4)
         if entry.youtubeLinkEnabled {
+          // .center 정렬이어도 폰트 메트릭 특성상 살짝 아래로 치우쳐 보여서 위로 보정.
           YoutubeMarkerView()
+            .offset(y: -1.5)
         }
       }
       .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
@@ -275,11 +277,10 @@ struct DailyMannaContentEntryView: View {
         }
         if entry.youtubeLinkEnabled {
           Spacer(minLength: 4)
-          // 행 전체가 firstTextBaseline로 정렬되는데 마커는 텍스트가 아니라
-          // 기준선이 없으므로, 자신의 세로 중앙을 기준선으로 취급하게 해서
-          // 제목/참조 텍스트 중앙 높이에 맞춘다.
+          // firstTextBaseline 정렬 행에서 텍스트가 아닌 마커는 살짝 아래로
+          // 치우쳐 보여서(폰트 메트릭 특성상), 수동으로 위로 보정한다.
           YoutubeMarkerView()
-            .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] }
+            .offset(y: -1.5)
         }
       }
       .padding(.horizontal, WT.outerPad)
@@ -360,7 +361,9 @@ struct DailyMannaMeditationEntryView: View {
           .lineLimit(2)
         Spacer(minLength: 4)
         if entry.youtubeLinkEnabled {
+          // .center 정렬이어도 폰트 메트릭 특성상 살짝 아래로 치우쳐 보여서 위로 보정.
           YoutubeMarkerView()
+            .offset(y: -1.5)
         }
       }
       .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
