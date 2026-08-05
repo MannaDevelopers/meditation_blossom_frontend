@@ -16,11 +16,13 @@ import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
+import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import app.mannadev.meditation.Constants
@@ -37,11 +39,12 @@ class QtWidgetLarge : GlanceAppWidget(
 ) {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val qtRepository = getWidgetDependencies(context).qtRepository()
+        val youtubeLinkEnabled = getWidgetDependencies(context).getWidgetPrefs().isEnabled()
         provideContent {
             val state by qtRepository.qtState.collectAsState()
             val uiModel = state.toDisplayQtUiModel(hasAppEverLaunched(context))
             val clickAction = widgetClickAction(uiModel.videoUrl, Constants.DEEP_LINK_DAILY_MANNA)
-            QtWidgetLargeContent(uiModel, clickAction)
+            QtWidgetLargeContent(uiModel, clickAction, youtubeLinkEnabled)
         }
     }
 
@@ -67,7 +70,7 @@ private object VerseLargeQtDimens {
 }
 
 @Composable
-private fun QtWidgetLargeContent(ui: QtWidgetUiModel, clickAction: Action) {
+private fun QtWidgetLargeContent(ui: QtWidgetUiModel, clickAction: Action, youtubeLinkEnabled: Boolean) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -91,11 +94,21 @@ private fun QtWidgetLargeContent(ui: QtWidgetUiModel, clickAction: Action) {
                 )
                 Spacer(GlanceModifier.height(VerseLargeQtDimens.dateLabelBottomGap))
             }
-            Text(
-                text = ui.title,
-                style = Typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                maxLines = 2,
-            )
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    modifier = GlanceModifier.defaultWeight(),
+                    text = ui.title,
+                    style = Typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 2,
+                )
+                if (youtubeLinkEnabled) {
+                    Spacer(GlanceModifier.width(6.dp))
+                    YoutubeMarker()
+                }
+            }
         }
         LazyColumn(GlanceModifier.fillMaxWidth().defaultWeight()) {
             if (ui.reference.isNotBlank()) {

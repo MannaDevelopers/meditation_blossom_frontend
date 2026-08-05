@@ -19,11 +19,13 @@ import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.layout.width
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
@@ -41,11 +43,12 @@ class QtWidgetSmall : GlanceAppWidget(
 ) {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val qtRepository = getWidgetDependencies(context).qtRepository()
+        val youtubeLinkEnabled = getWidgetDependencies(context).getWidgetPrefs().isEnabled()
         provideContent {
             val state by qtRepository.qtState.collectAsState()
             val uiModel = state.toDisplayQtUiModel(hasAppEverLaunched(context))
             val clickAction = widgetClickAction(uiModel.videoUrl, Constants.DEEP_LINK_DAILY_MANNA)
-            QtWidgetSmallContent(uiModel, clickAction)
+            QtWidgetSmallContent(uiModel, clickAction, youtubeLinkEnabled)
         }
     }
 
@@ -71,7 +74,7 @@ private object VerseSmallQtDimens {
 }
 
 @Composable
-private fun QtWidgetSmallContent(ui: QtWidgetUiModel, clickAction: Action) {
+private fun QtWidgetSmallContent(ui: QtWidgetUiModel, clickAction: Action, youtubeLinkEnabled: Boolean) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -81,15 +84,26 @@ private fun QtWidgetSmallContent(ui: QtWidgetUiModel, clickAction: Action) {
         horizontalAlignment = Alignment.Start,
         verticalAlignment = Alignment.Top
     ) {
-        Text(
-            modifier = GlanceModifier.padding(
-                horizontal = VerseSmallQtDimens.horizontalPadding,
-                vertical = VerseSmallQtDimens.appBarVerticalPadding,
-            ),
-            text = ui.title,
-            style = Typography.titleMedium,
-            maxLines = 2,
-        )
+        Row(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = VerseSmallQtDimens.horizontalPadding,
+                    vertical = VerseSmallQtDimens.appBarVerticalPadding,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                modifier = GlanceModifier.defaultWeight(),
+                text = ui.title,
+                style = Typography.titleMedium,
+                maxLines = 2,
+            )
+            if (youtubeLinkEnabled) {
+                Spacer(GlanceModifier.width(6.dp))
+                YoutubeMarker()
+            }
+        }
         Box(
             GlanceModifier
                 .padding(horizontal = VerseSmallQtDimens.widgetPadding)

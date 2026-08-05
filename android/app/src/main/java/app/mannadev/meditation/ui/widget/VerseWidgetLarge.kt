@@ -16,11 +16,13 @@ import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
+import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import app.mannadev.meditation.Constants
@@ -36,11 +38,12 @@ class VerseWidgetLarge : GlanceAppWidget(
 ) {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val sermonRepository = getWidgetDependencies(context).sermonRepository()
+        val youtubeLinkEnabled = getWidgetDependencies(context).getWidgetPrefs().isEnabled()
         provideContent {
             val state by sermonRepository.sermonState.collectAsState()
             val sermon = state.toDisplaySermon(hasAppEverLaunched(context))
             val clickAction = widgetClickAction(sermon.videoUrl, Constants.DEEP_LINK_SUNDAY_SERMON)
-            VerseWidgetLargeContent(sermon, clickAction)
+            VerseWidgetLargeContent(sermon, clickAction, youtubeLinkEnabled)
         }
     }
 
@@ -72,7 +75,7 @@ private object VerseLargeWidgetDimens {
  * @param sermon The [Sermon] object containing the data to be displayed.
  */
 @Composable
-private fun VerseWidgetLargeContent(sermon: Sermon, clickAction: Action) {
+private fun VerseWidgetLargeContent(sermon: Sermon, clickAction: Action, youtubeLinkEnabled: Boolean) {
 
     Column(
         modifier = GlanceModifier
@@ -92,11 +95,21 @@ private fun VerseWidgetLargeContent(sermon: Sermon, clickAction: Action) {
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = sermon.title,
-                style = Typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                maxLines = 2
-            )
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    modifier = GlanceModifier.defaultWeight(),
+                    text = sermon.title,
+                    style = Typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 2
+                )
+                if (youtubeLinkEnabled) {
+                    Spacer(GlanceModifier.width(6.dp))
+                    YoutubeMarker()
+                }
+            }
         }
         // Content and Book Name Section
         LazyColumn(
