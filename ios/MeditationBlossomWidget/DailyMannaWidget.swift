@@ -221,11 +221,19 @@ struct DailyMannaContentEntryView: View {
           .foregroundColor(WT.secondaryText)
       }
 
-      Text(entry.mergedTitle)
-        .font(.system(size: WT.titleFontSizeLarge, weight: .bold))
-        .foregroundColor(WT.primaryText)
-        .lineLimit(2)
-        .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
+      HStack(alignment: .center) {
+        Text(entry.mergedTitle)
+          .font(.system(size: WT.titleFontSizeLarge, weight: .bold))
+          .foregroundColor(WT.primaryText)
+          .lineLimit(2)
+        Spacer(minLength: 4)
+        if entry.youtubeLinkEnabled {
+          // .center 정렬이어도 폰트 메트릭 특성상 살짝 아래로 치우쳐 보여서 위로 보정.
+          YoutubeMarkerView()
+            .offset(y: -1.5)
+        }
+      }
+      .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
 
       if !entry.reference.isEmpty {
         Text(entry.reference)
@@ -255,7 +263,8 @@ struct DailyMannaContentEntryView: View {
   // Medium (364 × 170)
   private var mediumContent: some View {
     VStack(alignment: .leading, spacing: WT.innerGap) {
-      HStack(alignment: .firstTextBaseline) {
+      // QT 묵상질문 위젯과 동일하게 .center 정렬로 마커를 배치한다.
+      HStack(alignment: .center) {
         Text(entry.mergedTitle)
           .font(.system(size: WT.titleFontSizeMedium, weight: .bold))
           .foregroundColor(WT.primaryText)
@@ -266,6 +275,10 @@ struct DailyMannaContentEntryView: View {
             .font(.system(size: WT.refFontSize, weight: .semibold))
             .foregroundColor(WT.accentText)
             .lineLimit(1)
+        }
+        if entry.youtubeLinkEnabled {
+          Spacer(minLength: 4)
+          YoutubeMarkerView()
         }
       }
       .padding(.horizontal, WT.outerPad)
@@ -339,11 +352,19 @@ struct DailyMannaMeditationEntryView: View {
           .foregroundColor(WT.secondaryText)
       }
 
-      Text(entry.mergedTitle)
-        .font(.system(size: WT.titleFontSizeLarge, weight: .bold))
-        .foregroundColor(WT.primaryText)
-        .lineLimit(2)
-        .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
+      HStack(alignment: .center) {
+        Text(entry.mergedTitle)
+          .font(.system(size: WT.titleFontSizeLarge, weight: .bold))
+          .foregroundColor(WT.primaryText)
+          .lineLimit(2)
+        Spacer(minLength: 4)
+        if entry.youtubeLinkEnabled {
+          // .center 정렬이어도 폰트 메트릭 특성상 살짝 아래로 치우쳐 보여서 위로 보정.
+          YoutubeMarkerView()
+            .offset(y: -1.5)
+        }
+      }
+      .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
 
       SectionHeader(title: "묵상 질문")
         .padding(.top, WT.sectionGap)
@@ -394,6 +415,10 @@ struct DailyMannaMeditationEntryView: View {
           .font(.system(size: 12, weight: .bold))
           .foregroundColor(WT.primaryText)
           .lineLimit(1)
+        if entry.youtubeLinkEnabled {
+          Spacer(minLength: 4)
+          YoutubeMarkerView()
+        }
       }
       .padding(.horizontal, WT.outerPad)
       .padding(.top, WT.outerPad)

@@ -198,11 +198,17 @@ struct MeditationBlossomWidgetEntryView : View {
             .aspectRatio(contentMode: .fill)
 
           VStack(alignment: .leading, spacing: 0) {
-            // 제목
-            Text(entry.title)
-              .font(.system(size: 18, weight: .bold))
-              .foregroundColor(primaryText)
-              .lineLimit(2)
+            // 제목 (2줄까지 가능 — 마커는 항상 전체 제목 높이의 중앙에 위치)
+            HStack(alignment: .center) {
+              Text(entry.title)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(primaryText)
+                .lineLimit(2)
+              Spacer(minLength: 4)
+              if entry.youtubeLinkEnabled {
+                YoutubeMarkerView()
+              }
+            }
 
             // 본문 참조
             if !entry.verse.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -239,8 +245,8 @@ struct MeditationBlossomWidgetEntryView : View {
             .aspectRatio(contentMode: .fill)
 
           VStack(alignment: .leading, spacing: 6) {
-            // 제목 + 참조 행
-            HStack(alignment: .firstTextBaseline) {
+            // 제목 + 참조 행 — QT 묵상질문 위젯과 동일하게 .center 정렬로 마커를 배치한다.
+            HStack(alignment: .center) {
               Text(entry.title)
                 .font(.system(size: 14, weight: .bold))
                 .foregroundColor(primaryText)
@@ -251,6 +257,10 @@ struct MeditationBlossomWidgetEntryView : View {
                   .font(.system(size: 12, weight: .semibold))
                   .foregroundColor(accentText)
                   .lineLimit(1)
+              }
+              if entry.youtubeLinkEnabled {
+                Spacer(minLength: 4)
+                YoutubeMarkerView()
               }
             }
             .padding(.horizontal, 18)

@@ -18,6 +18,7 @@
 		354EC78F2E13D06F00E2A018 /* WidgetUpdateModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 354EC78D2E13D06F00E2A018 /* WidgetUpdateModule.swift */; };
 		35570001BBBB0001BBBBBBBB /* QT.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35570000BBBB0001BBBBBBBB /* QT.swift */; };
 		35570003BBBB0001BBBBBBBB /* DailyMannaWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35570002BBBB0001BBBBBBBB /* DailyMannaWidget.swift */; };
+		35580001CAFE0001CAFECAFE /* YoutubeMarkerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35580000CAFE0001CAFECAFE /* YoutubeMarkerView.swift */; };
 		3578DB062DEA121C0046B6A0 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3578DB052DEA121C0046B6A0 /* WidgetKit.framework */; };
 		3578DB082DEA121C0046B6A0 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3578DB072DEA121C0046B6A0 /* SwiftUI.framework */; };
 		3578DB192DEA121D0046B6A0 /* MeditationBlossomWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3578DB042DEA121C0046B6A0 /* MeditationBlossomWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -109,6 +110,7 @@
 		354EC78D2E13D06F00E2A018 /* WidgetUpdateModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetUpdateModule.swift; sourceTree = "<group>"; };
 		35570000BBBB0001BBBBBBBB /* QT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QT.swift; sourceTree = "<group>"; };
 		35570002BBBB0001BBBBBBBB /* DailyMannaWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyMannaWidget.swift; sourceTree = "<group>"; };
+		35580000CAFE0001CAFECAFE /* YoutubeMarkerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YoutubeMarkerView.swift; sourceTree = "<group>"; };
 		3578DB042DEA121C0046B6A0 /* MeditationBlossomWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MeditationBlossomWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		3578DB052DEA121C0046B6A0 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		3578DB072DEA121C0046B6A0 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -270,6 +272,7 @@
 				3595A3072DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift */,
 				3595A3092DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift */,
 				35570002BBBB0001BBBBBBBB /* DailyMannaWidget.swift */,
+				35580000CAFE0001CAFECAFE /* YoutubeMarkerView.swift */,
 			);
 			path = MeditationBlossomWidget;
 			sourceTree = "<group>";
@@ -791,6 +794,7 @@
 				35B6CFCF2E01AC0E004A13DD /* Sermon.swift in Sources */,
 				35570001BBBB0001BBBBBBBB /* QT.swift in Sources */,
 				35570003BBBB0001BBBBBBBB /* DailyMannaWidget.swift in Sources */,
+				35580001CAFE0001CAFECAFE /* YoutubeMarkerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
