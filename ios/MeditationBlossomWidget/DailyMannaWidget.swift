@@ -221,11 +221,17 @@ struct DailyMannaContentEntryView: View {
           .foregroundColor(WT.secondaryText)
       }
 
-      Text(entry.mergedTitle)
-        .font(.system(size: WT.titleFontSizeLarge, weight: .bold))
-        .foregroundColor(WT.primaryText)
-        .lineLimit(2)
-        .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
+      HStack(alignment: .top) {
+        Text(entry.mergedTitle)
+          .font(.system(size: WT.titleFontSizeLarge, weight: .bold))
+          .foregroundColor(WT.primaryText)
+          .lineLimit(2)
+        Spacer(minLength: 4)
+        if entry.youtubeLinkEnabled {
+          YoutubeMarkerView()
+        }
+      }
+      .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
 
       if !entry.reference.isEmpty {
         Text(entry.reference)
@@ -266,6 +272,10 @@ struct DailyMannaContentEntryView: View {
             .font(.system(size: WT.refFontSize, weight: .semibold))
             .foregroundColor(WT.accentText)
             .lineLimit(1)
+        }
+        if entry.youtubeLinkEnabled {
+          Spacer(minLength: 4)
+          YoutubeMarkerView()
         }
       }
       .padding(.horizontal, WT.outerPad)
@@ -339,11 +349,17 @@ struct DailyMannaMeditationEntryView: View {
           .foregroundColor(WT.secondaryText)
       }
 
-      Text(entry.mergedTitle)
-        .font(.system(size: WT.titleFontSizeLarge, weight: .bold))
-        .foregroundColor(WT.primaryText)
-        .lineLimit(2)
-        .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
+      HStack(alignment: .top) {
+        Text(entry.mergedTitle)
+          .font(.system(size: WT.titleFontSizeLarge, weight: .bold))
+          .foregroundColor(WT.primaryText)
+          .lineLimit(2)
+        Spacer(minLength: 4)
+        if entry.youtubeLinkEnabled {
+          YoutubeMarkerView()
+        }
+      }
+      .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
 
       SectionHeader(title: "묵상 질문")
         .padding(.top, WT.sectionGap)
@@ -394,6 +410,10 @@ struct DailyMannaMeditationEntryView: View {
           .font(.system(size: 12, weight: .bold))
           .foregroundColor(WT.primaryText)
           .lineLimit(1)
+        if entry.youtubeLinkEnabled {
+          Spacer(minLength: 4)
+          YoutubeMarkerView()
+        }
       }
       .padding(.horizontal, WT.outerPad)
       .padding(.top, WT.outerPad)
