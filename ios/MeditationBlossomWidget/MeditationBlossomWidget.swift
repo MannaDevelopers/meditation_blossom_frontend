@@ -199,10 +199,16 @@ struct MeditationBlossomWidgetEntryView : View {
 
           VStack(alignment: .leading, spacing: 0) {
             // 제목
-            Text(entry.title)
-              .font(.system(size: 18, weight: .bold))
-              .foregroundColor(primaryText)
-              .lineLimit(2)
+            HStack(alignment: .top) {
+              Text(entry.title)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(primaryText)
+                .lineLimit(2)
+              Spacer(minLength: 4)
+              if entry.youtubeLinkEnabled {
+                YoutubeMarkerView()
+              }
+            }
 
             // 본문 참조
             if !entry.verse.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -251,6 +257,10 @@ struct MeditationBlossomWidgetEntryView : View {
                   .font(.system(size: 12, weight: .semibold))
                   .foregroundColor(accentText)
                   .lineLimit(1)
+              }
+              if entry.youtubeLinkEnabled {
+                Spacer(minLength: 4)
+                YoutubeMarkerView()
               }
             }
             .padding(.horizontal, 18)
