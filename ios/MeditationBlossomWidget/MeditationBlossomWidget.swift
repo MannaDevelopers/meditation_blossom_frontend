@@ -198,8 +198,8 @@ struct MeditationBlossomWidgetEntryView : View {
             .aspectRatio(contentMode: .fill)
 
           VStack(alignment: .leading, spacing: 0) {
-            // 제목
-            HStack(alignment: .top) {
+            // 제목 (2줄까지 가능 — 마커는 항상 전체 제목 높이의 중앙에 위치)
+            HStack(alignment: .center) {
               Text(entry.title)
                 .font(.system(size: 18, weight: .bold))
                 .foregroundColor(primaryText)
@@ -260,7 +260,11 @@ struct MeditationBlossomWidgetEntryView : View {
               }
               if entry.youtubeLinkEnabled {
                 Spacer(minLength: 4)
+                // 행 전체가 firstTextBaseline로 정렬되는데 마커는 텍스트가 아니라
+                // 기준선이 없으므로, 자신의 세로 중앙을 기준선으로 취급하게 해서
+                // 제목/참조 텍스트 중앙 높이에 맞춘다.
                 YoutubeMarkerView()
+                  .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] }
               }
             }
             .padding(.horizontal, 18)
