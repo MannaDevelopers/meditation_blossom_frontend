@@ -263,7 +263,8 @@ struct DailyMannaContentEntryView: View {
   // Medium (364 × 170)
   private var mediumContent: some View {
     VStack(alignment: .leading, spacing: WT.innerGap) {
-      HStack(alignment: .firstTextBaseline) {
+      // QT 묵상질문 위젯과 동일하게 .center 정렬로 마커를 배치한다.
+      HStack(alignment: .center) {
         Text(entry.mergedTitle)
           .font(.system(size: WT.titleFontSizeMedium, weight: .bold))
           .foregroundColor(WT.primaryText)
@@ -277,10 +278,7 @@ struct DailyMannaContentEntryView: View {
         }
         if entry.youtubeLinkEnabled {
           Spacer(minLength: 4)
-          // firstTextBaseline 정렬 행에서 텍스트가 아닌 마커는 살짝 아래로
-          // 치우쳐 보여서(폰트 메트릭 특성상), 수동으로 위로 보정한다.
           YoutubeMarkerView()
-            .offset(y: -0.5)
         }
       }
       .padding(.horizontal, WT.outerPad)

@@ -245,8 +245,8 @@ struct MeditationBlossomWidgetEntryView : View {
             .aspectRatio(contentMode: .fill)
 
           VStack(alignment: .leading, spacing: 6) {
-            // 제목 + 참조 행
-            HStack(alignment: .firstTextBaseline) {
+            // 제목 + 참조 행 — QT 묵상질문 위젯과 동일하게 .center 정렬로 마커를 배치한다.
+            HStack(alignment: .center) {
               Text(entry.title)
                 .font(.system(size: 14, weight: .bold))
                 .foregroundColor(primaryText)
@@ -260,10 +260,7 @@ struct MeditationBlossomWidgetEntryView : View {
               }
               if entry.youtubeLinkEnabled {
                 Spacer(minLength: 4)
-                // firstTextBaseline 정렬 행에서 텍스트가 아닌 마커는 살짝 아래로
-                // 치우쳐 보여서(폰트 메트릭 특성상), 수동으로 위로 보정한다.
                 YoutubeMarkerView()
-                  .offset(y: -0.5)
               }
             }
             .padding(.horizontal, 18)
