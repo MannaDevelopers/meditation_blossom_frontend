@@ -280,7 +280,7 @@ struct DailyMannaContentEntryView: View {
           // firstTextBaseline 정렬 행에서 텍스트가 아닌 마커는 살짝 아래로
           // 치우쳐 보여서(폰트 메트릭 특성상), 수동으로 위로 보정한다.
           YoutubeMarkerView()
-            .offset(y: -1.5)
+            .offset(y: -0.5)
         }
       }
       .padding(.horizontal, WT.outerPad)
