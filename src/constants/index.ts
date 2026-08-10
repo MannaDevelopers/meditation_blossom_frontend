@@ -1,3 +1,5 @@
+import { WidgetTextWeight } from '../types/WidgetDesign';
+
 /** Interval (ms) for polling iOS App Group data for background FCM updates */
 export const APP_GROUP_POLL_INTERVAL_MS = 5000;
 /** Workaround delay (ms) for iOS native bridge not being ready immediately after app launch */
@@ -30,3 +32,10 @@ export const WIDGET_BACKGROUND_COLOR_PRESETS: readonly string[] = [
   '#F5E9DA', // 베이지
   '#2E2E2E', // 다크그레이
 ];
+
+// 위젯 디자인 편집 - 텍스트 두께(WidgetTextWeight) → 실제 렌더링에 쓰는 Pretendard 폰트 패밀리
+export const WIDGET_TEXT_WEIGHT_FONT_FAMILY: Record<WidgetTextWeight, string> = {
+  regular: 'Pretendard-Regular',
+  bold: 'Pretendard-Bold',
+  extrabold: 'Pretendard-ExtraBold',
+};

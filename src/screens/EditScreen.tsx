@@ -17,6 +17,7 @@ import {
 import {
   WIDGET_TEXT_COLOR_PRESETS,
   WIDGET_BACKGROUND_COLOR_PRESETS,
+  WIDGET_TEXT_WEIGHT_FONT_FAMILY,
 } from '../constants';
 import { isPresetColor } from '../utils/widgetDesignColor';
 
@@ -49,10 +50,10 @@ const ALIGN_OPTIONS: { key: WidgetTextAlign; icon: 'TextLeft' | 'TextCenter' | '
 
 const TEXT_SIZE_OPTIONS: WidgetTextSize[] = [16, 20, 24, 28];
 
-const TEXT_WEIGHT_OPTIONS: { key: WidgetTextWeight; label: string; fontFamily: string }[] = [
-  { key: 'regular', label: '보통', fontFamily: 'Pretendard-Regular' },
-  { key: 'bold', label: '굵게', fontFamily: 'Pretendard-Bold' },
-  { key: 'extrabold', label: '아주굵게', fontFamily: 'Pretendard-ExtraBold' },
+const TEXT_WEIGHT_OPTIONS: { key: WidgetTextWeight; label: string }[] = [
+  { key: 'regular', label: '보통' },
+  { key: 'bold', label: '굵게' },
+  { key: 'extrabold', label: '아주굵게' },
 ];
 
 const DetailCircleBox = styled.TouchableOpacity<{ selected: boolean }>`
@@ -454,7 +455,10 @@ const EditScreen = ({ navigation, route }: Props) => {
                   selected={draftDesign.text.size === size}
                   onPress={() => updateText({ size })}
                 >
-                  <Text style={{ fontSize: Math.min(size, 30), fontFamily: 'Pretendard-Bold', color: 'white' }}>
+                  <Text
+                    allowFontScaling={false}
+                    style={{ fontSize: Math.min(size, 30), fontFamily: 'Pretendard-Bold', color: 'white' }}
+                  >
                     가
                   </Text>
                 </DetailCircleBox>
@@ -470,7 +474,12 @@ const EditScreen = ({ navigation, route }: Props) => {
                   selected={draftDesign.text.weight === opt.key}
                   onPress={() => updateText({ weight: opt.key })}
                 >
-                  <Text style={{ fontSize: 20, fontFamily: opt.fontFamily, color: 'white' }}>가</Text>
+                  <Text
+                    allowFontScaling={false}
+                    style={{ fontSize: 20, fontFamily: WIDGET_TEXT_WEIGHT_FONT_FAMILY[opt.key], color: 'white' }}
+                  >
+                    가
+                  </Text>
                 </DetailCircleBox>
               ))}
             </DetailRow>
@@ -532,7 +541,7 @@ const EditScreen = ({ navigation, route }: Props) => {
         </HeaderRow>
 
         <View style={{ backgroundColor: 'transparent', marginVertical: 105, borderRadius: 20 }}>
-          <WidgetPreview content={sermon?.content} />
+          <WidgetPreview content={sermon?.content} design={draftDesign} />
         </View>
 
         {/* 3번 탭: 2번 탭 선택에 따른 세부 옵션, 미리보기 바로 아래 */}
