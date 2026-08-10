@@ -52,7 +52,11 @@ const SharedHeader = () => {
           style={styles.editButton}
           hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
         >
-          <SvgIcon name="EditStyle" size={24} pointerEvents="none" />
+          {/* EditStyle 아이콘은 흰색 도형(투명 배경) 에셋이라 흰 헤더 배경에서는 보이지 않음 —
+              어두운 배경 칩으로 대비를 만들어준다. 전용 팔레트 아이콘이 생기면 칩 제거 검토 */}
+          <View style={styles.editIconBackground}>
+            <SvgIcon name="EditStyle" size={18} pointerEvents="none" />
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => navigation.navigate('SettingsScreen')}
@@ -149,8 +153,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   editButton: {
-    // 아이콘(24px) 주변에 실제 터치 가능한 패딩을 더해 탭 영역을 넓힌다.
-    padding: 10,
+    // 아이콘 주변에 실제 터치 가능한 패딩을 더해 탭 영역을 넓힌다.
+    padding: 7,
+  },
+  editIconBackground: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#2E2E2E',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   settingsButton: {
     // 아이콘(24px) 주변에 실제 터치 가능한 패딩을 더해 탭 영역을 넓힌다.
