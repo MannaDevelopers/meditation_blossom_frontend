@@ -13,6 +13,8 @@ import HomeScreen from '../screens/HomeScreen';
 import DailyMannaScreen from '../screens/DailyMannaScreen';
 import { RootStackParamList } from '../types/navigation';
 import { logAnalytics } from '../utils/analytics';
+import { fetchLatestSermonFromAsyncStorage } from '../services/sermonService';
+import logger from '../utils/logger';
 
 export type MainTabParamList = {
   '주일 말씀': undefined;
@@ -23,6 +25,20 @@ const Tab = createMaterialTopTabNavigator<MainTabParamList>();
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SharedHeader = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  // 위젯 디자인 편집([#169]) 진입 버튼 — 어느 탭에서 눌러도 현재 캐시된 설교(주일 말씀)로
+  // 편집 화면을 연다. AsyncStorage는 HomeScreen이 이미 최신 상태로 채워두는 소스라
+  // 여기서 useSermonData()를 다시 구독하지 않고 필요한 시점에만 1회 읽는다.
+  const openEditScreen = async () => {
+    let sermon;
+    try {
+      sermon = (await fetchLatestSermonFromAsyncStorage()) ?? undefined;
+    } catch (e) {
+      logger.error('SharedHeader: 편집 화면 진입용 설교 로드 실패', e);
+    }
+    navigation.navigate('EditScreen', { sermon });
+  };
+
   return (
     <View style={styles.header}>
       <Image
@@ -30,16 +46,25 @@ const SharedHeader = () => {
         style={styles.icon}
       />
       <Text style={styles.appTitle}>묵상만개</Text>
-      <TouchableOpacity
-        onPress={() => navigation.navigate('SettingsScreen')}
-        style={styles.settingsButton}
-        hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-      >
-        {/* iOS에서 react-native-svg가 자체 터치 responder가 되어 아이콘을 직접 누르면
-            터치를 삼키는 문제가 있어, pointerEvents="none"으로 부모 TouchableOpacity에 통과시킨다.
-            (YouTube 버튼과 동일한 ISSUE-138 패턴) */}
-        <SvgIcon name="SettingButton" size={24} pointerEvents="none" />
-      </TouchableOpacity>
+      <View style={styles.headerActions}>
+        <TouchableOpacity
+          onPress={openEditScreen}
+          style={styles.editButton}
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+        >
+          <SvgIcon name="EditStyle" size={24} pointerEvents="none" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('SettingsScreen')}
+          style={styles.settingsButton}
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+        >
+          {/* iOS에서 react-native-svg가 자체 터치 responder가 되어 아이콘을 직접 누르면
+              터치를 삼키는 문제가 있어, pointerEvents="none"으로 부모 TouchableOpacity에 통과시킨다.
+              (YouTube 버튼과 동일한 ISSUE-138 패턴) */}
+          <SvgIcon name="SettingButton" size={24} pointerEvents="none" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -118,8 +143,16 @@ const styles = StyleSheet.create({
     fontFamily: 'Pretendard-Medium',
     marginLeft: 8,
   },
-  settingsButton: {
+  headerActions: {
     marginLeft: 'auto',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  editButton: {
+    // 아이콘(24px) 주변에 실제 터치 가능한 패딩을 더해 탭 영역을 넓힌다.
+    padding: 10,
+  },
+  settingsButton: {
     // 아이콘(24px) 주변에 실제 터치 가능한 패딩을 더해 탭 영역을 넓힌다.
     // 우측 끝에 위치해 hitSlop만으로는 화면 밖으로 잘려 효과가 제한적이므로 패딩을 병행.
     padding: 10,
