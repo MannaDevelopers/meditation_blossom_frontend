@@ -649,7 +649,7 @@ const EditScreen = ({ navigation, route }: Props) => {
           </HeaderRightGroup>
         </HeaderRow>
 
-        <View style={{ backgroundColor: 'transparent', marginVertical: 105, borderRadius: 20 }}>
+        <View style={{ backgroundColor: 'transparent', marginVertical: 15, borderRadius: 20 }}>
           <WidgetPreview title={sermon?.title} content={sermon?.content} design={draftDesign} />
         </View>
 
