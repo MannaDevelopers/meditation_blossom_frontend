@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View, SafeAreaView, StatusBar } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import logger from './utils/logger';
 import { logAnalytics } from './utils/analytics';
 import WidgetUpdateModule from './types/WidgetUpdateModule';
 import MainTabNavigator from './navigation/MainTabNavigator';
 import EditScreen from './screens/EditScreen';
+import ImageCropScreen from './screens/ImageCropScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import ForceUpdateModal from './components/ForceUpdateModal';
 import { LinkingOptions, NavigationContainer } from '@react-navigation/native';
@@ -46,6 +48,11 @@ const RootStack = () => {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="ImageCropScreen"
+          component={ImageCropScreen}
+          options={{ headerShown: false, presentation: 'fullScreenModal' }}
+        />
+        <Stack.Screen
         name="SettingsScreen"
         component={SettingsScreen}
         options={{ headerShown: false }}
@@ -76,17 +83,19 @@ function App(): React.JSX.Element {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor : '#fff' }}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      <RootStack />
-        {needsUpdate && showFallbackModal && config && (
-          <ForceUpdateModal
-            visible
-            message={config.force_update_message}
-            onPressUpdate={startUpdate}
-          />
-        )}
-    </SafeAreaView>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor : '#fff' }}>
+        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+        <RootStack />
+          {needsUpdate && showFallbackModal && config && (
+            <ForceUpdateModal
+              visible
+              message={config.force_update_message}
+              onPressUpdate={startUpdate}
+            />
+          )}
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 

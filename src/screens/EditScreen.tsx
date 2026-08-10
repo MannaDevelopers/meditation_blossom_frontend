@@ -1,10 +1,11 @@
 import { View, TouchableOpacity, Text, StatusBar, Modal, TextInput, Alert } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
 import WidgetPreview from '../components/WidgetPreview';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { usePreventRemove } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import SvgIcon from '../components/SvgIcon';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components/native';
 import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import {
@@ -20,6 +21,7 @@ import {
   WIDGET_TEXT_WEIGHT_FONT_FAMILY,
 } from '../constants';
 import { isPresetColor } from '../utils/widgetDesignColor';
+import logger from '../utils/logger';
 
 type Category = 'text' | 'background';
 type TextSubTab = 'align' | 'color' | 'size' | 'weight';
@@ -157,19 +159,43 @@ const SwatchCheck = styled.Text`
   text-shadow-radius: 2px;
 `;
 
-const GalleryPlaceholder = styled.View`
-  height: 90;
-  margin-horizontal: 30;
+const GalleryRow = styled.ScrollView.attrs({
+  horizontal: true,
+  showsHorizontalScrollIndicator: false,
+})`
   margin-bottom: 15;
-  border-radius: 12px;
-  justify-content: center;
-  align-items: center;
-  background-color: rgba(255, 255, 255, 0.05);
 `;
 
-const GalleryPlaceholderText = styled.Text`
-  color: #999;
-  font-size: 14;
+const GalleryRowContent = styled.View`
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding-horizontal: 30;
+`;
+
+const AlbumOpenButton = styled.TouchableOpacity`
+  width: 60;
+  height: 60;
+  border-radius: 10px;
+  border-width: 1.5px;
+  border-color: #888888;
+  border-style: dashed;
+  justify-content: center;
+  align-items: center;
+`;
+
+const GalleryThumbnailBox = styled.TouchableOpacity`
+  width: 60;
+  height: 60;
+  border-radius: 10px;
+  border-width: 2px;
+  border-color: white;
+  overflow: hidden;
+`;
+
+const GalleryThumbnailImage = styled.Image`
+  width: 60;
+  height: 60;
 `;
 
 const HeaderRow = styled.View`
@@ -420,6 +446,43 @@ const EditScreen = ({ navigation, route }: Props) => {
   const updateBackgroundColor = (hex: string) =>
     setDraftDesign(prev => ({ ...prev, background: { type: 'color', value: hex } }));
 
+  // ImageCropScreen에서 "적용" 시 navigation.navigate({..., merge:true})로 이 route의
+  // params에 cropResult가 실려 돌아온다 — 한 번 반영한 뒤 다시 트리거되지 않도록 비워준다.
+  useEffect(() => {
+    const cropResult = route.params?.cropResult;
+    if (!cropResult) return;
+    setDraftDesign(prev => ({
+      ...prev,
+      background: { type: 'gallery', value: cropResult.uri, imageTransform: cropResult.transform },
+    }));
+    navigation.setParams({ cropResult: undefined });
+  }, [route.params?.cropResult, navigation]);
+
+  const openImageCropScreen = (imageUri: string) => {
+    const existingTransform =
+      draftDesign.background.type === 'gallery' && draftDesign.background.value === imageUri
+        ? draftDesign.background.imageTransform
+        : undefined;
+    navigation.navigate('ImageCropScreen', { imageUri, initialTransform: existingTransform });
+  };
+
+  const handleOpenAlbum = async () => {
+    try {
+      const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 });
+      if (result.didCancel) return;
+      if (result.errorCode) {
+        logger.error('EditScreen: 이미지 피커 오류', result.errorCode, result.errorMessage);
+        Alert.alert('오류', '사진을 불러오지 못했습니다. 다시 시도해주세요.');
+        return;
+      }
+      const uri = result.assets?.[0]?.uri;
+      if (!uri) return;
+      openImageCropScreen(uri);
+    } catch (e) {
+      logger.error('EditScreen: 이미지 피커 실행 실패', e);
+    }
+  };
+
   const renderDetailTab = () => {
     if (category === 'text') {
       switch (textSubTab) {
@@ -499,12 +562,23 @@ const EditScreen = ({ navigation, route }: Props) => {
             onOpenCustom={() => setCustomColorTarget('background')}
           />
         );
-      case 'gallery':
+      case 'gallery': {
+        const appliedUri = draftDesign.background.type === 'gallery' ? draftDesign.background.value : null;
         return (
-          <GalleryPlaceholder>
-            <GalleryPlaceholderText>사진 배경은 곧 추가됩니다</GalleryPlaceholderText>
-          </GalleryPlaceholder>
+          <GalleryRow>
+            <GalleryRowContent>
+              <AlbumOpenButton onPress={handleOpenAlbum}>
+                <Text style={{ color: 'white', fontSize: 24 }}>+</Text>
+              </AlbumOpenButton>
+              {appliedUri && (
+                <GalleryThumbnailBox onPress={() => openImageCropScreen(appliedUri)}>
+                  <GalleryThumbnailImage source={{ uri: appliedUri }} />
+                </GalleryThumbnailBox>
+              )}
+            </GalleryRowContent>
+          </GalleryRow>
         );
+      }
       default:
         return null;
     }
