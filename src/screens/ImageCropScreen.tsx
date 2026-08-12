@@ -120,11 +120,8 @@ const ImageCropScreen = ({ navigation, route }: Props) => {
   const imageTop = frameCenterY - focalY * displayedHeight;
 
   const handleApply = () => {
-    navigation.navigate({
-      name: 'EditScreen',
-      params: { cropResult: { uri: imageUri, transform: { zoom, focalX, focalY } } },
-      merge: true,
-    });
+    route.params.onApply({ zoom, focalX, focalY });
+    navigation.goBack();
   };
 
   const handleCancel = () => {

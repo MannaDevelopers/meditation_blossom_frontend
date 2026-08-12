@@ -5,7 +5,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { usePreventRemove } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import SvgIcon from '../components/SvgIcon';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import styled from 'styled-components/native';
 import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import {
@@ -446,24 +446,26 @@ const EditScreen = ({ navigation, route }: Props) => {
   const updateBackgroundColor = (hex: string) =>
     setDraftDesign(prev => ({ ...prev, background: { type: 'color', value: hex } }));
 
-  // ImageCropScreen에서 "적용" 시 navigation.navigate({..., merge:true})로 이 route의
-  // params에 cropResult가 실려 돌아온다 — 한 번 반영한 뒤 다시 트리거되지 않도록 비워준다.
-  useEffect(() => {
-    const cropResult = route.params?.cropResult;
-    if (!cropResult) return;
-    setDraftDesign(prev => ({
-      ...prev,
-      background: { type: 'gallery', value: cropResult.uri, imageTransform: cropResult.transform },
-    }));
-    navigation.setParams({ cropResult: undefined });
-  }, [route.params?.cropResult, navigation]);
-
   const openImageCropScreen = (imageUri: string) => {
     const existingTransform =
       draftDesign.background.type === 'gallery' && draftDesign.background.value === imageUri
         ? draftDesign.background.imageTransform
         : undefined;
-    navigation.navigate('ImageCropScreen', { imageUri, initialTransform: existingTransform });
+    // 크롭 결과는 route.params(navigate + merge)가 아니라 콜백으로 직접 돌려받는다.
+    // params로 결과를 실어 돌아오면 React Navigation이 이 EditScreen을 새 인스턴스로
+    // 취급할 수 있어(merge 동작이 상황에 따라 기존 params를 완전히 대체) sermon 같은
+    // 나머지 params가 사라지고 본문이 안 보이게 되는 문제가 있었다. 콜백은 지금 이
+    // EditScreen 인스턴스의 클로저를 그대로 쓰므로 그럴 일이 없다.
+    navigation.navigate('ImageCropScreen', {
+      imageUri,
+      initialTransform: existingTransform,
+      onApply: transform => {
+        setDraftDesign(prev => ({
+          ...prev,
+          background: { type: 'gallery', value: imageUri, imageTransform: transform },
+        }));
+      },
+    });
   };
 
   const handleOpenAlbum = async () => {
