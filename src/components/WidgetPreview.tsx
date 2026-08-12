@@ -19,16 +19,16 @@ import { lightenHexColor } from '../utils/widgetDesignColor';
 const FRAME_HEIGHT = 480;
 const PAGE_MARGIN = 40; // 프레임 좌우 여백(20px씩)
 
-// 실제 Android Glance 위젯(VerseWidgetLarge.kt/VerseWidgetSmall.kt) 최소 크기 기준.
-// Small(177dp)과 Large(245dp)는 minWidth만 다르고 minHeight는 115dp로 동일하다
-// ([#169] 3.6절) — 그래서 두 카드는 너비만 다르고 높이는 항상 같아야 한다.
+// 실제 Android Glance 위젯(VerseWidgetLarge.kt/VerseWidgetSmall.kt)은 Small(177dp)과
+// Large(245dp)의 minWidth가 다르지만, 미리보기에서는 배너형/카드형을 같은 크기로 보여줘
+// 디자인(정렬/색상/두께) 차이에 집중할 수 있게 한다 — 실제 위젯 크기는 크기 프리셋
+// (최소/보통/최대) 버튼으로 별도 확인한다.
 const LARGE_MIN_WIDTH_DP = 245;
-const SMALL_MIN_WIDTH_DP = 177;
 const MIN_HEIGHT_DP = 115;
 const PREVIEW_SCALE = 265 / LARGE_MIN_WIDTH_DP; // 배너형 최소 너비가 265px가 되도록 하는 배율
 
 const BANNER_MIN_WIDTH = Math.round(LARGE_MIN_WIDTH_DP * PREVIEW_SCALE);
-const CARD_MIN_WIDTH = Math.round(SMALL_MIN_WIDTH_DP * PREVIEW_SCALE);
+const CARD_MIN_WIDTH = BANNER_MIN_WIDTH;
 const MIN_CARD_HEIGHT = Math.round(MIN_HEIGHT_DP * PREVIEW_SCALE);
 
 const CARD_TITLE_HEIGHT = 40;
