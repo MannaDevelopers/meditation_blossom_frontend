@@ -244,7 +244,13 @@ const WidgetPreview = ({
     [content],
   );
   const size = sizeForPreset(sizePresetIndex);
-  const pageWidth = size.bannerWidth + PAGE_MARGIN;
+  // 스와이프 컨테이너(프레임/스크롤뷰/페이지)의 너비는 항상 "최대" 프리셋 기준으로 고정한다.
+  // 프리셋 변경 시 이 너비까지 함께 바뀌면 ScrollView의 contentOffset이 새 페이지 경계와
+  // 어긋나(카드형을 보는 중 크기를 바꾸면 배너형이 왼쪽에 걸쳐 보이는 문제) 자동으로 재동기화되지 않는다.
+  // 배너형은 어떤 프리셋에서도 카드형보다 항상 넓으므로, 최대 배너 너비를 프레임 너비로 고정하면
+  // 내부 카드/배너만 자신의 width prop만큼 커지고 프레임 자체는 그대로라 스크롤 위치가 틀어지지 않는다.
+  const maxSize = sizeForPreset(SIZE_PRESETS.length - 1);
+  const pageWidth = maxSize.bannerWidth + PAGE_MARGIN;
 
   const handleMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const page = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
