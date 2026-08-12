@@ -1,4 +1,4 @@
-import { isPresetColor, getHexLightness, lightenHexColor } from '../src/utils/widgetDesignColor';
+import { isPresetColor, getHexLightness, lightenHexColor, cardOuterTint } from '../src/utils/widgetDesignColor';
 
 describe('isPresetColor', () => {
   const presets = ['#FF3B30', '#34C759'];
@@ -41,5 +41,29 @@ describe('lightenHexColor', () => {
     const b = parseInt(lightened.slice(5, 7), 16);
     expect(r).toBeGreaterThan(g);
     expect(r).toBeGreaterThan(b);
+  });
+});
+
+describe('cardOuterTint', () => {
+  it('어두운 색은 더 밝게 만든다 (기존 lightenHexColor와 동일 방향)', () => {
+    const original = '#2E2E2E'; // L≈18
+    const tinted = cardOuterTint(original, 22);
+    expect(getHexLightness(tinted)).toBeGreaterThan(getHexLightness(original));
+  });
+
+  it('이미 밝은 파스텔/흰색 프리셋은 반대로 어둡게 만들어 대비를 확보한다', () => {
+    // #FFFFFF(L=100)를 lightenHexColor로만 처리하면 95% 상한에 막혀 5pt 차이밖에 안 난다.
+    const white = '#FFFFFF';
+    const tinted = cardOuterTint(white, 22);
+    expect(getHexLightness(tinted)).toBeLessThan(getHexLightness(white));
+  });
+
+  it('원본 색상과 명도 차이가 최소 10pt 이상 나도록 보장한다 (프리셋 전체 대상)', () => {
+    const presets = ['#FFFFFF', '#FFF9DB', '#E3F9E5', '#E3F2FD', '#FDE3EC', '#F5E9DA', '#2E2E2E'];
+    presets.forEach(hex => {
+      const tinted = cardOuterTint(hex, 22);
+      const diff = Math.abs(getHexLightness(tinted) - getHexLightness(hex));
+      expect(diff).toBeGreaterThanOrEqual(10);
+    });
   });
 });

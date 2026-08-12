@@ -96,3 +96,13 @@ export function lightenHexColor(hex: string, deltaLightnessPoints: number, maxLi
   const { r: nr, g: ng, b: nb } = hslToRgb(h, s, nextL);
   return rgbToHex(nr, ng, nb);
 }
+
+// 카드형(Small) 미리보기의 제목 영역(바깥) 색상을 계산한다. lightenHexColor를 그대로 쓰면
+// 이미 밝은 파스텔/흰색 프리셋은 95% 상한에 막혀 안쪽 카드와 거의 구분되지 않는다
+// (예: 흰색 L=100 → 95로 겨우 5pt 차이). 원본이 이미 밝으면(L>70) 반대로 "어둡게" 만들어
+// 항상 최소한의 대비를 확보한다.
+export function cardOuterTint(hex: string, deltaLightnessPoints = 22): string {
+  const l = getHexLightness(hex);
+  const direction = l > 70 ? -1 : 1;
+  return lightenHexColor(hex, direction * deltaLightnessPoints, 95);
+}
