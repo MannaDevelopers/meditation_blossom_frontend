@@ -17,7 +17,7 @@ import {
 import { extractContent } from '../utils/sermonParser';
 import { WidgetDesign, WidgetImageTransform } from '../types/WidgetDesign';
 import { WIDGET_TEXT_WEIGHT_FONT_FAMILY } from '../constants';
-import { lightenHexColor } from '../utils/widgetDesignColor';
+import { cardOuterTint } from '../utils/widgetDesignColor';
 import { MIN_ZOOM, computeBaseScale } from '../utils/imageCropMath';
 
 const FRAME_HEIGHT = 480;
@@ -38,7 +38,9 @@ const MIN_CARD_HEIGHT = Math.round(MIN_HEIGHT_DP * PREVIEW_SCALE);
 const CARD_TITLE_HEIGHT = 40;
 const CARD_INNER_MARGIN = 10;
 
-const CARD_BACKGROUND_LIGHTEN_DELTA = 18;
+// 카드형(배경색) 테두리/안쪽 카드의 명도 차이 — 파스텔처럼 이미 밝은 색은 cardOuterTint가
+// 방향을 반전(어둡게)해서 처리하므로, 어느 쪽이든 이 정도 차이는 확보된다.
+const CARD_BACKGROUND_LIGHTEN_DELTA = 22;
 // 카드형 갤러리 배경의 테두리(액자) 부분에 덮는 반투명 흰색의 불투명도.
 const CARD_PHOTO_BORDER_TINT_OPACITY = 0.55;
 
@@ -260,6 +262,11 @@ const CardPreview = ({
   );
 
   if (backgroundKind === 'gallery') {
+    // 안쪽 카드(cardInner)의 둥근 모서리가 시각적으로 드러나려면 그 영역에 실제로 사진이
+    // 그려져야 한다(투명 뷰의 borderRadius는 배경에 있는 형제 요소를 잘라내지 못한다) —
+    // 그래서 안쪽 카드 크기만큼 GalleryBackground를 하나 더 렌더링해 cardInner 안에 꽉 채운다.
+    const innerWidth = width - CARD_INNER_MARGIN * 2;
+    const innerHeight = height - CARD_TITLE_HEIGHT - CARD_INNER_MARGIN;
     return (
       <GalleryBackground
         uri={design.background.value}
@@ -278,14 +285,23 @@ const CardPreview = ({
           {title}
         </Text>
         <View style={styles.cardInner}>
-          <ScrollView style={styles.contentScroll} contentContainerStyle={styles.contentScrollInner}>
-            <Text allowFontScaling={false} style={[styles.cardContentText, textStyle, styles.textOnPhotoShadow]}>
-              {content}
+          <GalleryBackground
+            uri={design.background.value}
+            transform={design.background.imageTransform}
+            width={innerWidth}
+            height={innerHeight}
+            style={styles.cardInnerPhotoFill}
+          />
+          <View style={styles.cardInnerContent}>
+            <ScrollView style={styles.contentScroll} contentContainerStyle={styles.contentScrollInner}>
+              <Text allowFontScaling={false} style={[styles.cardContentText, textStyle, styles.textOnPhotoShadow]}>
+                {content}
+              </Text>
+            </ScrollView>
+            <Text allowFontScaling={false} style={[styles.cardIndexText, textStyle, styles.textOnPhotoShadow]}>
+              {index}
             </Text>
-          </ScrollView>
-          <Text allowFontScaling={false} style={[styles.cardIndexText, textStyle, styles.textOnPhotoShadow]}>
-            {index}
-          </Text>
+          </View>
         </View>
       </GalleryBackground>
     );
@@ -298,21 +314,23 @@ const CardPreview = ({
           {title}
         </Text>
         <ImageBackground source={CARD_INDEX_GRADIENT} style={styles.cardInner} imageStyle={styles.cardInnerRadius}>
-          {body}
+          <View style={styles.cardInnerContent}>{body}</View>
         </ImageBackground>
       </View>
     );
   }
 
   const solidColor = (design.background as { value: string }).value;
-  const titleTint = lightenHexColor(solidColor, CARD_BACKGROUND_LIGHTEN_DELTA);
+  const titleTint = cardOuterTint(solidColor, CARD_BACKGROUND_LIGHTEN_DELTA);
 
   return (
     <View style={[styles.cardOuterWhite, sizeStyle, { backgroundColor: titleTint }]}>
       <Text allowFontScaling={false} numberOfLines={2} style={[styles.cardTitleDark, { color: design.text.color }]}>
         {title}
       </Text>
-      <View style={[styles.cardInner, { backgroundColor: solidColor }]}>{body}</View>
+      <View style={[styles.cardInner, { backgroundColor: solidColor }]}>
+        <View style={styles.cardInnerContent}>{body}</View>
+      </View>
     </View>
   );
 };
@@ -513,9 +531,20 @@ const styles = StyleSheet.create({
     marginHorizontal: CARD_INNER_MARGIN,
     marginBottom: CARD_INNER_MARGIN,
     borderRadius: 10,
+    overflow: 'hidden',
+  },
+  // cardInner 자체는 패딩을 갖지 않는다 — 갤러리 배경일 때 cardInnerPhotoFill이 cardInner
+  // 전체를 여백 없이 채워야 둥근 모서리가 사진에 그대로 적용되기 때문에, 텍스트 여백은
+  // 이 안쪽 래퍼에서만 별도로 준다.
+  cardInnerContent: {
+    flex: 1,
     paddingHorizontal: 12,
     paddingTop: 8,
-    overflow: 'hidden',
+  },
+  cardInnerPhotoFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
   cardInnerRadius: {
     borderRadius: 10,
