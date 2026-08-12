@@ -23,6 +23,10 @@ export type MainTabParamList = {
 
 const Tab = createMaterialTopTabNavigator<MainTabParamList>();
 const SCREEN_WIDTH = Dimensions.get('window').width;
+
+// 다크모드 도입 전까지는 헤더가 항상 흰 배경이라 검정 고정. 다크모드가 생기면
+// 테마의 배경색에 맞춰(어두운 배경일 때는 흰색으로) 전환해야 한다.
+const EDIT_ICON_COLOR = '#000000';
 const SharedHeader = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -52,11 +56,7 @@ const SharedHeader = () => {
           style={styles.editButton}
           hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
         >
-          {/* EditStyle 아이콘은 흰색 도형(투명 배경) 에셋이라 흰 헤더 배경에서는 보이지 않음 —
-              어두운 배경 칩으로 대비를 만들어준다. 전용 팔레트 아이콘이 생기면 칩 제거 검토 */}
-          <View style={styles.editIconBackground}>
-            <SvgIcon name="EditStyle" size={18} pointerEvents="none" />
-          </View>
+          <SvgIcon name="EditPencil" size={22} fill={EDIT_ICON_COLOR} pointerEvents="none" />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => navigation.navigate('SettingsScreen')}
@@ -155,14 +155,6 @@ const styles = StyleSheet.create({
   editButton: {
     // 아이콘 주변에 실제 터치 가능한 패딩을 더해 탭 영역을 넓힌다.
     padding: 7,
-  },
-  editIconBackground: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#2E2E2E',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   settingsButton: {
     // 아이콘(24px) 주변에 실제 터치 가능한 패딩을 더해 탭 영역을 넓힌다.
