@@ -10,6 +10,7 @@ import styled from 'styled-components/native';
 import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import {
   WidgetDesign,
+  WidgetImageTransform,
   WidgetTextAlign,
   WidgetTextSize,
   WidgetTextWeight,
@@ -184,12 +185,12 @@ const AlbumOpenButton = styled.TouchableOpacity`
   align-items: center;
 `;
 
-const GalleryThumbnailBox = styled.TouchableOpacity`
+const GalleryThumbnailBox = styled.TouchableOpacity<{ selected: boolean }>`
   width: 60;
   height: 60;
   border-radius: 10px;
   border-width: 2px;
-  border-color: white;
+  border-color: ${({ selected }) => (selected ? '#00A8DE' : 'rgba(255,255,255,0.35)')};
   overflow: hidden;
 `;
 
@@ -396,6 +397,12 @@ const ColorSwatchRow = ({
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditScreen'>;
 
+type RecentGalleryImage = { uri: string; transform: WidgetImageTransform };
+
+// 갤러리에서 고른 배경 사진은 최근 것부터 이 개수만큼만 유지한다 — 다른 옵션 탭을 오가거나
+// 새 사진을 골라도 이전에 적용했던 사진들을 다시 시스템 사진 선택기 없이 바로 고를 수 있게 한다.
+const MAX_RECENT_GALLERY_IMAGES = 5;
+
 const EditScreen = ({ navigation, route }: Props) => {
   const sermon = route.params?.sermon;
 
@@ -405,6 +412,7 @@ const EditScreen = ({ navigation, route }: Props) => {
   const [textSubTab, setTextSubTab] = useState<TextSubTab>('align');
   const [backgroundSubTab, setBackgroundSubTab] = useState<BackgroundSubTab>('color');
   const [customColorTarget, setCustomColorTarget] = useState<'text' | 'background' | null>(null);
+  const [recentGalleryImages, setRecentGalleryImages] = useState<RecentGalleryImage[]>([]);
 
   const activeSubTab = category === 'text' ? textSubTab : backgroundSubTab;
 
@@ -446,11 +454,19 @@ const EditScreen = ({ navigation, route }: Props) => {
   const updateBackgroundColor = (hex: string) =>
     setDraftDesign(prev => ({ ...prev, background: { type: 'color', value: hex } }));
 
+  // 최근 적용한 갤러리 사진 목록에 upsert — 같은 사진을 다시 고르면 기존 항목을 빼고
+  // 맨 앞으로 옮기며, 최대 개수를 넘으면 가장 오래된 것부터 잘라낸다.
+  const upsertRecentGalleryImage = (uri: string, transform: WidgetImageTransform) => {
+    setRecentGalleryImages(prev =>
+      [{ uri, transform }, ...prev.filter(item => item.uri !== uri)].slice(0, MAX_RECENT_GALLERY_IMAGES),
+    );
+  };
+
   const openImageCropScreen = (imageUri: string) => {
     const existingTransform =
       draftDesign.background.type === 'gallery' && draftDesign.background.value === imageUri
         ? draftDesign.background.imageTransform
-        : undefined;
+        : recentGalleryImages.find(item => item.uri === imageUri)?.transform;
     // 크롭 결과는 route.params(navigate + merge)가 아니라 콜백으로 직접 돌려받는다.
     // params로 결과를 실어 돌아오면 React Navigation이 이 EditScreen을 새 인스턴스로
     // 취급할 수 있어(merge 동작이 상황에 따라 기존 params를 완전히 대체) sermon 같은
@@ -464,6 +480,7 @@ const EditScreen = ({ navigation, route }: Props) => {
           ...prev,
           background: { type: 'gallery', value: imageUri, imageTransform: transform },
         }));
+        upsertRecentGalleryImage(imageUri, transform);
       },
     });
   };
@@ -572,11 +589,27 @@ const EditScreen = ({ navigation, route }: Props) => {
               <AlbumOpenButton onPress={handleOpenAlbum}>
                 <Text style={{ color: 'white', fontSize: 24 }}>+</Text>
               </AlbumOpenButton>
-              {appliedUri && (
-                <GalleryThumbnailBox onPress={() => openImageCropScreen(appliedUri)}>
-                  <GalleryThumbnailImage source={{ uri: appliedUri }} />
-                </GalleryThumbnailBox>
-              )}
+              {recentGalleryImages.map(({ uri, transform }) => {
+                const selected = uri === appliedUri;
+                return (
+                  <GalleryThumbnailBox
+                    key={uri}
+                    selected={selected}
+                    onPress={() =>
+                      // 이미 적용 중인 사진을 다시 누르면 위치/줌을 조정할 수 있도록 크롭 화면을 열고,
+                      // 다른 최근 사진을 누르면 마지막으로 저장했던 위치 그대로 바로 적용한다.
+                      selected
+                        ? openImageCropScreen(uri)
+                        : setDraftDesign(prev => ({
+                            ...prev,
+                            background: { type: 'gallery', value: uri, imageTransform: transform },
+                          }))
+                    }
+                  >
+                    <GalleryThumbnailImage source={{ uri }} />
+                  </GalleryThumbnailBox>
+                );
+              })}
             </GalleryRowContent>
           </GalleryRow>
         );
