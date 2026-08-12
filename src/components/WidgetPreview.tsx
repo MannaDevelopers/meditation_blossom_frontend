@@ -15,6 +15,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import MaskedView from '@react-native-masked-view/masked-view';
+import Svg, { Defs, Mask, Rect } from 'react-native-svg';
 import { extractContent } from '../utils/sermonParser';
 import { WidgetDesign, WidgetImageTransform } from '../types/WidgetDesign';
 import { WIDGET_TEXT_WEIGHT_FONT_FAMILY } from '../constants';
@@ -76,11 +77,17 @@ export function sizeForPreset(presetIndex: number, totalPresets: number = SIZE_P
 
 type PreviewText = { title: string; index: string; content: string };
 
+// 본문 행간은 글자 크기에 비례해서 늘어나야 한다 — 고정값이면 글자 크기를 키울 때
+// (특히 카드형) 줄이 서로 겹쳐 보인다. 배너형/카드형이 같은 이 함수를 공유하므로
+// 같은 옵션이면 두 미리보기의 글자 효과(두께·행간)가 항상 동일하게 보인다.
+const CONTENT_LINE_HEIGHT_RATIO = 1.4;
+
 function resolveTextStyle(design: WidgetDesign): TextStyle {
   return {
     textAlign: design.text.align,
     fontFamily: WIDGET_TEXT_WEIGHT_FONT_FAMILY[design.text.weight],
     fontSize: design.text.size,
+    lineHeight: Math.round(design.text.size * CONTENT_LINE_HEIGHT_RATIO),
     color: design.text.color,
   };
 }
@@ -199,7 +206,7 @@ const BannerPreview = ({
         {title}
       </Text>
       <ScrollView style={styles.contentScroll} contentContainerStyle={styles.contentScrollInner}>
-        <Text allowFontScaling={false} style={[styles.bannerContentText, textStyle]}>
+        <Text allowFontScaling={false} style={textStyle}>
           {content}
         </Text>
       </ScrollView>
@@ -251,6 +258,36 @@ const BannerPreview = ({
   );
 };
 
+// 카드형(Small) 갤러리 배경의 "액자" 테두리 — 바깥 둥근 사각형(카드 전체)에서 안쪽 둥근
+// 사각형(cardInner와 같은 위치·반경)을 뺀 도넛 모양을 SVG 마스크로 그린다. View 4장을
+// 이어붙이는 방식은 안쪽 모서리가 각지게 뚫려 아래의 둥근 cardInner와 어긋나 보인다.
+const CardPhotoFrame = ({ width, height }: { width: number; height: number }) => {
+  const innerLeft = CARD_INNER_MARGIN;
+  const innerTop = CARD_TITLE_HEIGHT;
+  const innerWidth = width - CARD_INNER_MARGIN * 2;
+  const innerHeight = height - CARD_TITLE_HEIGHT - CARD_INNER_MARGIN;
+
+  return (
+    <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Defs>
+        <Mask id="cardPhotoFrameMask">
+          <Rect x={0} y={0} width={width} height={height} rx={15} ry={15} fill="white" />
+          <Rect x={innerLeft} y={innerTop} width={innerWidth} height={innerHeight} rx={10} ry={10} fill="black" />
+        </Mask>
+      </Defs>
+      <Rect
+        x={0}
+        y={0}
+        width={width}
+        height={height}
+        fill="white"
+        fillOpacity={CARD_PHOTO_BORDER_TINT_OPACITY}
+        mask="url(#cardPhotoFrameMask)"
+      />
+    </Svg>
+  );
+};
+
 // 카드형(Small) 위젯의 이중 레이어 재해석([#169] 3.7절):
 // - 배경색: 제목 영역은 본문 카드보다 밝은 동일 계열 톤 (배너형과 구분되도록)
 // - 배경 갤러리: 기존 카드형(흰 테두리 + 안쪽 카드) 골격은 그대로 유지하고, 사진을 전체 배경으로
@@ -278,7 +315,7 @@ const CardPreview = ({
   const body = (
     <>
       <ScrollView style={styles.contentScroll} contentContainerStyle={styles.contentScrollInner}>
-        <Text allowFontScaling={false} style={[styles.cardContentText, textStyle]}>
+        <Text allowFontScaling={false} style={textStyle}>
           {content}
         </Text>
       </ScrollView>
@@ -309,11 +346,10 @@ const CardPreview = ({
           />
         )}
         {/* 기존 카드형(흰 테두리 + 안쪽 카드) 골격은 유지하면서, 테두리(제목 영역 포함) 자리에만
-            반투명 흰색을 덮어 "액자" 느낌을 준다. 안쪽 카드 영역은 사진이 그대로 선명하게 보인다. */}
-        <View style={styles.cardPhotoFrameTop} />
-        <View style={styles.cardPhotoFrameBottom} />
-        <View style={styles.cardPhotoFrameLeft} />
-        <View style={styles.cardPhotoFrameRight} />
+            반투명 흰색을 덮어 "액자" 느낌을 준다. 안쪽 카드 영역은 사진이 그대로 선명하게 보인다.
+            사각형 4장을 이어붙이면 모서리가 각지게 뚫려 아래 둥근 안쪽 카드와 어긋나 보이므로,
+            SVG 마스크로 "바깥 둥근 사각형에서 안쪽 둥근 사각형을 뺀 도넛" 모양을 한 번에 그린다. */}
+        <CardPhotoFrame width={width} height={height} />
         <Text allowFontScaling={false} numberOfLines={2} style={[styles.cardTitleOnPhoto, { color: design.text.color }]}>
           {title}
         </Text>
@@ -335,7 +371,7 @@ const CardPreview = ({
           )}
           <View style={styles.cardInnerContent}>
             <ScrollView style={styles.contentScroll} contentContainerStyle={styles.contentScrollInner}>
-              <Text allowFontScaling={false} style={[styles.cardContentText, textStyle, styles.textOnPhotoShadow]}>
+              <Text allowFontScaling={false} style={[textStyle, styles.textOnPhotoShadow]}>
                 {content}
               </Text>
             </ScrollView>
@@ -501,9 +537,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Pretendard-Bold',
     marginBottom: 6,
   },
-  bannerContentText: {
-    lineHeight: 22,
-  },
   bannerIndexText: {
     fontSize: 11,
     opacity: 0.75,
@@ -519,53 +552,23 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     overflow: 'hidden',
   },
+  // 한 줄짜리 제목은 minHeight보다 낮아서, 패딩만으로는 위쪽에 치우쳐 보인다 — 카드 맨 위(테두리)와
+  // 안쪽 카드 시작 지점 사이 정중앙에 오도록 textAlignVertical로 세로 중앙 정렬한다.
   cardTitleDark: {
     minHeight: CARD_TITLE_HEIGHT,
     paddingHorizontal: 12,
-    paddingVertical: 8,
     fontSize: 13,
     fontFamily: 'Pretendard-Bold',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   cardTitleOnPhoto: {
     minHeight: CARD_TITLE_HEIGHT,
     paddingHorizontal: 12,
-    paddingVertical: 8,
     fontSize: 13,
     fontFamily: 'Pretendard-Bold',
-  },
-  // 카드형 갤러리 배경의 "액자" 테두리 — 제목 영역(위)과 안쪽 카드를 둘러싼 여백(아래/좌/우)에만
-  // 반투명 흰색을 덮어, 안쪽 카드 영역(cardInner)은 사진이 그대로 선명하게 보이도록 비워둔다.
-  cardPhotoFrameTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: CARD_TITLE_HEIGHT,
-    backgroundColor: `rgba(255,255,255,${CARD_PHOTO_BORDER_TINT_OPACITY})`,
-  },
-  cardPhotoFrameBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: CARD_INNER_MARGIN,
-    backgroundColor: `rgba(255,255,255,${CARD_PHOTO_BORDER_TINT_OPACITY})`,
-  },
-  cardPhotoFrameLeft: {
-    position: 'absolute',
-    top: CARD_TITLE_HEIGHT,
-    bottom: CARD_INNER_MARGIN,
-    left: 0,
-    width: CARD_INNER_MARGIN,
-    backgroundColor: `rgba(255,255,255,${CARD_PHOTO_BORDER_TINT_OPACITY})`,
-  },
-  cardPhotoFrameRight: {
-    position: 'absolute',
-    top: CARD_TITLE_HEIGHT,
-    bottom: CARD_INNER_MARGIN,
-    right: 0,
-    width: CARD_INNER_MARGIN,
-    backgroundColor: `rgba(255,255,255,${CARD_PHOTO_BORDER_TINT_OPACITY})`,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   cardInner: {
     flex: 1,
@@ -591,10 +594,6 @@ const styles = StyleSheet.create({
   },
   cardInnerRadius: {
     borderRadius: 10,
-  },
-  cardContentText: {
-    fontSize: 14,
-    lineHeight: 18,
   },
   cardIndexText: {
     fontSize: 11,
