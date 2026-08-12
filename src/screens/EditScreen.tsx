@@ -541,7 +541,7 @@ const EditScreen = ({ navigation, route }: Props) => {
         </HeaderRow>
 
         <View style={{ backgroundColor: 'transparent', marginVertical: 105, borderRadius: 20 }}>
-          <WidgetPreview content={sermon?.content} design={draftDesign} />
+          <WidgetPreview title={sermon?.title} content={sermon?.content} design={draftDesign} />
         </View>
 
         {/* 3번 탭: 2번 탭 선택에 따른 세부 옵션, 미리보기 바로 아래 */}
