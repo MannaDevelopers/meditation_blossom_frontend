@@ -1,20 +1,24 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Dimensions,
+  Image,
   ImageBackground,
   NativeScrollEvent,
   NativeSyntheticEvent,
   ScrollView,
+  StyleProp,
   StyleSheet,
   Text,
   TextStyle,
   TouchableOpacity,
   View,
+  ViewStyle,
 } from 'react-native';
 import { extractContent } from '../utils/sermonParser';
-import { WidgetDesign } from '../types/WidgetDesign';
+import { WidgetDesign, WidgetImageTransform } from '../types/WidgetDesign';
 import { WIDGET_TEXT_WEIGHT_FONT_FAMILY } from '../constants';
 import { lightenHexColor } from '../utils/widgetDesignColor';
+import { MIN_ZOOM, computeBaseScale } from '../utils/imageCropMath';
 
 const FRAME_HEIGHT = 480;
 const PAGE_MARGIN = 40; // 프레임 좌우 여백(20px씩)
@@ -84,6 +88,69 @@ function resolveBackgroundKind(design: WidgetDesign): 'gallery' | 'default-gradi
   return 'solid';
 }
 
+// ImageCropScreen(배경 위치 조정)에서 저장한 zoom/focalX/focalY를 미리보기에도 그대로 반영한다.
+// ImageCropScreen과 동일하게 "cover" 기준 배율(computeBaseScale) 위에 zoom을 곱하고,
+// 포커스 포인트가 프레임 중심에 오도록 이미지를 절대 위치시킨 뒤 프레임 밖을 자른다.
+const GalleryBackground = ({
+  uri,
+  transform,
+  width,
+  height,
+  style,
+  children,
+}: {
+  uri: string;
+  transform: WidgetImageTransform | undefined;
+  width: number;
+  height: number;
+  style?: StyleProp<ViewStyle>;
+  children?: React.ReactNode;
+}) => {
+  const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    Image.getSize(
+      uri,
+      (w, h) => {
+        if (!cancelled) setImageSize({ width: w, height: h });
+      },
+      () => {
+        if (!cancelled) setImageSize(null);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [uri]);
+
+  const zoom = transform?.zoom ?? MIN_ZOOM;
+  const focalX = transform?.focalX ?? 0.5;
+  const focalY = transform?.focalY ?? 0.5;
+
+  const baseScale = imageSize ? computeBaseScale(imageSize.width, imageSize.height, width, height) : 0;
+  const displayedWidth = imageSize ? imageSize.width * baseScale * zoom : 0;
+  const displayedHeight = imageSize ? imageSize.height * baseScale * zoom : 0;
+
+  return (
+    <View style={[{ width, height, overflow: 'hidden' }, style]}>
+      {imageSize && (
+        <Image
+          source={{ uri }}
+          style={{
+            position: 'absolute',
+            left: width / 2 - focalX * displayedWidth,
+            top: height / 2 - focalY * displayedHeight,
+            width: displayedWidth,
+            height: displayedHeight,
+          }}
+        />
+      )}
+      {children}
+    </View>
+  );
+};
+
 // 제목/장절은 실제 위젯처럼 고정 스타일(디자인 편집 대상 아님) — 본문(content)만 design.text를 따른다.
 const BannerPreview = ({
   title,
@@ -123,13 +190,15 @@ const BannerPreview = ({
 
   if (backgroundKind === 'gallery') {
     return (
-      <ImageBackground
-        source={{ uri: design.background.value }}
-        style={[styles.bannerCard, sizeStyle]}
-        imageStyle={styles.cardRadius}
+      <GalleryBackground
+        uri={design.background.value}
+        transform={design.background.imageTransform}
+        width={width}
+        height={height}
+        style={styles.bannerCard}
       >
         {inner}
-      </ImageBackground>
+      </GalleryBackground>
     );
   }
 
@@ -189,16 +258,18 @@ const CardPreview = ({
 
   if (backgroundKind === 'gallery') {
     return (
-      <ImageBackground
-        source={{ uri: design.background.value }}
-        style={[styles.cardOuter, sizeStyle]}
-        imageStyle={styles.cardRadius}
+      <GalleryBackground
+        uri={design.background.value}
+        transform={design.background.imageTransform}
+        width={width}
+        height={height}
+        style={styles.cardOuter}
       >
         <Text allowFontScaling={false} numberOfLines={2} style={[styles.cardTitleOnPhoto, styles.textOnPhotoShadow]}>
           {title}
         </Text>
         <View style={styles.cardScrim}>{body}</View>
-      </ImageBackground>
+      </GalleryBackground>
     );
   }
 
