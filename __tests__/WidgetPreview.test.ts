@@ -1,10 +1,10 @@
 import { sizeForPreset, SIZE_PRESETS } from '../src/components/WidgetPreview';
 
 describe('sizeForPreset', () => {
-  it('배너형(Large) 너비는 카드형(Small) 너비보다 항상 크다 (실제 minWidth 245dp vs 177dp 비율 유지)', () => {
+  it('배너형/카드형 미리보기는 항상 같은 너비를 가진다 (디자인 차이에 집중할 수 있도록 크기 통일)', () => {
     SIZE_PRESETS.forEach((_, i) => {
       const size = sizeForPreset(i);
-      expect(size.bannerWidth).toBeGreaterThan(size.cardWidth);
+      expect(size.bannerWidth).toEqual(size.cardWidth);
     });
   });
 
