@@ -170,7 +170,7 @@ const BannerPreview = ({
       <Text
         allowFontScaling={false}
         numberOfLines={2}
-        style={[styles.bannerTitle, onPhoto && styles.textOnPhotoShadow]}
+        style={[styles.bannerTitle, { color: design.text.color }, onPhoto && styles.textOnPhotoShadow]}
       >
         {title}
       </Text>
@@ -229,7 +229,8 @@ const BannerPreview = ({
 
 // 카드형(Small) 위젯의 이중 레이어 재해석([#169] 3.7절):
 // - 배경색: 제목 영역은 본문 카드보다 밝은 동일 계열 톤 (배너형과 구분되도록)
-// - 배경 갤러리: 사진을 전체 배경으로 깔고, 본문 카드 자리를 반투명 검정 스크림으로 재해석
+// - 배경 갤러리: 사진을 전체 배경으로 깔고, 제목이 놓이는 바깥 영역을 반투명 검정 스크림으로
+//   가려 가독성을 확보한다. 본문 카드 안쪽은 사진이 그대로 비치도록 스크림 없이 텍스트 그림자만 적용.
 // 실제 네이티브 위젯처럼 제목은 카드 바깥, 장절(색인)은 스크롤 영역 아래 고정 위치에 둔다.
 const CardPreview = ({
   title,
@@ -265,10 +266,28 @@ const CardPreview = ({
         height={height}
         style={styles.cardOuter}
       >
-        <Text allowFontScaling={false} numberOfLines={2} style={[styles.cardTitleOnPhoto, styles.textOnPhotoShadow]}>
+        <Text
+          allowFontScaling={false}
+          numberOfLines={2}
+          style={[
+            styles.cardTitleOnPhoto,
+            styles.cardTitleOnPhotoScrim,
+            { color: design.text.color },
+            styles.textOnPhotoShadow,
+          ]}
+        >
           {title}
         </Text>
-        <View style={styles.cardScrim}>{body}</View>
+        <View style={styles.cardInner}>
+          <ScrollView style={styles.contentScroll} contentContainerStyle={styles.contentScrollInner}>
+            <Text allowFontScaling={false} style={[styles.cardContentText, textStyle, styles.textOnPhotoShadow]}>
+              {content}
+            </Text>
+          </ScrollView>
+          <Text allowFontScaling={false} style={[styles.cardIndexText, textStyle, styles.textOnPhotoShadow]}>
+            {index}
+          </Text>
+        </View>
       </GalleryBackground>
     );
   }
@@ -276,7 +295,7 @@ const CardPreview = ({
   if (backgroundKind === 'default-gradient') {
     return (
       <View style={[styles.cardOuterWhite, sizeStyle]}>
-        <Text allowFontScaling={false} numberOfLines={2} style={styles.cardTitleDark}>
+        <Text allowFontScaling={false} numberOfLines={2} style={[styles.cardTitleDark, { color: design.text.color }]}>
           {title}
         </Text>
         <ImageBackground source={CARD_INDEX_GRADIENT} style={styles.cardInner} imageStyle={styles.cardInnerRadius}>
@@ -291,7 +310,7 @@ const CardPreview = ({
 
   return (
     <View style={[styles.cardOuterWhite, sizeStyle, { backgroundColor: titleTint }]}>
-      <Text allowFontScaling={false} numberOfLines={2} style={styles.cardTitleDark}>
+      <Text allowFontScaling={false} numberOfLines={2} style={[styles.cardTitleDark, { color: design.text.color }]}>
         {title}
       </Text>
       <View style={[styles.cardInner, { backgroundColor: solidColor }]}>{body}</View>
@@ -422,7 +441,6 @@ const styles = StyleSheet.create({
   bannerTitle: {
     fontSize: 15,
     fontFamily: 'Pretendard-Bold',
-    color: '#000000',
     marginBottom: 6,
   },
   bannerContentText: {
@@ -447,7 +465,6 @@ const styles = StyleSheet.create({
     minHeight: CARD_TITLE_HEIGHT,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    color: 'black',
     fontSize: 13,
     fontFamily: 'Pretendard-Bold',
   },
@@ -457,7 +474,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     fontSize: 13,
     fontFamily: 'Pretendard-Bold',
-    color: 'white',
+  },
+  // 사진 배경 위, 제목이 놓이는 바깥 영역에 얹는 반투명 검정 스크림 — 본문 카드 안쪽은 스크림 없이 사진이 그대로 비친다.
+  cardTitleOnPhotoScrim: {
+    backgroundColor: `rgba(0,0,0,${GALLERY_SCRIM_OPACITY})`,
   },
   cardInner: {
     flex: 1,
@@ -470,15 +490,6 @@ const styles = StyleSheet.create({
   },
   cardInnerRadius: {
     borderRadius: 10,
-  },
-  cardScrim: {
-    flex: 1,
-    marginHorizontal: CARD_INNER_MARGIN,
-    marginBottom: CARD_INNER_MARGIN,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    backgroundColor: `rgba(0,0,0,${GALLERY_SCRIM_OPACITY})`,
   },
   cardContentText: {
     fontSize: 14,
