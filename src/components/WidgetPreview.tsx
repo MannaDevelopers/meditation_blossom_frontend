@@ -14,6 +14,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import MaskedView from '@react-native-masked-view/masked-view';
 import { extractContent } from '../utils/sermonParser';
 import { WidgetDesign, WidgetImageTransform } from '../types/WidgetDesign';
 import { WIDGET_TEXT_WEIGHT_FONT_FAMILY } from '../constants';
@@ -316,7 +317,10 @@ const CardPreview = ({
         <Text allowFontScaling={false} numberOfLines={2} style={[styles.cardTitleOnPhoto, { color: design.text.color }]}>
           {title}
         </Text>
-        <View style={styles.cardInner}>
+        {/* 안쪽 카드 내용(사진+텍스트)을 MaskedView로 감싼다 — cardInner의 overflow:'hidden'만으로는
+            안드로이드에서 이 카드보다 훨씬 큰(커버 배율로 확대된) 절대 위치 사진 자식이 부모의
+            둥근 모서리로 제대로 잘리지 않아 모서리가 각지게 보이는 문제가 있었다. */}
+        <MaskedView style={styles.cardInner} maskElement={<View style={styles.cardInnerMask} />}>
           {galleryLayout.ready && (
             <Image
               source={{ uri: design.background.value }}
@@ -339,7 +343,7 @@ const CardPreview = ({
               {index}
             </Text>
           </View>
-        </View>
+        </MaskedView>
       </View>
     );
   }
@@ -569,6 +573,13 @@ const styles = StyleSheet.create({
     marginBottom: CARD_INNER_MARGIN,
     borderRadius: 10,
     overflow: 'hidden',
+  },
+  // cardInner의 overflow:'hidden'만으로 안드로이드에서 잘 잘리지 않는 갤러리 배경(큰 절대
+  // 위치 사진)을 위한 MaskedView 마스크 도형 — cardInner와 동일한 모서리 반경을 갖는다.
+  cardInnerMask: {
+    flex: 1,
+    borderRadius: 10,
+    backgroundColor: 'black',
   },
   // cardInner 자체는 패딩을 갖지 않는다 — 갤러리 배경일 때 사진(Image)이 cardInner 전체를
   // 여백 없이 채워야 cardInner의 borderRadius가 사진에 그대로 적용되기 때문에, 텍스트 여백은
