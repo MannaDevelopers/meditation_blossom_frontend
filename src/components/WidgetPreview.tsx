@@ -91,27 +91,25 @@ function resolveBackgroundKind(design: WidgetDesign): 'gallery' | 'default-gradi
   return 'solid';
 }
 
-// ImageCropScreen(배경 위치 조정)에서 저장한 zoom/focalX/focalY를 미리보기에도 그대로 반영한다.
-// ImageCropScreen과 동일하게 "cover" 기준 배율(computeBaseScale) 위에 zoom을 곱하고,
-// 포커스 포인트가 프레임 중심에 오도록 이미지를 절대 위치시킨 뒤 프레임 밖을 자른다.
-const GalleryBackground = ({
-  uri,
-  transform,
-  width,
-  height,
-  style,
-  children,
-}: {
-  uri: string;
-  transform: WidgetImageTransform | undefined;
-  width: number;
-  height: number;
-  style?: StyleProp<ViewStyle>;
-  children?: React.ReactNode;
-}) => {
+// ImageCropScreen(배경 위치 조정)에서 저장한 zoom/focalX/focalY를 기준으로, 주어진 프레임(width×height)
+// 안에서 이미지가 어디에 어떤 크기로 그려져야 하는지 계산한다. ImageCropScreen과 동일하게 "cover"
+// 기준 배율(computeBaseScale) 위에 zoom을 곱하고, 포커스 포인트가 프레임 중심에 오도록 좌표를 구한다.
+// 카드형처럼 같은 사진을 두 레이어(테두리 전체 + 안쪽 카드 창)로 겹쳐 그려야 할 때, 두 레이어가
+// 독립적으로 각자의 프레임 기준 "cover fit"을 계산하면 서로 다른 배율/위치로 어긋나 사진이 이어지지
+// 않고 잘린 것처럼 보인다 — 이 훅으로 계산을 한 곳에 모아 두 레이어가 정확히 같은 값을 공유하게 한다.
+function useGalleryImageLayout(
+  uri: string | undefined,
+  transform: WidgetImageTransform | undefined,
+  width: number,
+  height: number,
+) {
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
 
   useEffect(() => {
+    if (!uri) {
+      setImageSize(null);
+      return;
+    }
     let cancelled = false;
     Image.getSize(
       uri,
@@ -134,18 +132,40 @@ const GalleryBackground = ({
   const baseScale = imageSize ? computeBaseScale(imageSize.width, imageSize.height, width, height) : 0;
   const displayedWidth = imageSize ? imageSize.width * baseScale * zoom : 0;
   const displayedHeight = imageSize ? imageSize.height * baseScale * zoom : 0;
+  const imageLeft = width / 2 - focalX * displayedWidth;
+  const imageTop = height / 2 - focalY * displayedHeight;
+
+  return { ready: imageSize !== null, displayedWidth, displayedHeight, imageLeft, imageTop };
+}
+
+const GalleryBackground = ({
+  uri,
+  transform,
+  width,
+  height,
+  style,
+  children,
+}: {
+  uri: string;
+  transform: WidgetImageTransform | undefined;
+  width: number;
+  height: number;
+  style?: StyleProp<ViewStyle>;
+  children?: React.ReactNode;
+}) => {
+  const layout = useGalleryImageLayout(uri, transform, width, height);
 
   return (
     <View style={[{ width, height, overflow: 'hidden' }, style]}>
-      {imageSize && (
+      {layout.ready && (
         <Image
           source={{ uri }}
           style={{
             position: 'absolute',
-            left: width / 2 - focalX * displayedWidth,
-            top: height / 2 - focalY * displayedHeight,
-            width: displayedWidth,
-            height: displayedHeight,
+            left: layout.imageLeft,
+            top: layout.imageTop,
+            width: layout.displayedWidth,
+            height: layout.displayedHeight,
           }}
         />
       )}
@@ -248,6 +268,12 @@ const CardPreview = ({
   const backgroundKind = resolveBackgroundKind(design);
   const sizeStyle = { width, height };
 
+  // 카드형 갤러리 배경은 테두리(전체)와 안쪽 카드(창) 두 레이어에 "같은 사진"을 그려야 한다.
+  // 두 레이어가 각자 따로 cover-fit을 계산하면 서로 다른 배율/위치로 어긋나 사진이 잘려
+  // 보이므로, 이 훅으로 배율·위치를 한 번만 계산해 두 레이어가 정확히 같은 값을 공유하게 한다.
+  const galleryUri = backgroundKind === 'gallery' ? design.background.value : undefined;
+  const galleryLayout = useGalleryImageLayout(galleryUri, design.background.imageTransform, width, height);
+
   const body = (
     <>
       <ScrollView style={styles.contentScroll} contentContainerStyle={styles.contentScrollInner}>
@@ -262,19 +288,25 @@ const CardPreview = ({
   );
 
   if (backgroundKind === 'gallery') {
-    // 안쪽 카드(cardInner)의 둥근 모서리가 시각적으로 드러나려면 그 영역에 실제로 사진이
-    // 그려져야 한다(투명 뷰의 borderRadius는 배경에 있는 형제 요소를 잘라내지 못한다) —
-    // 그래서 안쪽 카드 크기만큼 GalleryBackground를 하나 더 렌더링해 cardInner 안에 꽉 채운다.
-    const innerWidth = width - CARD_INNER_MARGIN * 2;
-    const innerHeight = height - CARD_TITLE_HEIGHT - CARD_INNER_MARGIN;
+    // 안쪽 카드(cardInner) 레이어는 테두리 레이어와 동일한 imageLeft/Top/displayedWidth/Height를
+    // 쓰되, cardInner 자신의 원점(제목 높이·좌우 여백만큼 안쪽으로 들어간 지점)을 기준으로 좌표만
+    // 다시 잡는다 — 그래서 시각적으로는 하나로 이어진 사진 위에 "둥근 창"만 낸 것처럼 보인다.
+    const innerOffsetX = CARD_INNER_MARGIN;
+    const innerOffsetY = CARD_TITLE_HEIGHT;
     return (
-      <GalleryBackground
-        uri={design.background.value}
-        transform={design.background.imageTransform}
-        width={width}
-        height={height}
-        style={styles.cardOuter}
-      >
+      <View style={[styles.cardOuter, sizeStyle]}>
+        {galleryLayout.ready && (
+          <Image
+            source={{ uri: design.background.value }}
+            style={{
+              position: 'absolute',
+              left: galleryLayout.imageLeft,
+              top: galleryLayout.imageTop,
+              width: galleryLayout.displayedWidth,
+              height: galleryLayout.displayedHeight,
+            }}
+          />
+        )}
         {/* 기존 카드형(흰 테두리 + 안쪽 카드) 골격은 유지하면서, 테두리(제목 영역 포함) 자리에만
             반투명 흰색을 덮어 "액자" 느낌을 준다. 안쪽 카드 영역은 사진이 그대로 선명하게 보인다. */}
         <View style={styles.cardPhotoFrameTop} />
@@ -285,13 +317,18 @@ const CardPreview = ({
           {title}
         </Text>
         <View style={styles.cardInner}>
-          <GalleryBackground
-            uri={design.background.value}
-            transform={design.background.imageTransform}
-            width={innerWidth}
-            height={innerHeight}
-            style={styles.cardInnerPhotoFill}
-          />
+          {galleryLayout.ready && (
+            <Image
+              source={{ uri: design.background.value }}
+              style={{
+                position: 'absolute',
+                left: galleryLayout.imageLeft - innerOffsetX,
+                top: galleryLayout.imageTop - innerOffsetY,
+                width: galleryLayout.displayedWidth,
+                height: galleryLayout.displayedHeight,
+              }}
+            />
+          )}
           <View style={styles.cardInnerContent}>
             <ScrollView style={styles.contentScroll} contentContainerStyle={styles.contentScrollInner}>
               <Text allowFontScaling={false} style={[styles.cardContentText, textStyle, styles.textOnPhotoShadow]}>
@@ -303,7 +340,7 @@ const CardPreview = ({
             </Text>
           </View>
         </View>
-      </GalleryBackground>
+      </View>
     );
   }
 
@@ -533,18 +570,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     overflow: 'hidden',
   },
-  // cardInner 자체는 패딩을 갖지 않는다 — 갤러리 배경일 때 cardInnerPhotoFill이 cardInner
-  // 전체를 여백 없이 채워야 둥근 모서리가 사진에 그대로 적용되기 때문에, 텍스트 여백은
+  // cardInner 자체는 패딩을 갖지 않는다 — 갤러리 배경일 때 사진(Image)이 cardInner 전체를
+  // 여백 없이 채워야 cardInner의 borderRadius가 사진에 그대로 적용되기 때문에, 텍스트 여백은
   // 이 안쪽 래퍼에서만 별도로 준다.
   cardInnerContent: {
     flex: 1,
     paddingHorizontal: 12,
     paddingTop: 8,
-  },
-  cardInnerPhotoFill: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
   },
   cardInnerRadius: {
     borderRadius: 10,
