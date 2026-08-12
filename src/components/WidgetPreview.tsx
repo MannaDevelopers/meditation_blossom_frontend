@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
+  Dimensions,
   ImageBackground,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -7,6 +8,7 @@ import {
   StyleSheet,
   Text,
   TextStyle,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { extractContent } from '../utils/sermonParser';
@@ -32,6 +34,25 @@ const GALLERY_SCRIM_OPACITY = 0.38;
 
 const CARD_INDEX_GRADIENT = require('../assets/image/BackgroundImg.png');
 
+// Android는 위젯 배치 후 홈 화면에서 가로/세로 리사이즈가 가능하다(android:resizeMode
+// ="horizontal|vertical"). Small/Large 위젯 모두 minHeight가 115dp로 고정이라 실제로는
+// "가로로 늘어나는" 경험이 대부분이므로, 높이는 고정한 채 카드 너비만 단계별로 늘려
+// 리사이즈 시 텍스트/배경이 어떻게 보일지 미리 보여준다([#169] 3.6절 근거).
+const SCREEN_WIDTH = Dimensions.get('window').width;
+export const CARD_WIDTH_MIN = BANNER_CARD_WIDTH;
+export const CARD_WIDTH_MAX = Math.min(SCREEN_WIDTH - 40, 480);
+export const SIZE_PRESETS: { key: string; label: string }[] = [
+  { key: 'min', label: '최소' },
+  { key: 'medium', label: '보통' },
+  { key: 'max', label: '최대' },
+];
+
+export function cardWidthForPreset(presetIndex: number): number {
+  if (SIZE_PRESETS.length <= 1) return CARD_WIDTH_MIN;
+  const ratio = presetIndex / (SIZE_PRESETS.length - 1);
+  return Math.round(CARD_WIDTH_MIN + (CARD_WIDTH_MAX - CARD_WIDTH_MIN) * ratio);
+}
+
 type PreviewText = { index: string; content: string };
 
 function resolveTextStyle(design: WidgetDesign): TextStyle {
@@ -50,9 +71,15 @@ function resolveBackgroundKind(design: WidgetDesign): 'gallery' | 'default-gradi
   return 'solid';
 }
 
-const BannerPreview = ({ index, content, design }: PreviewText & { design: WidgetDesign }) => {
+const BannerPreview = ({
+  index,
+  content,
+  design,
+  cardWidth,
+}: PreviewText & { design: WidgetDesign; cardWidth: number }) => {
   const textStyle = resolveTextStyle(design);
   const backgroundKind = resolveBackgroundKind(design);
+  const sizeStyle = { width: cardWidth, height: BANNER_CARD_HEIGHT };
 
   const inner = (
     <View style={styles.bannerInner}>
@@ -69,7 +96,7 @@ const BannerPreview = ({ index, content, design }: PreviewText & { design: Widge
     return (
       <ImageBackground
         source={{ uri: design.background.value }}
-        style={styles.bannerCard}
+        style={[styles.bannerCard, sizeStyle]}
         imageStyle={styles.cardRadius}
       >
         {inner}
@@ -79,14 +106,24 @@ const BannerPreview = ({ index, content, design }: PreviewText & { design: Widge
 
   if (backgroundKind === 'default-gradient') {
     return (
-      <ImageBackground source={CARD_INDEX_GRADIENT} style={styles.bannerCard} imageStyle={styles.cardRadius}>
+      <ImageBackground
+        source={CARD_INDEX_GRADIENT}
+        style={[styles.bannerCard, sizeStyle]}
+        imageStyle={styles.cardRadius}
+      >
         {inner}
       </ImageBackground>
     );
   }
 
   return (
-    <View style={[styles.bannerCard, { backgroundColor: (design.background as { value: string }).value }]}>
+    <View
+      style={[
+        styles.bannerCard,
+        sizeStyle,
+        { backgroundColor: (design.background as { value: string }).value },
+      ]}
+    >
       {inner}
     </View>
   );
@@ -95,15 +132,21 @@ const BannerPreview = ({ index, content, design }: PreviewText & { design: Widge
 // 카드형(Small) 위젯의 이중 레이어 재해석([#169] 3.7절):
 // - 배경색: 제목 영역은 본문 카드보다 밝은 동일 계열 톤 (배너형과 구분되도록)
 // - 배경 갤러리: 사진을 전체 배경으로 깔고, 본문 카드 자리를 반투명 검정 스크림으로 재해석
-const CardPreview = ({ index, content, design }: PreviewText & { design: WidgetDesign }) => {
+const CardPreview = ({
+  index,
+  content,
+  design,
+  cardWidth,
+}: PreviewText & { design: WidgetDesign; cardWidth: number }) => {
   const textStyle = resolveTextStyle(design);
   const backgroundKind = resolveBackgroundKind(design);
+  const sizeStyle = { width: cardWidth, height: CARD_OUTER_HEIGHT };
 
   if (backgroundKind === 'gallery') {
     return (
       <ImageBackground
         source={{ uri: design.background.value }}
-        style={styles.cardOuter}
+        style={[styles.cardOuter, sizeStyle]}
         imageStyle={styles.cardRadius}
       >
         <Text allowFontScaling={false} style={[styles.cardTitleOnPhoto, textStyle]}>
@@ -120,7 +163,7 @@ const CardPreview = ({ index, content, design }: PreviewText & { design: WidgetD
 
   if (backgroundKind === 'default-gradient') {
     return (
-      <View style={styles.cardOuterWhite}>
+      <View style={[styles.cardOuterWhite, sizeStyle]}>
         <Text allowFontScaling={false} style={[styles.cardTitleDark, textStyle]}>
           {index}
         </Text>
@@ -137,7 +180,7 @@ const CardPreview = ({ index, content, design }: PreviewText & { design: WidgetD
   const titleTint = lightenHexColor(solidColor, CARD_BACKGROUND_LIGHTEN_DELTA);
 
   return (
-    <View style={[styles.cardOuterWhite, { backgroundColor: titleTint }]}>
+    <View style={[styles.cardOuterWhite, sizeStyle, { backgroundColor: titleTint }]}>
       <Text allowFontScaling={false} style={[styles.cardTitleDark, textStyle]}>
         {index}
       </Text>
@@ -152,10 +195,12 @@ const CardPreview = ({ index, content, design }: PreviewText & { design: WidgetD
 
 const WidgetPreview = ({ content, design }: { content: string | undefined; design: WidgetDesign }) => {
   const [activePage, setActivePage] = useState(0);
+  const [sizePresetIndex, setSizePresetIndex] = useState(0);
   const extracted = useMemo<PreviewText>(
     () => (content ? extractContent(content) : { index: '', content: '' }),
     [content],
   );
+  const cardWidth = cardWidthForPreset(sizePresetIndex);
 
   const handleMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const page = Math.round(e.nativeEvent.contentOffset.x / FRAME_WIDTH);
@@ -172,15 +217,28 @@ const WidgetPreview = ({ content, design }: { content: string | undefined; desig
         style={styles.scrollView}
       >
         <View style={styles.page}>
-          <BannerPreview index={extracted.index} content={extracted.content} design={design} />
+          <BannerPreview index={extracted.index} content={extracted.content} design={design} cardWidth={cardWidth} />
         </View>
         <View style={styles.page}>
-          <CardPreview index={extracted.index} content={extracted.content} design={design} />
+          <CardPreview index={extracted.index} content={extracted.content} design={design} cardWidth={cardWidth} />
         </View>
       </ScrollView>
       <View style={styles.indicatorRow}>
         <View style={[styles.dot, activePage === 0 && styles.dotActive]} />
         <View style={[styles.dot, activePage === 1 && styles.dotActive]} />
+      </View>
+
+      {/* 위젯 크기(리사이즈) 미리보기 — Android는 홈 화면에서 위젯을 가로로 늘릴 수 있어
+          늘렸을 때 텍스트/배경이 어떻게 보이는지 미리 확인 가능하게 한다. */}
+      <View style={styles.sizePresetRow}>
+        {SIZE_PRESETS.map((preset, i) => {
+          const selected = i === sizePresetIndex;
+          return (
+            <TouchableOpacity key={preset.key} onPress={() => setSizePresetIndex(i)} style={styles.sizePresetButton}>
+              <Text style={[styles.sizePresetText, selected && styles.sizePresetTextActive]}>{preset.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
@@ -206,8 +264,6 @@ const styles = StyleSheet.create({
   },
   // 배너형(Large)
   bannerCard: {
-    width: BANNER_CARD_WIDTH,
-    height: BANNER_CARD_HEIGHT,
     borderRadius: 15,
     overflow: 'hidden',
   },
@@ -219,7 +275,6 @@ const styles = StyleSheet.create({
   },
   bannerContentText: {
     lineHeight: 24,
-    fontWeight: 'bold',
     marginBottom: 8,
   },
   bannerIndexText: {
@@ -228,14 +283,10 @@ const styles = StyleSheet.create({
   },
   // 카드형(Small) — 이중 레이어
   cardOuter: {
-    width: CARD_OUTER_WIDTH,
-    height: CARD_OUTER_HEIGHT,
     borderRadius: 15,
     overflow: 'hidden',
   },
   cardOuterWhite: {
-    width: CARD_OUTER_WIDTH,
-    height: CARD_OUTER_HEIGHT,
     borderRadius: 15,
     backgroundColor: 'white',
     overflow: 'hidden',
@@ -280,7 +331,6 @@ const styles = StyleSheet.create({
   cardContentText: {
     fontSize: 14,
     lineHeight: 18,
-    fontWeight: 'bold',
   },
   indicatorRow: {
     flexDirection: 'row',
@@ -300,6 +350,27 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: 'white',
+  },
+  sizePresetRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+  },
+  sizePresetButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  sizePresetText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+    fontFamily: 'Pretendard-Bold',
+  },
+  sizePresetTextActive: {
+    color: 'white',
   },
 });
 
