@@ -238,7 +238,9 @@ const WidgetPreview = ({
   design: WidgetDesign;
 }) => {
   const [activePage, setActivePage] = useState(0);
-  const [sizePresetIndex, setSizePresetIndex] = useState(0);
+  // 기본값은 "최대" — 실제 위젯을 홈 화면에 크게 배치하는 사용자가 많아, 가장 넓은 상태를
+  // 기본으로 보여주는 편이 실제 디자인 결과에 가깝다.
+  const [sizePresetIndex, setSizePresetIndex] = useState(SIZE_PRESETS.length - 1);
   const extracted = useMemo(
     () => (content ? extractContent(content) : { index: '', content: '' }),
     [content],
