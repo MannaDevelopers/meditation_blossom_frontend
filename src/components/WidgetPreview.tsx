@@ -39,7 +39,8 @@ const CARD_TITLE_HEIGHT = 40;
 const CARD_INNER_MARGIN = 10;
 
 const CARD_BACKGROUND_LIGHTEN_DELTA = 18;
-const GALLERY_SCRIM_OPACITY = 0.38;
+// 카드형 갤러리 배경의 테두리(액자) 부분에 덮는 반투명 흰색의 불투명도.
+const CARD_PHOTO_BORDER_TINT_OPACITY = 0.55;
 
 const CARD_INDEX_GRADIENT = require('../assets/image/BackgroundImg.png');
 
@@ -229,8 +230,9 @@ const BannerPreview = ({
 
 // 카드형(Small) 위젯의 이중 레이어 재해석([#169] 3.7절):
 // - 배경색: 제목 영역은 본문 카드보다 밝은 동일 계열 톤 (배너형과 구분되도록)
-// - 배경 갤러리: 사진을 전체 배경으로 깔고, 제목이 놓이는 바깥 영역을 반투명 검정 스크림으로
-//   가려 가독성을 확보한다. 본문 카드 안쪽은 사진이 그대로 비치도록 스크림 없이 텍스트 그림자만 적용.
+// - 배경 갤러리: 기존 카드형(흰 테두리 + 안쪽 카드) 골격은 그대로 유지하고, 사진을 전체 배경으로
+//   깐 뒤 테두리(제목 영역 포함) 자리에만 반투명 흰색을 "액자"처럼 덮는다. 안쪽 카드 영역은
+//   덮개 없이 사진이 그대로 선명하게 보인다.
 // 실제 네이티브 위젯처럼 제목은 카드 바깥, 장절(색인)은 스크롤 영역 아래 고정 위치에 둔다.
 const CardPreview = ({
   title,
@@ -266,16 +268,13 @@ const CardPreview = ({
         height={height}
         style={styles.cardOuter}
       >
-        <Text
-          allowFontScaling={false}
-          numberOfLines={2}
-          style={[
-            styles.cardTitleOnPhoto,
-            styles.cardTitleOnPhotoScrim,
-            { color: design.text.color },
-            styles.textOnPhotoShadow,
-          ]}
-        >
+        {/* 기존 카드형(흰 테두리 + 안쪽 카드) 골격은 유지하면서, 테두리(제목 영역 포함) 자리에만
+            반투명 흰색을 덮어 "액자" 느낌을 준다. 안쪽 카드 영역은 사진이 그대로 선명하게 보인다. */}
+        <View style={styles.cardPhotoFrameTop} />
+        <View style={styles.cardPhotoFrameBottom} />
+        <View style={styles.cardPhotoFrameLeft} />
+        <View style={styles.cardPhotoFrameRight} />
+        <Text allowFontScaling={false} numberOfLines={2} style={[styles.cardTitleOnPhoto, { color: design.text.color }]}>
           {title}
         </Text>
         <View style={styles.cardInner}>
@@ -475,9 +474,39 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Pretendard-Bold',
   },
-  // 사진 배경 위, 제목이 놓이는 바깥 영역에 얹는 반투명 검정 스크림 — 본문 카드 안쪽은 스크림 없이 사진이 그대로 비친다.
-  cardTitleOnPhotoScrim: {
-    backgroundColor: `rgba(0,0,0,${GALLERY_SCRIM_OPACITY})`,
+  // 카드형 갤러리 배경의 "액자" 테두리 — 제목 영역(위)과 안쪽 카드를 둘러싼 여백(아래/좌/우)에만
+  // 반투명 흰색을 덮어, 안쪽 카드 영역(cardInner)은 사진이 그대로 선명하게 보이도록 비워둔다.
+  cardPhotoFrameTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: CARD_TITLE_HEIGHT,
+    backgroundColor: `rgba(255,255,255,${CARD_PHOTO_BORDER_TINT_OPACITY})`,
+  },
+  cardPhotoFrameBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: CARD_INNER_MARGIN,
+    backgroundColor: `rgba(255,255,255,${CARD_PHOTO_BORDER_TINT_OPACITY})`,
+  },
+  cardPhotoFrameLeft: {
+    position: 'absolute',
+    top: CARD_TITLE_HEIGHT,
+    bottom: CARD_INNER_MARGIN,
+    left: 0,
+    width: CARD_INNER_MARGIN,
+    backgroundColor: `rgba(255,255,255,${CARD_PHOTO_BORDER_TINT_OPACITY})`,
+  },
+  cardPhotoFrameRight: {
+    position: 'absolute',
+    top: CARD_TITLE_HEIGHT,
+    bottom: CARD_INNER_MARGIN,
+    right: 0,
+    width: CARD_INNER_MARGIN,
+    backgroundColor: `rgba(255,255,255,${CARD_PHOTO_BORDER_TINT_OPACITY})`,
   },
   cardInner: {
     flex: 1,
