@@ -21,7 +21,7 @@ import { extractContent } from '../utils/sermonParser';
 import { WidgetDesign, WidgetImageTransform } from '../types/WidgetDesign';
 import { WIDGET_TEXT_WEIGHT_FONT_FAMILY } from '../constants';
 import { cardOuterTint } from '../utils/widgetDesignColor';
-import { MIN_ZOOM, computeBaseScale } from '../utils/imageCropMath';
+import { MIN_ZOOM, clampFocal, computeBaseScale, computeHalfExtent } from '../utils/imageCropMath';
 
 const FRAME_HEIGHT = 480;
 const PAGE_MARGIN = 40; // 프레임 좌우 여백(20px씩)
@@ -135,12 +135,19 @@ function useGalleryImageLayout(
   }, [uri]);
 
   const zoom = transform?.zoom ?? MIN_ZOOM;
-  const focalX = transform?.focalX ?? 0.5;
-  const focalY = transform?.focalY ?? 0.5;
+  const rawFocalX = transform?.focalX ?? 0.5;
+  const rawFocalY = transform?.focalY ?? 0.5;
 
   const baseScale = imageSize ? computeBaseScale(imageSize.width, imageSize.height, width, height) : 0;
   const displayedWidth = imageSize ? imageSize.width * baseScale * zoom : 0;
   const displayedHeight = imageSize ? imageSize.height * baseScale * zoom : 0;
+  // ImageCropScreen에서 저장한 focalX/focalY는 그 화면 프레임(항상 245:115 비율)에서만 여백
+  // 없이 채워지도록 clamp된 값이다. 배너형/카드형(프리셋별로 폭·높이 비율이 달라짐)이나
+  // iOS Large(거의 정사각형)처럼 전혀 다른 비율의 프레임에 그대로 재사용하면, 크롭 화면에서는
+  // 유효했던 가장자리 위치가 이 프레임 기준으로는 이미지 밖을 가리켜 위/아래(또는 좌/우)에
+  // 빈 공간이 보이는 문제가 있었다 — 지금 프레임 기준으로 다시 clamp해서 항상 꽉 채워지게 한다.
+  const focalX = clampFocal(rawFocalX, computeHalfExtent(width, displayedWidth));
+  const focalY = clampFocal(rawFocalY, computeHalfExtent(height, displayedHeight));
   const imageLeft = width / 2 - focalX * displayedWidth;
   const imageTop = height / 2 - focalY * displayedHeight;
 
