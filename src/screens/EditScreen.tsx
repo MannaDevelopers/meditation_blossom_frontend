@@ -1,4 +1,6 @@
-import { View, TouchableOpacity, Text, StatusBar, Modal, TextInput, Alert } from 'react-native';
+import { View, TouchableOpacity, Text, StatusBar, Modal, TextInput, Alert, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { launchImageLibrary } from 'react-native-image-picker';
 import WidgetPreview from '../components/WidgetPreview';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { usePreventRemove } from '@react-navigation/native';
@@ -9,6 +11,7 @@ import styled from 'styled-components/native';
 import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import {
   WidgetDesign,
+  WidgetImageTransform,
   WidgetTextAlign,
   WidgetTextSize,
   WidgetTextWeight,
@@ -20,6 +23,7 @@ import {
   WIDGET_TEXT_WEIGHT_FONT_FAMILY,
 } from '../constants';
 import { isPresetColor } from '../utils/widgetDesignColor';
+import logger from '../utils/logger';
 
 type Category = 'text' | 'background';
 type TextSubTab = 'align' | 'color' | 'size' | 'weight';
@@ -157,19 +161,44 @@ const SwatchCheck = styled.Text`
   text-shadow-radius: 2px;
 `;
 
-const GalleryPlaceholder = styled.View`
-  height: 90;
-  margin-horizontal: 30;
+const GalleryRow = styled.ScrollView.attrs({
+  horizontal: true,
+  showsHorizontalScrollIndicator: false,
+})`
+  height: 60;
   margin-bottom: 15;
-  border-radius: 12px;
-  justify-content: center;
-  align-items: center;
-  background-color: rgba(255, 255, 255, 0.05);
 `;
 
-const GalleryPlaceholderText = styled.Text`
-  color: #999;
-  font-size: 14;
+const GalleryRowContent = styled.View`
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding-horizontal: 30;
+`;
+
+const AlbumOpenButton = styled.TouchableOpacity`
+  width: 60;
+  height: 60;
+  border-radius: 10px;
+  border-width: 1.5px;
+  border-color: #888888;
+  border-style: dashed;
+  justify-content: center;
+  align-items: center;
+`;
+
+const GalleryThumbnailBox = styled.TouchableOpacity<{ selected: boolean }>`
+  width: 60;
+  height: 60;
+  border-radius: 10px;
+  border-width: 2px;
+  border-color: ${({ selected }) => (selected ? '#00A8DE' : 'rgba(255,255,255,0.35)')};
+  overflow: hidden;
+`;
+
+const GalleryThumbnailImage = styled.Image`
+  width: 60;
+  height: 60;
 `;
 
 const HeaderRow = styled.View`
@@ -370,6 +399,12 @@ const ColorSwatchRow = ({
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditScreen'>;
 
+type RecentGalleryImage = { uri: string; transform: WidgetImageTransform };
+
+// 갤러리에서 고른 배경 사진은 최근 것부터 이 개수만큼만 유지한다 — 다른 옵션 탭을 오가거나
+// 새 사진을 골라도 이전에 적용했던 사진들을 다시 시스템 사진 선택기 없이 바로 고를 수 있게 한다.
+const MAX_RECENT_GALLERY_IMAGES = 5;
+
 const EditScreen = ({ navigation, route }: Props) => {
   const sermon = route.params?.sermon;
 
@@ -379,6 +414,7 @@ const EditScreen = ({ navigation, route }: Props) => {
   const [textSubTab, setTextSubTab] = useState<TextSubTab>('align');
   const [backgroundSubTab, setBackgroundSubTab] = useState<BackgroundSubTab>('color');
   const [customColorTarget, setCustomColorTarget] = useState<'text' | 'background' | null>(null);
+  const [recentGalleryImages, setRecentGalleryImages] = useState<RecentGalleryImage[]>([]);
 
   const activeSubTab = category === 'text' ? textSubTab : backgroundSubTab;
 
@@ -419,6 +455,54 @@ const EditScreen = ({ navigation, route }: Props) => {
 
   const updateBackgroundColor = (hex: string) =>
     setDraftDesign(prev => ({ ...prev, background: { type: 'color', value: hex } }));
+
+  // 최근 적용한 갤러리 사진 목록에 upsert — 같은 사진을 다시 고르면 기존 항목을 빼고
+  // 맨 앞으로 옮기며, 최대 개수를 넘으면 가장 오래된 것부터 잘라낸다.
+  const upsertRecentGalleryImage = (uri: string, transform: WidgetImageTransform) => {
+    setRecentGalleryImages(prev =>
+      [{ uri, transform }, ...prev.filter(item => item.uri !== uri)].slice(0, MAX_RECENT_GALLERY_IMAGES),
+    );
+  };
+
+  const openImageCropScreen = (imageUri: string) => {
+    const existingTransform =
+      draftDesign.background.type === 'gallery' && draftDesign.background.value === imageUri
+        ? draftDesign.background.imageTransform
+        : recentGalleryImages.find(item => item.uri === imageUri)?.transform;
+    // 크롭 결과는 route.params(navigate + merge)가 아니라 콜백으로 직접 돌려받는다.
+    // params로 결과를 실어 돌아오면 React Navigation이 이 EditScreen을 새 인스턴스로
+    // 취급할 수 있어(merge 동작이 상황에 따라 기존 params를 완전히 대체) sermon 같은
+    // 나머지 params가 사라지고 본문이 안 보이게 되는 문제가 있었다. 콜백은 지금 이
+    // EditScreen 인스턴스의 클로저를 그대로 쓰므로 그럴 일이 없다.
+    navigation.navigate('ImageCropScreen', {
+      imageUri,
+      initialTransform: existingTransform,
+      onApply: transform => {
+        setDraftDesign(prev => ({
+          ...prev,
+          background: { type: 'gallery', value: imageUri, imageTransform: transform },
+        }));
+        upsertRecentGalleryImage(imageUri, transform);
+      },
+    });
+  };
+
+  const handleOpenAlbum = async () => {
+    try {
+      const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 });
+      if (result.didCancel) return;
+      if (result.errorCode) {
+        logger.error('EditScreen: 이미지 피커 오류', result.errorCode, result.errorMessage);
+        Alert.alert('오류', '사진을 불러오지 못했습니다. 다시 시도해주세요.');
+        return;
+      }
+      const uri = result.assets?.[0]?.uri;
+      if (!uri) return;
+      openImageCropScreen(uri);
+    } catch (e) {
+      logger.error('EditScreen: 이미지 피커 실행 실패', e);
+    }
+  };
 
   const renderDetailTab = () => {
     if (category === 'text') {
@@ -499,30 +583,51 @@ const EditScreen = ({ navigation, route }: Props) => {
             onOpenCustom={() => setCustomColorTarget('background')}
           />
         );
-      case 'gallery':
+      case 'gallery': {
+        const appliedUri = draftDesign.background.type === 'gallery' ? draftDesign.background.value : null;
         return (
-          <GalleryPlaceholder>
-            <GalleryPlaceholderText>사진 배경은 곧 추가됩니다</GalleryPlaceholderText>
-          </GalleryPlaceholder>
+          <GalleryRow>
+            <GalleryRowContent>
+              <AlbumOpenButton onPress={handleOpenAlbum}>
+                <Text style={{ color: 'white', fontSize: 24 }}>+</Text>
+              </AlbumOpenButton>
+              {recentGalleryImages.map(({ uri, transform }) => {
+                const selected = uri === appliedUri;
+                return (
+                  <GalleryThumbnailBox
+                    key={uri}
+                    selected={selected}
+                    onPress={() =>
+                      // 이미 적용 중인 사진을 다시 누르면 위치/줌을 조정할 수 있도록 크롭 화면을 열고,
+                      // 다른 최근 사진을 누르면 마지막으로 저장했던 위치 그대로 바로 적용한다.
+                      selected
+                        ? openImageCropScreen(uri)
+                        : setDraftDesign(prev => ({
+                            ...prev,
+                            background: { type: 'gallery', value: uri, imageTransform: transform },
+                          }))
+                    }
+                  >
+                    <GalleryThumbnailImage source={{ uri }} />
+                  </GalleryThumbnailBox>
+                );
+              })}
+            </GalleryRowContent>
+          </GalleryRow>
         );
+      }
       default:
         return null;
     }
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'black' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'black' }} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor="black" />
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: 'black',
-          marginHorizontal: 35,
-          marginVertical: 60,
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
+
+      {/* 헤더(뒤로가기/초기화/저장)는 스크롤 영역 밖에 고정 — 화면이 작아 아래 내용이
+          다 안 들어와도 항상 접근 가능해야 한다. */}
+      <View style={{ marginHorizontal: 35, marginTop: 16 }}>
         <HeaderRow>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
@@ -539,8 +644,21 @@ const EditScreen = ({ navigation, route }: Props) => {
             </TouchableOpacity>
           </HeaderRightGroup>
         </HeaderRow>
+      </View>
 
-        <View style={{ backgroundColor: 'transparent', marginVertical: 105, borderRadius: 20 }}>
+      {/* 미리보기 + 편집 탭들 — 화면이 작은 기기에서는 아래 탭들이 잘리지 않도록 스크롤 가능해야 한다.
+          충분히 큰 화면에서는 flexGrow+center로 스크롤 없이 그대로 가운데 정렬되어 보인다. */}
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginHorizontal: 35,
+          paddingVertical: 16,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={{ backgroundColor: 'transparent', marginVertical: 15, borderRadius: 20 }}>
           <WidgetPreview title={sermon?.title} content={sermon?.content} design={draftDesign} />
         </View>
 
@@ -576,7 +694,7 @@ const EditScreen = ({ navigation, route }: Props) => {
             </CategoryIconBox>
           ))}
         </CategoryRow>
-      </View>
+      </ScrollView>
 
       <CustomColorModal
         visible={customColorTarget !== null}
@@ -594,7 +712,7 @@ const EditScreen = ({ navigation, route }: Props) => {
           setCustomColorTarget(null);
         }}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
