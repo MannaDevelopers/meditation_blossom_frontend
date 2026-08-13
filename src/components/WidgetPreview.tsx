@@ -201,12 +201,16 @@ const BannerPreview = ({
       <Text
         allowFontScaling={false}
         numberOfLines={2}
-        style={[styles.bannerTitle, { color: design.text.color }, onPhoto && styles.textOnPhotoShadow]}
+        style={[
+          styles.bannerTitle,
+          { color: design.text.color, fontSize: design.text.size },
+          onPhoto && styles.textOnPhotoShadow,
+        ]}
       >
         {title}
       </Text>
       <ScrollView style={styles.contentScroll} contentContainerStyle={styles.contentScrollInner}>
-        <Text allowFontScaling={false} style={textStyle}>
+        <Text allowFontScaling={false} style={[textStyle, onPhoto && styles.textOnPhotoShadow]}>
           {content}
         </Text>
       </ScrollView>
@@ -350,7 +354,15 @@ const CardPreview = ({
             사각형 4장을 이어붙이면 모서리가 각지게 뚫려 아래 둥근 안쪽 카드와 어긋나 보이므로,
             SVG 마스크로 "바깥 둥근 사각형에서 안쪽 둥근 사각형을 뺀 도넛" 모양을 한 번에 그린다. */}
         <CardPhotoFrame width={width} height={height} />
-        <Text allowFontScaling={false} numberOfLines={2} style={[styles.cardTitleOnPhoto, { color: design.text.color }]}>
+        <Text
+          allowFontScaling={false}
+          numberOfLines={2}
+          style={[
+            styles.cardTitleOnPhoto,
+            { color: design.text.color, fontSize: design.text.size },
+            styles.textOnPhotoShadow,
+          ]}
+        >
           {title}
         </Text>
         {/* 안쪽 카드 내용(사진+텍스트)을 MaskedView로 감싼다 — cardInner의 overflow:'hidden'만으로는
@@ -387,7 +399,7 @@ const CardPreview = ({
   if (backgroundKind === 'default-gradient') {
     return (
       <View style={[styles.cardOuterWhite, sizeStyle]}>
-        <Text allowFontScaling={false} numberOfLines={2} style={[styles.cardTitleDark, { color: design.text.color }]}>
+        <Text allowFontScaling={false} numberOfLines={2} style={[styles.cardTitleDark, { color: design.text.color, fontSize: design.text.size }]}>
           {title}
         </Text>
         <ImageBackground source={CARD_INDEX_GRADIENT} style={styles.cardInner} imageStyle={styles.cardInnerRadius}>
@@ -402,7 +414,7 @@ const CardPreview = ({
 
   return (
     <View style={[styles.cardOuterWhite, sizeStyle, { backgroundColor: titleTint }]}>
-      <Text allowFontScaling={false} numberOfLines={2} style={[styles.cardTitleDark, { color: design.text.color }]}>
+      <Text allowFontScaling={false} numberOfLines={2} style={[styles.cardTitleDark, { color: design.text.color, fontSize: design.text.size }]}>
         {title}
       </Text>
       <View style={[styles.cardInner, { backgroundColor: solidColor }]}>
@@ -533,7 +545,6 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   bannerTitle: {
-    fontSize: 15,
     fontFamily: 'Pretendard-Bold',
     marginBottom: 6,
   },
@@ -557,7 +568,6 @@ const styles = StyleSheet.create({
   cardTitleDark: {
     minHeight: CARD_TITLE_HEIGHT,
     paddingHorizontal: 12,
-    fontSize: 13,
     fontFamily: 'Pretendard-Bold',
     includeFontPadding: false,
     textAlignVertical: 'center',
@@ -565,7 +575,6 @@ const styles = StyleSheet.create({
   cardTitleOnPhoto: {
     minHeight: CARD_TITLE_HEIGHT,
     paddingHorizontal: 12,
-    fontSize: 13,
     fontFamily: 'Pretendard-Bold',
     includeFontPadding: false,
     textAlignVertical: 'center',
