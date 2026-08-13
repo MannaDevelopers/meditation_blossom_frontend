@@ -518,11 +518,9 @@ const IOS_MEDIUM_HEIGHT = Math.round(IOS_NATIVE_MEDIUM_HEIGHT * IOS_PREVIEW_SCAL
 const IOS_LARGE_HEIGHT = Math.round(IOS_NATIVE_LARGE_HEIGHT * IOS_PREVIEW_SCALE);
 const iosScaled = (n: number) => Math.round(n * IOS_PREVIEW_SCALE);
 
-// MeditationBlossomWidgetEntryView(Swift)의 고정 색상 토큰 — 제목/장절/구분선은 title/index와
-// 마찬가지로 디자인 편집 대상이 아니라 실제 위젯과 동일한 고정 스타일을 그대로 미러링한다.
+// 구분선만 실제 위젯(MeditationBlossomWidgetEntryView)과 동일한 고정 톤 — 제목/장절/본문은
+// design.text(색상·크기)를 따른다.
 const IOS_WIDGET_COLORS = {
-  primaryText: 'rgb(26,26,26)',
-  accentText: 'rgb(46,107,64)',
   divider: 'rgba(26,26,26,0.12)',
 };
 
@@ -542,8 +540,8 @@ const IOSWidgetFrame = ({
   const onPhoto = backgroundKind === 'gallery';
   const hasVerse = index.trim().length > 0;
 
-  const titleColor = onPhoto ? 'white' : IOS_WIDGET_COLORS.primaryText;
-  const accentColor = onPhoto ? 'white' : IOS_WIDGET_COLORS.accentText;
+  // 제목/장절도 본문처럼 사용자가 고른 텍스트 색상·크기를 따른다 — 굵기(제목: Bold,
+  // 장절: SemiBold)만 실제 위젯처럼 고정.
   const dividerColor = onPhoto ? 'rgba(255,255,255,0.4)' : IOS_WIDGET_COLORS.divider;
 
   const inner =
@@ -561,7 +559,7 @@ const IOSWidgetFrame = ({
           numberOfLines={2}
           style={[
             styles.iosTitle,
-            { fontSize: iosScaled(18), color: titleColor },
+            { fontSize: design.text.size, color: design.text.color },
             onPhoto && styles.textOnPhotoShadow,
           ]}
         >
@@ -572,7 +570,7 @@ const IOSWidgetFrame = ({
             allowFontScaling={false}
             style={[
               styles.iosVerse,
-              { fontSize: iosScaled(12), color: accentColor, marginTop: iosScaled(6) },
+              { fontSize: design.text.size, color: design.text.color, marginTop: iosScaled(6) },
               onPhoto && styles.textOnPhotoShadow,
             ]}
           >
@@ -604,7 +602,7 @@ const IOSWidgetFrame = ({
             numberOfLines={1}
             style={[
               styles.iosTitle,
-              { fontSize: iosScaled(14), color: titleColor, flexShrink: 1 },
+              { fontSize: design.text.size, color: design.text.color, flexShrink: 1 },
               onPhoto && styles.textOnPhotoShadow,
             ]}
           >
@@ -616,7 +614,7 @@ const IOSWidgetFrame = ({
               numberOfLines={1}
               style={[
                 styles.iosVerse,
-                { fontSize: iosScaled(12), color: accentColor, marginLeft: iosScaled(4) },
+                { fontSize: design.text.size, color: design.text.color, marginLeft: iosScaled(4) },
                 onPhoto && styles.textOnPhotoShadow,
               ]}
             >
