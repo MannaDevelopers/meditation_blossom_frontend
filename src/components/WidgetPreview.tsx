@@ -5,6 +5,7 @@ import {
   ImageBackground,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Platform,
   ScrollView,
   StyleProp,
   StyleSheet,
@@ -424,15 +425,13 @@ const CardPreview = ({
   );
 };
 
-const WidgetPreview = ({
-  title,
-  content,
-  design,
-}: {
+type WidgetPreviewProps = {
   title: string | undefined;
   content: string | undefined;
   design: WidgetDesign;
-}) => {
+};
+
+const AndroidWidgetPreview = ({ title, content, design }: WidgetPreviewProps) => {
   const [activePage, setActivePage] = useState(0);
   // 기본값은 "최대" — 실제 위젯을 홈 화면에 크게 배치하는 사용자가 많아, 가장 넓은 상태를
   // 기본으로 보여주는 편이 실제 디자인 결과에 가깝다.
@@ -505,6 +504,225 @@ const WidgetPreview = ({
     </View>
   );
 };
+
+// iOS WidgetKit(MeditationBlossomWidget.swift)은 Android Glance와 달리 배너/카드 구분이나
+// 사용자 리사이즈가 없다 — .systemMedium / .systemLarge 두 고정 크기만 지원한다(supportedFamilies).
+// 실제 위젯 자산 크기(background_364_170 / background_364_382)를 기준으로 비율을 그대로 따르고,
+// 미리보기 폭만 화면에 맞춰 축소한다.
+const IOS_NATIVE_WIDTH = 364;
+const IOS_NATIVE_MEDIUM_HEIGHT = 170;
+const IOS_NATIVE_LARGE_HEIGHT = 382;
+const IOS_PREVIEW_WIDTH = Math.min(SCREEN_WIDTH - 70, 340);
+const IOS_PREVIEW_SCALE = IOS_PREVIEW_WIDTH / IOS_NATIVE_WIDTH;
+const IOS_MEDIUM_HEIGHT = Math.round(IOS_NATIVE_MEDIUM_HEIGHT * IOS_PREVIEW_SCALE);
+const IOS_LARGE_HEIGHT = Math.round(IOS_NATIVE_LARGE_HEIGHT * IOS_PREVIEW_SCALE);
+const iosScaled = (n: number) => Math.round(n * IOS_PREVIEW_SCALE);
+
+// MeditationBlossomWidgetEntryView(Swift)의 고정 색상 토큰 — 제목/장절/구분선은 title/index와
+// 마찬가지로 디자인 편집 대상이 아니라 실제 위젯과 동일한 고정 스타일을 그대로 미러링한다.
+const IOS_WIDGET_COLORS = {
+  primaryText: 'rgb(26,26,26)',
+  accentText: 'rgb(46,107,64)',
+  divider: 'rgba(26,26,26,0.12)',
+};
+
+type IOSWidgetFamily = 'medium' | 'large';
+
+const IOSWidgetFrame = ({
+  family,
+  title,
+  index,
+  content,
+  design,
+}: PreviewText & { family: IOSWidgetFamily; design: WidgetDesign }) => {
+  const width = IOS_PREVIEW_WIDTH;
+  const height = family === 'large' ? IOS_LARGE_HEIGHT : IOS_MEDIUM_HEIGHT;
+  const textStyle = resolveTextStyle(design);
+  const backgroundKind = resolveBackgroundKind(design);
+  const onPhoto = backgroundKind === 'gallery';
+  const hasVerse = index.trim().length > 0;
+
+  const titleColor = onPhoto ? 'white' : IOS_WIDGET_COLORS.primaryText;
+  const accentColor = onPhoto ? 'white' : IOS_WIDGET_COLORS.accentText;
+  const dividerColor = onPhoto ? 'rgba(255,255,255,0.4)' : IOS_WIDGET_COLORS.divider;
+
+  const inner =
+    family === 'large' ? (
+      <View
+        style={{
+          flex: 1,
+          paddingHorizontal: iosScaled(24),
+          paddingTop: iosScaled(18),
+          paddingBottom: iosScaled(18),
+        }}
+      >
+        <Text
+          allowFontScaling={false}
+          numberOfLines={2}
+          style={[
+            styles.iosTitle,
+            { fontSize: iosScaled(18), color: titleColor },
+            onPhoto && styles.textOnPhotoShadow,
+          ]}
+        >
+          {title}
+        </Text>
+        {hasVerse && (
+          <Text
+            allowFontScaling={false}
+            style={[
+              styles.iosVerse,
+              { fontSize: iosScaled(12), color: accentColor, marginTop: iosScaled(6) },
+              onPhoto && styles.textOnPhotoShadow,
+            ]}
+          >
+            {index}
+          </Text>
+        )}
+        <View style={[styles.iosDivider, { backgroundColor: dividerColor, marginTop: iosScaled(10) }]} />
+        <ScrollView
+          style={[styles.contentScroll, { marginTop: iosScaled(10) }]}
+          contentContainerStyle={styles.contentScrollInner}
+        >
+          <Text allowFontScaling={false} style={[textStyle, onPhoto && styles.textOnPhotoShadow]}>
+            {content}
+          </Text>
+        </ScrollView>
+      </View>
+    ) : (
+      <View
+        style={{
+          flex: 1,
+          paddingHorizontal: iosScaled(18),
+          paddingTop: iosScaled(18),
+          paddingBottom: iosScaled(18),
+        }}
+      >
+        <View style={styles.iosMediumHeaderRow}>
+          <Text
+            allowFontScaling={false}
+            numberOfLines={1}
+            style={[
+              styles.iosTitle,
+              { fontSize: iosScaled(14), color: titleColor, flexShrink: 1 },
+              onPhoto && styles.textOnPhotoShadow,
+            ]}
+          >
+            {title}
+          </Text>
+          {hasVerse && (
+            <Text
+              allowFontScaling={false}
+              numberOfLines={1}
+              style={[
+                styles.iosVerse,
+                { fontSize: iosScaled(12), color: accentColor, marginLeft: iosScaled(4) },
+                onPhoto && styles.textOnPhotoShadow,
+              ]}
+            >
+              {index}
+            </Text>
+          )}
+        </View>
+        <View style={[styles.iosDivider, { backgroundColor: dividerColor, marginTop: iosScaled(8) }]} />
+        <ScrollView
+          style={[styles.contentScroll, { marginTop: iosScaled(8) }]}
+          contentContainerStyle={styles.contentScrollInner}
+        >
+          <Text allowFontScaling={false} style={[textStyle, onPhoto && styles.textOnPhotoShadow]}>
+            {content}
+          </Text>
+        </ScrollView>
+      </View>
+    );
+
+  if (backgroundKind === 'gallery') {
+    return (
+      <GalleryBackground
+        uri={design.background.value}
+        transform={design.background.imageTransform}
+        width={width}
+        height={height}
+        style={styles.iosFrame}
+      >
+        {inner}
+      </GalleryBackground>
+    );
+  }
+
+  if (backgroundKind === 'default-gradient') {
+    return (
+      <ImageBackground
+        source={CARD_INDEX_GRADIENT}
+        style={[styles.iosFrame, { width, height }]}
+        imageStyle={styles.cardRadius}
+      >
+        {inner}
+      </ImageBackground>
+    );
+  }
+
+  return (
+    <View
+      style={[styles.iosFrame, { width, height, backgroundColor: (design.background as { value: string }).value }]}
+    >
+      {inner}
+    </View>
+  );
+};
+
+const IOSWidgetPreview = ({ title, content, design }: WidgetPreviewProps) => {
+  const [activePage, setActivePage] = useState(0);
+  const extracted = useMemo(
+    () => (content ? extractContent(content) : { index: '', content: '' }),
+    [content],
+  );
+  const pageWidth = IOS_PREVIEW_WIDTH + PAGE_MARGIN;
+  const frameHeight = IOS_LARGE_HEIGHT;
+
+  const handleMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const page = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
+    setActivePage(page);
+  };
+
+  return (
+    <View style={[styles.frame, { width: pageWidth }]}>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        style={[styles.scrollView, { width: pageWidth, height: frameHeight }]}
+      >
+        <View style={[styles.page, { width: pageWidth, height: frameHeight }]}>
+          <IOSWidgetFrame
+            family="medium"
+            title={title ?? ''}
+            index={extracted.index}
+            content={extracted.content}
+            design={design}
+          />
+        </View>
+        <View style={[styles.page, { width: pageWidth, height: frameHeight }]}>
+          <IOSWidgetFrame
+            family="large"
+            title={title ?? ''}
+            index={extracted.index}
+            content={extracted.content}
+            design={design}
+          />
+        </View>
+      </ScrollView>
+      <View style={styles.indicatorRow}>
+        <View style={[styles.dot, activePage === 0 && styles.dotActive]} />
+        <View style={[styles.dot, activePage === 1 && styles.dotActive]} />
+      </View>
+    </View>
+  );
+};
+
+const WidgetPreview = (props: WidgetPreviewProps) =>
+  Platform.OS === 'ios' ? <IOSWidgetPreview {...props} /> : <AndroidWidgetPreview {...props} />;
 
 const styles = StyleSheet.create({
   frame: {
@@ -649,6 +867,25 @@ const styles = StyleSheet.create({
   },
   sizePresetTextActive: {
     color: 'white',
+  },
+  // iOS 위젯(systemMedium/systemLarge) 프레임 — Android처럼 배너/카드 이중 레이어가 아니라
+  // 실제 MeditationBlossomWidgetEntryView와 같은 단일 레이어(제목-장절-구분선-본문) 구조.
+  iosFrame: {
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  iosMediumHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iosTitle: {
+    fontFamily: 'Pretendard-Bold',
+  },
+  iosVerse: {
+    fontFamily: 'Pretendard-SemiBold',
+  },
+  iosDivider: {
+    height: 1,
   },
 });
 
