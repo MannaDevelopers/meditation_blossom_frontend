@@ -14,6 +14,7 @@ class WidgetUpdateModuleImpl: NSObject {
     static let fcmSermonKey = "fcm_sermon"
     static let fcmQtKey = "fcm_qt"
     static let youtubeLinkEnabledKey = "youtube_link_enabled"
+    static let widgetDesignKey = "widget_design"
   }
 
   private static func appGroupDefaults() -> UserDefaults? {
@@ -72,6 +73,23 @@ class WidgetUpdateModuleImpl: NSObject {
       return
     }
     sharedDefaults.set(qtData, forKey: Constants.fcmQtKey)
+    sharedDefaults.synchronize()
+    WidgetUpdateModuleImpl.reloadWidgets()
+    resolve(true)
+  }
+
+  // MARK: - Widget Design
+
+  // NOTE: 갤러리 배경 이미지 리사이즈/압축 + App Group 컨테이너 파일 저장은 [#220]에서 진행 예정.
+  // 지금은 onQtUpdated와 동일하게 디자인 JSON을 그대로 저장만 한다(Android [#216]과 짝을 맞추기
+  // 위한 최소 스텁 — TurboModule spec에 메서드가 추가되어 iOS도 프로토콜을 구현해야 컴파일된다).
+  @objc
+  func onWidgetDesignUpdated(_ designData: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    guard let sharedDefaults = Self.appGroupDefaults() else {
+      reject("APP_GROUP_ERROR", "App Group을 찾을 수 없습니다.", nil)
+      return
+    }
+    sharedDefaults.set(designData, forKey: Constants.widgetDesignKey)
     sharedDefaults.synchronize()
     WidgetUpdateModuleImpl.reloadWidgets()
     resolve(true)

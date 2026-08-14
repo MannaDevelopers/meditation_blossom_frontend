@@ -13,8 +13,12 @@ import app.mannadev.meditation.data.SermonPrefsDataSource
 import app.mannadev.meditation.data.SermonPrefsSource
 import app.mannadev.meditation.data.SermonRemoteSource
 import app.mannadev.meditation.data.SermonRepositoryImpl
+import app.mannadev.meditation.data.WidgetDesignPrefsDataSource
+import app.mannadev.meditation.data.WidgetDesignPrefsSource
+import app.mannadev.meditation.data.WidgetDesignRepositoryImpl
 import app.mannadev.meditation.domain.repository.QtRepository
 import app.mannadev.meditation.domain.repository.SermonRepository
+import app.mannadev.meditation.domain.repository.WidgetDesignRepository
 import app.mannadev.meditation.widget.WidgetUpdateNotifier
 import app.mannadev.meditation.widget.WidgetUpdateNotifierImpl
 import dagger.Binds
@@ -57,4 +61,12 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindQtRemoteSource(impl: QtFirestoreDataSource): QtRemoteSource
+
+    @Binds
+    @Singleton
+    abstract fun bindWidgetDesignRepository(impl: WidgetDesignRepositoryImpl): WidgetDesignRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindWidgetDesignPrefsSource(impl: WidgetDesignPrefsDataSource): WidgetDesignPrefsSource
 }

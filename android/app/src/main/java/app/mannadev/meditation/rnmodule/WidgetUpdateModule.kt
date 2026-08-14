@@ -7,6 +7,7 @@ import app.mannadev.meditation.analytics.SermonEventSource
 import app.mannadev.meditation.di.getRNModuleDependencies
 import app.mannadev.meditation.dto.QtDto
 import app.mannadev.meditation.dto.SermonDto
+import app.mannadev.meditation.dto.WidgetDesignDto
 import app.mannadev.meditation.specs.NativeWidgetUpdateModuleSpec
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -184,6 +185,29 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
                 .onSuccess { promise.resolve(true) }
                 .onFailure { e ->
                     promise.reject("QT_UPDATE_ERROR", e.message, e)
+                }
+        }
+    }
+
+    override fun onWidgetDesignUpdated(designData: String, promise: Promise) {
+        moduleScope.launch {
+            val saveResult = runCatching {
+                log.d("Saving widget design to prefs...")
+                val designDto = json.decodeFromString<WidgetDesignDto>(designData)
+                moduleDependencies.widgetDesignRepository().save(designDto)
+                log.d("Widget design saved to prefs successfully")
+            }.onFailure { e ->
+                CrashlyticsHelper.recordException(
+                    e,
+                    "Error saving widget design data: ${e.message}",
+                    tag = TAG
+                )
+            }
+
+            saveResult
+                .onSuccess { promise.resolve(true) }
+                .onFailure { e ->
+                    promise.reject("WIDGET_DESIGN_UPDATE_ERROR", e.message, e)
                 }
         }
     }
