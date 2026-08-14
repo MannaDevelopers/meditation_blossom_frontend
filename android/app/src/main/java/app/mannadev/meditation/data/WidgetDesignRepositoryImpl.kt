@@ -28,8 +28,11 @@ class WidgetDesignRepositoryImpl @Inject constructor(
     }
 
     override suspend fun save(dto: WidgetDesignDto) {
-        prefsSource.saveDesign(dto)
-        _designState.value = dto
+        // saveDesign()의 반환값(영구 경로로 치환된 디자인)을 그대로 인메모리 상태에 반영해야 한다 —
+        // 전달받은 dto를 그대로 쓰면 갤러리 배경일 때 피커의 임시 캐시 경로가 남아, 위젯이 이미
+        // 삭제됐거나 애초에 file:// 스킴이라 BitmapFactory가 못 여는 경로를 참조하게 된다.
+        val persisted = prefsSource.saveDesign(dto)
+        _designState.value = persisted
         widgetUpdateNotifier.notifyDesignChanged()
     }
 

@@ -15,11 +15,18 @@ class WidgetDesignRepositoryImplTest {
     private class FakeWidgetDesignPrefsSource : WidgetDesignPrefsSource {
         var stored: WidgetDesignDto? = null
         var throwOnRead: Throwable? = null
+        // 실제 구현(WidgetDesignPrefsDataSource)은 갤러리 배경일 때 saveDesign()이 받은 값을 그대로
+        // 저장하지 않고 영구 경로로 치환해 반환한다 — 그 차이를 흉내내기 위한 훅.
+        var persistedOverride: WidgetDesignDto? = null
         override suspend fun getDesign(): WidgetDesignDto? {
             throwOnRead?.let { throw it }
             return stored
         }
-        override suspend fun saveDesign(design: WidgetDesignDto) { stored = design }
+        override suspend fun saveDesign(design: WidgetDesignDto): WidgetDesignDto {
+            val persisted = persistedOverride ?: design
+            stored = persisted
+            return persisted
+        }
         override suspend fun clearDesign() { stored = null }
     }
 
@@ -73,6 +80,30 @@ class WidgetDesignRepositoryImplTest {
         assertEquals(1.5, saved?.background?.imageTransform?.zoom)
         assertEquals(0.4, saved?.background?.imageTransform?.focalX)
         assertEquals(0.6, saved?.background?.imageTransform?.focalY)
+    }
+
+    @Test
+    fun `save reflects prefsSource's persisted return value in state, not the raw input`() = runTest {
+        // 회귀 테스트: 위젯이 react-native-image-picker의 임시 캐시 경로(피커가 정리하면 사라지거나,
+        // file:// 스킴이라 BitmapFactory가 애초에 못 여는 경로)를 참조해 갤러리 배경이 미리보기에만
+        // 보이고 실제 위젯엔 반영되지 않던 버그 — save()가 saveDesign()의 반환값이 아니라 전달받은
+        // dto를 그대로 상태에 반영해서 생겼다.
+        val persistedWithLocalPath = sampleGalleryDto.copy(
+            background = sampleGalleryDto.background.copy(
+                value = "/data/user/0/app.mannadev.meditation.debug/files/widget_design_background.jpg",
+            ),
+        )
+        val prefs = FakeWidgetDesignPrefsSource().apply { persistedOverride = persistedWithLocalPath }
+        val repository = WidgetDesignRepositoryImpl(prefsSource = prefs, widgetUpdateNotifier = FakeWidgetUpdateNotifier())
+
+        val rawInputWithPickerCachePath = sampleGalleryDto.copy(
+            background = sampleGalleryDto.background.copy(
+                value = "file:///data/user/0/app.mannadev.meditation.debug/cache/rn_image_picker_lib_temp_x.jpg",
+            ),
+        )
+        repository.save(rawInputWithPickerCachePath)
+
+        assertEquals(persistedWithLocalPath, repository.designState.value)
     }
 
     @Test
