@@ -47,7 +47,7 @@ class WidgetDesignPrefsDataSource @Inject constructor(
         }
     }
 
-    override suspend fun saveDesign(design: WidgetDesignDto) = withContext(Dispatchers.IO) {
+    override suspend fun saveDesign(design: WidgetDesignDto): WidgetDesignDto = withContext(Dispatchers.IO) {
         val persisted = if (design.background.type == "gallery") {
             val localPath = processAndStoreBackgroundImage(design.background.value)
             design.copy(background = design.background.copy(value = localPath))
@@ -57,6 +57,7 @@ class WidgetDesignPrefsDataSource @Inject constructor(
         prefs.edit {
             putString(KEY_DESIGN_JSON, json.encodeToString(persisted))
         }
+        persisted
     }
 
     override suspend fun clearDesign() = withContext(Dispatchers.IO) {

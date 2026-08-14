@@ -39,9 +39,10 @@ class WidgetUpdateNotifierImpl @Inject constructor(
         }
     }
 
-    // 디자인은 주일 말씀/QT 위젯 모두에 적용될 예정이라 두 종류 모두 갱신한다. 현재
-    // VerseWidget*/QtWidget* 렌더링은 아직 저장된 디자인을 읽지 않으므로([#217] 예정)
-    // 지금은 시각적 변화 없는 안전한 recompose 트리거일 뿐이다.
+    // 디자인은 주일 말씀/QT 위젯 모두에 적용될 예정이라 두 종류 모두 갱신한다.
+    // VerseWidget*는 [#217]에서 저장된 디자인을 실제로 반영하도록 구현됨. QtWidget*는
+    // 아직 저장된 디자인을 읽지 않아(QT 전용 렌더링 반영 이슈는 별도) 지금은 시각적
+    // 변화 없는 안전한 recompose 트리거일 뿐이다.
     override suspend fun notifyDesignChanged() {
         runCatching {
             VerseWidgetLarge().updateAll(context)

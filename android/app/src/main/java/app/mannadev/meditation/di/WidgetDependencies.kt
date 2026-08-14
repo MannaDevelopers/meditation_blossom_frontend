@@ -4,6 +4,7 @@ import android.content.Context
 import app.mannadev.meditation.data.WidgetPrefsDataSource
 import app.mannadev.meditation.domain.repository.QtRepository
 import app.mannadev.meditation.domain.repository.SermonRepository
+import app.mannadev.meditation.domain.repository.WidgetDesignRepository
 import app.mannadev.meditation.widget.WidgetUpdateNotifier
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -17,6 +18,7 @@ interface WidgetDependencies {
     fun qtRepository(): QtRepository
     fun widgetUpdateNotifier(): WidgetUpdateNotifier
     fun getWidgetPrefs(): WidgetPrefsDataSource
+    fun widgetDesignRepository(): WidgetDesignRepository
 }
 
 fun getWidgetDependencies(context: Context): WidgetDependencies {
