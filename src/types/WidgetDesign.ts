@@ -23,7 +23,11 @@ export interface WidgetDesign {
   };
 }
 
+// 편집 기능 도입 전 실제 네이티브 위젯(VerseWidgetLarge/Small.kt, MeditationBlossomWidget.swift)의
+// 하드코딩된 스타일을 그대로 옮긴 값 — "초기화"를 누르면 편집 이전과 동일한 위젯을 설치할 수 있어야
+// 하므로, 두 플랫폼 모두 텍스트는 왼쪽 정렬·본문 Regular 두께·16sp/pt 기준이었다(제목만 Bold였지만
+// 그 굵기는 title 자체에 고정 적용되고, weight 옵션은 본문에만 적용되므로 본문 기준으로 맞춘다).
 export const DEFAULT_WIDGET_DESIGN: WidgetDesign = {
-  text: { align: 'center', color: '#000000', size: 20, weight: 'bold' },
-  background: { type: 'color', value: 'gradient-default' }, // 기존 미리보기 그라데이션 배경 유지
+  text: { align: 'left', color: '#000000', size: 16, weight: 'regular' },
+  background: { type: 'color', value: 'gradient-default' }, // 기존 위젯 그라데이션 배경과 동일
 };

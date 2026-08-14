@@ -7,9 +7,11 @@ import {
 const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
 
 describe('DEFAULT_WIDGET_DESIGN', () => {
-  it('기획 문서(#169) 기준 기본값을 갖는다', () => {
+  it('편집 기능 도입 전 실제 네이티브 위젯(VerseWidgetLarge/Small.kt, MeditationBlossomWidget.swift)과 동일한 기본값을 갖는다', () => {
+    // "초기화"를 누르면 편집 이전과 동일한 위젯을 설치할 수 있어야 하므로, 기획 문서의 추정값이 아니라
+    // 실제 네이티브 코드의 하드코딩된 스타일(왼쪽 정렬·16sp/pt·본문 Regular)을 그대로 따른다.
     expect(DEFAULT_WIDGET_DESIGN).toEqual({
-      text: { align: 'center', color: '#000000', size: 20, weight: 'bold' },
+      text: { align: 'left', color: '#000000', size: 16, weight: 'regular' },
       background: { type: 'color', value: 'gradient-default' },
     });
   });
