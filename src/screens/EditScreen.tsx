@@ -6,7 +6,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { usePreventRemove } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import SvgIcon from '../components/SvgIcon';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import styled from 'styled-components/native';
 import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import {
@@ -24,6 +24,7 @@ import {
 } from '../constants';
 import { isPresetColor } from '../utils/widgetDesignColor';
 import logger from '../utils/logger';
+import WidgetUpdateModule from '../types/WidgetUpdateModule';
 
 type Category = 'text' | 'background';
 type TextSubTab = 'align' | 'color' | 'size' | 'weight';
@@ -202,7 +203,7 @@ const GalleryThumbnailImage = styled.Image`
 `;
 
 const HeaderRow = styled.View`
-  width: 305;
+  width: 100%;
   height: 26;
   flex-direction: row;
   justify-content: space-between;
@@ -423,7 +424,16 @@ const EditScreen = ({ navigation, route }: Props) => {
     [draftDesign, savedDesign],
   );
 
+  // handleSave에서 setSavedDesign 직후 곧바로 navigation.goBack()을 호출하면, 아직 리렌더 전이라
+  // hasUnsavedChanges가 저장 이전 값(true)인 채로 이 가드에 걸려 "저장했는데도" 이탈 확인 다이얼로그가
+  // 뜬다. 저장으로 인한 이탈인지는 렌더 타이밍에 의존하지 않는 ref로 판별해 우회한다.
+  const justSavedRef = useRef(false);
+
   usePreventRemove(hasUnsavedChanges, ({ data }) => {
+    if (justSavedRef.current) {
+      navigation.dispatch(data.action);
+      return;
+    }
     Alert.alert(
       '변경사항을 저장하지 않았습니다',
       '지금 나가면 편집한 내용이 사라집니다.',
@@ -445,8 +455,24 @@ const EditScreen = ({ navigation, route }: Props) => {
     );
   };
 
+  // 저장 자체는 즉시 완료되는 로컬 상태 변경이라 네이티브 동기화를 기다리지 않고 바로 나간다 —
+  // 실패해도 사용자를 화면에 붙잡아두지 않고 logger로만 기록한다(콘텐츠 동기화와 동일한 방식).
+  const syncWidgetDesignToNative = async (design: WidgetDesign) => {
+    if (!WidgetUpdateModule?.onWidgetDesignUpdated) {
+      logger.error('WidgetUpdateModule.onWidgetDesignUpdated is not available');
+      return;
+    }
+    try {
+      await WidgetUpdateModule.onWidgetDesignUpdated(JSON.stringify(design));
+    } catch (e) {
+      logger.error('EditScreen: 위젯 디자인 저장 실패', e);
+    }
+  };
+
   const handleSave = () => {
+    justSavedRef.current = true;
     setSavedDesign(draftDesign);
+    syncWidgetDesignToNative(draftDesign);
     navigation.goBack();
   };
 

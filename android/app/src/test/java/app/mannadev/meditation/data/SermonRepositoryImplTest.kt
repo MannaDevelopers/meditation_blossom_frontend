@@ -32,8 +32,10 @@ class SermonRepositoryImplTest {
     private class FakeWidgetUpdateNotifier : WidgetUpdateNotifier {
         var sermonNotifyCount = 0
         var qtNotifyCount = 0
+        var designNotifyCount = 0
         override suspend fun notifySermonChanged() { sermonNotifyCount++ }
         override suspend fun notifyQtChanged() { qtNotifyCount++ }
+        override suspend fun notifyDesignChanged() { designNotifyCount++ }
     }
 
     private val sampleDto = SermonDto(
