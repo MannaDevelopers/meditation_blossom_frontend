@@ -8,6 +8,11 @@ export const BRIDGE_INIT_DELAY_MS = 100;
 export const STALE_DATA_THRESHOLD_DAYS = 7;
 /** UserDefaults / App Group key for the currently displayed sermon */
 export const APP_GROUP_DISPLAY_SERMON_KEY = 'displaySermon';
+// 위젯 디자인은 네이티브(Android SharedPreferences/WidgetDesignRepository)에만 저장되고 RN
+// 쪽에는 캐시가 없어서, 저장 후 편집 화면을 나갔다가 다시 들어오면 항상 기본값부터 시작했다.
+// Sermon 콘텐츠가 이미 쓰는 AsyncStorage 캐시 패턴(FCM_SERMON_KEY)과 동일하게, EditScreen이
+// 저장 시점에 여기 같이 캐시해두고 진입 시 불러온다.
+export const WIDGET_DESIGN_STORAGE_KEY = 'widget_design';
 
 // 위젯 디자인 편집 - 텍스트 색상 스와치 프리셋 (빨강/주황/노랑/초록/파랑/흰색/검정)
 // 8번째 "사용자 지정" 스와치는 프리셋이 아닌 커스텀 컬러피커 진입 버튼이라 이 배열에는 포함하지 않음

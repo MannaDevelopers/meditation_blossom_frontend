@@ -5,11 +5,14 @@ import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
+import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -41,6 +44,7 @@ import app.mannadev.meditation.model.Sermon
 import app.mannadev.meditation.ui.widget.theme.Typography
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 class VerseWidgetSmall : GlanceAppWidget(
     errorUiLayout = R.layout.verse_widget_small_error,
@@ -49,28 +53,12 @@ class VerseWidgetSmall : GlanceAppWidget(
         val sermonRepository = getWidgetDependencies(context).sermonRepository()
         val youtubeLinkEnabled = getWidgetDependencies(context).getWidgetPrefs().isEnabled()
         val widgetDesignRepository = getWidgetDependencies(context).widgetDesignRepository()
-        val design = widgetDesignRepository.designState.value
-        // produceState로 컴포저블 안에서 비동기 디코딩하면 Glance가 RemoteViews로 스냅샷을
-        // 뜨는 시점과 경쟁해 이미지가 반영되지 않은 채로 위젯이 그려지는 경우가 있었다
-        // (미리보기에만 배경이 보이고 실제 위젯엔 안 보이던 원인). sermonRepository와 동일하게
-        // provideContent 밖, suspend 컨텍스트에서 먼저 디코딩을 끝내고 값으로 넘긴다.
-        val galleryBitmap = if (design?.background?.type == "gallery") {
-            withContext(Dispatchers.IO) {
-                decodeGalleryBitmap(
-                    design.background.value,
-                    design.background.imageTransform,
-                    CARD_BITMAP_WIDTH,
-                    CARD_BITMAP_HEIGHT,
-                )
-            }
-        } else {
-            null
-        }
         provideContent {
             val state by sermonRepository.sermonState.collectAsState()
+            val design by widgetDesignRepository.designState.collectAsState()
             val sermon = state.toDisplaySermon(hasAppEverLaunched(context))
             val clickAction = widgetClickAction(sermon.videoUrl, Constants.DEEP_LINK_SUNDAY_SERMON)
-            VerseWidgetSmallContent(sermon, clickAction, youtubeLinkEnabled, design, galleryBitmap)
+            VerseWidgetSmallContent(sermon, clickAction, youtubeLinkEnabled, design)
         }
     }
 
@@ -95,10 +83,6 @@ private object VerseSmallWidgetDimens {
     val verseItemSpacing = 4.dp
 }
 
-// 카드형(Small) 갤러리 배경을 굽는 고정 해상도 — BANNER_BITMAP_*(VerseWidgetLarge.kt)와 같은 전략.
-private const val CARD_BITMAP_WIDTH = 600
-private const val CARD_BITMAP_HEIGHT = 400
-
 // 카드형(Small) 갤러리 배경 위 제목 영역에 덮는 반투명 흰색 "액자" 틴트의 불투명도.
 // src/components/WidgetPreview.tsx의 CARD_PHOTO_BORDER_TINT_OPACITY(0.55)와 동일.
 private const val CARD_PHOTO_TITLE_TINT_OPACITY = 0.55f
@@ -121,9 +105,32 @@ private fun VerseWidgetSmallContent(
     clickAction: Action,
     youtubeLinkEnabled: Boolean,
     design: WidgetDesignDto?,
-    galleryBitmap: Bitmap?,
 ) {
     val isGallery = design?.background?.type == "gallery"
+    // 갤러리 배경은 위젯이 "지금 실제로 렌더링되는 크기"(LocalSize, 리사이즈하면 바뀜) 기준으로
+    // 매번 cover-fit + 포커스 포인트를 다시 계산해 구운 뒤 그린다 — VerseWidgetLarge.kt와 동일한
+    // 이유([#233], 고정 해상도로 구우면 리사이즈 시 사진이 크롭되지 않고 늘어나 보임).
+    val glanceSize = LocalSize.current
+    val density = LocalContext.current.resources.displayMetrics.density
+    val widthPx = (glanceSize.width.value * density).roundToInt()
+    val heightPx = (glanceSize.height.value * density).roundToInt()
+    val galleryBitmap by produceState<Bitmap?>(
+        initialValue = null,
+        design?.background?.type,
+        design?.background?.value,
+        design?.background?.imageTransform,
+        widthPx,
+        heightPx,
+    ) {
+        value = if (design?.background?.type == "gallery" && widthPx > 0 && heightPx > 0) {
+            withContext(Dispatchers.IO) {
+                decodeGalleryBitmap(design.background.value, design.background.imageTransform, widthPx, heightPx)
+            }
+        } else {
+            null
+        }
+    }
+
     val outerBase = GlanceModifier.fillMaxSize().clickable(clickAction).appWidgetBackground()
     val outerModifier: GlanceModifier
     val innerModifier: GlanceModifier
@@ -159,7 +166,7 @@ private fun VerseWidgetSmallContent(
     }
     val titleStyle = design?.text?.toTitleTextStyle(FontWeight.Medium) ?: Typography.titleMedium
     val bodyStyle = design?.text?.toBodyTextStyle() ?: Typography.bodyMedium
-    val bookNameStyle = design?.text?.toBodyTextStyle() ?: Typography.labelSmall
+    val bookNameStyle = design?.text?.toIndexTextStyle(CARD_INDEX_SIZE_RATIO) ?: Typography.labelSmall
 
     Column(
         modifier = outerModifier,

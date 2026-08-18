@@ -24,8 +24,13 @@ import app.mannadev.meditation.dto.WidgetTextDesignDto
 
 private fun parseHexColor(hex: String): Color = Color(AndroidColor.parseColor(hex))
 
+// WidgetPreview.tsx의 BANNER_INDEX_SIZE_RATIO/CARD_INDEX_SIZE_RATIO와 동일 — 편집 기능 도입
+// 이전 VerseWidgetLarge/Small.kt의 본문:장절 하드코딩 크기 비율(16:12, 14:11)을 그대로 옮긴 값.
+const val BANNER_INDEX_SIZE_RATIO = 12f / 16f
+const val CARD_INDEX_SIZE_RATIO = 11f / 14f
+
 /**
- * 본문/장절(색인) 텍스트 스타일 — 정렬·색상·크기·두께를 모두 디자인값 그대로 반영한다.
+ * 본문 텍스트 스타일 — 정렬·색상·크기·두께를 모두 디자인값 그대로 반영한다.
  * Glance FontWeight엔 ExtraBold가 없어 "extrabold"는 Bold로 근사한다(RN은 폰트 패밀리를
  * 바꿔 표현하지만, Glance TextStyle은 커스텀 폰트 패밀리를 받지 않는다).
  */
@@ -50,6 +55,18 @@ fun WidgetTextDesignDto.toTitleTextStyle(fixedWeight: FontWeight): TextStyle = T
     fontSize = size.sp,
     fontWeight = fixedWeight,
     textAlign = TextAlign.Left,
+)
+
+/**
+ * 장절 표기(색인) 텍스트 스타일 — 편집 기능 도입 이전 하드코딩 스타일에서도 항상 본문보다
+ * 작았다(VerseWidgetLarge: 본문 16sp/장절 12sp, VerseWidgetSmall: 본문 14sp/장절 11sp). 본문
+ * 크기를 사용자가 조절해도 이 비율이 유지되도록, 본문 스타일을 그대로 쓰지 않고 색상+비례
+ * 축소된 크기만 따로 적용한다(제목과 동일한 패턴). ratio는 WidgetPreview.tsx의
+ * BANNER_INDEX_SIZE_RATIO/CARD_INDEX_SIZE_RATIO와 동일해야 한다.
+ */
+fun WidgetTextDesignDto.toIndexTextStyle(ratio: Float): TextStyle = TextStyle(
+    color = ColorProvider(parseHexColor(color)),
+    fontSize = (size * ratio).let { Math.round(it) }.sp,
 )
 
 // 카드형(Small) 위젯의 이중 레이어 재해석([#169] 3.7절, src/utils/widgetDesignColor.ts와 동일 로직)
