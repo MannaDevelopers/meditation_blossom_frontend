@@ -1,12 +1,13 @@
 import { View, TouchableOpacity, Text, StatusBar, Modal, TextInput, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { launchImageLibrary } from 'react-native-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import WidgetPreview from '../components/WidgetPreview';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { usePreventRemove } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import SvgIcon from '../components/SvgIcon';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components/native';
 import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import {
@@ -21,6 +22,7 @@ import {
   WIDGET_TEXT_COLOR_PRESETS,
   WIDGET_BACKGROUND_COLOR_PRESETS,
   WIDGET_TEXT_WEIGHT_FONT_FAMILY,
+  WIDGET_DESIGN_STORAGE_KEY,
 } from '../constants';
 import { isPresetColor } from '../utils/widgetDesignColor';
 import logger from '../utils/logger';
@@ -419,6 +421,22 @@ const EditScreen = ({ navigation, route }: Props) => {
 
   const activeSubTab = category === 'text' ? textSubTab : backgroundSubTab;
 
+  // 진입 시 마지막으로 저장했던 디자인을 불러온다 — 없으면(최초 진입) 기본값을 그대로 유지한다.
+  // "초기화" 버튼(handleReset)은 이 로드와 무관하게 항상 DEFAULT_WIDGET_DESIGN으로 되돌린다.
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(WIDGET_DESIGN_STORAGE_KEY);
+        if (!raw) return;
+        const stored = JSON.parse(raw) as WidgetDesign;
+        setSavedDesign(stored);
+        setDraftDesign(stored);
+      } catch (e) {
+        logger.error('EditScreen: 저장된 위젯 디자인 로드 실패', e);
+      }
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- 마운트 시 1회만 로드
+
   const hasUnsavedChanges = useMemo(
     () => JSON.stringify(draftDesign) !== JSON.stringify(savedDesign),
     [draftDesign, savedDesign],
@@ -469,10 +487,21 @@ const EditScreen = ({ navigation, route }: Props) => {
     }
   };
 
+  // 네이티브에는 위젯 렌더링용으로만 저장되고 RN에서 다시 읽어올 방법이 없어, 편집 화면
+  // 자체가 "마지막으로 저장한 디자인"을 기억하도록 AsyncStorage에도 같이 캐시한다([#235]).
+  const cacheWidgetDesignLocally = async (design: WidgetDesign) => {
+    try {
+      await AsyncStorage.setItem(WIDGET_DESIGN_STORAGE_KEY, JSON.stringify(design));
+    } catch (e) {
+      logger.error('EditScreen: 위젯 디자인 로컬 캐시 실패', e);
+    }
+  };
+
   const handleSave = () => {
     justSavedRef.current = true;
     setSavedDesign(draftDesign);
     syncWidgetDesignToNative(draftDesign);
+    cacheWidgetDesignLocally(draftDesign);
     navigation.goBack();
   };
 

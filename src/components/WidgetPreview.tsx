@@ -93,6 +93,20 @@ function resolveTextStyle(design: WidgetDesign): TextStyle {
   };
 }
 
+// 장절 표기(색인)는 편집 기능 도입 이전 하드코딩 스타일에서도 항상 본문보다 작았다
+// (Android VerseWidgetLarge: 본문 16sp/장절 12sp, VerseWidgetSmall: 본문 14sp/장절 11sp).
+// 본문 크기를 사용자가 조절해도 이 비율이 그대로 유지되어야 하므로, 장절 텍스트는 본문
+// textStyle을 통째로 쓰지 않고 색상+비례 축소된 크기만 따로 적용한다(제목과 동일한 패턴).
+const BANNER_INDEX_SIZE_RATIO = 12 / 16;
+const CARD_INDEX_SIZE_RATIO = 11 / 14;
+
+function resolveIndexTextStyle(design: WidgetDesign, ratio: number): TextStyle {
+  return {
+    color: design.text.color,
+    fontSize: Math.round(design.text.size * ratio),
+  };
+}
+
 // 배경 타입/값에 따른 렌더링 분기 — 두 프리뷰(배너형/카드형) 공통 판별 로직
 function resolveBackgroundKind(design: WidgetDesign): 'gallery' | 'default-gradient' | 'solid' {
   if (design.background.type === 'gallery') return 'gallery';
@@ -224,7 +238,11 @@ const BannerPreview = ({
       </ScrollView>
       <Text
         allowFontScaling={false}
-        style={[styles.bannerIndexText, textStyle, onPhoto && styles.textOnPhotoShadow]}
+        style={[
+          styles.bannerIndexText,
+          resolveIndexTextStyle(design, BANNER_INDEX_SIZE_RATIO),
+          onPhoto && styles.textOnPhotoShadow,
+        ]}
       >
         {index}
       </Text>
@@ -331,7 +349,7 @@ const CardPreview = ({
           {content}
         </Text>
       </ScrollView>
-      <Text allowFontScaling={false} style={[styles.cardIndexText, textStyle]}>
+      <Text allowFontScaling={false} style={[styles.cardIndexText, resolveIndexTextStyle(design, CARD_INDEX_SIZE_RATIO)]}>
         {index}
       </Text>
     </>
@@ -395,7 +413,10 @@ const CardPreview = ({
                 {content}
               </Text>
             </ScrollView>
-            <Text allowFontScaling={false} style={[styles.cardIndexText, textStyle, styles.textOnPhotoShadow]}>
+            <Text
+              allowFontScaling={false}
+              style={[styles.cardIndexText, resolveIndexTextStyle(design, CARD_INDEX_SIZE_RATIO), styles.textOnPhotoShadow]}
+            >
               {index}
             </Text>
           </View>

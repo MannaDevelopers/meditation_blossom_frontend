@@ -5,10 +5,13 @@ import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
+import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -39,6 +42,7 @@ import app.mannadev.meditation.model.Sermon
 import app.mannadev.meditation.ui.widget.theme.Typography
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 class VerseWidgetLarge : GlanceAppWidget(
     errorUiLayout = R.layout.verse_widget_large_error,
@@ -47,28 +51,12 @@ class VerseWidgetLarge : GlanceAppWidget(
         val sermonRepository = getWidgetDependencies(context).sermonRepository()
         val youtubeLinkEnabled = getWidgetDependencies(context).getWidgetPrefs().isEnabled()
         val widgetDesignRepository = getWidgetDependencies(context).widgetDesignRepository()
-        val design = widgetDesignRepository.designState.value
-        // produceState로 컴포저블 안에서 비동기 디코딩하면 Glance가 RemoteViews로 스냅샷을
-        // 뜨는 시점과 경쟁해 이미지가 반영되지 않은 채로 위젯이 그려지는 경우가 있었다
-        // (미리보기에만 배경이 보이고 실제 위젯엔 안 보이던 원인). sermonRepository와 동일하게
-        // provideContent 밖, suspend 컨텍스트에서 먼저 디코딩을 끝내고 값으로 넘긴다.
-        val galleryBitmap = if (design?.background?.type == "gallery") {
-            withContext(Dispatchers.IO) {
-                decodeGalleryBitmap(
-                    design.background.value,
-                    design.background.imageTransform,
-                    BANNER_BITMAP_WIDTH,
-                    BANNER_BITMAP_HEIGHT,
-                )
-            }
-        } else {
-            null
-        }
         provideContent {
             val state by sermonRepository.sermonState.collectAsState()
+            val design by widgetDesignRepository.designState.collectAsState()
             val sermon = state.toDisplaySermon(hasAppEverLaunched(context))
             val clickAction = widgetClickAction(sermon.videoUrl, Constants.DEEP_LINK_SUNDAY_SERMON)
-            VerseWidgetLargeContent(sermon, clickAction, youtubeLinkEnabled, design, galleryBitmap)
+            VerseWidgetLargeContent(sermon, clickAction, youtubeLinkEnabled, design)
         }
     }
 
@@ -92,11 +80,6 @@ private object VerseLargeWidgetDimens {
     val bookNameTopSpacer = 12.dp
 }
 
-// 갤러리 배경을 굽는 고정 해상도 — Glance가 실제 위젯 크기에 맞춰 늘려 채우므로(리사이즈돼도
-// 동일 비트맵 재사용), gradientBackground.kt의 고정 200x200 그라데이션 비트맵과 같은 전략이다.
-private const val BANNER_BITMAP_WIDTH = 800
-private const val BANNER_BITMAP_HEIGHT = 400
-
 /**
  * Composable function that defines the content of the large verse widget.
  * It displays the verse title, content (scrollable if it exceeds the available space), and book name.
@@ -105,9 +88,6 @@ private const val BANNER_BITMAP_HEIGHT = 400
  * @param sermon The [Sermon] object containing the data to be displayed.
  * @param design 저장된 위젯 디자인(EditScreen에서 편집). null이면 편집 기능 도입 이전과 동일한
  *   하드코딩 스타일을 그대로 쓴다(=DEFAULT_WIDGET_DESIGN과 값이 같음).
- * @param galleryBitmap design.background.type이 "gallery"일 때 provideGlance에서 미리 디코딩해 둔
- *   비트맵. 컴포저블 안에서 비동기로 디코딩하면 Glance의 RemoteViews 스냅샷 시점과 경쟁해 반영되지
- *   않을 수 있어, 항상 완성된 값으로 전달받는다.
  */
 @Composable
 private fun VerseWidgetLargeContent(
@@ -115,8 +95,32 @@ private fun VerseWidgetLargeContent(
     clickAction: Action,
     youtubeLinkEnabled: Boolean,
     design: WidgetDesignDto?,
-    galleryBitmap: Bitmap?,
 ) {
+    // 갤러리 배경은 위젯이 "지금 실제로 렌더링되는 크기"(LocalSize, 리사이즈하면 바뀜) 기준으로
+    // 매번 cover-fit + 포커스 포인트를 다시 계산해 구운 뒤 그린다. 예전처럼 고정 해상도 비트맵
+    // 하나를 구워 Glance 기본 배경 늘림(stretch)에 맡기면, 위젯을 리사이즈할 때 사진이 크롭
+    // 범위만 바뀌는 게 아니라 통째로 늘어나거나 줄어드는 문제가 있었다([#233]).
+    val glanceSize = LocalSize.current
+    val density = LocalContext.current.resources.displayMetrics.density
+    val widthPx = (glanceSize.width.value * density).roundToInt()
+    val heightPx = (glanceSize.height.value * density).roundToInt()
+    val galleryBitmap by produceState<Bitmap?>(
+        initialValue = null,
+        design?.background?.type,
+        design?.background?.value,
+        design?.background?.imageTransform,
+        widthPx,
+        heightPx,
+    ) {
+        value = if (design?.background?.type == "gallery" && widthPx > 0 && heightPx > 0) {
+            withContext(Dispatchers.IO) {
+                decodeGalleryBitmap(design.background.value, design.background.imageTransform, widthPx, heightPx)
+            }
+        } else {
+            null
+        }
+    }
+
     val baseModifier = GlanceModifier
         .fillMaxSize()
         .clickable(clickAction)
@@ -132,7 +136,7 @@ private fun VerseWidgetLargeContent(
     val titleStyle = design?.text?.toTitleTextStyle(FontWeight.Bold)
         ?: Typography.titleMedium.copy(fontWeight = FontWeight.Bold)
     val bodyStyle = design?.text?.toBodyTextStyle() ?: Typography.titleMedium.copy(fontWeight = FontWeight.Normal)
-    val bookNameStyle = design?.text?.toBodyTextStyle() ?: Typography.labelMedium
+    val bookNameStyle = design?.text?.toIndexTextStyle(BANNER_INDEX_SIZE_RATIO) ?: Typography.labelMedium
 
     Column(
         modifier = backgroundModifier,
