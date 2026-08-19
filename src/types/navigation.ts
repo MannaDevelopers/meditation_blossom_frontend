@@ -1,5 +1,5 @@
 import { Sermon } from "./Sermon";
-import { QT } from "./Qt";
+import { QT } from "./QT";
 import { WidgetImageTransform } from "./WidgetDesign";
 
 export type RootStackParamList = {
