@@ -192,14 +192,14 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
     override fun onWidgetDesignUpdated(designData: String, promise: Promise) {
         moduleScope.launch {
             val saveResult = runCatching {
-                log.d("Saving widget design to prefs...")
+                log.d("Saving sermon widget design to prefs...")
                 val designDto = json.decodeFromString<WidgetDesignDto>(designData)
-                moduleDependencies.widgetDesignRepository().save(designDto)
-                log.d("Widget design saved to prefs successfully")
+                moduleDependencies.sermonWidgetDesignRepository().save(designDto)
+                log.d("Sermon widget design saved to prefs successfully")
             }.onFailure { e ->
                 CrashlyticsHelper.recordException(
                     e,
-                    "Error saving widget design data: ${e.message}",
+                    "Error saving sermon widget design data: ${e.message}",
                     tag = TAG
                 )
             }
@@ -208,6 +208,29 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
                 .onSuccess { promise.resolve(true) }
                 .onFailure { e ->
                     promise.reject("WIDGET_DESIGN_UPDATE_ERROR", e.message, e)
+                }
+        }
+    }
+
+    override fun onQtWidgetDesignUpdated(designData: String, promise: Promise) {
+        moduleScope.launch {
+            val saveResult = runCatching {
+                log.d("Saving QT widget design to prefs...")
+                val designDto = json.decodeFromString<WidgetDesignDto>(designData)
+                moduleDependencies.qtWidgetDesignRepository().save(designDto)
+                log.d("QT widget design saved to prefs successfully")
+            }.onFailure { e ->
+                CrashlyticsHelper.recordException(
+                    e,
+                    "Error saving QT widget design data: ${e.message}",
+                    tag = TAG
+                )
+            }
+
+            saveResult
+                .onSuccess { promise.resolve(true) }
+                .onFailure { e ->
+                    promise.reject("QT_WIDGET_DESIGN_UPDATE_ERROR", e.message, e)
                 }
         }
     }

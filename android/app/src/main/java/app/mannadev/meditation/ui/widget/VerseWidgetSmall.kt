@@ -59,7 +59,7 @@ class VerseWidgetSmall : GlanceAppWidget(
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val sermonRepository = getWidgetDependencies(context).sermonRepository()
         val youtubeLinkEnabled = getWidgetDependencies(context).getWidgetPrefs().isEnabled()
-        val widgetDesignRepository = getWidgetDependencies(context).widgetDesignRepository()
+        val widgetDesignRepository = getWidgetDependencies(context).sermonWidgetDesignRepository()
         provideContent {
             val state by sermonRepository.sermonState.collectAsState()
             val design by widgetDesignRepository.designState.collectAsState()
