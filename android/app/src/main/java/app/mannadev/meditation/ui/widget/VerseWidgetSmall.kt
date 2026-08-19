@@ -16,6 +16,7 @@ import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
@@ -49,6 +50,12 @@ import kotlin.math.roundToInt
 class VerseWidgetSmall : GlanceAppWidget(
     errorUiLayout = R.layout.verse_widget_small_error,
 ) {
+    // 기본값(SizeMode.Single)은 위젯이 처음 배치될 때의 minWidth/minHeight 기준 크기 하나만
+    // 고정으로 제공해, 사용자가 홈 화면에서 위젯을 리사이즈해도 LocalSize.current가 그 변화를
+    // 반영하지 않는다 — 갤러리 배경 cover-fit 크기 계산([#233])이 항상 배치 당시 크기 기준으로
+    // 굳어 있던 원인. Exact로 바꿔 실제 렌더링 크기가 바뀔 때마다 재컴포지션되게 한다.
+    override val sizeMode = SizeMode.Exact
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val sermonRepository = getWidgetDependencies(context).sermonRepository()
         val youtubeLinkEnabled = getWidgetDependencies(context).getWidgetPrefs().isEnabled()
@@ -83,21 +90,25 @@ private object VerseSmallWidgetDimens {
     val verseItemSpacing = 4.dp
 }
 
-// 카드형(Small) 갤러리 배경 위 제목 영역에 덮는 반투명 흰색 "액자" 틴트의 불투명도.
+// 카드형(Small) 갤러리 배경의 "액자"(도넛 마스크) 영역에 덮는 반투명 흰색의 불투명도.
 // src/components/WidgetPreview.tsx의 CARD_PHOTO_BORDER_TINT_OPACITY(0.55)와 동일.
-private const val CARD_PHOTO_TITLE_TINT_OPACITY = 0.55f
+private const val CARD_PHOTO_FRAME_TINT_OPACITY = 0.55f
 // src/utils/widgetDesignColor.ts의 cardOuterTint 기본 delta(22)와 동일.
 private const val CARD_BACKGROUND_LIGHTEN_DELTA = 22f
+// 제목 Row 높이를 실제 텍스트 줄바꿈 없이 근사하기 위한 예상 줄 수(최대 2줄 중 평균치) —
+// produceState는 Compose가 텍스트를 실제로 레이아웃하기 전에 마스크를 구워야 해서, 정확한
+// 렌더 높이 대신 이 근사치를 쓴다(제목이 1줄이면 마스크 구멍 위쪽에 약간의 여백 오차가 남는다).
+private const val CARD_TITLE_ESTIMATED_LINES = 1.6f
+private const val CARD_TITLE_LINE_HEIGHT_RATIO = 1.3f
 
 /**
  * 카드형(Small) 위젯의 이중 레이어 재해석([#169] 3.7절, src/components/WidgetPreview.tsx CardPreview와
  * 동일 규칙):
  * - 배경색: 제목 영역(바깥 Column)은 본문 카드(안쪽 Column)보다 밝은(또는 이미 밝으면 더 어두운)
  *   동일 색조 톤을 쓴다.
- * - 배경 갤러리: 사진을 바깥 Column 배경 전체에 깔고, 안쪽 카드는 배경을 비워 사진이 그대로
- *   선명하게 보이게 한다. 제목 Row에만 반투명 흰색을 덮어 "액자"처럼 구분한다 — RN은 SVG 마스크로
- *   테두리 전체(도넛 모양)를 덮지만, Glance는 임의 형태 마스킹을 지원하지 않아 가장 눈에 띄는
- *   제목 영역만 근사한다(테두리 좌우/하단 여백은 사진이 그대로 보임).
+ * - 배경 갤러리: 사진을 바깥 Column 배경 전체에 깔고, 안쪽 카드 자리만 비워 사진이 그대로
+ *   선명하게 보이게 한다. RN의 SVG 도넛 마스크(CardPhotoFrame)와 동일하게, Glance는 배경
+ *   자체에 마스크를 구워 넣는 [decodeGalleryCardBitmap]으로 이 효과를 낸다.
  */
 @Composable
 private fun VerseWidgetSmallContent(
@@ -106,7 +117,6 @@ private fun VerseWidgetSmallContent(
     youtubeLinkEnabled: Boolean,
     design: WidgetDesignDto?,
 ) {
-    val isGallery = design?.background?.type == "gallery"
     // 갤러리 배경은 위젯이 "지금 실제로 렌더링되는 크기"(LocalSize, 리사이즈하면 바뀜) 기준으로
     // 매번 cover-fit + 포커스 포인트를 다시 계산해 구운 뒤 그린다 — VerseWidgetLarge.kt와 동일한
     // 이유([#233], 고정 해상도로 구우면 리사이즈 시 사진이 크롭되지 않고 늘어나 보임).
@@ -114,17 +124,35 @@ private fun VerseWidgetSmallContent(
     val density = LocalContext.current.resources.displayMetrics.density
     val widthPx = (glanceSize.width.value * density).roundToInt()
     val heightPx = (glanceSize.height.value * density).roundToInt()
+    val marginPx = VerseSmallWidgetDimens.widgetPadding.value * density
     val galleryBitmap by produceState<Bitmap?>(
         initialValue = null,
         design?.background?.type,
         design?.background?.value,
         design?.background?.imageTransform,
+        design?.text?.size,
         widthPx,
         heightPx,
     ) {
         value = if (design?.background?.type == "gallery" && widthPx > 0 && heightPx > 0) {
+            val titleHeightPx = (
+                VerseSmallWidgetDimens.appBarVerticalPadding.value * 2 +
+                    design.text.size * CARD_TITLE_LINE_HEIGHT_RATIO * CARD_TITLE_ESTIMATED_LINES
+                ) * density
             withContext(Dispatchers.IO) {
-                decodeGalleryBitmap(design.background.value, design.background.imageTransform, widthPx, heightPx)
+                decodeGalleryCardBitmap(
+                    design.background.value,
+                    design.background.imageTransform,
+                    widthPx,
+                    heightPx,
+                    innerLeft = marginPx,
+                    innerTop = titleHeightPx,
+                    innerRight = widthPx - marginPx,
+                    innerBottom = heightPx - marginPx,
+                    outerCornerRadius = 0f, // 바깥 모서리는 appWidgetBackground()의 시스템 클리핑에 맡긴다.
+                    innerCornerRadius = VerseSmallWidgetDimens.contentBackgroundRadius.value * density,
+                    tintOpacity = CARD_PHOTO_FRAME_TINT_OPACITY,
+                )
             }
         } else {
             null
@@ -141,7 +169,7 @@ private fun VerseWidgetSmallContent(
         }
         design.background.type == "gallery" && galleryBitmap != null -> {
             outerModifier = outerBase.background(ImageProvider(galleryBitmap!!))
-            innerModifier = GlanceModifier // 배경 없음 — 바깥 사진이 그대로 비쳐 보인다.
+            innerModifier = GlanceModifier // 배경 없음 — 마스크 구멍으로 바깥 사진이 그대로 비쳐 보인다.
         }
         design.background.type == "gallery" -> { // 디코딩 대기/실패 폴백
             outerModifier = outerBase.background(Color.White)
@@ -159,11 +187,6 @@ private fun VerseWidgetSmallContent(
             innerModifier = GlanceModifier.background(solidColor)
         }
     }
-    val titleRowModifier = if (isGallery && galleryBitmap != null) {
-        GlanceModifier.background(Color.White.copy(alpha = CARD_PHOTO_TITLE_TINT_OPACITY))
-    } else {
-        GlanceModifier
-    }
     val titleStyle = design?.text?.toTitleTextStyle(FontWeight.Medium) ?: Typography.titleMedium
     val bodyStyle = design?.text?.toBodyTextStyle() ?: Typography.bodyMedium
     val bookNameStyle = design?.text?.toIndexTextStyle(CARD_INDEX_SIZE_RATIO) ?: Typography.labelSmall
@@ -174,7 +197,7 @@ private fun VerseWidgetSmallContent(
         verticalAlignment = Alignment.Top
     ) {
         Row(
-            modifier = titleRowModifier
+            modifier = GlanceModifier
                 .fillMaxWidth()
                 .padding(
                     horizontal = VerseSmallWidgetDimens.horizontalPadding,
