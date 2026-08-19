@@ -15,6 +15,7 @@ class WidgetUpdateModuleImpl: NSObject {
     static let fcmQtKey = "fcm_qt"
     static let youtubeLinkEnabledKey = "youtube_link_enabled"
     static let widgetDesignKey = "widget_design"
+    static let widgetDesignQtKey = "widget_design_qt"
   }
 
   private static func appGroupDefaults() -> UserDefaults? {
@@ -90,6 +91,21 @@ class WidgetUpdateModuleImpl: NSObject {
       return
     }
     sharedDefaults.set(designData, forKey: Constants.widgetDesignKey)
+    sharedDefaults.synchronize()
+    WidgetUpdateModuleImpl.reloadWidgets()
+    resolve(true)
+  }
+
+  // NOTE: onWidgetDesignUpdated와 동일한 최소 스텁 — QT 위젯 디자인이 실제로 App Group에서
+  // 이미지 처리/렌더링에 반영되는 작업은 별도 iOS 디자인 브릿지 이슈([#220] 패턴)에서 진행.
+  // 지금은 Android([ISSUE-236])와 짝을 맞춰 TurboModule spec 구현만 채운다.
+  @objc
+  func onQtWidgetDesignUpdated(_ designData: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    guard let sharedDefaults = Self.appGroupDefaults() else {
+      reject("APP_GROUP_ERROR", "App Group을 찾을 수 없습니다.", nil)
+      return
+    }
+    sharedDefaults.set(designData, forKey: Constants.widgetDesignQtKey)
     sharedDefaults.synchronize()
     WidgetUpdateModuleImpl.reloadWidgets()
     resolve(true)

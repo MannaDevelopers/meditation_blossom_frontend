@@ -54,6 +54,13 @@ RCT_EXPORT_MODULE(WidgetUpdateModule)
   [_impl onWidgetDesignUpdated:designData resolver:resolve rejecter:reject];
 }
 
+- (void)onQtWidgetDesignUpdated:(NSString *)designData
+                         resolve:(RCTPromiseResolveBlock)resolve
+                          reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl onQtWidgetDesignUpdated:designData resolver:resolve rejecter:reject];
+}
+
 - (void)resolveBibleReferences:(NSString *)jsonString
                         resolve:(RCTPromiseResolveBlock)resolve
                          reject:(RCTPromiseRejectBlock)reject
