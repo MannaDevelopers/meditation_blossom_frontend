@@ -31,7 +31,8 @@ class QtRepositoryImplTest {
         var designNotifyCount = 0
         override suspend fun notifySermonChanged() { sermonNotifyCount++ }
         override suspend fun notifyQtChanged() { qtNotifyCount++ }
-        override suspend fun notifyDesignChanged() { designNotifyCount++ }
+        override suspend fun notifySermonDesignChanged() { designNotifyCount++ }
+        override suspend fun notifyQtDesignChanged() { designNotifyCount++ }
     }
 
     private val sampleDto = QtDto(

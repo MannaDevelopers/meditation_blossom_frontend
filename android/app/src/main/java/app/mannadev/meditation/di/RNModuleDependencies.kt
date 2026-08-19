@@ -16,7 +16,8 @@ import dagger.hilt.components.SingletonComponent
 interface RNModuleDependencies {
     fun sermonRepository(): SermonRepository
     fun qtRepository(): QtRepository
-    fun widgetDesignRepository(): WidgetDesignRepository
+    @SermonDesign fun sermonWidgetDesignRepository(): WidgetDesignRepository
+    @QtDesign fun qtWidgetDesignRepository(): WidgetDesignRepository
     fun getBibleReferenceResolver(): BibleReferenceResolver
     fun getWidgetPrefs(): WidgetPrefsDataSource
 }

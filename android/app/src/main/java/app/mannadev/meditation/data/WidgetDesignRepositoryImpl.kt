@@ -2,7 +2,6 @@ package app.mannadev.meditation.data
 
 import app.mannadev.meditation.domain.repository.WidgetDesignRepository
 import app.mannadev.meditation.dto.WidgetDesignDto
-import app.mannadev.meditation.widget.WidgetUpdateNotifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -10,13 +9,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class WidgetDesignRepositoryImpl @Inject constructor(
+// [ISSUE-236] 주일 말씀/QT 두 인스턴스로 나뉘어 di/AppModule.kt의 @Provides에서 수동 생성되므로
+// @Inject constructor를 쓰지 않는다(싱글턴 스코프는 @Provides @Singleton이 관리). 어느 콘텐츠
+// 타입인지는 이 클래스가 알 필요가 없도록, WidgetUpdateNotifier 전체가 아니라 이미 콘텐츠 타입에
+// 맞게 골라진 notify 콜백 하나만 주입받는다(@Provides에서 notifySermonDesignChanged/
+// notifyQtDesignChanged 중 하나를 람다로 넘김).
+class WidgetDesignRepositoryImpl(
     private val prefsSource: WidgetDesignPrefsSource,
-    private val widgetUpdateNotifier: WidgetUpdateNotifier,
+    private val onDesignChanged: suspend () -> Unit,
 ) : WidgetDesignRepository {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -33,12 +34,12 @@ class WidgetDesignRepositoryImpl @Inject constructor(
         // 삭제됐거나 애초에 file:// 스킴이라 BitmapFactory가 못 여는 경로를 참조하게 된다.
         val persisted = prefsSource.saveDesign(dto)
         _designState.value = persisted
-        widgetUpdateNotifier.notifyDesignChanged()
+        onDesignChanged()
     }
 
     override suspend fun clear() {
         prefsSource.clearDesign()
         _designState.value = null
-        widgetUpdateNotifier.notifyDesignChanged()
+        onDesignChanged()
     }
 }
