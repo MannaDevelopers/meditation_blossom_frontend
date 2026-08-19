@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color as AndroidColor
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
@@ -15,6 +16,7 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import app.mannadev.meditation.dto.WidgetImageTransformDto
 import app.mannadev.meditation.dto.WidgetTextDesignDto
+import kotlin.math.roundToInt
 
 /**
  * RN EditScreen에서 저장한 WidgetDesign을 Glance 위젯에 반영하기 위한 변환 유틸.
@@ -170,6 +172,57 @@ fun decodeGalleryBitmap(
     canvas.drawBitmap(source, null, RectF(left, top, left + displayedWidth, top + displayedHeight), paint)
     source.recycle()
     return output
+}
+
+/**
+ * 카드형(Small) 갤러리 배경 — [decodeGalleryBitmap]으로 cover-fit 크롭한 사진 위에, 안쪽 카드
+ * 창(둥근 사각형) 자리만 비우고 나머지("액자") 영역엔 반투명 흰색을 입힌 도넛 마스크를 구워
+ * 하나의 비트맵으로 합성한다. src/components/WidgetPreview.tsx의 CardPhotoFrame(SVG
+ * mask="url(#cardPhotoFrameMask)")과 동일한 결과를 Path.Op.DIFFERENCE로 재현한 것 —
+ * Glance는 임의 형태 클리핑/오버레이를 지원하지 않아 배경 자체에 마스크를 구워 넣어야 한다.
+ * inner*는 실제 VerseWidgetSmall.kt 레이아웃에서 안쪽 카드 Box가 놓이는 위치(픽셀)와 맞아야
+ * 이 마스크의 "구멍"이 그 Box와 정확히 겹쳐 보인다.
+ */
+fun decodeGalleryCardBitmap(
+    path: String,
+    transform: WidgetImageTransformDto?,
+    canvasWidth: Int,
+    canvasHeight: Int,
+    innerLeft: Float,
+    innerTop: Float,
+    innerRight: Float,
+    innerBottom: Float,
+    outerCornerRadius: Float,
+    innerCornerRadius: Float,
+    tintOpacity: Float,
+): Bitmap? {
+    val bitmap = decodeGalleryBitmap(path, transform, canvasWidth, canvasHeight) ?: return null
+    val canvas = Canvas(bitmap)
+
+    val outerPath = Path().apply {
+        addRoundRect(
+            RectF(0f, 0f, canvasWidth.toFloat(), canvasHeight.toFloat()),
+            outerCornerRadius,
+            outerCornerRadius,
+            Path.Direction.CW,
+        )
+    }
+    val innerPath = Path().apply {
+        addRoundRect(
+            RectF(innerLeft, innerTop, innerRight, innerBottom),
+            innerCornerRadius,
+            innerCornerRadius,
+            Path.Direction.CW,
+        )
+    }
+    val donutPath = Path().apply { op(outerPath, innerPath, Path.Op.DIFFERENCE) }
+
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = AndroidColor.WHITE
+        alpha = (tintOpacity * 255f).roundToInt()
+    }
+    canvas.drawPath(donutPath, paint)
+    return bitmap
 }
 
 private fun clampFocal(value: Float, halfExtent: Float): Float {

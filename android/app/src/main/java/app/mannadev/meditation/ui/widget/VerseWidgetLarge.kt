@@ -15,6 +15,7 @@ import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
@@ -47,6 +48,12 @@ import kotlin.math.roundToInt
 class VerseWidgetLarge : GlanceAppWidget(
     errorUiLayout = R.layout.verse_widget_large_error,
 ) {
+    // 기본값(SizeMode.Single)은 위젯이 처음 배치될 때의 minWidth/minHeight 기준 크기 하나만
+    // 고정으로 제공해, 사용자가 홈 화면에서 위젯을 리사이즈해도 LocalSize.current가 그 변화를
+    // 반영하지 않는다 — 갤러리 배경 cover-fit 크기 계산([#233])이 항상 배치 당시 크기 기준으로
+    // 굳어 있던 원인. Exact로 바꿔 실제 렌더링 크기가 바뀔 때마다 재컴포지션되게 한다.
+    override val sizeMode = SizeMode.Exact
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val sermonRepository = getWidgetDependencies(context).sermonRepository()
         val youtubeLinkEnabled = getWidgetDependencies(context).getWidgetPrefs().isEnabled()
