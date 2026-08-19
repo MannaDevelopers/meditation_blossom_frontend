@@ -22,7 +22,8 @@ import {
   WIDGET_TEXT_COLOR_PRESETS,
   WIDGET_BACKGROUND_COLOR_PRESETS,
   WIDGET_TEXT_WEIGHT_FONT_FAMILY,
-  WIDGET_DESIGN_STORAGE_KEY,
+  WIDGET_DESIGN_STORAGE_KEY_SERMON,
+  WIDGET_DESIGN_STORAGE_KEY_QT,
 } from '../constants';
 import { isPresetColor } from '../utils/widgetDesignColor';
 import logger from '../utils/logger';
@@ -230,6 +231,32 @@ const HeaderSaveText = styled.Text`
   font-size: 20;
 `;
 
+// 콘텐츠 소스 필([ISSUE-236]) — MainTabNavigator의 "주일 말씀/매일 만나" 탭 필과 같은 톤(선택 시
+// 흰 배경, 비선택은 투명)으로, 편집 대상 콘텐츠(배너형↔카드형 위젯 형태와는 독립적인 축)를 고른다.
+const SourceRow = styled.View`
+  flex-direction: row;
+  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 4px;
+  gap: 4px;
+  margin-top: 14;
+  margin-bottom: 6;
+`;
+
+const SourceButton = styled.TouchableOpacity<{ selected: boolean }>`
+  flex: 1;
+  align-items: center;
+  padding-vertical: 8px;
+  border-radius: 16px;
+  background-color: ${({ selected }) => (selected ? 'white' : 'transparent')};
+`;
+
+const SourceButtonText = styled.Text<{ selected: boolean }>`
+  font-size: 13;
+  font-weight: bold;
+  color: ${({ selected }) => (selected ? 'black' : '#8a8a8e')};
+`;
+
 const ModalBackdrop = styled.View`
   flex: 1;
   background-color: rgba(0, 0, 0, 0.6);
@@ -402,6 +429,18 @@ const ColorSwatchRow = ({
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditScreen'>;
 
+type WidgetSource = 'sermon' | 'qt';
+
+const DEFAULT_DESIGNS_BY_SOURCE: Record<WidgetSource, WidgetDesign> = {
+  sermon: DEFAULT_WIDGET_DESIGN,
+  qt: DEFAULT_WIDGET_DESIGN,
+};
+
+const WIDGET_DESIGN_STORAGE_KEY_BY_SOURCE: Record<WidgetSource, string> = {
+  sermon: WIDGET_DESIGN_STORAGE_KEY_SERMON,
+  qt: WIDGET_DESIGN_STORAGE_KEY_QT,
+};
+
 type RecentGalleryImage = { uri: string; transform: WidgetImageTransform };
 
 // 갤러리에서 고른 배경 사진은 최근 것부터 이 개수만큼만 유지한다 — 다른 옵션 탭을 오가거나
@@ -410,9 +449,16 @@ const MAX_RECENT_GALLERY_IMAGES = 5;
 
 const EditScreen = ({ navigation, route }: Props) => {
   const sermon = route.params?.sermon;
+  const qt = route.params?.qt;
 
-  const [savedDesign, setSavedDesign] = useState<WidgetDesign>(DEFAULT_WIDGET_DESIGN);
-  const [draftDesign, setDraftDesign] = useState<WidgetDesign>(DEFAULT_WIDGET_DESIGN);
+  // [ISSUE-236] 주일 말씀/QT 디자인을 소스별로 독립 편집·저장하기 위해 draft/saved 상태를 소스별
+  // 레코드로 보관한다. activeSource 전환 시에도 각 소스의 draft는 그대로 유지된다.
+  const [savedDesigns, setSavedDesigns] = useState<Record<WidgetSource, WidgetDesign>>(DEFAULT_DESIGNS_BY_SOURCE);
+  const [draftDesigns, setDraftDesigns] = useState<Record<WidgetSource, WidgetDesign>>(DEFAULT_DESIGNS_BY_SOURCE);
+  const [activeSource, setActiveSource] = useState<WidgetSource>(route.params?.initialSource ?? 'sermon');
+  const draftDesign = draftDesigns[activeSource];
+  const activeContent = activeSource === 'sermon' ? sermon : qt;
+
   const [category, setCategory] = useState<Category>('text');
   const [textSubTab, setTextSubTab] = useState<TextSubTab>('align');
   const [backgroundSubTab, setBackgroundSubTab] = useState<BackgroundSubTab>('color');
@@ -421,16 +467,22 @@ const EditScreen = ({ navigation, route }: Props) => {
 
   const activeSubTab = category === 'text' ? textSubTab : backgroundSubTab;
 
-  // 진입 시 마지막으로 저장했던 디자인을 불러온다 — 없으면(최초 진입) 기본값을 그대로 유지한다.
-  // "초기화" 버튼(handleReset)은 이 로드와 무관하게 항상 DEFAULT_WIDGET_DESIGN으로 되돌린다.
+  // 진입 시 마지막으로 저장했던 두 소스의 디자인을 각각 불러온다 — 없으면(최초 진입) 기본값을
+  // 그대로 유지한다. "초기화" 버튼(handleReset)은 이 로드와 무관하게 활성 소스만 항상
+  // DEFAULT_WIDGET_DESIGN으로 되돌린다.
   useEffect(() => {
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(WIDGET_DESIGN_STORAGE_KEY);
-        if (!raw) return;
-        const stored = JSON.parse(raw) as WidgetDesign;
-        setSavedDesign(stored);
-        setDraftDesign(stored);
+        const [sermonRaw, qtRaw] = await Promise.all([
+          AsyncStorage.getItem(WIDGET_DESIGN_STORAGE_KEY_SERMON),
+          AsyncStorage.getItem(WIDGET_DESIGN_STORAGE_KEY_QT),
+        ]);
+        const loaded: Partial<Record<WidgetSource, WidgetDesign>> = {};
+        if (sermonRaw) loaded.sermon = JSON.parse(sermonRaw) as WidgetDesign;
+        if (qtRaw) loaded.qt = JSON.parse(qtRaw) as WidgetDesign;
+        if (Object.keys(loaded).length === 0) return;
+        setSavedDesigns(prev => ({ ...prev, ...loaded }));
+        setDraftDesigns(prev => ({ ...prev, ...loaded }));
       } catch (e) {
         logger.error('EditScreen: 저장된 위젯 디자인 로드 실패', e);
       }
@@ -438,8 +490,11 @@ const EditScreen = ({ navigation, route }: Props) => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- 마운트 시 1회만 로드
 
   const hasUnsavedChanges = useMemo(
-    () => JSON.stringify(draftDesign) !== JSON.stringify(savedDesign),
-    [draftDesign, savedDesign],
+    () =>
+      (['sermon', 'qt'] as const).some(
+        source => JSON.stringify(draftDesigns[source]) !== JSON.stringify(savedDesigns[source]),
+      ),
+    [draftDesigns, savedDesigns],
   );
 
   // handleSave에서 setSavedDesign 직후 곧바로 navigation.goBack()을 호출하면, 아직 리렌더 전이라
@@ -468,20 +523,33 @@ const EditScreen = ({ navigation, route }: Props) => {
       '지금까지 편집한 내용이 모두 사라집니다.',
       [
         { text: '취소', style: 'cancel' },
-        { text: '되돌리기', style: 'destructive', onPress: () => setDraftDesign(DEFAULT_WIDGET_DESIGN) },
+        {
+          text: '되돌리기',
+          style: 'destructive',
+          onPress: () => setDraftDesigns(prev => ({ ...prev, [activeSource]: DEFAULT_WIDGET_DESIGN })),
+        },
       ],
     );
   };
 
   // 저장 자체는 즉시 완료되는 로컬 상태 변경이라 네이티브 동기화를 기다리지 않고 바로 나간다 —
   // 실패해도 사용자를 화면에 붙잡아두지 않고 logger로만 기록한다(콘텐츠 동기화와 동일한 방식).
-  const syncWidgetDesignToNative = async (design: WidgetDesign) => {
-    if (!WidgetUpdateModule?.onWidgetDesignUpdated) {
-      logger.error('WidgetUpdateModule.onWidgetDesignUpdated is not available');
-      return;
-    }
+  // 소스별로 별도 브릿지 메서드를 쓴다([ISSUE-236]) — 기존 sermon/qt 콘텐츠 동기화와 동일한 컨벤션.
+  const syncWidgetDesignToNative = async (source: WidgetSource, design: WidgetDesign) => {
     try {
-      await WidgetUpdateModule.onWidgetDesignUpdated(JSON.stringify(design));
+      if (source === 'sermon') {
+        if (!WidgetUpdateModule?.onWidgetDesignUpdated) {
+          logger.error('WidgetUpdateModule.onWidgetDesignUpdated is not available');
+          return;
+        }
+        await WidgetUpdateModule.onWidgetDesignUpdated(JSON.stringify(design));
+      } else {
+        if (!WidgetUpdateModule?.onQtWidgetDesignUpdated) {
+          logger.error('WidgetUpdateModule.onQtWidgetDesignUpdated is not available');
+          return;
+        }
+        await WidgetUpdateModule.onQtWidgetDesignUpdated(JSON.stringify(design));
+      }
     } catch (e) {
       logger.error('EditScreen: 위젯 디자인 저장 실패', e);
     }
@@ -489,27 +557,39 @@ const EditScreen = ({ navigation, route }: Props) => {
 
   // 네이티브에는 위젯 렌더링용으로만 저장되고 RN에서 다시 읽어올 방법이 없어, 편집 화면
   // 자체가 "마지막으로 저장한 디자인"을 기억하도록 AsyncStorage에도 같이 캐시한다([#235]).
-  const cacheWidgetDesignLocally = async (design: WidgetDesign) => {
+  const cacheWidgetDesignLocally = async (source: WidgetSource, design: WidgetDesign) => {
     try {
-      await AsyncStorage.setItem(WIDGET_DESIGN_STORAGE_KEY, JSON.stringify(design));
+      await AsyncStorage.setItem(WIDGET_DESIGN_STORAGE_KEY_BY_SOURCE[source], JSON.stringify(design));
     } catch (e) {
       logger.error('EditScreen: 위젯 디자인 로컬 캐시 실패', e);
     }
   };
 
+  // 두 소스 중 편집하지 않은 쪽이 조용히 날아가면 안 되므로, draft가 saved와 달라진 소스만
+  // 골라 커밋한다([ISSUE-236]) — 편집 안 한 소스는 그대로 유지.
   const handleSave = () => {
     justSavedRef.current = true;
-    setSavedDesign(draftDesign);
-    syncWidgetDesignToNative(draftDesign);
-    cacheWidgetDesignLocally(draftDesign);
+    (['sermon', 'qt'] as const).forEach(source => {
+      if (JSON.stringify(draftDesigns[source]) === JSON.stringify(savedDesigns[source])) return;
+      const design = draftDesigns[source];
+      setSavedDesigns(prev => ({ ...prev, [source]: design }));
+      syncWidgetDesignToNative(source, design);
+      cacheWidgetDesignLocally(source, design);
+    });
     navigation.goBack();
   };
 
   const updateText = (patch: Partial<WidgetDesign['text']>) =>
-    setDraftDesign(prev => ({ ...prev, text: { ...prev.text, ...patch } }));
+    setDraftDesigns(prev => ({
+      ...prev,
+      [activeSource]: { ...prev[activeSource], text: { ...prev[activeSource].text, ...patch } },
+    }));
 
   const updateBackgroundColor = (hex: string) =>
-    setDraftDesign(prev => ({ ...prev, background: { type: 'color', value: hex } }));
+    setDraftDesigns(prev => ({
+      ...prev,
+      [activeSource]: { ...prev[activeSource], background: { type: 'color', value: hex } },
+    }));
 
   // 최근 적용한 갤러리 사진 목록에 upsert — 같은 사진을 다시 고르면 기존 항목을 빼고
   // 맨 앞으로 옮기며, 최대 개수를 넘으면 가장 오래된 것부터 잘라낸다.
@@ -533,9 +613,12 @@ const EditScreen = ({ navigation, route }: Props) => {
       imageUri,
       initialTransform: existingTransform,
       onApply: transform => {
-        setDraftDesign(prev => ({
+        setDraftDesigns(prev => ({
           ...prev,
-          background: { type: 'gallery', value: imageUri, imageTransform: transform },
+          [activeSource]: {
+            ...prev[activeSource],
+            background: { type: 'gallery', value: imageUri, imageTransform: transform },
+          },
         }));
         upsertRecentGalleryImage(imageUri, transform);
       },
@@ -657,9 +740,12 @@ const EditScreen = ({ navigation, route }: Props) => {
                       // 다른 최근 사진을 누르면 마지막으로 저장했던 위치 그대로 바로 적용한다.
                       selected
                         ? openImageCropScreen(uri)
-                        : setDraftDesign(prev => ({
+                        : setDraftDesigns(prev => ({
                             ...prev,
-                            background: { type: 'gallery', value: uri, imageTransform: transform },
+                            [activeSource]: {
+                              ...prev[activeSource],
+                              background: { type: 'gallery', value: uri, imageTransform: transform },
+                            },
                           }))
                     }
                   >
@@ -699,6 +785,17 @@ const EditScreen = ({ navigation, route }: Props) => {
             </TouchableOpacity>
           </HeaderRightGroup>
         </HeaderRow>
+
+        {/* 콘텐츠 소스 필([ISSUE-236]) — 이 화면에서 지금 편집 중인 콘텐츠(주일 말씀/매일 만나)를
+            고른다. 전환해도 각 소스의 draft는 draftDesigns에 그대로 남아있어 편집 내용이 유지된다. */}
+        <SourceRow>
+          <SourceButton selected={activeSource === 'sermon'} onPress={() => setActiveSource('sermon')}>
+            <SourceButtonText selected={activeSource === 'sermon'}>주일 말씀</SourceButtonText>
+          </SourceButton>
+          <SourceButton selected={activeSource === 'qt'} onPress={() => setActiveSource('qt')}>
+            <SourceButtonText selected={activeSource === 'qt'}>매일 만나</SourceButtonText>
+          </SourceButton>
+        </SourceRow>
       </View>
 
       {/* 미리보기 + 편집 탭들 — 화면이 작은 기기에서는 아래 탭들이 잘리지 않도록 스크롤 가능해야 한다.
@@ -714,7 +811,7 @@ const EditScreen = ({ navigation, route }: Props) => {
         showsVerticalScrollIndicator={false}
       >
         <View style={{ backgroundColor: 'transparent', marginVertical: 15, borderRadius: 20 }}>
-          <WidgetPreview title={sermon?.title} content={sermon?.content} design={draftDesign} />
+          <WidgetPreview title={activeContent?.title} content={activeContent?.content} design={draftDesign} />
         </View>
 
         {/* 3번 탭: 2번 탭 선택에 따른 세부 옵션, 미리보기 바로 아래 */}
