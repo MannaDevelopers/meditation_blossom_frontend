@@ -18,7 +18,8 @@ interface WidgetDependencies {
     fun qtRepository(): QtRepository
     fun widgetUpdateNotifier(): WidgetUpdateNotifier
     fun getWidgetPrefs(): WidgetPrefsDataSource
-    fun widgetDesignRepository(): WidgetDesignRepository
+    @SermonDesign fun sermonWidgetDesignRepository(): WidgetDesignRepository
+    @QtDesign fun qtWidgetDesignRepository(): WidgetDesignRepository
 }
 
 fun getWidgetDependencies(context: Context): WidgetDependencies {

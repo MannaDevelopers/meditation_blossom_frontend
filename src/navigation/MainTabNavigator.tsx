@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import { useNavigation } from '@react-navigation/native';
@@ -14,7 +14,10 @@ import DailyMannaScreen from '../screens/DailyMannaScreen';
 import { RootStackParamList } from '../types/navigation';
 import { logAnalytics } from '../utils/analytics';
 import { fetchLatestSermonFromAsyncStorage } from '../services/sermonService';
+import { fetchLatestQtFromAsyncStorage } from '../services/qtService';
 import logger from '../utils/logger';
+
+type WidgetSource = 'sermon' | 'qt';
 
 export type MainTabParamList = {
   '주일 말씀': undefined;
@@ -27,20 +30,30 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 // 다크모드 도입 전까지는 헤더가 항상 흰 배경이라 검정 고정. 다크모드가 생기면
 // 테마의 배경색에 맞춰(어두운 배경일 때는 흰색으로) 전환해야 한다.
 const EDIT_ICON_COLOR = '#000000';
-const SharedHeader = () => {
+const SharedHeader = ({ activeSource }: { activeSource: WidgetSource }) => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-  // 위젯 디자인 편집([#169]) 진입 버튼 — 어느 탭에서 눌러도 현재 캐시된 설교(주일 말씀)로
-  // 편집 화면을 연다. AsyncStorage는 HomeScreen이 이미 최신 상태로 채워두는 소스라
-  // 여기서 useSermonData()를 다시 구독하지 않고 필요한 시점에만 1회 읽는다.
+  // 위젯 디자인 편집([#169], [ISSUE-236]) 진입 버튼 — 어느 탭에서 눌러도 두 콘텐츠(주일
+  // 말씀/QT)를 모두 EditScreen에 전달해 소스 필 전환 시 별도 로딩 없이 바로 편집할 수 있게
+  // 하고, 진입 시 활성화할 소스는 지금 보고 있던 탭으로 맞춘다. AsyncStorage는 각 탭
+  // 화면이 이미 최신 상태로 채워두는 소스라 여기서 훅으로 다시 구독하지 않고 필요한
+  // 시점에만 1회 읽는다.
   const openEditScreen = async () => {
     let sermon;
+    let qt;
     try {
-      sermon = (await fetchLatestSermonFromAsyncStorage()) ?? undefined;
+      [sermon, qt] = await Promise.all([
+        fetchLatestSermonFromAsyncStorage(),
+        fetchLatestQtFromAsyncStorage(),
+      ]);
     } catch (e) {
-      logger.error('SharedHeader: 편집 화면 진입용 설교 로드 실패', e);
+      logger.error('SharedHeader: 편집 화면 진입용 콘텐츠 로드 실패', e);
     }
-    navigation.navigate('EditScreen', { sermon });
+    navigation.navigate('EditScreen', {
+      sermon: sermon ?? undefined,
+      qt: qt ?? undefined,
+      initialSource: activeSource,
+    });
   };
 
   return (
@@ -109,12 +122,24 @@ const CustomTabBar = ({ state, navigation }: MaterialTopTabBarProps) => {
 };
 
 const MainTabNavigator = () => {
+  // 편집 화면 진입 버튼(SharedHeader)이 "지금 보고 있던 탭"을 EditScreen의 초기 소스 필로
+  // 넘기기 위해 활성 탭을 추적한다([ISSUE-236]). SharedHeader는 Tab.Navigator 밖의 형제
+  // 컴포넌트라 탭 state를 직접 구독할 수 없어, Tab.Navigator의 screenListeners로 상태 변화를
+  // 끌어올린다.
+  const [activeSource, setActiveSource] = useState<WidgetSource>('sermon');
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <SharedHeader />
+      <SharedHeader activeSource={activeSource} />
       <Tab.Navigator
         tabBar={(props) => <CustomTabBar {...props} />}
         initialLayout={{ width: SCREEN_WIDTH }}
+        screenListeners={{
+          state: (e) => {
+            const index = (e.data as { state: { index: number } }).state.index;
+            setActiveSource(index === 0 ? 'sermon' : 'qt');
+          },
+        }}
       >
         <Tab.Screen name="주일 말씀" component={HomeScreen} />
         <Tab.Screen name="매일 만나" component={DailyMannaScreen} />

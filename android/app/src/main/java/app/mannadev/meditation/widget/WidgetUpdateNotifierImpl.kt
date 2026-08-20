@@ -39,22 +39,27 @@ class WidgetUpdateNotifierImpl @Inject constructor(
         }
     }
 
-    // 디자인은 주일 말씀/QT 위젯 모두에 적용될 예정이라 두 종류 모두 갱신한다.
-    // VerseWidget*는 [#217]에서 저장된 디자인을 실제로 반영하도록 구현됨. QtWidget*는
-    // 아직 저장된 디자인을 읽지 않아(QT 전용 렌더링 반영 이슈는 별도) 지금은 시각적
-    // 변화 없는 안전한 recompose 트리거일 뿐이다.
-    override suspend fun notifyDesignChanged() {
+    // VerseWidget*는 [#217]에서 저장된 디자인을 실제로 반영하도록 구현됨.
+    override suspend fun notifySermonDesignChanged() {
         runCatching {
             VerseWidgetLarge().updateAll(context)
             VerseWidgetSmall().updateAll(context)
-            QtWidgetLarge().updateAll(context)
-            QtWidgetSmall().updateAll(context)
             AnalyticsHelper.logWidgetUpdated("design_verse_large")
             AnalyticsHelper.logWidgetUpdated("design_verse_small")
+        }.onFailure { e ->
+            CrashlyticsHelper.recordException(e, "WidgetUpdateNotifier: failed to update sermon widgets after design change")
+        }
+    }
+
+    // QtWidget*도 [ISSUE-236]에서 저장된 디자인을 실제로 반영하도록 구현됨(VerseWidget*와 동일 패턴).
+    override suspend fun notifyQtDesignChanged() {
+        runCatching {
+            QtWidgetLarge().updateAll(context)
+            QtWidgetSmall().updateAll(context)
             AnalyticsHelper.logWidgetUpdated("design_qt_large")
             AnalyticsHelper.logWidgetUpdated("design_qt_small")
         }.onFailure { e ->
-            CrashlyticsHelper.recordException(e, "WidgetUpdateNotifier: failed to update widgets after design change")
+            CrashlyticsHelper.recordException(e, "WidgetUpdateNotifier: failed to update QT widgets after design change")
         }
     }
 }

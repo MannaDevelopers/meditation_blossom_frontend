@@ -13,18 +13,14 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileOutputStream
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class WidgetDesignPrefsDataSource @Inject constructor(
+class WidgetDesignPrefsDataSource(
     @ApplicationContext private val context: Context,
+    private val contentType: WidgetContentType,
 ) : WidgetDesignPrefsSource {
 
     companion object {
         private const val PREFS_NAME = "widget_design_prefs"
-        private const val KEY_DESIGN_JSON = "widget_design_json"
-        private const val BACKGROUND_IMAGE_FILE_NAME = "widget_design_background.jpg"
 
         // 위젯 배경 Bitmap은 RemoteViews/Binder IPC로 위젯 호스트 프로세스에 전달되는데, 그 전송에는
         // 용량 제약(TransactionTooLargeException, 대략 1MB 안팎)이 있다. 원본 그대로 저장하지 않고
@@ -37,8 +33,13 @@ class WidgetDesignPrefsDataSource @Inject constructor(
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
+    // 주일 말씀/QT가 서로의 디자인을 덮어쓰지 않도록 SharedPreferences 키와 배경 이미지 파일명을
+    // 콘텐츠 타입별로 분리한다([ISSUE-236]).
+    private val keyDesignJson: String
+        get() = "widget_design_json_${contentType.storageSuffix}"
+
     override suspend fun getDesign(): WidgetDesignDto? = withContext(Dispatchers.IO) {
-        val jsonString = prefs.getString(KEY_DESIGN_JSON, null)
+        val jsonString = prefs.getString(keyDesignJson, null)
         if (jsonString.isNullOrBlank()) return@withContext null
         try {
             json.decodeFromString<WidgetDesignDto>(jsonString)
@@ -55,18 +56,19 @@ class WidgetDesignPrefsDataSource @Inject constructor(
             design
         }
         prefs.edit {
-            putString(KEY_DESIGN_JSON, json.encodeToString(persisted))
+            putString(keyDesignJson, json.encodeToString(persisted))
         }
         persisted
     }
 
     override suspend fun clearDesign() = withContext(Dispatchers.IO) {
-        prefs.edit { remove(KEY_DESIGN_JSON) }
+        prefs.edit { remove(keyDesignJson) }
         backgroundImageFile().delete()
         Unit
     }
 
-    private fun backgroundImageFile(): File = File(context.filesDir, BACKGROUND_IMAGE_FILE_NAME)
+    private fun backgroundImageFile(): File =
+        File(context.filesDir, "widget_design_background_${contentType.storageSuffix}.jpg")
 
     /**
      * RN에서 넘어온 원본 이미지 URI(시스템 포토 피커의 임시 content:// 등)를 앱 내부 저장소의

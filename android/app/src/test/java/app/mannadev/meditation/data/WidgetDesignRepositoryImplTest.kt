@@ -4,7 +4,6 @@ import app.mannadev.meditation.dto.WidgetBackgroundDesignDto
 import app.mannadev.meditation.dto.WidgetDesignDto
 import app.mannadev.meditation.dto.WidgetImageTransformDto
 import app.mannadev.meditation.dto.WidgetTextDesignDto
-import app.mannadev.meditation.widget.WidgetUpdateNotifier
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -30,13 +29,12 @@ class WidgetDesignRepositoryImplTest {
         override suspend fun clearDesign() { stored = null }
     }
 
-    private class FakeWidgetUpdateNotifier : WidgetUpdateNotifier {
-        var sermonNotifyCount = 0
-        var qtNotifyCount = 0
-        var designNotifyCount = 0
-        override suspend fun notifySermonChanged() { sermonNotifyCount++ }
-        override suspend fun notifyQtChanged() { qtNotifyCount++ }
-        override suspend fun notifyDesignChanged() { designNotifyCount++ }
+    // 실제로는 di/AppModule.kt의 @Provides가 WidgetUpdateNotifier의
+    // notifySermonDesignChanged/notifyQtDesignChanged 중 하나를 골라 넘기는 람다 — 테스트에서는
+    // 호출 횟수만 세는 카운터로 충분하다.
+    private class FakeDesignChangedCounter {
+        var count = 0
+        val callback: suspend () -> Unit = { count++ }
     }
 
     private val sampleDto = WidgetDesignDto(
@@ -56,22 +54,20 @@ class WidgetDesignRepositoryImplTest {
     @Test
     fun `save persists to prefs, updates state, and notifies once`() = runTest {
         val prefs = FakeWidgetDesignPrefsSource()
-        val notifier = FakeWidgetUpdateNotifier()
-        val repository = WidgetDesignRepositoryImpl(prefsSource = prefs, widgetUpdateNotifier = notifier)
+        val counter = FakeDesignChangedCounter()
+        val repository = WidgetDesignRepositoryImpl(prefsSource = prefs, onDesignChanged = counter.callback)
 
         repository.save(sampleDto)
 
         assertEquals(sampleDto, prefs.stored)
         assertEquals(sampleDto, repository.designState.value)
-        assertEquals(1, notifier.designNotifyCount)
-        assertEquals(0, notifier.sermonNotifyCount)
-        assertEquals(0, notifier.qtNotifyCount)
+        assertEquals(1, counter.count)
     }
 
     @Test
     fun `save preserves gallery background fields including imageTransform`() = runTest {
         val prefs = FakeWidgetDesignPrefsSource()
-        val repository = WidgetDesignRepositoryImpl(prefsSource = prefs, widgetUpdateNotifier = FakeWidgetUpdateNotifier())
+        val repository = WidgetDesignRepositoryImpl(prefsSource = prefs, onDesignChanged = FakeDesignChangedCounter().callback)
 
         repository.save(sampleGalleryDto)
 
@@ -94,7 +90,7 @@ class WidgetDesignRepositoryImplTest {
             ),
         )
         val prefs = FakeWidgetDesignPrefsSource().apply { persistedOverride = persistedWithLocalPath }
-        val repository = WidgetDesignRepositoryImpl(prefsSource = prefs, widgetUpdateNotifier = FakeWidgetUpdateNotifier())
+        val repository = WidgetDesignRepositoryImpl(prefsSource = prefs, onDesignChanged = FakeDesignChangedCounter().callback)
 
         val rawInputWithPickerCachePath = sampleGalleryDto.copy(
             background = sampleGalleryDto.background.copy(
@@ -109,14 +105,14 @@ class WidgetDesignRepositoryImplTest {
     @Test
     fun `clear resets state to null and notifies`() = runTest {
         val prefs = FakeWidgetDesignPrefsSource().apply { stored = sampleDto }
-        val notifier = FakeWidgetUpdateNotifier()
-        val repository = WidgetDesignRepositoryImpl(prefsSource = prefs, widgetUpdateNotifier = notifier)
+        val counter = FakeDesignChangedCounter()
+        val repository = WidgetDesignRepositoryImpl(prefsSource = prefs, onDesignChanged = counter.callback)
 
         repository.clear()
 
         assertNull(prefs.stored)
         assertNull(repository.designState.value)
-        assertEquals(1, notifier.designNotifyCount)
+        assertEquals(1, counter.count)
     }
 
     // 생성자 init { scope.launch { ... } }의 최초 로드는 Dispatchers.IO에서 비동기로 실행되어
