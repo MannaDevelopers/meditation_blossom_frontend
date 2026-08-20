@@ -460,19 +460,5 @@ struct MeditationBlossomWidgetEntryView : View {
         }
       }
     }
-    .widgetBackground(Color.clear)
-  }
-}
-
-// iOS 16 호환을 위한 커스텀 modifier
-extension View {
-  func widgetBackground(_ color: Color) -> some View {
-    if #available(iOS 17.0, *) {
-      return AnyView(self.containerBackground(for: .widget) {
-        color
-      })
-    } else {
-      return AnyView(self.background(color))
-    }
   }
 }
