@@ -51,8 +51,7 @@ class WidgetUpdateNotifierImpl @Inject constructor(
         }
     }
 
-    // QtWidget*는 아직 저장된 디자인을 읽지 않아(QT 전용 렌더링 반영은 [ISSUE-236]과 별도 후속
-    // 이슈) 지금은 시각적 변화 없는 안전한 recompose 트리거일 뿐이다.
+    // QtWidget*도 [ISSUE-236]에서 저장된 디자인을 실제로 반영하도록 구현됨(VerseWidget*와 동일 패턴).
     override suspend fun notifyQtDesignChanged() {
         runCatching {
             QtWidgetLarge().updateAll(context)
