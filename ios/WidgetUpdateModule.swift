@@ -1,8 +1,107 @@
 import Foundation
 import WidgetKit
+import ImageIO
+import UniformTypeIdentifiers
 
 typealias RCTPromiseResolveBlock = @convention(block) (Any?) -> Void
 typealias RCTPromiseRejectBlock = @convention(block) (String, String, Error?) -> Void
+
+// src/types/WidgetDesign.ts와 1:1 대응하는 브릿지 전송 타입.
+// App Group 접근(FileManager containerURL)에 의존하지 않는 순수 함수로 분리해
+// 테스트 타깃(App Group 엔타이틀먼트 없음)에서도 검증 가능하게 한다.
+enum WidgetDesignPersistence {
+  enum PersistenceError: Error, Equatable {
+    case invalidDesignJSON
+    case imageDecodeFailed
+    case imageWriteFailed
+  }
+
+  struct ImageTransform: Codable {
+    let zoom: Double
+    let focalX: Double
+    let focalY: Double
+  }
+
+  struct TextDesign: Codable {
+    let align: String
+    let color: String
+    let size: Int
+    let weight: String
+  }
+
+  struct BackgroundDesign: Codable {
+    let type: String
+    var value: String
+    let imageTransform: ImageTransform?
+  }
+
+  struct Design: Codable {
+    let text: TextDesign
+    var background: BackgroundDesign
+  }
+
+  static let maxBackgroundDimension: CGFloat = 1024
+  static let backgroundJPEGQuality: CGFloat = 0.85
+
+  // designData(JS WidgetDesign JSON)를 파싱해 background.type이 "gallery"면 이미지를
+  // containerURL/backgroundFileName 경로로 다운샘플링·압축 저장하고, 그 영구 경로로
+  // background.value를 치환한 JSON을 반환한다. "color"면 파싱↔재인코딩만 하고 그대로 반환.
+  static func persist(designData: String, containerURL: URL, backgroundFileName: String) throws -> String {
+    guard let data = designData.data(using: .utf8) else { throw PersistenceError.invalidDesignJSON }
+    var design: Design
+    do {
+      design = try JSONDecoder().decode(Design.self, from: data)
+    } catch {
+      throw PersistenceError.invalidDesignJSON
+    }
+
+    if design.background.type == "gallery" {
+      let destinationURL = containerURL.appendingPathComponent(backgroundFileName)
+      try downsampleAndStore(sourcePath: design.background.value, to: destinationURL)
+      design.background.value = destinationURL.path
+    }
+
+    guard let encoded = try? JSONEncoder().encode(design),
+          let jsonString = String(data: encoded, encoding: .utf8) else {
+      throw PersistenceError.invalidDesignJSON
+    }
+    return jsonString
+  }
+
+  // ImageIO의 썸네일 생성 옵션이 2-pass 다운샘플링을 API 레벨에서 제공하므로(Android처럼
+  // inSampleSize를 직접 계산할 필요 없음), 원본을 통째로 메모리에 올리지 않고 바로 축소본을 얻는다.
+  private static func downsampleAndStore(sourcePath: String, to destinationURL: URL) throws {
+    let sourceURL = resolveFileURL(sourcePath)
+    let thumbnailOptions: [CFString: Any] = [
+      kCGImageSourceCreateThumbnailFromImageAlways: true,
+      kCGImageSourceThumbnailMaxPixelSize: maxBackgroundDimension,
+      kCGImageSourceCreateThumbnailWithTransform: true, // EXIF 회전 반영
+    ]
+    guard let imageSource = CGImageSourceCreateWithURL(sourceURL as CFURL, nil),
+          let thumbnail = CGImageSourceCreateThumbnailAtIndex(imageSource, 0, thumbnailOptions as CFDictionary) else {
+      throw PersistenceError.imageDecodeFailed
+    }
+
+    guard let destination = CGImageDestinationCreateWithURL(destinationURL as CFURL, UTType.jpeg.identifier as CFString, 1, nil) else {
+      throw PersistenceError.imageWriteFailed
+    }
+    let writeOptions: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: backgroundJPEGQuality]
+    CGImageDestinationAddImage(destination, thumbnail, writeOptions as CFDictionary)
+    guard CGImageDestinationFinalize(destination) else {
+      throw PersistenceError.imageWriteFailed
+    }
+  }
+
+  // react-native-image-picker(iOS)는 선택한 사진을 앱 임시 디렉터리로 복사해 file:// URI로
+  // 돌려준다. 이미 한 번 영속화된 값(재편집 시 로드된 기존 디자인)은 스킴 없는 절대 경로이므로,
+  // 스킴이 있으면 URL(string:)으로, 없으면 URL(fileURLWithPath:)로 해석한다.
+  private static func resolveFileURL(_ path: String) -> URL {
+    if let url = URL(string: path), url.scheme != nil {
+      return url
+    }
+    return URL(fileURLWithPath: path)
+  }
+}
 
 // TurboModule 프로토콜 구현은 WidgetUpdateModule.mm(ObjC++ shim)이 담당하고,
 // 이 클래스는 실제 비즈니스 로직만 가진다 (RN 공식 Swift TurboModule 패턴).
@@ -16,11 +115,21 @@ class WidgetUpdateModuleImpl: NSObject {
     static let youtubeLinkEnabledKey = "youtube_link_enabled"
     static let widgetDesignKey = "widget_design"
     static let widgetDesignQtKey = "widget_design_qt"
+    static let widgetDesignBackgroundFileNameSermon = "widget_design_background_sermon.jpg"
+    static let widgetDesignBackgroundFileNameQt = "widget_design_background_qt.jpg"
   }
 
   private static func appGroupDefaults() -> UserDefaults? {
     UserDefaults(suiteName: Constants.appGroupId)
   }
+
+  private static func appGroupContainerURL() -> URL? {
+    FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Constants.appGroupId)
+  }
+
+  // 다운샘플링+JPEG 압축은 가벼운 작업이 아니므로, resolveBibleReferences의 dbQueue와
+  // 동일하게 전용 직렬 큐에서 처리해 호출 스레드(JS 스레드일 수 있음)를 막지 않는다.
+  private static let designQueue = DispatchQueue(label: "com.mannachurch.WidgetDesignPersistence", qos: .userInitiated)
 
   // MARK: - Sermon
 
@@ -81,34 +190,52 @@ class WidgetUpdateModuleImpl: NSObject {
 
   // MARK: - Widget Design
 
-  // NOTE: 갤러리 배경 이미지 리사이즈/압축 + App Group 컨테이너 파일 저장은 [#220]에서 진행 예정.
-  // 지금은 onQtUpdated와 동일하게 디자인 JSON을 그대로 저장만 한다(Android [#216]과 짝을 맞추기
-  // 위한 최소 스텁 — TurboModule spec에 메서드가 추가되어 iOS도 프로토콜을 구현해야 컴파일된다).
   @objc
   func onWidgetDesignUpdated(_ designData: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    guard let sharedDefaults = Self.appGroupDefaults() else {
+    guard let sharedDefaults = Self.appGroupDefaults(), let containerURL = Self.appGroupContainerURL() else {
       reject("APP_GROUP_ERROR", "App Group을 찾을 수 없습니다.", nil)
       return
     }
-    sharedDefaults.set(designData, forKey: Constants.widgetDesignKey)
-    sharedDefaults.synchronize()
-    WidgetUpdateModuleImpl.reloadWidgets()
-    resolve(true)
+    WidgetUpdateModuleImpl.designQueue.async {
+      do {
+        let persisted = try WidgetDesignPersistence.persist(
+          designData: designData,
+          containerURL: containerURL,
+          backgroundFileName: Constants.widgetDesignBackgroundFileNameSermon
+        )
+        sharedDefaults.set(persisted, forKey: Constants.widgetDesignKey)
+        sharedDefaults.synchronize()
+        WidgetUpdateModuleImpl.reloadWidgets()
+        resolve(true)
+      } catch {
+        NSLog("onWidgetDesignUpdated error: %@", String(describing: error))
+        reject("WIDGET_DESIGN_UPDATE_ERROR", String(describing: error), error)
+      }
+    }
   }
 
-  // NOTE: onWidgetDesignUpdated와 동일한 최소 스텁 — QT 위젯 디자인이 실제로 App Group에서
-  // 이미지 처리/렌더링에 반영되는 작업은 별도 iOS 디자인 브릿지 이슈([#220] 패턴)에서 진행.
-  // 지금은 Android([ISSUE-236])와 짝을 맞춰 TurboModule spec 구현만 채운다.
   @objc
   func onQtWidgetDesignUpdated(_ designData: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    guard let sharedDefaults = Self.appGroupDefaults() else {
+    guard let sharedDefaults = Self.appGroupDefaults(), let containerURL = Self.appGroupContainerURL() else {
       reject("APP_GROUP_ERROR", "App Group을 찾을 수 없습니다.", nil)
       return
     }
-    sharedDefaults.set(designData, forKey: Constants.widgetDesignQtKey)
-    sharedDefaults.synchronize()
-    WidgetUpdateModuleImpl.reloadWidgets()
-    resolve(true)
+    WidgetUpdateModuleImpl.designQueue.async {
+      do {
+        let persisted = try WidgetDesignPersistence.persist(
+          designData: designData,
+          containerURL: containerURL,
+          backgroundFileName: Constants.widgetDesignBackgroundFileNameQt
+        )
+        sharedDefaults.set(persisted, forKey: Constants.widgetDesignQtKey)
+        sharedDefaults.synchronize()
+        WidgetUpdateModuleImpl.reloadWidgets()
+        resolve(true)
+      } catch {
+        NSLog("onQtWidgetDesignUpdated error: %@", String(describing: error))
+        reject("QT_WIDGET_DESIGN_UPDATE_ERROR", String(describing: error), error)
+      }
+    }
   }
 
   // MARK: - Bible References
