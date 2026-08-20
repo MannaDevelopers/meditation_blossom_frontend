@@ -26,6 +26,7 @@ import {
   WIDGET_DESIGN_STORAGE_KEY_QT,
 } from '../constants';
 import { isPresetColor } from '../utils/widgetDesignColor';
+import { formatQtDateLabel } from '../utils/textFormatting';
 import logger from '../utils/logger';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
 
@@ -459,6 +460,13 @@ const EditScreen = ({ navigation, route }: Props) => {
   const draftDesign = draftDesigns[activeSource];
   const activeContent = activeSource === 'sermon' ? sermon : qt;
 
+  // QT는 실제 네이티브 위젯(QtWidgetLarge/Small.kt, iOS DailyMannaWidget) 레이아웃이 주일 말씀과
+  // 달라 미리보기도 갈라진다 — 날짜 표시(QT만 있음)와 장절 참조 위치(QT는 본문 위, 주일 말씀은
+  // 본문 아래)를 소스에 맞게 계산해 WidgetPreview에 넘긴다([ISSUE-236] 후속).
+  const previewDateLabel =
+    activeSource === 'qt' && qt ? formatQtDateLabel(qt.date, qt.day_of_week) : undefined;
+  const previewReferenceAtTop = activeSource === 'qt';
+
   const [category, setCategory] = useState<Category>('text');
   const [textSubTab, setTextSubTab] = useState<TextSubTab>('align');
   const [backgroundSubTab, setBackgroundSubTab] = useState<BackgroundSubTab>('color');
@@ -811,7 +819,13 @@ const EditScreen = ({ navigation, route }: Props) => {
         showsVerticalScrollIndicator={false}
       >
         <View style={{ backgroundColor: 'transparent', marginVertical: 15, borderRadius: 20 }}>
-          <WidgetPreview title={activeContent?.title} content={activeContent?.content} design={draftDesign} />
+          <WidgetPreview
+            title={activeContent?.title}
+            content={activeContent?.content}
+            design={draftDesign}
+            dateLabel={previewDateLabel}
+            referenceAtTop={previewReferenceAtTop}
+          />
         </View>
 
         {/* 3번 탭: 2번 탭 선택에 따른 세부 옵션, 미리보기 바로 아래 */}

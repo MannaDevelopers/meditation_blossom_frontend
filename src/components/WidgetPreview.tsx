@@ -205,6 +205,9 @@ const GalleryBackground = ({
 };
 
 // 제목/장절은 실제 위젯처럼 고정 스타일(디자인 편집 대상 아님) — 본문(content)만 design.text를 따른다.
+// dateLabel/referenceAtTop([ISSUE-236] 후속)은 QT가 주일 말씀과 레이아웃이 달라 생긴 prop —
+// 네이티브 QtWidgetLarge.kt는 날짜를 제목 위에, 장절 참조를 본문 위(상단)에 두는 반면
+// VerseWidgetLarge.kt(주일 말씀)는 장절을 본문 아래(하단)에만 두고 날짜 자체가 없다.
 const BannerPreview = ({
   title,
   index,
@@ -212,14 +215,47 @@ const BannerPreview = ({
   design,
   width,
   height,
-}: PreviewText & { design: WidgetDesign; width: number; height: number }) => {
+  dateLabel,
+  referenceAtTop,
+}: PreviewText & {
+  design: WidgetDesign;
+  width: number;
+  height: number;
+  dateLabel?: string;
+  referenceAtTop?: boolean;
+}) => {
   const textStyle = resolveTextStyle(design);
   const backgroundKind = resolveBackgroundKind(design);
   const onPhoto = backgroundKind === 'gallery';
   const sizeStyle = { width, height };
 
+  const referenceText = (
+    <Text
+      allowFontScaling={false}
+      style={[
+        styles.bannerIndexText,
+        resolveIndexTextStyle(design, BANNER_INDEX_SIZE_RATIO),
+        onPhoto && styles.textOnPhotoShadow,
+      ]}
+    >
+      {index}
+    </Text>
+  );
+
   const inner = (
     <View style={styles.bannerInner}>
+      {!!dateLabel && (
+        <Text
+          allowFontScaling={false}
+          style={[
+            styles.bannerDateText,
+            resolveIndexTextStyle(design, BANNER_INDEX_SIZE_RATIO),
+            onPhoto && styles.textOnPhotoShadow,
+          ]}
+        >
+          {dateLabel}
+        </Text>
+      )}
       <Text
         allowFontScaling={false}
         numberOfLines={2}
@@ -231,21 +267,13 @@ const BannerPreview = ({
       >
         {title}
       </Text>
+      {referenceAtTop && referenceText}
       <ScrollView style={styles.contentScroll} contentContainerStyle={styles.contentScrollInner}>
         <Text allowFontScaling={false} style={[textStyle, onPhoto && styles.textOnPhotoShadow]}>
           {content}
         </Text>
       </ScrollView>
-      <Text
-        allowFontScaling={false}
-        style={[
-          styles.bannerIndexText,
-          resolveIndexTextStyle(design, BANNER_INDEX_SIZE_RATIO),
-          onPhoto && styles.textOnPhotoShadow,
-        ]}
-      >
-        {index}
-      </Text>
+      {!referenceAtTop && referenceText}
     </View>
   );
 
@@ -324,6 +352,9 @@ const CardPhotoFrame = ({ width, height }: { width: number; height: number }) =>
 //   깐 뒤 테두리(제목 영역 포함) 자리에만 반투명 흰색을 "액자"처럼 덮는다. 안쪽 카드 영역은
 //   덮개 없이 사진이 그대로 선명하게 보인다.
 // 실제 네이티브 위젯처럼 제목은 카드 바깥, 장절(색인)은 스크롤 영역 아래 고정 위치에 둔다.
+// referenceAtTop([ISSUE-236] 후속): 네이티브 QtWidgetSmall.kt는 장절 참조를 본문 박스 맨
+// 위(스크롤 콘텐츠의 첫 줄)에 두는 반면, VerseWidgetSmall.kt(주일 말씀)는 본문 아래에 둔다.
+// Small 위젯은 두 콘텐츠 모두 날짜 자체를 표시하지 않는다(dateLabel prop 없음).
 const CardPreview = ({
   title,
   index,
@@ -331,7 +362,8 @@ const CardPreview = ({
   design,
   width,
   height,
-}: PreviewText & { design: WidgetDesign; width: number; height: number }) => {
+  referenceAtTop,
+}: PreviewText & { design: WidgetDesign; width: number; height: number; referenceAtTop?: boolean }) => {
   const textStyle = resolveTextStyle(design);
   const backgroundKind = resolveBackgroundKind(design);
   const sizeStyle = { width, height };
@@ -342,16 +374,21 @@ const CardPreview = ({
   const galleryUri = backgroundKind === 'gallery' ? design.background.value : undefined;
   const galleryLayout = useGalleryImageLayout(galleryUri, design.background.imageTransform, width, height);
 
+  const referenceText = (
+    <Text allowFontScaling={false} style={[styles.cardIndexText, resolveIndexTextStyle(design, CARD_INDEX_SIZE_RATIO)]}>
+      {index}
+    </Text>
+  );
+
   const body = (
     <>
+      {referenceAtTop && referenceText}
       <ScrollView style={styles.contentScroll} contentContainerStyle={styles.contentScrollInner}>
         <Text allowFontScaling={false} style={textStyle}>
           {content}
         </Text>
       </ScrollView>
-      <Text allowFontScaling={false} style={[styles.cardIndexText, resolveIndexTextStyle(design, CARD_INDEX_SIZE_RATIO)]}>
-        {index}
-      </Text>
+      {!referenceAtTop && referenceText}
     </>
   );
 
@@ -408,17 +445,27 @@ const CardPreview = ({
             />
           )}
           <View style={styles.cardInnerContent}>
+            {referenceAtTop && (
+              <Text
+                allowFontScaling={false}
+                style={[styles.cardIndexText, resolveIndexTextStyle(design, CARD_INDEX_SIZE_RATIO), styles.textOnPhotoShadow]}
+              >
+                {index}
+              </Text>
+            )}
             <ScrollView style={styles.contentScroll} contentContainerStyle={styles.contentScrollInner}>
               <Text allowFontScaling={false} style={[textStyle, styles.textOnPhotoShadow]}>
                 {content}
               </Text>
             </ScrollView>
-            <Text
-              allowFontScaling={false}
-              style={[styles.cardIndexText, resolveIndexTextStyle(design, CARD_INDEX_SIZE_RATIO), styles.textOnPhotoShadow]}
-            >
-              {index}
-            </Text>
+            {!referenceAtTop && (
+              <Text
+                allowFontScaling={false}
+                style={[styles.cardIndexText, resolveIndexTextStyle(design, CARD_INDEX_SIZE_RATIO), styles.textOnPhotoShadow]}
+              >
+                {index}
+              </Text>
+            )}
           </View>
         </MaskedView>
       </View>
@@ -457,9 +504,14 @@ type WidgetPreviewProps = {
   title: string | undefined;
   content: string | undefined;
   design: WidgetDesign;
+  // QT는 주일 말씀과 실제 네이티브 위젯 레이아웃이 달라([ISSUE-236] 후속) 미리보기도 갈라진다 —
+  // dateLabel(있으면 배너형/iOS 제목 위에 표시)과 referenceAtTop(장절 참조를 본문 위/아래 어디에
+  // 둘지)은 호출자(EditScreen)가 활성 소스에 맞춰 계산해 넘긴다.
+  dateLabel?: string;
+  referenceAtTop?: boolean;
 };
 
-const AndroidWidgetPreview = ({ title, content, design }: WidgetPreviewProps) => {
+const AndroidWidgetPreview = ({ title, content, design, dateLabel, referenceAtTop }: WidgetPreviewProps) => {
   const [activePage, setActivePage] = useState(0);
   // 기본값은 "최대" — 실제 위젯을 홈 화면에 크게 배치하는 사용자가 많아, 가장 넓은 상태를
   // 기본으로 보여주는 편이 실제 디자인 결과에 가깝다.
@@ -499,6 +551,8 @@ const AndroidWidgetPreview = ({ title, content, design }: WidgetPreviewProps) =>
             design={design}
             width={size.bannerWidth}
             height={size.height}
+            dateLabel={dateLabel}
+            referenceAtTop={referenceAtTop}
           />
         </View>
         <View style={[styles.page, { width: pageWidth }]}>
@@ -509,6 +563,7 @@ const AndroidWidgetPreview = ({ title, content, design }: WidgetPreviewProps) =>
             design={design}
             width={size.cardWidth}
             height={size.height}
+            referenceAtTop={referenceAtTop}
           />
         </View>
       </ScrollView>
@@ -560,7 +615,8 @@ const IOSWidgetFrame = ({
   index,
   content,
   design,
-}: PreviewText & { family: IOSWidgetFamily; design: WidgetDesign }) => {
+  dateLabel,
+}: PreviewText & { family: IOSWidgetFamily; design: WidgetDesign; dateLabel?: string }) => {
   const width = IOS_PREVIEW_WIDTH;
   const height = family === 'large' ? IOS_LARGE_HEIGHT : IOS_MEDIUM_HEIGHT;
   const textStyle = resolveTextStyle(design);
@@ -582,6 +638,18 @@ const IOSWidgetFrame = ({
           paddingBottom: iosScaled(18),
         }}
       >
+        {!!dateLabel && (
+          <Text
+            allowFontScaling={false}
+            style={[
+              styles.iosDateText,
+              { fontSize: design.text.size, color: design.text.color, marginBottom: iosScaled(4) },
+              onPhoto && styles.textOnPhotoShadow,
+            ]}
+          >
+            {dateLabel}
+          </Text>
+        )}
         <Text
           allowFontScaling={false}
           numberOfLines={2}
@@ -624,6 +692,18 @@ const IOSWidgetFrame = ({
           paddingBottom: iosScaled(18),
         }}
       >
+        {!!dateLabel && (
+          <Text
+            allowFontScaling={false}
+            style={[
+              styles.iosDateText,
+              { fontSize: design.text.size, color: design.text.color, marginBottom: iosScaled(4) },
+              onPhoto && styles.textOnPhotoShadow,
+            ]}
+          >
+            {dateLabel}
+          </Text>
+        )}
         <View style={styles.iosMediumHeaderRow}>
           <Text
             allowFontScaling={false}
@@ -697,7 +777,7 @@ const IOSWidgetFrame = ({
   );
 };
 
-const IOSWidgetPreview = ({ title, content, design }: WidgetPreviewProps) => {
+const IOSWidgetPreview = ({ title, content, design, dateLabel }: WidgetPreviewProps) => {
   const [activePage, setActivePage] = useState(0);
   const extracted = useMemo(
     () => (content ? extractContent(content) : { index: '', content: '' }),
@@ -727,6 +807,7 @@ const IOSWidgetPreview = ({ title, content, design }: WidgetPreviewProps) => {
             index={extracted.index}
             content={extracted.content}
             design={design}
+            dateLabel={dateLabel}
           />
         </View>
         <View style={[styles.page, { width: pageWidth, height: frameHeight }]}>
@@ -736,6 +817,7 @@ const IOSWidgetPreview = ({ title, content, design }: WidgetPreviewProps) => {
             index={extracted.index}
             content={extracted.content}
             design={design}
+            dateLabel={dateLabel}
           />
         </View>
       </ScrollView>
@@ -796,6 +878,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     opacity: 0.75,
     marginTop: 4,
+  },
+  bannerDateText: {
+    fontSize: 11,
+    opacity: 0.75,
+    marginBottom: 4,
   },
   // 카드형(Small) — 이중 레이어
   cardOuter: {
@@ -909,6 +996,10 @@ const styles = StyleSheet.create({
   },
   iosVerse: {
     fontFamily: 'Pretendard-SemiBold',
+  },
+  iosDateText: {
+    fontFamily: 'Pretendard-Regular',
+    opacity: 0.75,
   },
   iosDivider: {
     height: 1,
