@@ -43,6 +43,7 @@
 		55CC77BCBC3D467B81B47C62 /* Pretendard-ExtraBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 9DDBC33AF57F48DA99EBFD26 /* Pretendard-ExtraBold.otf */; };
 		5FFA7AF4CB71498989F6EAC3 /* Pretendard-Light.otf in Resources */ = {isa = PBXBuildFile; fileRef = 24B4574C15E64071AE2213F2 /* Pretendard-Light.otf */; };
 		648990BED925AB88A487D541 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
+		715A76C378C14644D8C35F14 /* WidgetDesignPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15E762226223CF9453DC48DA /* WidgetDesignPersistenceTests.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		92C5C884FCF54E7ABBCD3904 /* BibleDbHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35DF7D9A2F87741F004FEDA3 /* BibleDbHelper.swift */; };
 		B31C3428F30D34E28BBC910F /* Pods_meditation_blossom_meditation_blossomTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E2F272DB449267E51D19031 /* Pods_meditation_blossom_meditation_blossomTests.framework */; };
@@ -101,6 +102,7 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = meditation_blossom/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = meditation_blossom/main.m; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = meditation_blossom/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		15E762226223CF9453DC48DA /* WidgetDesignPersistenceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetDesignPersistenceTests.swift; sourceTree = "<group>"; };
 		24B4574C15E64071AE2213F2 /* Pretendard-Light.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Pretendard-Light.otf"; path = "../src/assets/fonts/Pretendard-Light.otf"; sourceTree = "<group>"; };
 		24BF42212F500E773D902BDA /* Pods-PushNotificationService.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PushNotificationService.debug.xcconfig"; path = "Target Support Files/Pods-PushNotificationService/Pods-PushNotificationService.debug.xcconfig"; sourceTree = "<group>"; };
 		2A9635F5505F850465FED39C /* Pods_MeditationBlossomWidgetExtension.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_MeditationBlossomWidgetExtension.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -212,6 +214,7 @@
 			isa = PBXGroup;
 			children = (
 				00E356F01AD99517003FC87E /* Supporting Files */,
+				15E762226223CF9453DC48DA /* WidgetDesignPersistenceTests.swift */,
 			);
 			path = meditation_blossomTests;
 			sourceTree = "<group>";
@@ -757,6 +760,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				715A76C378C14644D8C35F14 /* WidgetDesignPersistenceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -830,7 +834,7 @@
 					"$(inherited)",
 				);
 				INFOPLIST_FILE = meditation_blossomTests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -844,6 +848,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = mannachurch.meditationblossom.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/meditation_blossom.app/meditation_blossom";
 			};
 			name = Debug;
@@ -858,7 +863,7 @@
 				COPY_PHASE_STRIP = NO;
 				DEVELOPMENT_TEAM = FYUDUBX5E5;
 				INFOPLIST_FILE = meditation_blossomTests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -872,6 +877,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = mannachurch.meditationblossom.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/meditation_blossom.app/meditation_blossom";
 			};
 			name = Release;
