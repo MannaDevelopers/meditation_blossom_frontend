@@ -326,19 +326,28 @@ struct MeditationBlossomWidget: Widget {
 
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: Provider()) { entry in
-      if #available(iOS 17.0, *) {
-        MeditationBlossomWidgetEntryView(entry: entry)
-          .containerBackground(.fill.tertiary, for: .widget)
-          .widgetURL(entry.targetURL)
-      } else {
-        // iOS 16에서는 View 자체에 배경 적용
-        MeditationBlossomWidgetEntryView(entry: entry)
-          .widgetURL(entry.targetURL)
-      }
+      MeditationBlossomWidgetEntryView(entry: entry)
+        .widgetURL(entry.targetURL)
     }
     .configurationDisplayName("주일 말씀")
     .description("이번 주 말씀을 홈 화면에서 바로 확인하세요.")
     .supportedFamilies([.systemMedium, .systemLarge])
+  }
+}
+
+// iOS 16/17 호환 containerBackground 헬퍼 — 배경을 일반 콘텐츠(ZStack의 한 레이어)가 아니라
+// containerBackground의 진짜 배경 인자로 넘겨야, WidgetKit이 iOS 17+에서 콘텐츠에 자동으로 주는
+// 기본 여백 대상에서 제외되어 사용자가 고른 배경이 진짜로 가장자리까지 꽉 찬다(그렇지 않으면
+// 그 여백만큼 안쪽에 배경이 들어가 앉아 옅은 테두리가 남는다).
+private extension View {
+  func widgetContainerBackground(_ background: WidgetBackgroundDesign, defaultImageName: String) -> some View {
+    if #available(iOS 17.0, *) {
+      return AnyView(self.containerBackground(for: .widget) {
+        designBackground(background, defaultImageName: defaultImageName)
+      })
+    } else {
+      return AnyView(self.background(designBackground(background, defaultImageName: defaultImageName)))
+    }
   }
 }
 
@@ -355,9 +364,7 @@ struct MeditationBlossomWidgetEntryView : View {
     Group {
       switch family {
       case .systemLarge:
-        ZStack(alignment: .topLeading) {
-          designBackground(design.background, defaultImageName: "background_364_382")
-
+        Group {
           VStack(alignment: .leading, spacing: 0) {
             // 제목 (2줄까지 가능 — 마커는 항상 전체 제목 높이의 중앙에 위치)
             HStack(alignment: .center) {
@@ -403,11 +410,10 @@ struct MeditationBlossomWidgetEntryView : View {
           .padding(EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16))
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+        .widgetContainerBackground(design.background, defaultImageName: "background_364_382")
 
       case .systemMedium:
-        ZStack(alignment: .topLeading) {
-          designBackground(design.background, defaultImageName: "background_364_170")
-
+        Group {
           VStack(alignment: .leading, spacing: 6) {
             // 제목 + 참조 행 — QT 묵상질문 위젯과 동일하게 .center 정렬로 마커를 배치한다.
             HStack(alignment: .center) {
@@ -453,11 +459,10 @@ struct MeditationBlossomWidgetEntryView : View {
           }
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+        .widgetContainerBackground(design.background, defaultImageName: "background_364_170")
 
       default:
-        ZStack {
-          Color.clear
-        }
+        Color.clear
       }
     }
   }
