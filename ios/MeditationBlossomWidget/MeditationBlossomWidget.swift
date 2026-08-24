@@ -52,7 +52,8 @@ struct WidgetDesign: Codable {
 }
 
 // 편집 기능 도입 전 하드코딩 스타일과 동일 — src/types/WidgetDesign.ts의 DEFAULT_WIDGET_DESIGN 참고.
-private let defaultWidgetDesign = WidgetDesign(
+// QT 위젯(DailyMannaWidget.swift)도 같은 익스텐션 타깃에서 공유해 쓴다.
+let defaultWidgetDesign = WidgetDesign(
   text: WidgetTextDesign(align: "left", color: "#000000", size: 16, weight: "regular"),
   background: WidgetBackgroundDesign(type: "color", value: "gradient-default", imageTransform: nil)
 )
@@ -61,7 +62,7 @@ private let defaultWidgetDesign = WidgetDesign(
 
 // 잘못된/손상된 hex 문자열이어도 위젯 프로세스가 크래시하면 안 되므로(홈 화면 전체가 멈춤),
 // 파싱 실패 시 검정으로 안전하게 폴백한다.
-private func hexColor(_ hex: String) -> Color {
+func hexColor(_ hex: String) -> Color {
   var sanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
   sanitized = sanitized.replacingOccurrences(of: "#", with: "")
   var rgb: UInt64 = 0
@@ -77,7 +78,7 @@ private func hexColor(_ hex: String) -> Color {
 
 // 본문(content)에만 적용 — 제목/장절은 실제 위젯처럼 두께 고정(src/components/WidgetPreview.tsx의
 // IOSWidgetFrame과 동일한 규칙).
-private func contentFontWeight(_ weight: String) -> Font.Weight {
+func contentFontWeight(_ weight: String) -> Font.Weight {
   switch weight {
   case "bold": return .bold
   case "extrabold": return .heavy
@@ -85,7 +86,7 @@ private func contentFontWeight(_ weight: String) -> Font.Weight {
   }
 }
 
-private func textAlignment(_ align: String) -> TextAlignment {
+func textAlignment(_ align: String) -> TextAlignment {
   switch align {
   case "center": return .center
   case "right": return .trailing
@@ -93,7 +94,7 @@ private func textAlignment(_ align: String) -> TextAlignment {
   }
 }
 
-private func frameAlignment(_ align: String) -> Alignment {
+func frameAlignment(_ align: String) -> Alignment {
   switch align {
   case "center": return .center
   case "right": return .trailing
@@ -121,13 +122,13 @@ private struct PhotoTextShadow: ViewModifier {
   }
 }
 
-private extension View {
+extension View {
   func widgetTextShadow(onPhoto: Bool) -> some View {
     modifier(PhotoTextShadow(enabled: onPhoto))
   }
 }
 
-private func dividerColor(onPhoto: Bool) -> Color {
+func dividerColor(onPhoto: Bool) -> Color {
   onPhoto ? Color.white.opacity(0.4) : Color(red: 0.10, green: 0.10, blue: 0.10).opacity(0.12)
 }
 
@@ -171,7 +172,7 @@ private struct GalleryBackgroundView: View {
 // background.type/value에 따라 갤러리 사진 / 저장된 단색 / (편집 전 상태와 동일한) 기존 그라데이션
 // 에셋 중 하나를 그린다.
 @ViewBuilder
-private func designBackground(_ background: WidgetBackgroundDesign, defaultImageName: String) -> some View {
+func designBackground(_ background: WidgetBackgroundDesign, defaultImageName: String) -> some View {
   if background.type == "gallery" {
     GalleryBackgroundView(path: background.value, transform: background.imageTransform)
   } else if background.value == "gradient-default" {
@@ -339,7 +340,7 @@ struct MeditationBlossomWidget: Widget {
 // containerBackground의 진짜 배경 인자로 넘겨야, WidgetKit이 iOS 17+에서 콘텐츠에 자동으로 주는
 // 기본 여백 대상에서 제외되어 사용자가 고른 배경이 진짜로 가장자리까지 꽉 찬다(그렇지 않으면
 // 그 여백만큼 안쪽에 배경이 들어가 앉아 옅은 테두리가 남는다).
-private extension View {
+extension View {
   func widgetContainerBackground(_ background: WidgetBackgroundDesign, defaultImageName: String) -> some View {
     if #available(iOS 17.0, *) {
       return AnyView(self.containerBackground(for: .widget) {
