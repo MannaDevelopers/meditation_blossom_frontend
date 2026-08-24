@@ -633,9 +633,9 @@ const IOSWidgetFrame = ({
       <View
         style={{
           flex: 1,
-          paddingHorizontal: iosScaled(24),
-          paddingTop: iosScaled(18),
-          paddingBottom: iosScaled(18),
+          paddingHorizontal: iosScaled(16),
+          paddingTop: iosScaled(14),
+          paddingBottom: iosScaled(14),
         }}
       >
         {!!dateLabel && (
@@ -687,9 +687,9 @@ const IOSWidgetFrame = ({
       <View
         style={{
           flex: 1,
-          paddingHorizontal: iosScaled(18),
-          paddingTop: iosScaled(18),
-          paddingBottom: iosScaled(18),
+          paddingHorizontal: iosScaled(14),
+          paddingTop: iosScaled(14),
+          paddingBottom: iosScaled(14),
         }}
       >
         {!!dateLabel && (
