@@ -400,7 +400,7 @@ struct MeditationBlossomWidgetEntryView : View {
 
             Spacer(minLength: 0)
           }
-          .padding(EdgeInsets(top: 18, leading: 24, bottom: 18, trailing: 24))
+          .padding(EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16))
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
 
@@ -429,14 +429,14 @@ struct MeditationBlossomWidgetEntryView : View {
                 YoutubeMarkerView()
               }
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 18)
+            .padding(.horizontal, 14)
+            .padding(.top, 14)
 
             // 구분선
             Rectangle()
               .fill(dividerColor(onPhoto: onPhoto))
               .frame(height: 1)
-              .padding(.horizontal, 18)
+              .padding(.horizontal, 14)
 
             // 본문
             Text(entry.quote)
@@ -446,10 +446,10 @@ struct MeditationBlossomWidgetEntryView : View {
               .lineLimit(4)
               .lineSpacing(CGFloat(design.text.size) * 0.4)
               .frame(maxWidth: .infinity, alignment: frameAlignment(design.text.align))
-              .padding(.horizontal, 18)
+              .padding(.horizontal, 14)
               .widgetTextShadow(onPhoto: onPhoto)
 
-            Spacer(minLength: 18)
+            Spacer(minLength: 14)
           }
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
