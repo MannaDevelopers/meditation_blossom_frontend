@@ -26,7 +26,7 @@ private enum DailyMannaWidgetConstants {
 // 라벨(날짜/장절 참조/"묵상 질문")은 본문 대비 축소 비율을 적용한다. src/components/WidgetPreview.tsx의
 // BANNER_INDEX_SIZE_RATIO/CARD_INDEX_SIZE_RATIO, Android WidgetDesignRendering.kt와 동일 값.
 private enum WT {
-  static let outerPad: CGFloat = 18
+  static let outerPad: CGFloat = 10
   static let innerGap: CGFloat = 6
   static let sectionGap: CGFloat = 10
 
@@ -266,7 +266,7 @@ struct DailyMannaContentEntryView: View {
 
       Spacer(minLength: 0)
     }
-    .padding(EdgeInsets(top: WT.outerPad, leading: 24, bottom: WT.outerPad, trailing: 24))
+    .padding(EdgeInsets(top: WT.outerPad, leading: 10, bottom: WT.outerPad, trailing: 10))
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
   }
 
@@ -424,7 +424,7 @@ struct DailyMannaMeditationEntryView: View {
 
       Spacer(minLength: 0)
     }
-    .padding(EdgeInsets(top: WT.outerPad, leading: 24, bottom: WT.outerPad, trailing: 24))
+    .padding(EdgeInsets(top: WT.outerPad, leading: 10, bottom: WT.outerPad, trailing: 10))
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
   }
 
