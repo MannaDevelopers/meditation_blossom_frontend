@@ -235,7 +235,7 @@ class WidgetUpdateModuleImpl: NSObject {
           WidgetUpdateModuleImpl.removeFileIfExists(atPath: previousBackgroundPath)
         }
         WidgetUpdateModuleImpl.reloadWidgets()
-        resolve(true)
+        resolve(persisted)
       } catch {
         NSLog("onWidgetDesignUpdated error: %@", String(describing: error))
         reject("WIDGET_DESIGN_UPDATE_ERROR", String(describing: error), error)
@@ -264,7 +264,7 @@ class WidgetUpdateModuleImpl: NSObject {
           WidgetUpdateModuleImpl.removeFileIfExists(atPath: previousBackgroundPath)
         }
         WidgetUpdateModuleImpl.reloadWidgets()
-        resolve(true)
+        resolve(persisted)
       } catch {
         NSLog("onQtWidgetDesignUpdated error: %@", String(describing: error))
         reject("QT_WIDGET_DESIGN_UPDATE_ERROR", String(describing: error), error)

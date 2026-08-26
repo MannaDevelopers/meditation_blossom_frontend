@@ -194,8 +194,9 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
             val saveResult = runCatching {
                 log.d("Saving sermon widget design to prefs...")
                 val designDto = json.decodeFromString<WidgetDesignDto>(designData)
-                moduleDependencies.sermonWidgetDesignRepository().save(designDto)
+                val persisted = moduleDependencies.sermonWidgetDesignRepository().save(designDto)
                 log.d("Sermon widget design saved to prefs successfully")
+                persisted
             }.onFailure { e ->
                 CrashlyticsHelper.recordException(
                     e,
@@ -205,7 +206,8 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
             }
 
             saveResult
-                .onSuccess { promise.resolve(true) }
+                // RN이 피커의 임시 캐시 경로 대신 영구 저장 경로를 캐싱하도록 반환값을 그대로 돌려준다.
+                .onSuccess { persisted -> promise.resolve(json.encodeToString(persisted)) }
                 .onFailure { e ->
                     promise.reject("WIDGET_DESIGN_UPDATE_ERROR", e.message, e)
                 }
@@ -217,8 +219,9 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
             val saveResult = runCatching {
                 log.d("Saving QT widget design to prefs...")
                 val designDto = json.decodeFromString<WidgetDesignDto>(designData)
-                moduleDependencies.qtWidgetDesignRepository().save(designDto)
+                val persisted = moduleDependencies.qtWidgetDesignRepository().save(designDto)
                 log.d("QT widget design saved to prefs successfully")
+                persisted
             }.onFailure { e ->
                 CrashlyticsHelper.recordException(
                     e,
@@ -228,7 +231,7 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
             }
 
             saveResult
-                .onSuccess { promise.resolve(true) }
+                .onSuccess { persisted -> promise.resolve(json.encodeToString(persisted)) }
                 .onFailure { e ->
                     promise.reject("QT_WIDGET_DESIGN_UPDATE_ERROR", e.message, e)
                 }

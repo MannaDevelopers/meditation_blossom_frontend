@@ -543,23 +543,29 @@ const EditScreen = ({ navigation, route }: Props) => {
   // 저장 자체는 즉시 완료되는 로컬 상태 변경이라 네이티브 동기화를 기다리지 않고 바로 나간다 —
   // 실패해도 사용자를 화면에 붙잡아두지 않고 logger로만 기록한다(콘텐츠 동기화와 동일한 방식).
   // 소스별로 별도 브릿지 메서드를 쓴다([ISSUE-236]) — 기존 sermon/qt 콘텐츠 동기화와 동일한 컨벤션.
-  const syncWidgetDesignToNative = async (source: WidgetSource, design: WidgetDesign) => {
+  // 갤러리 배경이면 네이티브가 피커의 임시 캐시 경로를 자기 저장소의 영구 경로로 다운샘플링해
+  // 저장하고, 그 경로로 재작성된 디자인 JSON을 반환한다 — 실패 시(예: 임시 파일이 이미 정리됨)
+  // null을 반환해 호출부가 draft를 그대로 캐싱하도록 한다.
+  const syncWidgetDesignToNative = async (source: WidgetSource, design: WidgetDesign): Promise<WidgetDesign | null> => {
     try {
       if (source === 'sermon') {
         if (!WidgetUpdateModule?.onWidgetDesignUpdated) {
           logger.error('WidgetUpdateModule.onWidgetDesignUpdated is not available');
-          return;
+          return null;
         }
-        await WidgetUpdateModule.onWidgetDesignUpdated(JSON.stringify(design));
+        const persisted = await WidgetUpdateModule.onWidgetDesignUpdated(JSON.stringify(design));
+        return JSON.parse(persisted) as WidgetDesign;
       } else {
         if (!WidgetUpdateModule?.onQtWidgetDesignUpdated) {
           logger.error('WidgetUpdateModule.onQtWidgetDesignUpdated is not available');
-          return;
+          return null;
         }
-        await WidgetUpdateModule.onQtWidgetDesignUpdated(JSON.stringify(design));
+        const persisted = await WidgetUpdateModule.onQtWidgetDesignUpdated(JSON.stringify(design));
+        return JSON.parse(persisted) as WidgetDesign;
       }
     } catch (e) {
       logger.error('EditScreen: 위젯 디자인 저장 실패', e);
+      return null;
     }
   };
 
@@ -581,8 +587,11 @@ const EditScreen = ({ navigation, route }: Props) => {
       if (JSON.stringify(draftDesigns[source]) === JSON.stringify(savedDesigns[source])) return;
       const design = draftDesigns[source];
       setSavedDesigns(prev => ({ ...prev, [source]: design }));
-      syncWidgetDesignToNative(source, design);
-      cacheWidgetDesignLocally(source, design);
+      // 네이티브가 돌려준 영구 경로 디자인을 캐싱한다 — draft(피커의 임시 경로)를 그대로 캐싱하면
+      // 재진입 시 그 임시 파일이 이미 정리돼 미리보기가 깨지거나 재저장이 실패할 수 있다([#251]).
+      syncWidgetDesignToNative(source, design).then(persisted => {
+        cacheWidgetDesignLocally(source, persisted ?? design);
+      });
     });
     navigation.goBack();
   };

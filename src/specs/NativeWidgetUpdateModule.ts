@@ -4,8 +4,11 @@ import { TurboModuleRegistry } from 'react-native';
 export interface Spec extends TurboModule {
   onSermonUpdated(sermonData: string): Promise<boolean>;
   onQtUpdated(qtData: string): Promise<boolean>;
-  onWidgetDesignUpdated(designData: string): Promise<boolean>;
-  onQtWidgetDesignUpdated(designData: string): Promise<boolean>;
+  // 네이티브가 갤러리 배경 사진을 다운샘플링해 영구 저장한 뒤 그 경로로 재작성한
+  // 디자인 JSON을 반환한다 — RN이 임시 피커 경로 대신 이 영구 경로를 캐싱해야
+  // 재진입 시에도 안정적으로 미리보기/재저장이 가능하다.
+  onWidgetDesignUpdated(designData: string): Promise<string>;
+  onQtWidgetDesignUpdated(designData: string): Promise<string>;
   resolveBibleReferences(jsonString: string): Promise<string>;
   onClear(): Promise<void>;
   // iOS 전용(App Group 조회). Android는 no-op으로 항상 null을 resolve한다.
