@@ -115,8 +115,32 @@ class WidgetUpdateModuleImpl: NSObject {
     static let youtubeLinkEnabledKey = "youtube_link_enabled"
     static let widgetDesignKey = "widget_design"
     static let widgetDesignQtKey = "widget_design_qt"
-    static let widgetDesignBackgroundFileNameSermon = "widget_design_background_sermon.jpg"
-    static let widgetDesignBackgroundFileNameQt = "widget_design_background_qt.jpg"
+    static let widgetDesignBackgroundFilePrefixSermon = "widget_design_background_sermon_"
+    static let widgetDesignBackgroundFilePrefixQt = "widget_design_background_qt_"
+  }
+
+  // 배경 사진을 매번 고유 파일명으로 저장한다 — 고정 파일명에 덮어쓰면(과거 방식) 메인 앱
+  // 프로세스의 쓰기와 위젯 익스텐션 프로세스의 다음 읽기 사이에 실기기에서 타이밍/캐시 지연이
+  // 생겨 사진이 바로 갱신되지 않는 문제가 있었다(색상은 JSON 안 hex 값이라 즉시 반영되지만,
+  // 사진은 파일을 다시 읽어야 해서 영향을 받음 — 시뮬레이터에서는 디스크가 빨라 재현 안 됨).
+  private static func uniqueBackgroundFileName(prefix: String) -> String {
+    "\(prefix)\(UUID().uuidString).jpg"
+  }
+
+  // 저장 직전 시점의 기존 디자인에서 갤러리 배경 파일 경로를 추출 — 새 파일 저장 성공 후
+  // 이전 파일을 정리해 App Group 컨테이너에 파일이 계속 쌓이지 않게 한다.
+  private static func galleryBackgroundPath(fromDesignJSON designJSON: String?) -> String? {
+    guard let designJSON, let data = designJSON.data(using: .utf8),
+          let design = try? JSONDecoder().decode(WidgetDesignPersistence.Design.self, from: data),
+          design.background.type == "gallery" else {
+      return nil
+    }
+    return design.background.value
+  }
+
+  private static func removeFileIfExists(atPath path: String) {
+    guard FileManager.default.fileExists(atPath: path) else { return }
+    try? FileManager.default.removeItem(atPath: path)
   }
 
   private static func appGroupDefaults() -> UserDefaults? {
@@ -196,15 +220,20 @@ class WidgetUpdateModuleImpl: NSObject {
       reject("APP_GROUP_ERROR", "App Group을 찾을 수 없습니다.", nil)
       return
     }
+    let previousBackgroundPath = WidgetUpdateModuleImpl.galleryBackgroundPath(fromDesignJSON: sharedDefaults.string(forKey: Constants.widgetDesignKey))
     WidgetUpdateModuleImpl.designQueue.async {
       do {
+        let backgroundFileName = WidgetUpdateModuleImpl.uniqueBackgroundFileName(prefix: Constants.widgetDesignBackgroundFilePrefixSermon)
         let persisted = try WidgetDesignPersistence.persist(
           designData: designData,
           containerURL: containerURL,
-          backgroundFileName: Constants.widgetDesignBackgroundFileNameSermon
+          backgroundFileName: backgroundFileName
         )
         sharedDefaults.set(persisted, forKey: Constants.widgetDesignKey)
         sharedDefaults.synchronize()
+        if let previousBackgroundPath, previousBackgroundPath != containerURL.appendingPathComponent(backgroundFileName).path {
+          WidgetUpdateModuleImpl.removeFileIfExists(atPath: previousBackgroundPath)
+        }
         WidgetUpdateModuleImpl.reloadWidgets()
         resolve(true)
       } catch {
@@ -220,15 +249,20 @@ class WidgetUpdateModuleImpl: NSObject {
       reject("APP_GROUP_ERROR", "App Group을 찾을 수 없습니다.", nil)
       return
     }
+    let previousBackgroundPath = WidgetUpdateModuleImpl.galleryBackgroundPath(fromDesignJSON: sharedDefaults.string(forKey: Constants.widgetDesignQtKey))
     WidgetUpdateModuleImpl.designQueue.async {
       do {
+        let backgroundFileName = WidgetUpdateModuleImpl.uniqueBackgroundFileName(prefix: Constants.widgetDesignBackgroundFilePrefixQt)
         let persisted = try WidgetDesignPersistence.persist(
           designData: designData,
           containerURL: containerURL,
-          backgroundFileName: Constants.widgetDesignBackgroundFileNameQt
+          backgroundFileName: backgroundFileName
         )
         sharedDefaults.set(persisted, forKey: Constants.widgetDesignQtKey)
         sharedDefaults.synchronize()
+        if let previousBackgroundPath, previousBackgroundPath != containerURL.appendingPathComponent(backgroundFileName).path {
+          WidgetUpdateModuleImpl.removeFileIfExists(atPath: previousBackgroundPath)
+        }
         WidgetUpdateModuleImpl.reloadWidgets()
         resolve(true)
       } catch {
