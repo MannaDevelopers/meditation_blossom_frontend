@@ -1,5 +1,6 @@
 package app.mannadev.meditation.rnmodule
 
+import android.net.Uri
 import androidx.annotation.Keep
 import app.mannadev.meditation.analytics.AnalyticsHelper
 import app.mannadev.meditation.analytics.CrashlyticsHelper
@@ -18,6 +19,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import timber.log.Timber
+import java.io.File
+import java.io.FileOutputStream
+import java.util.UUID
 
 @Keep
 class WidgetUpdateModule(reactContext: ReactApplicationContext) :
@@ -234,6 +238,39 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
                 .onSuccess { persisted -> promise.resolve(json.encodeToString(persisted)) }
                 .onFailure { e ->
                     promise.reject("QT_WIDGET_DESIGN_UPDATE_ERROR", e.message, e)
+                }
+        }
+    }
+
+    // 사진 피커가 만드는 파일은 휘발성 캐시/임시 디렉토리에 있을 수 있어([#252]) 앱이 직접
+    // 관리하는 cacheDir로 즉시 복사하고, 그 경로를 돌려준다 — "최근 이미지" 목록/이후 저장
+    // 시점까지 안전하게 참조할 수 있게 한다. content://, file:// 둘 다 처리하기 위해
+    // ContentResolver를 통해 읽는다.
+    override fun persistPickedImage(sourceUri: String, promise: Promise) {
+        moduleScope.launch {
+            val result = runCatching {
+                val resolver = reactApplicationContext.contentResolver
+                val parsedUri = Uri.parse(sourceUri)
+                val extension = sourceUri.substringAfterLast('.', "jpg").substringBefore('?')
+                val destFile = File(reactApplicationContext.cacheDir, "picked_image_${UUID.randomUUID()}.$extension")
+                val inputStream = resolver.openInputStream(parsedUri)
+                    ?: throw IllegalStateException("Cannot open input stream for $sourceUri")
+                inputStream.use { input ->
+                    FileOutputStream(destFile).use { output -> input.copyTo(output) }
+                }
+                Uri.fromFile(destFile).toString()
+            }.onFailure { e ->
+                CrashlyticsHelper.recordException(
+                    e,
+                    "Error persisting picked image: ${e.message}",
+                    tag = TAG
+                )
+            }
+
+            result
+                .onSuccess { uri -> promise.resolve(uri) }
+                .onFailure { e ->
+                    promise.reject("PERSIST_PICKED_IMAGE_ERROR", e.message, e)
                 }
         }
     }

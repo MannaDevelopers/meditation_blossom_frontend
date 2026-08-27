@@ -648,6 +648,25 @@ const EditScreen = ({ navigation, route }: Props) => {
     });
   };
 
+  // react-native-image-picker(iOS)가 사진 로드를 실패해도 에러 없이 빈 파일을 가리키는 uri를
+  // 돌려주는 경우가 있다(iCloud 전용이라 기기에 다운로드가 안 된 사진 등, [#252]) — fileSize/
+  // width/height가 0이면 실제로는 로드에 실패한 것으로 보고 여기서 걸러낸다.
+  const isValidPickedAsset = (asset: { fileSize?: number; width?: number; height?: number }) =>
+    (asset.fileSize ?? 0) > 0 && (asset.width ?? 0) > 0 && (asset.height ?? 0) > 0;
+
+  // 사진 피커가 만드는 파일은 휘발성 임시 디렉토리에 있어 iOS가 예고 없이 정리할 수 있다([#252]) —
+  // 앱이 직접 관리하는 안정적인 캐시 경로로 즉시 복사해, "최근 이미지" 목록과 저장 시점까지도
+  // 안전하게 참조할 수 있게 한다. 네이티브 브릿지가 없거나 실패하면 원본 uri로 폴백한다.
+  const persistPickedImageLocally = async (uri: string): Promise<string> => {
+    try {
+      if (!WidgetUpdateModule?.persistPickedImage) return uri;
+      return await WidgetUpdateModule.persistPickedImage(uri);
+    } catch (e) {
+      logger.error('EditScreen: 사진을 앱 저장소로 복사 실패', e);
+      return uri;
+    }
+  };
+
   const handleOpenAlbum = async () => {
     try {
       const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 });
@@ -657,9 +676,19 @@ const EditScreen = ({ navigation, route }: Props) => {
         Alert.alert('오류', '사진을 불러오지 못했습니다. 다시 시도해주세요.');
         return;
       }
-      const uri = result.assets?.[0]?.uri;
+      const asset = result.assets?.[0];
+      const uri = asset?.uri;
       if (!uri) return;
-      openImageCropScreen(uri);
+      if (!isValidPickedAsset(asset)) {
+        logger.error('EditScreen: 사진 데이터를 불러오지 못함(iCloud 다운로드 실패 추정)', asset);
+        Alert.alert(
+          '사진을 불러오지 못했습니다',
+          'iCloud에만 저장된 사진일 수 있습니다. 사진 앱에서 먼저 열어 다운로드한 뒤 다시 시도해주세요.',
+        );
+        return;
+      }
+      const stableUri = await persistPickedImageLocally(uri);
+      openImageCropScreen(stableUri);
     } catch (e) {
       logger.error('EditScreen: 이미지 피커 실행 실패', e);
     }

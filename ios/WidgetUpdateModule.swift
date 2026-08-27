@@ -272,6 +272,31 @@ class WidgetUpdateModuleImpl: NSObject {
     }
   }
 
+  // MARK: - Picked Image Persistence
+
+  // 사진 피커(react-native-image-picker)가 만드는 파일은 NSTemporaryDirectory()에 있어 iOS가
+  // 예고 없이 정리할 수 있다([#252]) — Caches 디렉토리로 즉시 복사해 "최근 이미지" 목록/이후
+  // 저장 시점까지 안전하게 참조할 수 있는 경로를 돌려준다.
+  @objc
+  func persistPickedImage(_ sourceUri: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    WidgetUpdateModuleImpl.designQueue.async {
+      do {
+        guard let sourceURL = URL(string: sourceUri) else {
+          throw NSError(domain: "PersistPickedImage", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid source URI: \(sourceUri)"])
+        }
+        let data = try Data(contentsOf: sourceURL)
+        let cachesURL = try FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        let ext = sourceURL.pathExtension.isEmpty ? "jpg" : sourceURL.pathExtension
+        let destinationURL = cachesURL.appendingPathComponent("picked_image_\(UUID().uuidString).\(ext)")
+        try data.write(to: destinationURL)
+        resolve(destinationURL.absoluteString)
+      } catch {
+        NSLog("persistPickedImage error: %@", String(describing: error))
+        reject("PERSIST_PICKED_IMAGE_ERROR", String(describing: error), error)
+      }
+    }
+  }
+
   // MARK: - Bible References
 
   // DB 조회를 직렬화하기 위한 전용 큐 (SQLite 멀티스레드 에러 방지)

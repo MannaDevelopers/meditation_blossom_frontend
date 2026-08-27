@@ -61,6 +61,13 @@ RCT_EXPORT_MODULE(WidgetUpdateModule)
   [_impl onQtWidgetDesignUpdated:designData resolver:resolve rejecter:reject];
 }
 
+- (void)persistPickedImage:(NSString *)sourceUri
+                    resolve:(RCTPromiseResolveBlock)resolve
+                     reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl persistPickedImage:sourceUri resolver:resolve rejecter:reject];
+}
+
 - (void)resolveBibleReferences:(NSString *)jsonString
                         resolve:(RCTPromiseResolveBlock)resolve
                          reject:(RCTPromiseRejectBlock)reject
