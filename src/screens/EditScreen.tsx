@@ -565,6 +565,12 @@ const EditScreen = ({ navigation, route }: Props) => {
       }
     } catch (e) {
       logger.error('EditScreen: 위젯 디자인 저장 실패', e);
+      // TODO(#251 진단용, 원인 확인 후 제거): 실기기에서 갤러리 배경 저장이 조용히 실패해
+      // 디버깅이 어려웠다 — 정확한 에러 메시지를 원인 파악 전까지 화면에 노출한다.
+      Alert.alert(
+        '위젯 디자인 저장 실패',
+        `[${source}] ${e instanceof Error ? e.message : String(e)}`,
+      );
       return null;
     }
   };
