@@ -679,12 +679,15 @@ const EditScreen = ({ navigation, route }: Props) => {
       const asset = result.assets?.[0];
       const uri = asset?.uri;
       if (!uri) return;
-      if (!isValidPickedAsset(asset)) {
-        logger.error('EditScreen: 사진 데이터를 불러오지 못함(iCloud 다운로드 실패 추정)', asset);
-        Alert.alert(
-          '사진을 불러오지 못했습니다',
-          'iCloud에만 저장된 사진일 수 있습니다. 사진 앱에서 먼저 열어 다운로드한 뒤 다시 시도해주세요.',
-        );
+      const valid = isValidPickedAsset(asset);
+      // TODO(#252 진단용, 원인 확인 후 제거): 적용되는 사진과 안되는 사진의 경로/크기 차이를
+      // 실기기에서 직접 비교할 수 있도록, 성공/실패 관계없이 매번 노출한다.
+      Alert.alert(
+        valid ? '사진 정보 (진단용)' : '사진을 불러오지 못했습니다 (진단용)',
+        `uri: ${uri}\nfileSize: ${asset.fileSize}\nwidth: ${asset.width}\nheight: ${asset.height}`,
+      );
+      if (!valid) {
+        logger.error('EditScreen: 사진 데이터를 불러오지 못함', asset);
         return;
       }
       const stableUri = await persistPickedImageLocally(uri);
