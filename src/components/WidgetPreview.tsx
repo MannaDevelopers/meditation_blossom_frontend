@@ -22,6 +22,7 @@ import { WidgetDesign, WidgetImageTransform } from '../types/WidgetDesign';
 import { WIDGET_TEXT_WEIGHT_FONT_FAMILY } from '../constants';
 import { cardOuterTint } from '../utils/widgetDesignColor';
 import { MIN_ZOOM, clampFocal, computeBaseScale, computeHalfExtent } from '../utils/imageCropMath';
+import { toDisplayableImageUri } from '../utils/localImageUri';
 
 const FRAME_HEIGHT = 480;
 const PAGE_MARGIN = 40; // 프레임 좌우 여백(20px씩)
@@ -183,13 +184,14 @@ const GalleryBackground = ({
   style?: StyleProp<ViewStyle>;
   children?: React.ReactNode;
 }) => {
-  const layout = useGalleryImageLayout(uri, transform, width, height);
+  const displayUri = toDisplayableImageUri(uri);
+  const layout = useGalleryImageLayout(displayUri, transform, width, height);
 
   return (
     <View style={[{ width, height, overflow: 'hidden' }, style]}>
       {layout.ready && (
         <Image
-          source={{ uri }}
+          source={{ uri: displayUri }}
           style={{
             position: 'absolute',
             left: layout.imageLeft,
@@ -371,7 +373,8 @@ const CardPreview = ({
   // 카드형 갤러리 배경은 테두리(전체)와 안쪽 카드(창) 두 레이어에 "같은 사진"을 그려야 한다.
   // 두 레이어가 각자 따로 cover-fit을 계산하면 서로 다른 배율/위치로 어긋나 사진이 잘려
   // 보이므로, 이 훅으로 배율·위치를 한 번만 계산해 두 레이어가 정확히 같은 값을 공유하게 한다.
-  const galleryUri = backgroundKind === 'gallery' ? design.background.value : undefined;
+  const galleryUri =
+    backgroundKind === 'gallery' ? toDisplayableImageUri(design.background.value) : undefined;
   const galleryLayout = useGalleryImageLayout(galleryUri, design.background.imageTransform, width, height);
 
   const referenceText = (
@@ -402,7 +405,7 @@ const CardPreview = ({
       <View style={[styles.cardOuter, sizeStyle]}>
         {galleryLayout.ready && (
           <Image
-            source={{ uri: design.background.value }}
+            source={{ uri: galleryUri }}
             style={{
               position: 'absolute',
               left: galleryLayout.imageLeft,
@@ -434,7 +437,7 @@ const CardPreview = ({
         <MaskedView style={styles.cardInner} maskElement={<View style={styles.cardInnerMask} />}>
           {galleryLayout.ready && (
             <Image
-              source={{ uri: design.background.value }}
+              source={{ uri: galleryUri }}
               style={{
                 position: 'absolute',
                 left: galleryLayout.imageLeft - innerOffsetX,
