@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileOutputStream
+import java.util.UUID
 
 class WidgetDesignPrefsDataSource(
     @ApplicationContext private val context: Context,
@@ -51,6 +52,7 @@ class WidgetDesignPrefsDataSource(
     }
 
     override suspend fun saveDesign(design: WidgetDesignDto): WidgetDesignDto = withContext(Dispatchers.IO) {
+        val previousBackgroundPath = galleryBackgroundPath(prefs.getString(keyDesignJson, null))
         val persisted = if (design.background.type == "gallery") {
             val localPath = processAndStoreBackgroundImage(design.background.value)
             design.copy(background = design.background.copy(value = localPath))
@@ -60,23 +62,43 @@ class WidgetDesignPrefsDataSource(
         prefs.edit {
             putString(keyDesignJson, json.encodeToString(persisted))
         }
+        // 이전 배경이 갤러리 사진이었고 이번 저장으로 다른 경로가 됐다면(새 사진 적용, 또는
+        // 배경색으로 전환) 저장 공간에 계속 쌓이지 않도록 정리한다([ISSUE-258] 후속).
+        val newGalleryPath = persisted.background.takeIf { it.type == "gallery" }?.value
+        if (previousBackgroundPath != null && previousBackgroundPath != newGalleryPath) {
+            File(previousBackgroundPath).delete()
+        }
         persisted
     }
 
     override suspend fun clearDesign() = withContext(Dispatchers.IO) {
+        val currentBackgroundPath = galleryBackgroundPath(prefs.getString(keyDesignJson, null))
         prefs.edit { remove(keyDesignJson) }
-        backgroundImageFile().delete()
+        currentBackgroundPath?.let { File(it).delete() }
         Unit
     }
 
-    private fun backgroundImageFile(): File =
-        File(context.filesDir, "widget_design_background_${contentType.storageSuffix}.jpg")
+    private fun galleryBackgroundPath(designJson: String?): String? {
+        if (designJson.isNullOrBlank()) return null
+        return try {
+            json.decodeFromString<WidgetDesignDto>(designJson).background.takeIf { it.type == "gallery" }?.value
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // 저장할 때마다 고유 파일명(UUID)을 쓴다([ISSUE-258]) — 콘텐츠 타입별 고정 파일명에 매번
+    // 덮어쓰면 배경 사진을 바꿔 저장해도 background.value(파일 경로) 문자열이 그대로라, RN
+    // <Image>(Fresco, Android)가 그 경로로 예전에 캐시해둔 사진을 재사용해 편집 화면 재진입 시
+    // 예전 사진이 보이는 문제가 있었다(iOS도 #249에서 비슷한 이유로 동일한 방식을 먼저 적용).
+    // 이전 파일 정리는 saveDesign()/clearDesign()이 담당한다.
+    private fun newBackgroundImageFile(): File =
+        File(context.filesDir, "widget_design_background_${contentType.storageSuffix}_${UUID.randomUUID()}.jpg")
 
     /**
      * RN에서 넘어온 원본 이미지 URI(시스템 포토 피커의 임시 content:// 등)를 앱 내부 저장소의
-     * 고정 경로로 복사하면서 다운샘플링 + JPEG 압축한다. 원본 URI는 임시 참조일 수 있어(피커가
+     * 새 고유 경로로 복사하면서 다운샘플링 + JPEG 압축한다. 원본 URI는 임시 참조일 수 있어(피커가
      * 반환한 캐시 URI 등), 위젯 프로세스가 항상 접근 가능한 앱 전용 저장소에 안정적으로 보관해야 한다.
-     * 매번 같은 파일명에 덮어써 이전 배경이 갤러리에 남아 용량이 누적되지 않게 한다.
      */
     private fun processAndStoreBackgroundImage(sourceUriString: String): String {
         val uri = sourceUriString.toUri()
@@ -86,7 +108,7 @@ class WidgetDesignPrefsDataSource(
         // 디코딩한다([ISSUE-255]) — 여기서 방향을 픽셀에 직접 구워 넣어야, 이후 위젯이 이 파일을
         // BitmapFactory.decodeFile()로 다시 읽을 때도(방향 정보 없이) 항상 올바르게 보인다.
         val bitmap = applyExifOrientation(sampledBitmap, readExifOrientation(uri))
-        val outFile = backgroundImageFile()
+        val outFile = newBackgroundImageFile()
         try {
             FileOutputStream(outFile).use { out ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, BACKGROUND_JPEG_QUALITY, out)
