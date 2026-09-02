@@ -5,8 +5,8 @@ import kotlinx.serialization.Serializable
 /**
  * JS WidgetDesign(src/types/WidgetDesign.ts)과 1:1로 대응하는 브릿지 전송 DTO.
  * background.value는 type="color"면 hex(또는 "gradient-default"), type="gallery"면 이미지 경로다.
- * 갤러리 이미지는 [WidgetDesignPrefsDataSource]가 저장 시점에 앱 내부 저장소의 고정 경로로
- * 치환하므로, 여기 저장된 값은 항상 앱이 접근 가능한 최신 경로를 가리킨다.
+ * 갤러리 이미지는 [WidgetDesignPrefsDataSource]가 저장 시점에 앱 내부 저장소의 새 고유 경로(저장할
+ * 때마다 다른 파일명, [ISSUE-258])로 치환하므로, 여기 저장된 값은 항상 앱이 접근 가능한 최신 경로를 가리킨다.
  */
 @Serializable
 data class WidgetDesignDto(
