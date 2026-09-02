@@ -16,6 +16,11 @@ export const APP_GROUP_DISPLAY_SERMON_KEY = 'displaySermon';
 export const WIDGET_DESIGN_STORAGE_KEY_SERMON = 'widget_design_sermon';
 export const WIDGET_DESIGN_STORAGE_KEY_QT = 'widget_design_qt';
 
+// 최근 적용한 갤러리 배경 사진 목록도 네이티브에는 저장되지 않는 RN 전용 상태라 같은 이유로
+// 재진입 시 사라졌다([#253]) — 위 위젯 디자인 캐시와 동일한 소스별 AsyncStorage 패턴으로 고친다.
+export const RECENT_GALLERY_IMAGES_STORAGE_KEY_SERMON = 'recent_gallery_images_sermon';
+export const RECENT_GALLERY_IMAGES_STORAGE_KEY_QT = 'recent_gallery_images_qt';
+
 // 위젯 디자인 편집 - 텍스트 색상 스와치 프리셋 (빨강/주황/노랑/초록/파랑/흰색/검정)
 // 8번째 "사용자 지정" 스와치는 프리셋이 아닌 커스텀 컬러피커 진입 버튼이라 이 배열에는 포함하지 않음
 export const WIDGET_TEXT_COLOR_PRESETS: readonly string[] = [

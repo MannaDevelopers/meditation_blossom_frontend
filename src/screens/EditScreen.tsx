@@ -1,6 +1,7 @@
 import { View, TouchableOpacity, Text, StatusBar, Modal, TextInput, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { launchImageLibrary } from 'react-native-image-picker';
+import Clipboard from '@react-native-clipboard/clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WidgetPreview from '../components/WidgetPreview';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -24,6 +25,8 @@ import {
   WIDGET_TEXT_WEIGHT_FONT_FAMILY,
   WIDGET_DESIGN_STORAGE_KEY_SERMON,
   WIDGET_DESIGN_STORAGE_KEY_QT,
+  RECENT_GALLERY_IMAGES_STORAGE_KEY_SERMON,
+  RECENT_GALLERY_IMAGES_STORAGE_KEY_QT,
 } from '../constants';
 import { isPresetColor } from '../utils/widgetDesignColor';
 import { formatQtDateLabel } from '../utils/textFormatting';
@@ -442,11 +445,25 @@ const WIDGET_DESIGN_STORAGE_KEY_BY_SOURCE: Record<WidgetSource, string> = {
   qt: WIDGET_DESIGN_STORAGE_KEY_QT,
 };
 
+const RECENT_GALLERY_IMAGES_STORAGE_KEY_BY_SOURCE: Record<WidgetSource, string> = {
+  sermon: RECENT_GALLERY_IMAGES_STORAGE_KEY_SERMON,
+  qt: RECENT_GALLERY_IMAGES_STORAGE_KEY_QT,
+};
+
 type RecentGalleryImage = { uri: string; transform: WidgetImageTransform };
 
 // 갤러리에서 고른 배경 사진은 최근 것부터 이 개수만큼만 유지한다 — 다른 옵션 탭을 오가거나
 // 새 사진을 골라도 이전에 적용했던 사진들을 다시 시스템 사진 선택기 없이 바로 고를 수 있게 한다.
 const MAX_RECENT_GALLERY_IMAGES = 5;
+
+// 아래 "위젯 디자인 저장 실패" 알림([#251])처럼 에러 메시지가 길어 스크린샷만으로는
+// 잘리기 쉬운 진단용 Alert에 "복사" 버튼을 붙여, 클립보드로 전체 텍스트를 가져갈 수 있게 한다.
+const showDiagnosticAlert = (title: string, message: string) => {
+  Alert.alert(title, message, [
+    { text: '복사', onPress: () => Clipboard.setString(message) },
+    { text: '확인' },
+  ]);
+};
 
 const EditScreen = ({ navigation, route }: Props) => {
   const sermon = route.params?.sermon;
@@ -471,7 +488,12 @@ const EditScreen = ({ navigation, route }: Props) => {
   const [textSubTab, setTextSubTab] = useState<TextSubTab>('align');
   const [backgroundSubTab, setBackgroundSubTab] = useState<BackgroundSubTab>('color');
   const [customColorTarget, setCustomColorTarget] = useState<'text' | 'background' | null>(null);
-  const [recentGalleryImages, setRecentGalleryImages] = useState<RecentGalleryImage[]>([]);
+  // 소스(주일 말씀/QT)별로 독립적으로 유지 — 재진입 시에도 사라지지 않도록 AsyncStorage에도
+  // 캐시한다([#253], 아래 마운트 시 로드 effect와 upsertRecentGalleryImage 참고).
+  const [recentGalleryImagesBySource, setRecentGalleryImagesBySource] = useState<
+    Record<WidgetSource, RecentGalleryImage[]>
+  >({ sermon: [], qt: [] });
+  const recentGalleryImages = recentGalleryImagesBySource[activeSource];
 
   const activeSubTab = category === 'text' ? textSubTab : backgroundSubTab;
 
@@ -481,16 +503,26 @@ const EditScreen = ({ navigation, route }: Props) => {
   useEffect(() => {
     (async () => {
       try {
-        const [sermonRaw, qtRaw] = await Promise.all([
+        const [sermonRaw, qtRaw, recentSermonRaw, recentQtRaw] = await Promise.all([
           AsyncStorage.getItem(WIDGET_DESIGN_STORAGE_KEY_SERMON),
           AsyncStorage.getItem(WIDGET_DESIGN_STORAGE_KEY_QT),
+          AsyncStorage.getItem(RECENT_GALLERY_IMAGES_STORAGE_KEY_SERMON),
+          AsyncStorage.getItem(RECENT_GALLERY_IMAGES_STORAGE_KEY_QT),
         ]);
         const loaded: Partial<Record<WidgetSource, WidgetDesign>> = {};
         if (sermonRaw) loaded.sermon = JSON.parse(sermonRaw) as WidgetDesign;
         if (qtRaw) loaded.qt = JSON.parse(qtRaw) as WidgetDesign;
-        if (Object.keys(loaded).length === 0) return;
-        setSavedDesigns(prev => ({ ...prev, ...loaded }));
-        setDraftDesigns(prev => ({ ...prev, ...loaded }));
+        if (Object.keys(loaded).length > 0) {
+          setSavedDesigns(prev => ({ ...prev, ...loaded }));
+          setDraftDesigns(prev => ({ ...prev, ...loaded }));
+        }
+
+        const loadedRecent: Partial<Record<WidgetSource, RecentGalleryImage[]>> = {};
+        if (recentSermonRaw) loadedRecent.sermon = JSON.parse(recentSermonRaw) as RecentGalleryImage[];
+        if (recentQtRaw) loadedRecent.qt = JSON.parse(recentQtRaw) as RecentGalleryImage[];
+        if (Object.keys(loadedRecent).length > 0) {
+          setRecentGalleryImagesBySource(prev => ({ ...prev, ...loadedRecent }));
+        }
       } catch (e) {
         logger.error('EditScreen: 저장된 위젯 디자인 로드 실패', e);
       }
@@ -543,23 +575,35 @@ const EditScreen = ({ navigation, route }: Props) => {
   // 저장 자체는 즉시 완료되는 로컬 상태 변경이라 네이티브 동기화를 기다리지 않고 바로 나간다 —
   // 실패해도 사용자를 화면에 붙잡아두지 않고 logger로만 기록한다(콘텐츠 동기화와 동일한 방식).
   // 소스별로 별도 브릿지 메서드를 쓴다([ISSUE-236]) — 기존 sermon/qt 콘텐츠 동기화와 동일한 컨벤션.
-  const syncWidgetDesignToNative = async (source: WidgetSource, design: WidgetDesign) => {
+  // 갤러리 배경이면 네이티브가 피커의 임시 캐시 경로를 자기 저장소의 영구 경로로 다운샘플링해
+  // 저장하고, 그 경로로 재작성된 디자인 JSON을 반환한다 — 실패 시(예: 임시 파일이 이미 정리됨)
+  // null을 반환해 호출부가 draft를 그대로 캐싱하도록 한다.
+  const syncWidgetDesignToNative = async (source: WidgetSource, design: WidgetDesign): Promise<WidgetDesign | null> => {
     try {
       if (source === 'sermon') {
         if (!WidgetUpdateModule?.onWidgetDesignUpdated) {
           logger.error('WidgetUpdateModule.onWidgetDesignUpdated is not available');
-          return;
+          return null;
         }
-        await WidgetUpdateModule.onWidgetDesignUpdated(JSON.stringify(design));
+        const persisted = await WidgetUpdateModule.onWidgetDesignUpdated(JSON.stringify(design));
+        return JSON.parse(persisted) as WidgetDesign;
       } else {
         if (!WidgetUpdateModule?.onQtWidgetDesignUpdated) {
           logger.error('WidgetUpdateModule.onQtWidgetDesignUpdated is not available');
-          return;
+          return null;
         }
-        await WidgetUpdateModule.onQtWidgetDesignUpdated(JSON.stringify(design));
+        const persisted = await WidgetUpdateModule.onQtWidgetDesignUpdated(JSON.stringify(design));
+        return JSON.parse(persisted) as WidgetDesign;
       }
     } catch (e) {
       logger.error('EditScreen: 위젯 디자인 저장 실패', e);
+      // TODO(#251 진단용, 원인 확인 후 제거): 실기기에서 갤러리 배경 저장이 조용히 실패해
+      // 디버깅이 어려웠다 — 정확한 에러 메시지를 원인 파악 전까지 화면에 노출한다.
+      showDiagnosticAlert(
+        '위젯 디자인 저장 실패',
+        `[${source}] ${e instanceof Error ? e.message : String(e)}`,
+      );
+      return null;
     }
   };
 
@@ -581,8 +625,11 @@ const EditScreen = ({ navigation, route }: Props) => {
       if (JSON.stringify(draftDesigns[source]) === JSON.stringify(savedDesigns[source])) return;
       const design = draftDesigns[source];
       setSavedDesigns(prev => ({ ...prev, [source]: design }));
-      syncWidgetDesignToNative(source, design);
-      cacheWidgetDesignLocally(source, design);
+      // 네이티브가 돌려준 영구 경로 디자인을 캐싱한다 — draft(피커의 임시 경로)를 그대로 캐싱하면
+      // 재진입 시 그 임시 파일이 이미 정리돼 미리보기가 깨지거나 재저장이 실패할 수 있다([#251]).
+      syncWidgetDesignToNative(source, design).then(persisted => {
+        cacheWidgetDesignLocally(source, persisted ?? design);
+      });
     });
     navigation.goBack();
   };
@@ -600,11 +647,30 @@ const EditScreen = ({ navigation, route }: Props) => {
     }));
 
   // 최근 적용한 갤러리 사진 목록에 upsert — 같은 사진을 다시 고르면 기존 항목을 빼고
-  // 맨 앞으로 옮기며, 최대 개수를 넘으면 가장 오래된 것부터 잘라낸다.
+  // 맨 앞으로 옮기며, 최대 개수를 넘으면 가장 오래된 것부터 잘라낸다. 재진입 후에도 남아있도록
+  // 소스별로 AsyncStorage에 캐싱하고([#253]), 잘려나간 사진은 persistPickedImage가 만든
+  // 캐시 파일도 같이 정리해 무한정 쌓이지 않게 한다.
   const upsertRecentGalleryImage = (uri: string, transform: WidgetImageTransform) => {
-    setRecentGalleryImages(prev =>
-      [{ uri, transform }, ...prev.filter(item => item.uri !== uri)].slice(0, MAX_RECENT_GALLERY_IMAGES),
+    const currentList = recentGalleryImagesBySource[activeSource];
+    const nextList = [{ uri, transform }, ...currentList.filter(item => item.uri !== uri)].slice(
+      0,
+      MAX_RECENT_GALLERY_IMAGES,
     );
+
+    setRecentGalleryImagesBySource(prev => ({ ...prev, [activeSource]: nextList }));
+
+    AsyncStorage.setItem(RECENT_GALLERY_IMAGES_STORAGE_KEY_BY_SOURCE[activeSource], JSON.stringify(nextList)).catch(
+      e => logger.error('EditScreen: 최근 이미지 목록 캐시 실패', e),
+    );
+
+    const keptUris = new Set(nextList.map(item => item.uri));
+    currentList
+      .filter(item => !keptUris.has(item.uri))
+      .forEach(item => {
+        WidgetUpdateModule?.deletePersistedImage(item.uri).catch(e =>
+          logger.error('EditScreen: 밀려난 최근 이미지 캐시 파일 삭제 실패', e),
+        );
+      });
   };
 
   const openImageCropScreen = (imageUri: string) => {
@@ -633,6 +699,25 @@ const EditScreen = ({ navigation, route }: Props) => {
     });
   };
 
+  // react-native-image-picker(iOS)가 사진 로드를 실패해도 에러 없이 빈 파일을 가리키는 uri를
+  // 돌려주는 경우가 있다(iCloud 전용이라 기기에 다운로드가 안 된 사진 등, [#252]) — fileSize/
+  // width/height가 0이면 실제로는 로드에 실패한 것으로 보고 여기서 걸러낸다.
+  const isValidPickedAsset = (asset: { fileSize?: number; width?: number; height?: number }) =>
+    (asset.fileSize ?? 0) > 0 && (asset.width ?? 0) > 0 && (asset.height ?? 0) > 0;
+
+  // 사진 피커가 만드는 파일은 휘발성 임시 디렉토리에 있어 iOS가 예고 없이 정리할 수 있다([#252]) —
+  // 앱이 직접 관리하는 안정적인 캐시 경로로 즉시 복사해, "최근 이미지" 목록과 저장 시점까지도
+  // 안전하게 참조할 수 있게 한다. 네이티브 브릿지가 없거나 실패하면 원본 uri로 폴백한다.
+  const persistPickedImageLocally = async (uri: string): Promise<string> => {
+    try {
+      if (!WidgetUpdateModule?.persistPickedImage) return uri;
+      return await WidgetUpdateModule.persistPickedImage(uri);
+    } catch (e) {
+      logger.error('EditScreen: 사진을 앱 저장소로 복사 실패', e);
+      return uri;
+    }
+  };
+
   const handleOpenAlbum = async () => {
     try {
       const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 });
@@ -642,9 +727,16 @@ const EditScreen = ({ navigation, route }: Props) => {
         Alert.alert('오류', '사진을 불러오지 못했습니다. 다시 시도해주세요.');
         return;
       }
-      const uri = result.assets?.[0]?.uri;
+      const asset = result.assets?.[0];
+      const uri = asset?.uri;
       if (!uri) return;
-      openImageCropScreen(uri);
+      const valid = isValidPickedAsset(asset);
+      if (!valid) {
+        logger.error('EditScreen: 사진 데이터를 불러오지 못함', asset);
+        return;
+      }
+      const stableUri = await persistPickedImageLocally(uri);
+      openImageCropScreen(stableUri);
     } catch (e) {
       logger.error('EditScreen: 이미지 피커 실행 실패', e);
     }

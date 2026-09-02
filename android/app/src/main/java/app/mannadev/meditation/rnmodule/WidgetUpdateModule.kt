@@ -1,5 +1,6 @@
 package app.mannadev.meditation.rnmodule
 
+import android.net.Uri
 import androidx.annotation.Keep
 import app.mannadev.meditation.analytics.AnalyticsHelper
 import app.mannadev.meditation.analytics.CrashlyticsHelper
@@ -18,6 +19,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import timber.log.Timber
+import java.io.File
+import java.io.FileOutputStream
+import java.util.UUID
 
 @Keep
 class WidgetUpdateModule(reactContext: ReactApplicationContext) :
@@ -194,8 +198,9 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
             val saveResult = runCatching {
                 log.d("Saving sermon widget design to prefs...")
                 val designDto = json.decodeFromString<WidgetDesignDto>(designData)
-                moduleDependencies.sermonWidgetDesignRepository().save(designDto)
+                val persisted = moduleDependencies.sermonWidgetDesignRepository().save(designDto)
                 log.d("Sermon widget design saved to prefs successfully")
+                persisted
             }.onFailure { e ->
                 CrashlyticsHelper.recordException(
                     e,
@@ -205,7 +210,8 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
             }
 
             saveResult
-                .onSuccess { promise.resolve(true) }
+                // RN이 피커의 임시 캐시 경로 대신 영구 저장 경로를 캐싱하도록 반환값을 그대로 돌려준다.
+                .onSuccess { persisted -> promise.resolve(json.encodeToString(persisted)) }
                 .onFailure { e ->
                     promise.reject("WIDGET_DESIGN_UPDATE_ERROR", e.message, e)
                 }
@@ -217,8 +223,9 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
             val saveResult = runCatching {
                 log.d("Saving QT widget design to prefs...")
                 val designDto = json.decodeFromString<WidgetDesignDto>(designData)
-                moduleDependencies.qtWidgetDesignRepository().save(designDto)
+                val persisted = moduleDependencies.qtWidgetDesignRepository().save(designDto)
                 log.d("QT widget design saved to prefs successfully")
+                persisted
             }.onFailure { e ->
                 CrashlyticsHelper.recordException(
                     e,
@@ -228,9 +235,64 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
             }
 
             saveResult
-                .onSuccess { promise.resolve(true) }
+                .onSuccess { persisted -> promise.resolve(json.encodeToString(persisted)) }
                 .onFailure { e ->
                     promise.reject("QT_WIDGET_DESIGN_UPDATE_ERROR", e.message, e)
+                }
+        }
+    }
+
+    // 사진 피커가 만드는 파일은 휘발성 캐시/임시 디렉토리에 있을 수 있어([#252]) 앱이 직접
+    // 관리하는 cacheDir로 즉시 복사하고, 그 경로를 돌려준다 — "최근 이미지" 목록/이후 저장
+    // 시점까지 안전하게 참조할 수 있게 한다. content://, file:// 둘 다 처리하기 위해
+    // ContentResolver를 통해 읽는다.
+    override fun persistPickedImage(sourceUri: String, promise: Promise) {
+        moduleScope.launch {
+            val result = runCatching {
+                val resolver = reactApplicationContext.contentResolver
+                val parsedUri = Uri.parse(sourceUri)
+                val extension = sourceUri.substringAfterLast('.', "jpg").substringBefore('?')
+                val destFile = File(reactApplicationContext.cacheDir, "picked_image_${UUID.randomUUID()}.$extension")
+                val inputStream = resolver.openInputStream(parsedUri)
+                    ?: throw IllegalStateException("Cannot open input stream for $sourceUri")
+                inputStream.use { input ->
+                    FileOutputStream(destFile).use { output -> input.copyTo(output) }
+                }
+                Uri.fromFile(destFile).toString()
+            }.onFailure { e ->
+                CrashlyticsHelper.recordException(
+                    e,
+                    "Error persisting picked image: ${e.message}",
+                    tag = TAG
+                )
+            }
+
+            result
+                .onSuccess { uri -> promise.resolve(uri) }
+                .onFailure { e ->
+                    promise.reject("PERSIST_PICKED_IMAGE_ERROR", e.message, e)
+                }
+        }
+    }
+
+    // "최근 이미지" 목록에서 밀려난 사진의 persistPickedImage 캐시 파일을 정리한다([#253]).
+    override fun deletePersistedImage(path: String, promise: Promise) {
+        moduleScope.launch {
+            val result = runCatching {
+                val filePath = Uri.parse(path).path ?: path
+                File(filePath).delete()
+            }.onFailure { e ->
+                CrashlyticsHelper.recordException(
+                    e,
+                    "Error deleting persisted image: ${e.message}",
+                    tag = TAG
+                )
+            }
+
+            result
+                .onSuccess { promise.resolve(null) }
+                .onFailure { e ->
+                    promise.reject("DELETE_PERSISTED_IMAGE_ERROR", e.message, e)
                 }
         }
     }

@@ -40,7 +40,12 @@ enum WidgetDesignPersistence {
     var background: BackgroundDesign
   }
 
-  static let maxBackgroundDimension: CGFloat = 1024
+  // WidgetKit의 WidgetArchiver는 위젯 뷰에 들어가는 이미지 크기에 (900×1600.8) 상한을 두는데,
+  // 이 상한은 가로/세로 비대칭이라 "긴 쪽만 맞추는" 방식으로는 가로로 넓은(landscape) 사진에서
+  // 가로 길이가 900을 넘겨 위젯 아카이빙 자체가 조용히 실패한다([#252] — RN 쪽 저장은 이미
+  // 끝난 뒤 위젯 익스텐션 내부에서만 나는 에러라 JS에서 감지 불가). 두 축 모두 900 이하로
+  // 맞추면 어느 방향이든 상한을 넘지 않는다.
+  static let maxBackgroundDimension: CGFloat = 900
   static let backgroundJPEGQuality: CGFloat = 0.85
 
   // designData(JS WidgetDesign JSON)를 파싱해 background.type이 "gallery"면 이미지를
@@ -115,8 +120,32 @@ class WidgetUpdateModuleImpl: NSObject {
     static let youtubeLinkEnabledKey = "youtube_link_enabled"
     static let widgetDesignKey = "widget_design"
     static let widgetDesignQtKey = "widget_design_qt"
-    static let widgetDesignBackgroundFileNameSermon = "widget_design_background_sermon.jpg"
-    static let widgetDesignBackgroundFileNameQt = "widget_design_background_qt.jpg"
+    static let widgetDesignBackgroundFilePrefixSermon = "widget_design_background_sermon_"
+    static let widgetDesignBackgroundFilePrefixQt = "widget_design_background_qt_"
+  }
+
+  // 배경 사진을 매번 고유 파일명으로 저장한다 — 고정 파일명에 덮어쓰면(과거 방식) 메인 앱
+  // 프로세스의 쓰기와 위젯 익스텐션 프로세스의 다음 읽기 사이에 실기기에서 타이밍/캐시 지연이
+  // 생겨 사진이 바로 갱신되지 않는 문제가 있었다(색상은 JSON 안 hex 값이라 즉시 반영되지만,
+  // 사진은 파일을 다시 읽어야 해서 영향을 받음 — 시뮬레이터에서는 디스크가 빨라 재현 안 됨).
+  private static func uniqueBackgroundFileName(prefix: String) -> String {
+    "\(prefix)\(UUID().uuidString).jpg"
+  }
+
+  // 저장 직전 시점의 기존 디자인에서 갤러리 배경 파일 경로를 추출 — 새 파일 저장 성공 후
+  // 이전 파일을 정리해 App Group 컨테이너에 파일이 계속 쌓이지 않게 한다.
+  private static func galleryBackgroundPath(fromDesignJSON designJSON: String?) -> String? {
+    guard let designJSON, let data = designJSON.data(using: .utf8),
+          let design = try? JSONDecoder().decode(WidgetDesignPersistence.Design.self, from: data),
+          design.background.type == "gallery" else {
+      return nil
+    }
+    return design.background.value
+  }
+
+  private static func removeFileIfExists(atPath path: String) {
+    guard FileManager.default.fileExists(atPath: path) else { return }
+    try? FileManager.default.removeItem(atPath: path)
   }
 
   private static func appGroupDefaults() -> UserDefaults? {
@@ -196,17 +225,22 @@ class WidgetUpdateModuleImpl: NSObject {
       reject("APP_GROUP_ERROR", "App Group을 찾을 수 없습니다.", nil)
       return
     }
+    let previousBackgroundPath = WidgetUpdateModuleImpl.galleryBackgroundPath(fromDesignJSON: sharedDefaults.string(forKey: Constants.widgetDesignKey))
     WidgetUpdateModuleImpl.designQueue.async {
       do {
+        let backgroundFileName = WidgetUpdateModuleImpl.uniqueBackgroundFileName(prefix: Constants.widgetDesignBackgroundFilePrefixSermon)
         let persisted = try WidgetDesignPersistence.persist(
           designData: designData,
           containerURL: containerURL,
-          backgroundFileName: Constants.widgetDesignBackgroundFileNameSermon
+          backgroundFileName: backgroundFileName
         )
         sharedDefaults.set(persisted, forKey: Constants.widgetDesignKey)
         sharedDefaults.synchronize()
+        if let previousBackgroundPath, previousBackgroundPath != containerURL.appendingPathComponent(backgroundFileName).path {
+          WidgetUpdateModuleImpl.removeFileIfExists(atPath: previousBackgroundPath)
+        }
         WidgetUpdateModuleImpl.reloadWidgets()
-        resolve(true)
+        resolve(persisted)
       } catch {
         NSLog("onWidgetDesignUpdated error: %@", String(describing: error))
         reject("WIDGET_DESIGN_UPDATE_ERROR", String(describing: error), error)
@@ -220,21 +254,63 @@ class WidgetUpdateModuleImpl: NSObject {
       reject("APP_GROUP_ERROR", "App Group을 찾을 수 없습니다.", nil)
       return
     }
+    let previousBackgroundPath = WidgetUpdateModuleImpl.galleryBackgroundPath(fromDesignJSON: sharedDefaults.string(forKey: Constants.widgetDesignQtKey))
     WidgetUpdateModuleImpl.designQueue.async {
       do {
+        let backgroundFileName = WidgetUpdateModuleImpl.uniqueBackgroundFileName(prefix: Constants.widgetDesignBackgroundFilePrefixQt)
         let persisted = try WidgetDesignPersistence.persist(
           designData: designData,
           containerURL: containerURL,
-          backgroundFileName: Constants.widgetDesignBackgroundFileNameQt
+          backgroundFileName: backgroundFileName
         )
         sharedDefaults.set(persisted, forKey: Constants.widgetDesignQtKey)
         sharedDefaults.synchronize()
+        if let previousBackgroundPath, previousBackgroundPath != containerURL.appendingPathComponent(backgroundFileName).path {
+          WidgetUpdateModuleImpl.removeFileIfExists(atPath: previousBackgroundPath)
+        }
         WidgetUpdateModuleImpl.reloadWidgets()
-        resolve(true)
+        resolve(persisted)
       } catch {
         NSLog("onQtWidgetDesignUpdated error: %@", String(describing: error))
         reject("QT_WIDGET_DESIGN_UPDATE_ERROR", String(describing: error), error)
       }
+    }
+  }
+
+  // MARK: - Picked Image Persistence
+
+  // 사진 피커(react-native-image-picker)가 만드는 파일은 NSTemporaryDirectory()에 있어 iOS가
+  // 예고 없이 정리할 수 있다([#252]) — Caches 디렉토리로 즉시 복사해 "최근 이미지" 목록/이후
+  // 저장 시점까지 안전하게 참조할 수 있는 경로를 돌려준다.
+  @objc
+  func persistPickedImage(_ sourceUri: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    WidgetUpdateModuleImpl.designQueue.async {
+      do {
+        guard let sourceURL = URL(string: sourceUri) else {
+          throw NSError(domain: "PersistPickedImage", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid source URI: \(sourceUri)"])
+        }
+        let data = try Data(contentsOf: sourceURL)
+        let cachesURL = try FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        let ext = sourceURL.pathExtension.isEmpty ? "jpg" : sourceURL.pathExtension
+        let destinationURL = cachesURL.appendingPathComponent("picked_image_\(UUID().uuidString).\(ext)")
+        try data.write(to: destinationURL)
+        resolve(destinationURL.absoluteString)
+      } catch {
+        NSLog("persistPickedImage error: %@", String(describing: error))
+        reject("PERSIST_PICKED_IMAGE_ERROR", String(describing: error), error)
+      }
+    }
+  }
+
+  // "최근 이미지" 목록에서 밀려난 사진의 persistPickedImage 캐시 파일을 정리한다([#253]).
+  // path는 persistPickedImage가 돌려준 file:// URL 문자열이라 removeFileIfExists가 기대하는
+  // 순수 경로로 먼저 변환한다.
+  @objc
+  func deletePersistedImage(_ path: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    WidgetUpdateModuleImpl.designQueue.async {
+      let filePath = URL(string: path)?.path ?? path
+      WidgetUpdateModuleImpl.removeFileIfExists(atPath: filePath)
+      resolve(nil)
     }
   }
 
