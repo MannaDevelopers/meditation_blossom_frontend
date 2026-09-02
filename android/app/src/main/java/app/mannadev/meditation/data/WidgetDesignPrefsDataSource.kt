@@ -3,9 +3,11 @@ package app.mannadev.meditation.data
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.net.Uri
 import androidx.core.content.edit
 import androidx.core.net.toUri
+import androidx.exifinterface.media.ExifInterface
 import app.mannadev.meditation.dto.WidgetDesignDto
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -78,8 +80,12 @@ class WidgetDesignPrefsDataSource(
      */
     private fun processAndStoreBackgroundImage(sourceUriString: String): String {
         val uri = sourceUriString.toUri()
-        val bitmap = decodeSampledBitmap(uri, MAX_BACKGROUND_DIMENSION_PX)
+        val sampledBitmap = decodeSampledBitmap(uri, MAX_BACKGROUND_DIMENSION_PX)
             ?: throw IllegalStateException("Unable to decode background image: $sourceUriString")
+        // BitmapFactory.decodeStream()은 EXIF Orientation 태그를 무시하고 저장된 픽셀 그대로
+        // 디코딩한다([ISSUE-255]) — 여기서 방향을 픽셀에 직접 구워 넣어야, 이후 위젯이 이 파일을
+        // BitmapFactory.decodeFile()로 다시 읽을 때도(방향 정보 없이) 항상 올바르게 보인다.
+        val bitmap = applyExifOrientation(sampledBitmap, readExifOrientation(uri))
         val outFile = backgroundImageFile()
         try {
             FileOutputStream(outFile).use { out ->
@@ -89,6 +95,45 @@ class WidgetDesignPrefsDataSource(
             bitmap.recycle()
         }
         return outFile.absolutePath
+    }
+
+    private fun readExifOrientation(uri: Uri): Int =
+        try {
+            openUriInputStream(uri)?.use { stream ->
+                ExifInterface(stream).getAttributeInt(
+                    ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_NORMAL,
+                )
+            } ?: ExifInterface.ORIENTATION_NORMAL
+        } catch (e: Exception) {
+            ExifInterface.ORIENTATION_NORMAL
+        }
+
+    /**
+     * [orientation](ExifInterface.TAG_ORIENTATION 값)에 맞춰 [bitmap]을 회전/반전한 새 비트맵을
+     * 반환한다. 방향 보정이 필요 없으면(NORMAL/UNDEFINED 등 매핑되지 않는 값) 원본을 그대로 반환.
+     */
+    private fun applyExifOrientation(bitmap: Bitmap, orientation: Int): Bitmap {
+        val matrix = Matrix()
+        when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+            ExifInterface.ORIENTATION_TRANSPOSE -> {
+                matrix.postRotate(90f)
+                matrix.postScale(-1f, 1f)
+            }
+            ExifInterface.ORIENTATION_TRANSVERSE -> {
+                matrix.postRotate(270f)
+                matrix.postScale(-1f, 1f)
+            }
+            else -> return bitmap
+        }
+        val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        if (rotated !== bitmap) bitmap.recycle()
+        return rotated
     }
 
     /**

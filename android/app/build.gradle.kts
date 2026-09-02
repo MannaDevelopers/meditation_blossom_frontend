@@ -116,6 +116,10 @@ dependencies {
     // React Native
     implementation(libs.react.android)
 
+    // 갤러리 배경 사진의 EXIF Orientation을 읽어 다운샘플링 전에 픽셀 방향을 보정하기 위함
+    // (ISSUE-255: 일부 사진이 홈 화면 위젯에서 회전되어 표시되던 버그)
+    implementation(libs.androidx.exifinterface)
+
     // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
