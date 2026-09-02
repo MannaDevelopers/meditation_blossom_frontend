@@ -297,6 +297,18 @@ class WidgetUpdateModuleImpl: NSObject {
     }
   }
 
+  // "최근 이미지" 목록에서 밀려난 사진의 persistPickedImage 캐시 파일을 정리한다([#253]).
+  // path는 persistPickedImage가 돌려준 file:// URL 문자열이라 removeFileIfExists가 기대하는
+  // 순수 경로로 먼저 변환한다.
+  @objc
+  func deletePersistedImage(_ path: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    WidgetUpdateModuleImpl.designQueue.async {
+      let filePath = URL(string: path)?.path ?? path
+      WidgetUpdateModuleImpl.removeFileIfExists(atPath: filePath)
+      resolve(nil)
+    }
+  }
+
   // MARK: - Bible References
 
   // DB 조회를 직렬화하기 위한 전용 큐 (SQLite 멀티스레드 에러 방지)

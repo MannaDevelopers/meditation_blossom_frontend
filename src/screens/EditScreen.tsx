@@ -24,6 +24,8 @@ import {
   WIDGET_TEXT_WEIGHT_FONT_FAMILY,
   WIDGET_DESIGN_STORAGE_KEY_SERMON,
   WIDGET_DESIGN_STORAGE_KEY_QT,
+  RECENT_GALLERY_IMAGES_STORAGE_KEY_SERMON,
+  RECENT_GALLERY_IMAGES_STORAGE_KEY_QT,
 } from '../constants';
 import { isPresetColor } from '../utils/widgetDesignColor';
 import { formatQtDateLabel } from '../utils/textFormatting';
@@ -442,6 +444,11 @@ const WIDGET_DESIGN_STORAGE_KEY_BY_SOURCE: Record<WidgetSource, string> = {
   qt: WIDGET_DESIGN_STORAGE_KEY_QT,
 };
 
+const RECENT_GALLERY_IMAGES_STORAGE_KEY_BY_SOURCE: Record<WidgetSource, string> = {
+  sermon: RECENT_GALLERY_IMAGES_STORAGE_KEY_SERMON,
+  qt: RECENT_GALLERY_IMAGES_STORAGE_KEY_QT,
+};
+
 type RecentGalleryImage = { uri: string; transform: WidgetImageTransform };
 
 // 갤러리에서 고른 배경 사진은 최근 것부터 이 개수만큼만 유지한다 — 다른 옵션 탭을 오가거나
@@ -471,7 +478,12 @@ const EditScreen = ({ navigation, route }: Props) => {
   const [textSubTab, setTextSubTab] = useState<TextSubTab>('align');
   const [backgroundSubTab, setBackgroundSubTab] = useState<BackgroundSubTab>('color');
   const [customColorTarget, setCustomColorTarget] = useState<'text' | 'background' | null>(null);
-  const [recentGalleryImages, setRecentGalleryImages] = useState<RecentGalleryImage[]>([]);
+  // 소스(주일 말씀/QT)별로 독립적으로 유지 — 재진입 시에도 사라지지 않도록 AsyncStorage에도
+  // 캐시한다([#253], 아래 마운트 시 로드 effect와 upsertRecentGalleryImage 참고).
+  const [recentGalleryImagesBySource, setRecentGalleryImagesBySource] = useState<
+    Record<WidgetSource, RecentGalleryImage[]>
+  >({ sermon: [], qt: [] });
+  const recentGalleryImages = recentGalleryImagesBySource[activeSource];
 
   const activeSubTab = category === 'text' ? textSubTab : backgroundSubTab;
 
@@ -481,16 +493,26 @@ const EditScreen = ({ navigation, route }: Props) => {
   useEffect(() => {
     (async () => {
       try {
-        const [sermonRaw, qtRaw] = await Promise.all([
+        const [sermonRaw, qtRaw, recentSermonRaw, recentQtRaw] = await Promise.all([
           AsyncStorage.getItem(WIDGET_DESIGN_STORAGE_KEY_SERMON),
           AsyncStorage.getItem(WIDGET_DESIGN_STORAGE_KEY_QT),
+          AsyncStorage.getItem(RECENT_GALLERY_IMAGES_STORAGE_KEY_SERMON),
+          AsyncStorage.getItem(RECENT_GALLERY_IMAGES_STORAGE_KEY_QT),
         ]);
         const loaded: Partial<Record<WidgetSource, WidgetDesign>> = {};
         if (sermonRaw) loaded.sermon = JSON.parse(sermonRaw) as WidgetDesign;
         if (qtRaw) loaded.qt = JSON.parse(qtRaw) as WidgetDesign;
-        if (Object.keys(loaded).length === 0) return;
-        setSavedDesigns(prev => ({ ...prev, ...loaded }));
-        setDraftDesigns(prev => ({ ...prev, ...loaded }));
+        if (Object.keys(loaded).length > 0) {
+          setSavedDesigns(prev => ({ ...prev, ...loaded }));
+          setDraftDesigns(prev => ({ ...prev, ...loaded }));
+        }
+
+        const loadedRecent: Partial<Record<WidgetSource, RecentGalleryImage[]>> = {};
+        if (recentSermonRaw) loadedRecent.sermon = JSON.parse(recentSermonRaw) as RecentGalleryImage[];
+        if (recentQtRaw) loadedRecent.qt = JSON.parse(recentQtRaw) as RecentGalleryImage[];
+        if (Object.keys(loadedRecent).length > 0) {
+          setRecentGalleryImagesBySource(prev => ({ ...prev, ...loadedRecent }));
+        }
       } catch (e) {
         logger.error('EditScreen: 저장된 위젯 디자인 로드 실패', e);
       }
@@ -615,11 +637,30 @@ const EditScreen = ({ navigation, route }: Props) => {
     }));
 
   // 최근 적용한 갤러리 사진 목록에 upsert — 같은 사진을 다시 고르면 기존 항목을 빼고
-  // 맨 앞으로 옮기며, 최대 개수를 넘으면 가장 오래된 것부터 잘라낸다.
+  // 맨 앞으로 옮기며, 최대 개수를 넘으면 가장 오래된 것부터 잘라낸다. 재진입 후에도 남아있도록
+  // 소스별로 AsyncStorage에 캐싱하고([#253]), 잘려나간 사진은 persistPickedImage가 만든
+  // 캐시 파일도 같이 정리해 무한정 쌓이지 않게 한다.
   const upsertRecentGalleryImage = (uri: string, transform: WidgetImageTransform) => {
-    setRecentGalleryImages(prev =>
-      [{ uri, transform }, ...prev.filter(item => item.uri !== uri)].slice(0, MAX_RECENT_GALLERY_IMAGES),
+    const currentList = recentGalleryImagesBySource[activeSource];
+    const nextList = [{ uri, transform }, ...currentList.filter(item => item.uri !== uri)].slice(
+      0,
+      MAX_RECENT_GALLERY_IMAGES,
     );
+
+    setRecentGalleryImagesBySource(prev => ({ ...prev, [activeSource]: nextList }));
+
+    AsyncStorage.setItem(RECENT_GALLERY_IMAGES_STORAGE_KEY_BY_SOURCE[activeSource], JSON.stringify(nextList)).catch(
+      e => logger.error('EditScreen: 최근 이미지 목록 캐시 실패', e),
+    );
+
+    const keptUris = new Set(nextList.map(item => item.uri));
+    currentList
+      .filter(item => !keptUris.has(item.uri))
+      .forEach(item => {
+        WidgetUpdateModule?.deletePersistedImage(item.uri).catch(e =>
+          logger.error('EditScreen: 밀려난 최근 이미지 캐시 파일 삭제 실패', e),
+        );
+      });
   };
 
   const openImageCropScreen = (imageUri: string) => {

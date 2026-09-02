@@ -68,6 +68,13 @@ RCT_EXPORT_MODULE(WidgetUpdateModule)
   [_impl persistPickedImage:sourceUri resolver:resolve rejecter:reject];
 }
 
+- (void)deletePersistedImage:(NSString *)path
+                      resolve:(RCTPromiseResolveBlock)resolve
+                       reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl deletePersistedImage:path resolver:resolve rejecter:reject];
+}
+
 - (void)resolveBibleReferences:(NSString *)jsonString
                         resolve:(RCTPromiseResolveBlock)resolve
                          reject:(RCTPromiseRejectBlock)reject

@@ -275,4 +275,26 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
         }
     }
 
+    // "최근 이미지" 목록에서 밀려난 사진의 persistPickedImage 캐시 파일을 정리한다([#253]).
+    override fun deletePersistedImage(path: String, promise: Promise) {
+        moduleScope.launch {
+            val result = runCatching {
+                val filePath = Uri.parse(path).path ?: path
+                File(filePath).delete()
+            }.onFailure { e ->
+                CrashlyticsHelper.recordException(
+                    e,
+                    "Error deleting persisted image: ${e.message}",
+                    tag = TAG
+                )
+            }
+
+            result
+                .onSuccess { promise.resolve(null) }
+                .onFailure { e ->
+                    promise.reject("DELETE_PERSISTED_IMAGE_ERROR", e.message, e)
+                }
+        }
+    }
+
 }
