@@ -1,6 +1,7 @@
 import { View, TouchableOpacity, Text, StatusBar, Modal, TextInput, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { launchImageLibrary } from 'react-native-image-picker';
+import Clipboard from '@react-native-clipboard/clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WidgetPreview from '../components/WidgetPreview';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -455,6 +456,15 @@ type RecentGalleryImage = { uri: string; transform: WidgetImageTransform };
 // 새 사진을 골라도 이전에 적용했던 사진들을 다시 시스템 사진 선택기 없이 바로 고를 수 있게 한다.
 const MAX_RECENT_GALLERY_IMAGES = 5;
 
+// 아래 "위젯 디자인 저장 실패" 알림([#251])처럼 에러 메시지가 길어 스크린샷만으로는
+// 잘리기 쉬운 진단용 Alert에 "복사" 버튼을 붙여, 클립보드로 전체 텍스트를 가져갈 수 있게 한다.
+const showDiagnosticAlert = (title: string, message: string) => {
+  Alert.alert(title, message, [
+    { text: '복사', onPress: () => Clipboard.setString(message) },
+    { text: '확인' },
+  ]);
+};
+
 const EditScreen = ({ navigation, route }: Props) => {
   const sermon = route.params?.sermon;
   const qt = route.params?.qt;
@@ -589,7 +599,7 @@ const EditScreen = ({ navigation, route }: Props) => {
       logger.error('EditScreen: 위젯 디자인 저장 실패', e);
       // TODO(#251 진단용, 원인 확인 후 제거): 실기기에서 갤러리 배경 저장이 조용히 실패해
       // 디버깅이 어려웠다 — 정확한 에러 메시지를 원인 파악 전까지 화면에 노출한다.
-      Alert.alert(
+      showDiagnosticAlert(
         '위젯 디자인 저장 실패',
         `[${source}] ${e instanceof Error ? e.message : String(e)}`,
       );
@@ -721,12 +731,6 @@ const EditScreen = ({ navigation, route }: Props) => {
       const uri = asset?.uri;
       if (!uri) return;
       const valid = isValidPickedAsset(asset);
-      // TODO(#252 진단용, 원인 확인 후 제거): 적용되는 사진과 안되는 사진의 경로/크기 차이를
-      // 실기기에서 직접 비교할 수 있도록, 성공/실패 관계없이 매번 노출한다.
-      Alert.alert(
-        valid ? '사진 정보 (진단용)' : '사진을 불러오지 못했습니다 (진단용)',
-        `uri: ${uri}\nfileSize: ${asset.fileSize}\nwidth: ${asset.width}\nheight: ${asset.height}`,
-      );
       if (!valid) {
         logger.error('EditScreen: 사진 데이터를 불러오지 못함', asset);
         return;

@@ -40,7 +40,12 @@ enum WidgetDesignPersistence {
     var background: BackgroundDesign
   }
 
-  static let maxBackgroundDimension: CGFloat = 1024
+  // WidgetKit의 WidgetArchiver는 위젯 뷰에 들어가는 이미지 크기에 (900×1600.8) 상한을 두는데,
+  // 이 상한은 가로/세로 비대칭이라 "긴 쪽만 맞추는" 방식으로는 가로로 넓은(landscape) 사진에서
+  // 가로 길이가 900을 넘겨 위젯 아카이빙 자체가 조용히 실패한다([#252] — RN 쪽 저장은 이미
+  // 끝난 뒤 위젯 익스텐션 내부에서만 나는 에러라 JS에서 감지 불가). 두 축 모두 900 이하로
+  // 맞추면 어느 방향이든 상한을 넘지 않는다.
+  static let maxBackgroundDimension: CGFloat = 900
   static let backgroundJPEGQuality: CGFloat = 0.85
 
   // designData(JS WidgetDesign JSON)를 파싱해 background.type이 "gallery"면 이미지를
