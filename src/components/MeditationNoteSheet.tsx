@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   Keyboard,
+  PanResponder,
   Platform,
   Pressable,
   StyleSheet,
@@ -26,6 +28,10 @@ import logger from '../utils/logger';
 const SAVE_DEBOUNCE_MS = 600;
 /** 복사 완료 문구가 떠 있는 시간 */
 const COPIED_TOAST_MS = 1800;
+/** 이만큼 아래로 끌어내리면 시트를 닫는다 */
+const DISMISS_DRAG_DISTANCE = 60;
+/** 짧게 내려도 아래로 튕기는 속도면 닫는다 */
+const DISMISS_DRAG_VELOCITY = 0.5;
 
 interface Props {
   source: MeditationNoteSource;
@@ -44,6 +50,8 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** 아래로 끌어내린 거리. 손가락을 따라 시트가 내려가게 한다. */
+  const dragY = useRef(new Animated.Value(0)).current;
   // 디바운스 타이머가 아직 안 터진 상태로 시트를 닫거나 언마운트될 때 마지막 입력을 잃지 않도록
   // 최신 값을 ref로도 들고 있는다(state는 cleanup 시점에 stale일 수 있음).
   const latestNote = useRef('');
@@ -97,11 +105,44 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
     }, SAVE_DEBOUNCE_MS);
   };
 
-  const closeSheet = () => {
+  const closeSheet = useCallback(() => {
     Keyboard.dismiss();
     flushSave();
+    dragY.setValue(0);
     setIsOpen(false);
-  };
+  }, [flushSave, dragY]);
+
+  // PanResponder는 한 번만 만들어져 최초 렌더의 closeSheet를 붙잡는다.
+  // ref로 최신 콜백을 가리켜 stale closure를 피한다.
+  const closeSheetRef = useRef(closeSheet);
+  closeSheetRef.current = closeSheet;
+
+  // 헤더(그래버 + 제목)에서만 아래로 끌어 닫는다. 시트 전체에 붙이면
+  // 본문 TextInput의 터치·커서 이동을 가로챈다.
+  const dragResponder = useRef(
+    PanResponder.create({
+      // 아래 방향 세로 드래그일 때만 가져간다. 가로 제스처(탭 전환)는 건드리지 않는다.
+      onMoveShouldSetPanResponder: (_, g) => g.dy > 6 && Math.abs(g.dy) > Math.abs(g.dx),
+      onPanResponderMove: (_, g) => {
+        // 위로는 따라오지 않게 해서 시트가 화면 밖으로 솟는 것을 막는다.
+        if (g.dy > 0) dragY.setValue(g.dy);
+      },
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > DISMISS_DRAG_DISTANCE || g.vy > DISMISS_DRAG_VELOCITY) {
+          closeSheetRef.current();
+        } else {
+          Animated.spring(dragY, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 0,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(dragY, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start();
+      },
+    }),
+  ).current;
 
   const handleCopy = () => {
     if (!hasCopyableNote(note)) return;
@@ -151,55 +192,69 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
   const canCopy = hasCopyableNote(note);
 
   return (
-    <View style={[styles.sheet, { bottom: keyboardHeight }]}>
-      {/* 그래버를 눌러 시트를 닫는다. 시트는 Modal이 아니라 absolute View라
-          뒤쪽 말씀 영역은 열려 있는 동안에도 계속 스크롤된다(기획 요구사항). */}
-      <Pressable
-        onPress={closeSheet}
-        style={styles.grabberArea}
-        accessibilityLabel="묵상 입력창 닫기"
-        accessibilityRole="button"
+    <>
+      {/* 시트 바깥을 덮는 탭-닫기 오버레이는 두지 않는다. 실기 확인 결과(iPhone 17 Pro,
+          iOS 26.3) 그 오버레이가 터치를 가져가면서 뒤 ScrollView가 스크롤되지 않았고,
+          이는 "시트가 떠 있어도 말씀 영역 스크롤이 가능해야 한다"는 기획 요구사항과
+          정면으로 충돌한다. 닫기는 그래버 탭 또는 헤더를 아래로 끌어내리기로 한다. */}
+      <Animated.View
+        style={[
+          styles.sheet,
+          { bottom: keyboardHeight, transform: [{ translateY: dragY }] },
+        ]}
       >
-        <View style={styles.grabber} />
-      </Pressable>
-
-      <Text style={styles.sheetTitle} numberOfLines={2}>
-        {title || '말씀을 불러오는 중입니다'}
-      </Text>
-      <View style={styles.sheetDivider} />
-
-      <TextInput
-        style={styles.input}
-        value={note}
-        onChangeText={handleChangeText}
-        placeholder={'오늘의 묵상을 입력하세요\n(예: 본문에서 받은 은혜, 나의 고백…)'}
-        placeholderTextColor="#A59EAE"
-        multiline
-        maxLength={MEDITATION_NOTE_MAX_LENGTH}
-        textAlignVertical="top"
-      />
-
-      <Text style={styles.counter}>
-        {note.length} / {MEDITATION_NOTE_MAX_LENGTH}
-      </Text>
-
-      <View style={styles.actionDivider} />
-      <View style={styles.actionRow}>
-        <TouchableOpacity onPress={handleClearAll} disabled={!note} hitSlop={12}>
-          <Text style={[styles.clearText, !note && styles.disabledText]}>전체 지우기</Text>
-        </TouchableOpacity>
-        <View style={styles.actionRight}>
-          {copied ? <Text style={styles.copiedText}>복사했어요</Text> : null}
-          <TouchableOpacity
-            style={[styles.copyButton, !canCopy && styles.copyButtonDisabled]}
-            onPress={handleCopy}
-            disabled={!canCopy}
+        {/* 헤더를 아래로 끌어내리거나 그래버를 탭하면 닫힌다.
+            드래그를 헤더에만 붙이는 이유는 시트 전체에 붙이면 본문 TextInput의
+            터치·커서 이동까지 가로채기 때문이다. */}
+        <View {...dragResponder.panHandlers}>
+          <Pressable
+            onPress={closeSheet}
+            style={styles.grabberArea}
+            accessibilityLabel="묵상 입력창 닫기"
+            accessibilityRole="button"
           >
-            <Text style={styles.copyButtonText}>복사</Text>
-          </TouchableOpacity>
+            <View style={styles.grabber} />
+          </Pressable>
+
+          <Text style={styles.sheetTitle} numberOfLines={2}>
+            {title || '말씀을 불러오는 중입니다'}
+          </Text>
         </View>
-      </View>
-    </View>
+        <View style={styles.sheetDivider} />
+
+        <TextInput
+          style={styles.input}
+          value={note}
+          onChangeText={handleChangeText}
+          placeholder={'오늘의 묵상을 입력하세요\n(예: 본문에서 받은 은혜, 나의 고백…)'}
+          placeholderTextColor="#A59EAE"
+          multiline
+          maxLength={MEDITATION_NOTE_MAX_LENGTH}
+          textAlignVertical="top"
+        />
+
+        <Text style={styles.counter}>
+          {note.length} / {MEDITATION_NOTE_MAX_LENGTH}
+        </Text>
+
+        <View style={styles.actionDivider} />
+        <View style={styles.actionRow}>
+          <TouchableOpacity onPress={handleClearAll} disabled={!note} hitSlop={12}>
+            <Text style={[styles.clearText, !note && styles.disabledText]}>전체 지우기</Text>
+          </TouchableOpacity>
+          <View style={styles.actionRight}>
+            {copied ? <Text style={styles.copiedText}>복사했어요</Text> : null}
+            <TouchableOpacity
+              style={[styles.copyButton, !canCopy && styles.copyButtonDisabled]}
+              onPress={handleCopy}
+              disabled={!canCopy}
+            >
+              <Text style={styles.copyButtonText}>복사</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Animated.View>
+    </>
   );
 };
 
