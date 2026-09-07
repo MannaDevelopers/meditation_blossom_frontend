@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
+  AppState,
   Keyboard,
+  LayoutChangeEvent,
   PanResponder,
   Platform,
   Pressable,
@@ -56,15 +58,32 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
   // 최신 값을 ref로도 들고 있는다(state는 cleanup 시점에 stale일 수 있음).
   const latestNote = useRef('');
 
+  // 로드가 늦게 도착하는 사이 사용자가 이미 타이핑을 시작했으면 덮어쓰지 않는다.
+  const hasTypedRef = useRef(false);
   useEffect(() => {
+    let cancelled = false;
     loadMeditationNote(source).then(saved => {
+      if (cancelled || hasTypedRef.current) return;
       setNote(saved);
       latestNote.current = saved;
     });
+    return () => {
+      cancelled = true;
+    };
   }, [source]);
 
-  // 시트가 화면 하단에 absolute로 붙어 있어 키보드가 그대로 덮는다. KeyboardAvoidingView는
-  // absolute 자식에 잘 먹지 않아, 키보드 높이를 직접 받아 bottom을 밀어 올린다.
+  // 시트가 화면 하단에 absolute로 붙어 있어 키보드가 그대로 덮는다.
+  // KeyboardAvoidingView는 absolute 자식에 잘 먹지 않아 bottom을 직접 밀어 올린다.
+  //
+  // 얼마나 밀어야 하는지가 플랫폼 하나로 갈리지 않는다:
+  //  - iOS: 창이 줄지 않는다 → 키보드 높이만큼 전부 밀어야 한다.
+  //  - Android + windowSoftInputMode="adjustResize"(AndroidManifest.xml:28): 창이 줄어들어
+  //    하단 absolute 요소가 이미 올라온다 → 또 밀면 이중 보정으로 시트가 화면 중간에 뜬다.
+  //  - Android 15/16: targetSdk 36(android/build.gradle.kts)이라 RN이 edge-to-edge를 강제로
+  //    켜면서(WindowUtil.updateEdgeToEdgeFeatureFlag) 창이 줄지 않는다 → iOS처럼 밀어야 한다.
+  //
+  // 즉 Platform.OS로 나누면 어느 한쪽 Android 세대가 반드시 깨진다. 그래서 분기 대신
+  // "창이 실제로 줄어든 양"을 재서 그만큼을 빼고 남은 만큼만 민다. 어느 조합이든 성립한다.
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
@@ -78,6 +97,21 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
     };
   }, []);
 
+  // 부모(화면 컨테이너)의 실제 레이아웃 높이. 창이 줄면 같이 줄어든다.
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const maxViewportHeight = useRef(0);
+  const handleProbeLayout = (e: LayoutChangeEvent) => {
+    const h = e.nativeEvent.layout.height;
+    maxViewportHeight.current = Math.max(maxViewportHeight.current, h);
+    setViewportHeight(h);
+  };
+
+  const windowShrink =
+    maxViewportHeight.current > 0 && viewportHeight > 0
+      ? Math.max(0, maxViewportHeight.current - viewportHeight)
+      : 0;
+  const keyboardOffset = Math.max(0, keyboardHeight - windowShrink);
+
   const flushSave = useCallback(() => {
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
@@ -86,8 +120,18 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
     saveMeditationNote(source, latestNote.current);
   }, [source]);
 
-  // 앱이 강제 종료돼도 작성 내용이 남아야 하므로(기획 요구사항) 언마운트 시 대기 중인 저장을 흘려보낸다.
+  // 앱이 종료돼도 작성 내용이 남아야 하므로(기획 요구사항) 언마운트 시 대기 중인 저장을 흘려보낸다.
   useEffect(() => flushSave, [flushSave]);
+
+  // 언마운트만으로는 부족하다. 사용자가 홈으로 나가면 언마운트가 일어나지 않고, OS가 그 상태에서
+  // 앱을 정리하면 디바운스 대기 중이던 최대 600ms 분량이 그대로 사라진다.
+  // 백그라운드 전환 시점에 한 번 더 흘려보낸다.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', state => {
+      if (state !== 'active') flushSave();
+    });
+    return () => sub.remove();
+  }, [flushSave]);
 
   useEffect(() => {
     return () => {
@@ -96,6 +140,7 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
   }, []);
 
   const handleChangeText = (text: string) => {
+    hasTypedRef.current = true;
     setNote(text);
     latestNote.current = text;
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -109,6 +154,11 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
     Keyboard.dismiss();
     flushSave();
     dragY.setValue(0);
+    if (copiedTimer.current) {
+      clearTimeout(copiedTimer.current);
+      copiedTimer.current = null;
+    }
+    setCopied(false);
     setIsOpen(false);
   }, [flushSave, dragY]);
 
@@ -193,6 +243,9 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
 
   return (
     <>
+      {/* 창이 실제로 줄어든 양을 재기 위한 측정용 뷰. pointerEvents="none"이라 터치에 관여하지
+          않는다. Android adjustResize/edge-to-edge 조합을 런타임에 구분하는 유일한 수단이다. */}
+      <View style={styles.viewportProbe} pointerEvents="none" onLayout={handleProbeLayout} />
       {/* 시트 바깥을 덮는 탭-닫기 오버레이는 두지 않는다. 실기 확인 결과(iPhone 17 Pro,
           iOS 26.3) 그 오버레이가 터치를 가져가면서 뒤 ScrollView가 스크롤되지 않았고,
           이는 "시트가 떠 있어도 말씀 영역 스크롤이 가능해야 한다"는 기획 요구사항과
@@ -200,7 +253,7 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
       <Animated.View
         style={[
           styles.sheet,
-          { bottom: keyboardHeight, transform: [{ translateY: dragY }] },
+          { bottom: keyboardOffset, transform: [{ translateY: dragY }] },
         ]}
       >
         {/* 헤더를 아래로 끌어내리거나 그래버를 탭하면 닫힌다.
@@ -276,6 +329,13 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
+  viewportProbe: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: 1,
+  },
   sheet: {
     position: 'absolute',
     // 부모 컨테이너의 marginHorizontal 27을 상쇄해 시트만 화면 폭까지 넓힌다.
@@ -294,7 +354,9 @@ const styles = StyleSheet.create({
   },
   grabberArea: {
     alignItems: 'center',
-    paddingVertical: 10,
+    // 헤더 드래그가 Android ViewPager2에 취소될 수 있어(NestedScrollableHost) 탭이 확실한
+    // 닫기 수단이 되어야 한다. 애플 최소 터치 영역 44pt를 만족시킨다.
+    paddingVertical: 20,
   },
   grabber: {
     width: 32,
