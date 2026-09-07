@@ -22,10 +22,15 @@ import { logAnalytics } from '../utils/analytics';
 import { extractContent } from '../utils/sermonParser';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
+import { useAppTheme } from '../hooks/useAppTheme';
+import { ThemeColors } from '../theme/colors';
 
 const DAILY_MANNA_CHANNEL_URL = encodeURI('https://www.youtube.com/@만나');
 
 const DailyMannaScreen = () => {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const { qt, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useQtData();
   const isInitialMount = useRef(true);
@@ -173,7 +178,7 @@ const DailyMannaScreen = () => {
       </ScrollView>
       {showSpinner && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#A59EAE" />
+          <ActivityIndicator size="large" color={colors.textTertiary} />
         </View>
       )}
       {showError && (
@@ -190,143 +195,146 @@ const DailyMannaScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    marginHorizontal: 27,
-    marginTop: 16,
-  },
-  scrollView: { flex: 1 },
-  scrollContent: { paddingBottom: 40 },
-  dateText: {
-    color: '#A59EAE',
-    fontSize: 18,
-    fontFamily: 'Pretendard-Regular',
-  },
-  seriesCard: {
-    backgroundColor: '#F3F4F9',
-    borderRadius: 22,
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  seriesCardText: {
-    flex: 1,
-    gap: 4,
-  },
-  seriesTitleText: {
-    color: '#747474',
-    fontSize: 18,
-    fontFamily: 'Pretendard-SemiBold',
-  },
-  smallDivider: {
-    height: 3,
-    width: 50,
-    backgroundColor: '#8C8C8C',
-    marginBottom: 16,
-  },
-  contentDivider: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    marginBottom: 16,
-  },
-  questionsSectionTitle: {
-    color: '#747474',
-    fontSize: 18,
-    fontFamily: 'Pretendard-Bold',
-    marginBottom: 12,
-  },
-  titleText: {
-    color: '#747474',
-    fontSize: 28,
-    fontFamily: 'Pretendard-Bold',
-    flexWrap: 'wrap',
-    marginBottom: 16,
-  },
-  indexRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
-  },
-  indexText: {
-    color: '#000000',
-    fontSize: 16,
-    fontFamily: 'Pretendard-Regular',
-  },
-  contentText: {
-    color: '#000000',
-    fontSize: 20,
-    fontFamily: 'Pretendard-Bold',
-    lineHeight: 24,
-    marginBottom: 32,
-  },
-  noQuestionText: {
-    color: '#A59EAE',
-    fontSize: 14,
-    fontFamily: 'Pretendard-Medium',
-    marginBottom: 32,
-  },
-  contentUnavailableText: {
-    color: '#A59EAE',
-    fontSize: 16,
-    fontFamily: 'Pretendard-Regular',
-    marginBottom: 32,
-    fontStyle: 'italic',
-  },
-  questionsContainer: {
-    backgroundColor: '#EBFAFF',
-    borderRadius: 15,
-    padding: 20,
-    gap: 12,
-    marginBottom: 32,
-  },
-  questionCard: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  questionNumber: {
-    color: '#49454F',
-    fontSize: 18,
-    fontFamily: 'Pretendard-SemiBold',
-    lineHeight: 24,
-  },
-  questionText: {
-    flex: 1,
-    color: '#49454F',
-    fontSize: 18,
-    fontFamily: 'Pretendard-SemiBold',
-    lineHeight: 24,
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-  },
-  errorContainer: { justifyContent: 'center', alignItems: 'center' },
-  errorText: {
-    color: '#A59EAE',
-    fontSize: 16,
-    fontFamily: 'Pretendard-Medium',
-    marginBottom: 16,
-  },
-  retryButton: {
-    borderWidth: 1,
-    borderColor: '#A59EAE',
-    borderRadius: 10,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-  },
-  retryText: {
-    color: '#A59EAE',
-    fontSize: 16,
-    fontFamily: 'Pretendard-Bold',
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      // HomeScreen과 동일하게, 화면 배경은 아래 seriesCard(background 톤)와 대비되어야
+      // 하므로 명시적으로 surface 톤을 지정한다.
+      backgroundColor: colors.surface,
+      marginHorizontal: 27,
+      marginTop: 16,
+    },
+    scrollView: { flex: 1 },
+    scrollContent: { paddingBottom: 40 },
+    dateText: {
+      color: colors.textTertiary,
+      fontSize: 18,
+      fontFamily: 'Pretendard-Regular',
+    },
+    seriesCard: {
+      backgroundColor: colors.background,
+      borderRadius: 22,
+      paddingHorizontal: 24,
+      paddingVertical: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+    },
+    seriesCardText: {
+      flex: 1,
+      gap: 4,
+    },
+    seriesTitleText: {
+      color: colors.textSecondary,
+      fontSize: 18,
+      fontFamily: 'Pretendard-SemiBold',
+    },
+    smallDivider: {
+      height: 3,
+      width: 50,
+      backgroundColor: colors.textSecondary,
+      marginBottom: 16,
+    },
+    contentDivider: {
+      height: 1,
+      backgroundColor: colors.divider,
+      marginBottom: 16,
+    },
+    questionsSectionTitle: {
+      color: colors.textSecondary,
+      fontSize: 18,
+      fontFamily: 'Pretendard-Bold',
+      marginBottom: 12,
+    },
+    titleText: {
+      color: colors.textSecondary,
+      fontSize: 28,
+      fontFamily: 'Pretendard-Bold',
+      flexWrap: 'wrap',
+      marginBottom: 16,
+    },
+    indexRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: 8,
+    },
+    indexText: {
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontFamily: 'Pretendard-Regular',
+    },
+    contentText: {
+      color: colors.textPrimary,
+      fontSize: 20,
+      fontFamily: 'Pretendard-Bold',
+      lineHeight: 24,
+      marginBottom: 32,
+    },
+    noQuestionText: {
+      color: colors.textTertiary,
+      fontSize: 14,
+      fontFamily: 'Pretendard-Medium',
+      marginBottom: 32,
+    },
+    contentUnavailableText: {
+      color: colors.textTertiary,
+      fontSize: 16,
+      fontFamily: 'Pretendard-Regular',
+      marginBottom: 32,
+      fontStyle: 'italic',
+    },
+    questionsContainer: {
+      backgroundColor: colors.background,
+      borderRadius: 15,
+      padding: 20,
+      gap: 12,
+      marginBottom: 32,
+    },
+    questionCard: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    questionNumber: {
+      color: colors.border,
+      fontSize: 18,
+      fontFamily: 'Pretendard-SemiBold',
+      lineHeight: 24,
+    },
+    questionText: {
+      flex: 1,
+      color: colors.border,
+      fontSize: 18,
+      fontFamily: 'Pretendard-SemiBold',
+      lineHeight: 24,
+    },
+    loadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'transparent',
+    },
+    errorContainer: { justifyContent: 'center', alignItems: 'center' },
+    errorText: {
+      color: colors.textTertiary,
+      fontSize: 16,
+      fontFamily: 'Pretendard-Medium',
+      marginBottom: 16,
+    },
+    retryButton: {
+      borderWidth: 1,
+      borderColor: colors.textTertiary,
+      borderRadius: 10,
+      paddingHorizontal: 24,
+      paddingVertical: 10,
+    },
+    retryText: {
+      color: colors.textTertiary,
+      fontSize: 16,
+      fontFamily: 'Pretendard-Bold',
+    },
+  });
 
 export default DailyMannaScreen;
