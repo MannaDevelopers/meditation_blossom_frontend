@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, SafeAreaView } from 'react-native';
 import { getFirestore, collection, FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { firestoreDocToSermon, Sermon, SermonMetadata } from '../types/Sermon';
 import logger from '../utils/logger';
+import { useAppTheme } from '../hooks/useAppTheme';
+import { ThemeColors } from '../theme/colors';
 
 // TempSermonScreen-specific metadata with totalCount
 interface TempSermonMetadata extends SermonMetadata {
@@ -15,6 +17,9 @@ const STORAGE_KEY = 'sermons_data';
 const METADATA_KEY = 'sermons_metadata';
 
 function TempSermonScreen(): React.JSX.Element {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [sermons, setSermons] = useState<Sermon[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -356,123 +361,126 @@ function TempSermonScreen(): React.JSX.Element {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  headerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  textButton: {
-    padding: 8,
-  },
-  buttonText: {
-    color: '#007AFF',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  buttonTextDisabled: {
-    opacity: 0.5,
-  },
-  latestDateContainer: {
-    backgroundColor: '#f0f8ff',
-    padding: 8,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  latestDateText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  scrollView: {
-    flex: 1,
-    padding: 16,
-  },
-  sermonItem: {
-    marginBottom: 16,
-    padding: 16,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  sermonHeader: {
-    flexDirection: 'column',
-    marginBottom: 8,
-  },
-  sermonTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  sermonInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  sermonCategory: {
-    fontSize: 12,
-    color: '#1E88E5',
-    fontWeight: '500',
-  },
-  sermonDate: {
-    fontSize: 12,
-    color: '#666',
-  },
-  sermonContent: {
-    fontSize: 16,
-    color: '#333',
-    lineHeight: 22,
-  },
-  sermonFooter: {
-    marginTop: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    paddingTop: 8,
-  },
-  sermonFooterText: {
-    fontSize: 10,
-    color: '#999',
-  },
-  loadingText: {
-    textAlign: 'center',
-    fontSize: 16,
-    color: '#666',
-    marginTop: 20,
-  },
-  emptyText: {
-    textAlign: 'center',
-    fontSize: 16,
-    color: '#666',
-    marginTop: 20,
-  },
-});
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    headerContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.divider,
+    },
+    header: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.textPrimary,
+    },
+    buttonContainer: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    textButton: {
+      padding: 8,
+    },
+    buttonText: {
+      color: colors.accent,
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    buttonTextDisabled: {
+      opacity: 0.5,
+    },
+    latestDateContainer: {
+      backgroundColor: colors.background,
+      padding: 8,
+      alignItems: 'center',
+      borderBottomWidth: 1,
+      borderBottomColor: colors.divider,
+    },
+    latestDateText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    scrollView: {
+      flex: 1,
+      padding: 16,
+    },
+    sermonItem: {
+      marginBottom: 16,
+      padding: 16,
+      backgroundColor: colors.surface,
+      borderRadius: 8,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    sermonHeader: {
+      flexDirection: 'column',
+      marginBottom: 8,
+    },
+    sermonTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      marginBottom: 4,
+      color: colors.textPrimary,
+    },
+    sermonInfo: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    sermonCategory: {
+      fontSize: 12,
+      color: colors.accent,
+      fontWeight: '500',
+    },
+    sermonDate: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    sermonContent: {
+      fontSize: 16,
+      color: colors.textPrimary,
+      lineHeight: 22,
+    },
+    sermonFooter: {
+      marginTop: 8,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      borderTopWidth: 1,
+      borderTopColor: colors.divider,
+      paddingTop: 8,
+    },
+    sermonFooterText: {
+      fontSize: 10,
+      color: colors.textTertiary,
+    },
+    loadingText: {
+      textAlign: 'center',
+      fontSize: 16,
+      color: colors.textSecondary,
+      marginTop: 20,
+    },
+    emptyText: {
+      textAlign: 'center',
+      fontSize: 16,
+      color: colors.textSecondary,
+      marginTop: 20,
+    },
+  });
 
 export default TempSermonScreen;
