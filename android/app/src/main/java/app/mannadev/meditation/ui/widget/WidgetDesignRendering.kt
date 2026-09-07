@@ -38,7 +38,7 @@ const val CARD_INDEX_SIZE_RATIO = 11f / 14f
  */
 fun WidgetTextDesignDto.toBodyTextStyle(fontScale: Float): TextStyle = TextStyle(
     color = ColorProvider(parseHexColor(color)),
-    fontSize = fixedSp(size, fontScale),
+    fontSize = fixedSp(size.toFloat(), fontScale),
     fontWeight = if (weight == "regular") FontWeight.Normal else FontWeight.Bold,
     textAlign = when (align) {
         "center" -> TextAlign.Center
@@ -54,7 +54,7 @@ fun WidgetTextDesignDto.toBodyTextStyle(fontScale: Float): TextStyle = TextStyle
  */
 fun WidgetTextDesignDto.toTitleTextStyle(fixedWeight: FontWeight, fontScale: Float): TextStyle = TextStyle(
     color = ColorProvider(parseHexColor(color)),
-    fontSize = fixedSp(size, fontScale),
+    fontSize = fixedSp(size.toFloat(), fontScale),
     fontWeight = fixedWeight,
     textAlign = TextAlign.Left,
 )
