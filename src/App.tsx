@@ -107,7 +107,7 @@ function App(): React.JSX.Element {
 
   if (isChecking) {
     return (
-      <View style={[styles.loading, { backgroundColor: colors.background }]}>
+      <View style={[styles.loading, { backgroundColor: colors.surface }]}>
         <ActivityIndicator size="large" />
       </View>
     );
@@ -115,8 +115,8 @@ function App(): React.JSX.Element {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <StatusBar barStyle={colors.statusBarStyle} backgroundColor={colors.background} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }}>
+        <StatusBar barStyle={colors.statusBarStyle} backgroundColor={colors.surface} />
         <RootStack navigationTheme={navigationTheme} />
           {needsUpdate && showFallbackModal && config && (
             <ForceUpdateModal
