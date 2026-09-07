@@ -95,7 +95,10 @@ const SubMenuItemBox = styled.View`
   align-items: center;
 `;
 
-const SubMenuPlainText = styled.Text`
+// 선택된 탭(GradientSubTabLabel)은 SVG 텍스트라 시스템 글꼴 확대의 영향을 받지 않는데, 이
+// 비선택 상태는 일반 RN Text라 영향을 받아 고정 width(61)를 넘기면 잘려 보인다(예: "배경색"→
+// "배경"). 선택 여부와 무관하게 같은 크기로 보여야 하므로 여기도 고정한다.
+const SubMenuPlainText = styled.Text.attrs({ allowFontScaling: false })`
   color: white;
   width: 61;
   font-size: 16;
@@ -161,7 +164,10 @@ const CustomColorSwatch = styled.TouchableOpacity<{ selected: boolean; color?: s
   border-style: ${({ color }) => (color ? 'solid' : 'dashed')};
 `;
 
-const SwatchCheck = styled.Text`
+// 원형 스와치 안에서 justify/align-items: center로 중앙 정렬하는데, 시스템 글꼴을 키우면
+// 커진 글자의 상하 여백이 비대칭해져(Android 텍스트 렌더링 특성) 원 중앙이 아니라 아래로
+// 치우쳐 보인다. 위젯 콘텐츠와 무관한 장식용 글리프라 시스템 글꼴 설정을 따를 필요가 없다.
+const SwatchCheck = styled.Text.attrs({ allowFontScaling: false })`
   color: white;
   font-size: 14;
   font-weight: bold;
@@ -223,13 +229,16 @@ const HeaderRightGroup = styled.View`
   gap: 20px;
 `;
 
-const HeaderResetText = styled.Text`
+// 시스템 글꼴 크기를 키우면 고정 높이(HeaderRow)를 넘어서는 텍스트 하단이 잘려 보인다
+// (Android 뷰 클리핑). 헤더 버튼은 위젯 콘텐츠가 아니라 편집 화면 자체의 UI 크롬이라
+// 시스템 글꼴 설정을 따를 필요가 없어, 항상 지정한 크기로 고정한다.
+const HeaderResetText = styled.Text.attrs({ allowFontScaling: false })`
   color: #999999;
   font-weight: bold;
   font-size: 16;
 `;
 
-const HeaderSaveText = styled.Text`
+const HeaderSaveText = styled.Text.attrs({ allowFontScaling: false })`
   color: white;
   font-weight: bold;
   font-size: 20;
@@ -425,7 +434,13 @@ const ColorSwatchRow = ({
         color={customSelected ? currentColor : undefined}
         onPress={onOpenCustom}
       >
-        {customSelected ? <SwatchCheck>✓</SwatchCheck> : <Text style={{ color: 'white', fontSize: 16 }}>+</Text>}
+        {customSelected ? (
+          <SwatchCheck>✓</SwatchCheck>
+        ) : (
+          <Text allowFontScaling={false} style={{ color: 'white', fontSize: 16 }}>
+            +
+          </Text>
+        )}
       </CustomColorSwatch>
     </SwatchRow>
   );
@@ -827,7 +842,9 @@ const EditScreen = ({ navigation, route }: Props) => {
           <GalleryRow>
             <GalleryRowContent>
               <AlbumOpenButton onPress={handleOpenAlbum}>
-                <Text style={{ color: 'white', fontSize: 24 }}>+</Text>
+                <Text allowFontScaling={false} style={{ color: 'white', fontSize: 24 }}>
+                  +
+                </Text>
               </AlbumOpenButton>
               {recentGalleryImages.map(({ uri, transform }) => {
                 const selected = uri === appliedUri;
