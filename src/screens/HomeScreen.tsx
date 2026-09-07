@@ -25,10 +25,15 @@ import { isSermonDataStale } from '../services/sermonService';
 import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
+import { useAppTheme } from '../hooks/useAppTheme';
+import { ThemeColors } from '../theme/colors';
 
 const SUNDAY_SERMON_YOUTUBE_URL = encodeURI('https://www.youtube.com/@만나');
 
 const HomeScreen = () => {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const { sermon, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useSermonData();
 
@@ -143,7 +148,7 @@ const HomeScreen = () => {
       </ScrollView>
       {showSpinner && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#A59EAE" />
+          <ActivityIndicator size="large" color={colors.textTertiary} />
         </View>
       )}
       {showError && (
@@ -160,102 +165,105 @@ const HomeScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    marginHorizontal: 27,
-    marginTop: 16,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  indexText: {
-    color: '#000000',
-    fontSize: 16,
-    fontFamily: 'Pretendard-Regular',
-  },
-  titleText: {
-    color: '#747474',
-    fontSize: 28,
-    fontFamily: 'Pretendard-Bold',
-    flexWrap: 'wrap',
-    marginBottom: 16,
-  },
-  contentText: {
-    color: '#000000',
-    fontSize: 20,
-    fontFamily: 'Pretendard-Bold',
-    lineHeight: 24,
-    marginBottom: 32,
-  },
-  seriesCard: {
-    backgroundColor: '#F3F4F9',
-    borderRadius: 22,
-    paddingHorizontal: 25,
-    paddingVertical: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  seriesCardText: {
-    flex: 1,
-    gap: 4,
-    marginRight: 12,
-  },
-  cardTitleText: {
-    color: '#747474',
-    fontSize: 18,
-    fontFamily: 'Pretendard-SemiBold',
-  },
-  seriesDateText: {
-    color: '#A59EAE',
-    fontSize: 18,
-    fontFamily: 'Pretendard-Regular',
-  },
-  smallDivider: {
-    height: 3,
-    width: 50,
-    backgroundColor: '#8C8C8C',
-    marginBottom: 16,
-  },
-  contentDivider: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    marginBottom: 16,
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-  },
-  errorContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: {
-    color: '#A59EAE',
-    fontSize: 16,
-    fontFamily: 'Pretendard-Medium',
-    marginBottom: 16,
-  },
-  retryButton: {
-    borderWidth: 1,
-    borderColor: '#A59EAE',
-    borderRadius: 10,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-  },
-  retryText: {
-    color: '#A59EAE',
-    fontSize: 16,
-    fontFamily: 'Pretendard-Bold',
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      // 화면 자체 배경은 항상 밝은 카드(surface) 톤 — 아래 seriesCard(background 톤)와
+      // 대비되어야 하므로 네비게이션 기본 배경에 기대지 않고 명시적으로 지정한다.
+      backgroundColor: colors.surface,
+      marginHorizontal: 27,
+      marginTop: 16,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingBottom: 40,
+    },
+    indexText: {
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontFamily: 'Pretendard-Regular',
+    },
+    titleText: {
+      color: colors.textSecondary,
+      fontSize: 28,
+      fontFamily: 'Pretendard-Bold',
+      flexWrap: 'wrap',
+      marginBottom: 16,
+    },
+    contentText: {
+      color: colors.textPrimary,
+      fontSize: 20,
+      fontFamily: 'Pretendard-Bold',
+      lineHeight: 24,
+      marginBottom: 32,
+    },
+    seriesCard: {
+      backgroundColor: colors.background,
+      borderRadius: 22,
+      paddingHorizontal: 25,
+      paddingVertical: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+    },
+    seriesCardText: {
+      flex: 1,
+      gap: 4,
+      marginRight: 12,
+    },
+    cardTitleText: {
+      color: colors.textSecondary,
+      fontSize: 18,
+      fontFamily: 'Pretendard-SemiBold',
+    },
+    seriesDateText: {
+      color: colors.textTertiary,
+      fontSize: 18,
+      fontFamily: 'Pretendard-Regular',
+    },
+    smallDivider: {
+      height: 3,
+      width: 50,
+      backgroundColor: colors.textSecondary,
+      marginBottom: 16,
+    },
+    contentDivider: {
+      height: 1,
+      backgroundColor: colors.divider,
+      marginBottom: 16,
+    },
+    loadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'transparent',
+    },
+    errorContainer: {
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    errorText: {
+      color: colors.textTertiary,
+      fontSize: 16,
+      fontFamily: 'Pretendard-Medium',
+      marginBottom: 16,
+    },
+    retryButton: {
+      borderWidth: 1,
+      borderColor: colors.textTertiary,
+      borderRadius: 10,
+      paddingHorizontal: 24,
+      paddingVertical: 10,
+    },
+    retryText: {
+      color: colors.textTertiary,
+      fontSize: 16,
+      fontFamily: 'Pretendard-Bold',
+    },
+  });
 
 export default HomeScreen;
