@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, View, SafeAreaView, StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import logger from './utils/logger';
@@ -9,10 +9,18 @@ import EditScreen from './screens/EditScreen';
 import ImageCropScreen from './screens/ImageCropScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import ForceUpdateModal from './components/ForceUpdateModal';
-import { LinkingOptions, NavigationContainer } from '@react-navigation/native';
+import {
+  DarkTheme,
+  DefaultTheme,
+  LinkingOptions,
+  NavigationContainer,
+  Theme,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types/navigation';
 import { useForceUpdate } from './hooks/useForceUpdate';
+import { useAppTheme } from './hooks/useAppTheme';
+import { ThemeColors } from './theme/colors';
 
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -33,9 +41,27 @@ const linking: LinkingOptions<RootStackParamList> = {
   },
 };
 
-const RootStack = () => {
+function buildNavigationTheme(base: Theme, colors: ThemeColors): Theme {
+  return {
+    ...base,
+    colors: {
+      ...base.colors,
+      primary: colors.accent,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.textPrimary,
+      border: colors.divider,
+    },
+  };
+}
+
+const RootStack = ({ navigationTheme }: { navigationTheme: Theme }) => {
   return (
-    <NavigationContainer linking={linking} onReady={() => logger.log('NavigationContainer ready')}>
+    <NavigationContainer
+      linking={linking}
+      theme={navigationTheme}
+      onReady={() => logger.log('NavigationContainer ready')}
+    >
       <Stack.Navigator>
         <Stack.Screen
           name="MainTabs"
@@ -65,6 +91,11 @@ const RootStack = () => {
 function App(): React.JSX.Element {
   const { isChecking, needsUpdate, config, showFallbackModal, startUpdate } =
     useForceUpdate();
+  const { colors, isDark } = useAppTheme();
+  const navigationTheme = useMemo(
+    () => buildNavigationTheme(isDark ? DarkTheme : DefaultTheme, colors),
+    [isDark, colors],
+  );
 
   useEffect(() => {
     WidgetUpdateModule?.getYoutubeLinkEnabled?.()
@@ -76,7 +107,7 @@ function App(): React.JSX.Element {
 
   if (isChecking) {
     return (
-      <View style={styles.loading}>
+      <View style={[styles.loading, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" />
       </View>
     );
@@ -84,9 +115,9 @@ function App(): React.JSX.Element {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaView style={{ flex: 1, backgroundColor : '#fff' }}>
-        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-        <RootStack />
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <StatusBar barStyle={colors.statusBarStyle} backgroundColor={colors.background} />
+        <RootStack navigationTheme={navigationTheme} />
           {needsUpdate && showFallbackModal && config && (
             <ForceUpdateModal
               visible
