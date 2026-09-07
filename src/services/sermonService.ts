@@ -7,6 +7,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  where,
 } from '@react-native-firebase/firestore';
 import { Platform } from 'react-native';
 import { STALE_DATA_THRESHOLD_DAYS } from '../constants';
@@ -16,6 +17,7 @@ import {
   firestoreDocToSermon,
   Sermon,
   SermonRaw,
+  WorshipType,
 } from '../types/Sermon';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
 import logger from '../utils/logger';
@@ -124,4 +126,57 @@ export function isSermonDataStale(
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - thresholdDays);
   return sermonDate <= cutoff;
+}
+
+export const WEEKLY_SERMONS_KEY = 'weekly_sermons';
+
+export async function fetchLatestWeeklySermonsFromAsyncStorage(): Promise<Sermon[]> {
+  try {
+    const raw = await AsyncStorage.getItem(WEEKLY_SERMONS_KEY);
+    if (raw) {
+      return JSON.parse(raw) as Sermon[];
+    }
+  } catch (error) {
+    logger.warn('Failed to load weekly sermons from AsyncStorage, clearing corrupted data');
+    await AsyncStorage.removeItem(WEEKLY_SERMONS_KEY).catch(() => {});
+  }
+  return [];
+}
+
+export async function saveWeeklySermonsToAsyncStorage(sermons: Sermon[]): Promise<void> {
+  await AsyncStorage.setItem(WEEKLY_SERMONS_KEY, JSON.stringify(sermons));
+}
+
+export async function syncSelectedSermonToWidget(worshipType: WorshipType): Promise<void> {
+  const weekly = await fetchLatestWeeklySermonsFromAsyncStorage();
+  if (weekly.length === 0) return;
+
+  const matched = weekly.find(s => s.worship_type === worshipType) || weekly[0];
+  await saveSermonToAsyncStorage(matched);
+  await pushSermonToWidget(matched);
+}
+
+export async function fetchLatestWeeklySermonsFromServer(): Promise<Sermon[]> {
+  const db = getFirestore();
+  const q = query(
+    collection(db, 'sermons'),
+    orderBy('date', 'desc'),
+    limit(6)
+  );
+  const snapshot = await getDocsFromServer(q);
+  if (snapshot.empty) return [];
+
+  const allSermons: Sermon[] = [];
+  for (const doc of snapshot.docs) {
+    try {
+      const s = await firestoreDocToSermon(doc);
+      allSermons.push(s);
+    } catch (e) {
+      logger.error('Failed to parse weekly sermon doc', e);
+    }
+  }
+
+  if (allSermons.length === 0) return [];
+  const latestDate = allSermons[0].date;
+  return allSermons.filter(s => s.date === latestDate);
 }

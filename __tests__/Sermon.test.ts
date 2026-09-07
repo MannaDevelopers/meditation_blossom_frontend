@@ -198,6 +198,20 @@ describe('fcmDataToSermon', () => {
     const result = fcmDataToSermon(raw);
     expect(result.updated_at).toEqual(snakeTs);
   });
+
+  it('converts raw data with worship_type and actual_date', () => {
+    const raw: SermonRaw = {
+      id: '1',
+      title: 'T',
+      content: 'C',
+      date: '2026-07-19',
+      worship_type: 'SUN_1000' as any,
+      actual_date: '2026-07-19',
+    };
+    const result = fcmDataToSermon(raw);
+    expect(result.worship_type).toBe('SUN_1000');
+    expect(result.actual_date).toBe('2026-07-19');
+  });
 });
 
 import { Platform } from 'react-native';
@@ -236,16 +250,19 @@ describe('firestoreDocToSermon (async)', () => {
     expect(result.video_url).toBe('https://youtu.be/abc');
   });
 
-  it('on iOS returns empty content without calling bridge', async () => {
+  it('on iOS calls bridge with bible_references and returns resolved content', async () => {
     (Platform as any).OS = 'ios';
+    bridge.resolveBibleReferences.mockResolvedValue('본문 : 창세기 1:1 태초에');
     const doc = makeDoc({
       title: 'T',
       date: '2026-04-17',
       bible_references: [{ book: '창세기', chapter: 1, verse_start: 1, verse_end: 1 }],
     });
     const result = await firestoreDocToSermon(doc);
-    expect(bridge.resolveBibleReferences).not.toHaveBeenCalled();
-    expect(result.content).toBe('');
+    expect(bridge.resolveBibleReferences).toHaveBeenCalledWith(
+      JSON.stringify(doc.data().bible_references),
+    );
+    expect(result.content).toBe('본문 : 창세기 1:1 태초에');
   });
 
   it('returns empty content when bridge rejects (graceful degrade)', async () => {
@@ -264,5 +281,17 @@ describe('firestoreDocToSermon (async)', () => {
     const result = await firestoreDocToSermon(doc);
     expect(result.content).toBe('');
     expect(bridge.resolveBibleReferences).not.toHaveBeenCalled();
+  });
+
+  it('includes worship_type and actual_date from Firestore doc', async () => {
+    const doc = makeDoc({
+      title: 'T',
+      date: '2026-07-19',
+      worship_type: 'SUN_1200' as any,
+      actual_date: '2026-07-19',
+    });
+    const result = await firestoreDocToSermon(doc);
+    expect(result.worship_type).toBe('SUN_1200');
+    expect(result.actual_date).toBe('2026-07-19');
   });
 });

@@ -4,15 +4,26 @@ import {
   isSermonDataStale,
   saveSermonToAsyncStorage,
   syncAppGroupToAsyncStorage,
+  fetchLatestWeeklySermonsFromAsyncStorage,
+  saveWeeklySermonsToAsyncStorage,
+  syncSelectedSermonToWidget,
 } from '../src/services/sermonService';
-import { Sermon } from '../src/types/Sermon';
+import { Sermon, WorshipType } from '../src/types/Sermon';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(),
   setItem: jest.fn(),
+  removeItem: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../src/types/WidgetUpdateModule', () => null);
+jest.mock('../src/types/WidgetUpdateModule', () => ({
+  __esModule: true,
+  default: {
+    onSermonUpdated: jest.fn().mockResolvedValue(true),
+    onQtUpdated: jest.fn().mockResolvedValue(true),
+    getAppGroupData: jest.fn().mockResolvedValue(null),
+  },
+}));
 
 jest.mock('../src/utils/logger', () => ({
   __esModule: true,
@@ -144,5 +155,58 @@ describe('saveSermonToAsyncStorage', () => {
     await saveSermonToAsyncStorage(sermon);
 
     expect(AsyncStorage.setItem).toHaveBeenCalledWith('fcm_sermon', JSON.stringify(sermon));
+  });
+});
+
+describe('weekly sermons caching and syncing', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('saves weekly sermons list to AsyncStorage', async () => {
+    const list: Sermon[] = [
+      { id: '1', title: 'A', content: 'C', date: '2026-07-19', worship_type: 'SUN_1000', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } }
+    ];
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    await saveWeeklySermonsToAsyncStorage(list);
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith('weekly_sermons', JSON.stringify(list));
+  });
+
+  it('reads weekly sermons list from AsyncStorage', async () => {
+    const list: Sermon[] = [
+      { id: '1', title: 'A', content: 'C', date: '2026-07-19', worship_type: 'SUN_1000', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } }
+    ];
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(list));
+    const result = await fetchLatestWeeklySermonsFromAsyncStorage();
+    expect(result).toEqual(list);
+  });
+
+  it('returns empty array when no weekly sermons in AsyncStorage', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    const result = await fetchLatestWeeklySermonsFromAsyncStorage();
+    expect(result).toEqual([]);
+  });
+
+  it('syncs selected worship sermon to widget and legacy storage key', async () => {
+    const bridge = require('../src/types/WidgetUpdateModule').default;
+    const list: Sermon[] = [
+      { id: 'thu', title: 'Thursday', content: 'C', date: '2026-07-19', worship_type: 'THU_EVE', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } },
+      { id: 'sun', title: 'Sunday', content: 'C', date: '2026-07-19', worship_type: 'SUN_1000', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } }
+    ];
+    // Mock AsyncStorage reads/writes
+    (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+      if (key === 'weekly_sermons') return Promise.resolve(JSON.stringify(list));
+      return Promise.resolve(null);
+    });
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    bridge.onSermonUpdated.mockClear();
+
+    await syncSelectedSermonToWidget('SUN_1000');
+
+    // Should save Sunday sermon to legacy key
+    const sundaySermon = list[1];
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith('fcm_sermon', JSON.stringify(sundaySermon));
+    // Should call WidgetUpdateModule
+    expect(bridge.onSermonUpdated).toHaveBeenCalledWith(JSON.stringify(sundaySermon));
   });
 });

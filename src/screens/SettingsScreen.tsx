@@ -24,10 +24,10 @@ import DeviceInfo from 'react-native-device-info';
 import Svg, { Path } from 'react-native-svg';
 import SvgIcon from '../components/SvgIcon';
 import { RootStackParamList } from '../types/navigation';
-import { FCM_SERMON_KEY } from '../types/Sermon';
+import { FCM_SERMON_KEY, WorshipType, WORSHIP_TYPES, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
 import { FCM_QT_KEY } from '../types/QT';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
-import { fetchLatestSermonFromServer, pushSermonToWidget } from '../services/sermonService';
+import { fetchLatestSermonFromServer, pushSermonToWidget, syncSelectedSermonToWidget, saveWeeklySermonsToAsyncStorage } from '../services/sermonService';
 import { fetchLatestQtFromServer, pushQtToWidget } from '../services/qtService';
 import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
@@ -40,6 +40,17 @@ const SettingsScreen = ({ navigation }: Props) => {
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [youtubeLinkEnabled, setYoutubeLinkEnabled] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedWorship, setSelectedWorship] = useState<WorshipType>(DEFAULT_WORSHIP_TYPE);
+
+  const handleWorshipChange = async (type: WorshipType) => {
+    setSelectedWorship(type);
+    try {
+      await AsyncStorage.setItem(USER_WORSHIP_SETTING_KEY, type);
+      await syncSelectedSermonToWidget(type);
+    } catch (error) {
+      logger.error('예배 시간 설정 저장 실패:', error);
+    }
+  };
 
   const toggleDeveloperMenu = () => {
     const newTapCount = tapCount + 1;
@@ -122,6 +133,45 @@ const SettingsScreen = ({ navigation }: Props) => {
     }
   };
 
+  const registerMockWeeklySermons = async () => {
+    try {
+      const today = new Date();
+      const diffToSunday = 7 - today.getDay();
+      const sunday = new Date(today);
+      sunday.setDate(today.getDate() + (diffToSunday === 7 ? 0 : diffToSunday));
+      const dateStr = sunday.toISOString().split('T')[0];
+
+      const worshipOptions = [
+        { type: 'THU_EVE' as WorshipType, dayLabel: '목요일 저녁 예배' },
+        { type: 'SAT_PM' as WorshipType, dayLabel: '토요일 오후 예배' },
+        { type: 'SUN_1000' as WorshipType, dayLabel: '주일 2부 (10:00)' },
+        { type: 'SUN_1200' as WorshipType, dayLabel: '주일 3부 (12:00)' },
+        { type: 'SUN_1430' as WorshipType, dayLabel: '주일 4부 (14:30)' },
+      ];
+
+      const mockSermons = worshipOptions.map((opt) => ({
+        id: `mock-weekly-${opt.type}-${dateStr}`,
+        title: `[${opt.dayLabel}] 생명의 말씀`,
+        content: `이것은 ${opt.dayLabel} 묵상만개 모의 말씀입니다.\n어떠한 상황 속에서도 기쁨으로 살아갑시다. (${dateStr})`,
+        date: dateStr,
+        actual_date: dateStr,
+        worship_type: opt.type,
+        category: '설교',
+        day_of_week: opt.type.startsWith('THU') ? '목' : opt.type.startsWith('SAT') ? '토' : '일',
+        video_url: 'https://www.youtube.com/watch?v=mock',
+        created_at: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
+        updated_at: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
+      }));
+
+      await saveWeeklySermonsToAsyncStorage(mockSermons);
+      await syncSelectedSermonToWidget(selectedWorship);
+      Alert.alert('성공', `주간 모의 데이터(5개)가 로컬 캐시에 등록되었습니다.\n공통 날짜: ${dateStr}\n현재 설정된 예배(${selectedWorship})로 동기화되었습니다.`);
+    } catch (error) {
+      logger.error('모의 데이터 등록 실패:', error);
+      Alert.alert('오류', '모의 데이터 등록에 실패했습니다.');
+    }
+  };
+
   useEffect(() => {
     const loadYoutubeLinkSetting = async () => {
       try {
@@ -134,6 +184,20 @@ const SettingsScreen = ({ navigation }: Props) => {
       }
     };
     loadYoutubeLinkSetting();
+  }, []);
+
+  useEffect(() => {
+    const loadWorshipSetting = async () => {
+      try {
+        const saved = await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY);
+        if (saved) {
+          setSelectedWorship(saved as WorshipType);
+        }
+      } catch (error) {
+        logger.error('예배 시간 설정 불러오기 실패:', error);
+      }
+    };
+    loadWorshipSetting();
   }, []);
 
   useEffect(() => {
@@ -232,6 +296,48 @@ const SettingsScreen = ({ navigation }: Props) => {
           </View>
         </View>
 
+        {/* 예배 시간 설정 섹션 */}
+        <Text style={styles.sectionLabel}>예배 시간 설정</Text>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionDescription}>
+            참석하시는 예배 시간에 맞게 말씀을 표시합니다.
+          </Text>
+          <View style={styles.worshipGrid}>
+            {WORSHIP_TYPES.map((w) => {
+              const isSelected = selectedWorship === w.key;
+              const formattedLabel =
+                w.key === 'THU_EVE' ? '목요일 저녁' :
+                w.key === 'SAT_PM' ? '토요일 오후' :
+                w.key === 'SUN_1000' ? '주일 10:00' :
+                w.key === 'SUN_1200' ? '주일 12:00' :
+                w.key === 'SUN_1430' ? '주일 14:30' : w.label;
+
+              return (
+                <TouchableOpacity
+                  key={w.key}
+                  style={[
+                    styles.worshipCard,
+                    isSelected && styles.worshipCardActive,
+                  ]}
+                  onPress={() => handleWorshipChange(w.key)}
+                >
+                  <Text
+                    style={[
+                      styles.worshipCardText,
+                      isSelected && styles.worshipCardTextActive,
+                    ]}
+                  >
+                    {formattedLabel}
+                  </Text>
+                  <View style={styles.radioButton}>
+                    {isSelected && <View style={styles.radioInner} />}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
         {/* 앱 관리 섹션 (여러 번 탭하면 숨겨진 개발자 메뉴가 열린다)
             activeOpacity={1}로 누름 효과를 없애 버튼임을 인지하지 못하게 한다. */}
         <TouchableOpacity onPress={toggleDeveloperMenu} activeOpacity={1}>
@@ -255,6 +361,9 @@ const SettingsScreen = ({ navigation }: Props) => {
             <>
               <TouchableOpacity onPress={inspectStorage} style={styles.devButton}>
                 <Text style={styles.devButtonText}>스토리지 검사</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={registerMockWeeklySermons} style={styles.devButton}>
+                <Text style={styles.devButtonText}>주간 모의 데이터 등록 (로컬 캐시)</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={copyFCMToken} style={styles.fcmButton}>
                 <Text style={styles.devButtonText}>FCM 토큰 복사</Text>
@@ -469,6 +578,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     fontFamily: 'Pretendard-Regular',
+  },
+  worshipGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  worshipCard: {
+    width: '48%',
+    minWidth: 140,
+    flexGrow: 1,
+    height: 75,
+    backgroundColor: '#F4F4F4',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: '#F4F4F4',
+  },
+  worshipCardActive: {
+    borderColor: '#00A8DE',
+    backgroundColor: '#E6F7FD',
+  },
+  worshipCardText: {
+    color: '#A59EAE',
+    fontSize: 14,
+    fontFamily: 'Pretendard-Bold',
+    textAlign: 'center',
+  },
+  worshipCardTextActive: {
+    color: '#00A8DE',
   },
   aboutSection: {
     backgroundColor: '#E1E5F7',
