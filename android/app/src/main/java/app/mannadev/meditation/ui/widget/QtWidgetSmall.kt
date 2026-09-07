@@ -107,6 +107,7 @@ private fun QtWidgetSmallContent(
     // 매번 다시 구워 그린다([ISSUE-236] 후속: QT 위젯도 저장된 디자인을 실제로 반영).
     val glanceSize = LocalSize.current
     val density = LocalContext.current.resources.displayMetrics.density
+    val fontScale = LocalContext.current.resources.configuration.fontScale
     val widthPx = (glanceSize.width.value * density).roundToInt()
     val heightPx = (glanceSize.height.value * density).roundToInt()
     val marginPx = VerseSmallQtDimens.widgetPadding.value * density
@@ -172,9 +173,10 @@ private fun QtWidgetSmallContent(
             innerModifier = GlanceModifier.background(solidColor)
         }
     }
-    val titleStyle = design?.text?.toTitleTextStyle(FontWeight.Medium) ?: Typography.titleMedium
-    val bodyStyle = design?.text?.toBodyTextStyle() ?: Typography.bodyMedium
-    val labelStyle = design?.text?.toIndexTextStyle(CARD_INDEX_SIZE_RATIO) ?: Typography.labelSmall
+    val typography = Typography(fontScale)
+    val titleStyle = design?.text?.toTitleTextStyle(FontWeight.Medium, fontScale) ?: typography.titleMedium
+    val bodyStyle = design?.text?.toBodyTextStyle(fontScale) ?: typography.bodyMedium
+    val labelStyle = design?.text?.toIndexTextStyle(CARD_INDEX_SIZE_RATIO, fontScale) ?: typography.labelSmall
     val dividerColor = design?.text?.let { ColorProvider(Color(android.graphics.Color.parseColor(it.color)).copy(alpha = 0.2f)) }
         ?: ColorProvider(Color(0x33000000))
 

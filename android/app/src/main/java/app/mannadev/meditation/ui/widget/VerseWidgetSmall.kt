@@ -122,6 +122,7 @@ private fun VerseWidgetSmallContent(
     // 이유([#233], 고정 해상도로 구우면 리사이즈 시 사진이 크롭되지 않고 늘어나 보임).
     val glanceSize = LocalSize.current
     val density = LocalContext.current.resources.displayMetrics.density
+    val fontScale = LocalContext.current.resources.configuration.fontScale
     val widthPx = (glanceSize.width.value * density).roundToInt()
     val heightPx = (glanceSize.height.value * density).roundToInt()
     val marginPx = VerseSmallWidgetDimens.widgetPadding.value * density
@@ -187,9 +188,10 @@ private fun VerseWidgetSmallContent(
             innerModifier = GlanceModifier.background(solidColor)
         }
     }
-    val titleStyle = design?.text?.toTitleTextStyle(FontWeight.Medium) ?: Typography.titleMedium
-    val bodyStyle = design?.text?.toBodyTextStyle() ?: Typography.bodyMedium
-    val bookNameStyle = design?.text?.toIndexTextStyle(CARD_INDEX_SIZE_RATIO) ?: Typography.labelSmall
+    val typography = Typography(fontScale)
+    val titleStyle = design?.text?.toTitleTextStyle(FontWeight.Medium, fontScale) ?: typography.titleMedium
+    val bodyStyle = design?.text?.toBodyTextStyle(fontScale) ?: typography.bodyMedium
+    val bookNameStyle = design?.text?.toIndexTextStyle(CARD_INDEX_SIZE_RATIO, fontScale) ?: typography.labelSmall
 
     Column(
         modifier = outerModifier,
