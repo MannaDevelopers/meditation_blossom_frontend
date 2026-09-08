@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -16,6 +16,8 @@ import {
   View,
 } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
+import { useAppTheme } from '../hooks/useAppTheme';
+import { ThemeColors } from '../theme/colors';
 import Clipboard from '@react-native-clipboard/clipboard';
 import SvgIcon from './SvgIcon';
 import { MEDITATION_NOTE_MAX_LENGTH } from '../constants';
@@ -47,6 +49,8 @@ interface Props {
 }
 
 const MeditationNoteSheet = ({ source, title }: Props) => {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const isFocused = useIsFocused();
   const [isOpen, setIsOpen] = useState(false);
   const [note, setNote] = useState('');
@@ -257,7 +261,7 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
         {/* SVG가 자체 터치 responder가 되어 탭을 삼키는 문제(ISSUE-138 패턴) 회피 */}
-        <SvgIcon name="EditPencil" size={24} fill="#FFFFFF" pointerEvents="none" />
+        <SvgIcon name="EditPencil" size={24} fill={FAB_ICON_COLOR} pointerEvents="none" />
       </TouchableOpacity>
     );
   }
@@ -317,7 +321,7 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
           value={note}
           onChangeText={handleChangeText}
           placeholder={'오늘의 묵상을 입력하세요\n(예: 본문에서 받은 은혜, 나의 고백…)'}
-          placeholderTextColor="#A59EAE"
+          placeholderTextColor={colors.textTertiary}
           multiline
           maxLength={MEDITATION_NOTE_MAX_LENGTH}
           textAlignVertical="top"
@@ -348,7 +352,12 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
   );
 };
 
-const styles = StyleSheet.create({
+// accent(#00A8DE)는 라이트/다크에서 동일해서, 그 위에 얹는 아이콘·라벨은 두 테마 모두
+// 흰색이 대비를 만족한다. 테마 토큰으로 뺄 필요가 없어 상수로 둔다.
+const FAB_ICON_COLOR = '#FFFFFF';
+
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 0, // 부모 컨테이너가 이미 marginHorizontal 27을 가지므로 화면 우측에서 27
@@ -356,7 +365,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#00A8DE',
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     // 본문 위에 떠 있으므로 스크롤되는 텍스트와 구분되도록 그림자를 준다.
@@ -378,7 +387,7 @@ const styles = StyleSheet.create({
     // 부모 컨테이너의 marginHorizontal 27을 상쇄해 시트만 화면 폭까지 넓힌다.
     left: -27,
     right: -27,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     paddingHorizontal: 27,
@@ -399,7 +408,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: colors.divider,
   },
   titleRow: {
     flexDirection: 'row',
@@ -408,7 +417,7 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     flex: 1,
-    color: '#747474',
+    color: colors.textSecondary,
     fontSize: 16,
     fontFamily: 'Pretendard-SemiBold',
     marginBottom: 8,
@@ -417,34 +426,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   closeIcon: {
-    color: '#A59EAE',
+    color: colors.textTertiary,
     fontSize: 18,
     lineHeight: 22,
   },
   sheetDivider: {
     height: 1,
-    backgroundColor: '#EEEEEE',
+    backgroundColor: colors.divider,
   },
   input: {
     minHeight: 88,
     maxHeight: 160,
     paddingTop: 12,
     paddingHorizontal: 0,
-    color: '#000000',
+    color: colors.textPrimary,
     fontSize: 16,
     fontFamily: 'Pretendard-Regular',
     lineHeight: 22,
   },
   counter: {
     alignSelf: 'flex-end',
-    color: '#A59EAE',
+    color: colors.textTertiary,
     fontSize: 12,
     fontFamily: 'Pretendard-Regular',
     marginBottom: 8,
   },
   actionDivider: {
     height: 1,
-    backgroundColor: '#EEEEEE',
+    backgroundColor: colors.divider,
     marginBottom: 12,
   },
   actionRow: {
@@ -458,7 +467,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   clearText: {
-    color: '#A59EAE',
+    color: colors.textTertiary,
     fontSize: 14,
     fontFamily: 'Pretendard-SemiBold',
   },
@@ -466,24 +475,25 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   copiedText: {
-    color: '#00A8DE',
+    color: colors.accent,
     fontSize: 13,
     fontFamily: 'Pretendard-Medium',
   },
   copyButton: {
-    backgroundColor: '#00A8DE',
+    backgroundColor: colors.accent,
     borderRadius: 16,
     paddingHorizontal: 20,
     paddingVertical: 7,
   },
   copyButtonDisabled: {
-    backgroundColor: '#C9E9F4',
+    // 별도 색을 두면 테마마다 대비를 다시 맞춰야 해서 불투명도로 처리한다.
+    opacity: 0.4,
   },
   copyButtonText: {
-    color: '#FFFFFF',
+    color: FAB_ICON_COLOR,
     fontSize: 14,
     fontFamily: 'Pretendard-Bold',
   },
-});
+  });
 
 export default MeditationNoteSheet;
