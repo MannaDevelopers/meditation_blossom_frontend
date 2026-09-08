@@ -109,6 +109,7 @@ private fun VerseWidgetLargeContent(
     // 범위만 바뀌는 게 아니라 통째로 늘어나거나 줄어드는 문제가 있었다([#233]).
     val glanceSize = LocalSize.current
     val density = LocalContext.current.resources.displayMetrics.density
+    val fontScale = LocalContext.current.resources.configuration.fontScale
     val widthPx = (glanceSize.width.value * density).roundToInt()
     val heightPx = (glanceSize.height.value * density).roundToInt()
     val galleryBitmap by produceState<Bitmap?>(
@@ -140,10 +141,12 @@ private fun VerseWidgetLargeContent(
         design.background.value == "gradient-default" -> baseModifier.xmlGradientBackground()
         else -> baseModifier.background(ComposeColor(android.graphics.Color.parseColor(design.background.value)))
     }
-    val titleStyle = design?.text?.toTitleTextStyle(FontWeight.Bold)
-        ?: Typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-    val bodyStyle = design?.text?.toBodyTextStyle() ?: Typography.titleMedium.copy(fontWeight = FontWeight.Normal)
-    val bookNameStyle = design?.text?.toIndexTextStyle(BANNER_INDEX_SIZE_RATIO) ?: Typography.labelMedium
+    val typography = Typography(fontScale)
+    val titleStyle = design?.text?.toTitleTextStyle(FontWeight.Bold, fontScale)
+        ?: typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+    val bodyStyle = design?.text?.toBodyTextStyle(fontScale)
+        ?: typography.titleMedium.copy(fontWeight = FontWeight.Normal)
+    val bookNameStyle = design?.text?.toIndexTextStyle(BANNER_INDEX_SIZE_RATIO, fontScale) ?: typography.labelMedium
 
     Column(
         modifier = backgroundModifier,

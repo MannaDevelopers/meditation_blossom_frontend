@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Alert,
   Image,
@@ -31,10 +31,14 @@ import { fetchLatestSermonFromServer, pushSermonToWidget } from '../services/ser
 import { fetchLatestQtFromServer, pushQtToWidget } from '../services/qtService';
 import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
+import { useAppTheme } from '../hooks/useAppTheme';
+import { ThemeColors } from '../theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SettingsScreen'>;
 
 const SettingsScreen = ({ navigation }: Props) => {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [showDeveloperMenu, setShowDeveloperMenu] = useState(false);
   const [tapCount, setTapCount] = useState(0);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
@@ -191,7 +195,7 @@ const SettingsScreen = ({ navigation }: Props) => {
           <Svg width={9} height={15} viewBox="0 0 13 22" pointerEvents="none">
             <Path
               d="M11 2 L3 11 L11 20"
-              stroke="#49454F"
+              stroke={colors.border}
               strokeWidth={2.5}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -297,205 +301,206 @@ const SettingsScreen = ({ navigation }: Props) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F3F4F9',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 27,
-    marginTop: 16,
-    marginBottom: 24,
-    // height(고정값)로는 시스템 글자 크기 확대 시 제목 텍스트의 실제 렌더링 높이가
-    // 컨테이너를 넘어서며 Android에서 하단이 잘린다(iOS는 넘쳐도 자르지 않아 문제없음).
-    // minHeight로 바꿔 글자 크기에 따라 컨테이너 높이도 함께 늘어나게 한다.
-    minHeight: 30,
-  },
-  backButton: {
-    // 아이콘 주변에 실제 터치 패딩을 더해 탭 영역을 넓힌다(hitSlop과 병행).
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    marginRight: 8,
-    marginLeft: -10,
-  },
-  headerTitle: {
-    color: '#49454F',
-    fontSize: 20,
-    fontFamily: 'Pretendard-SemiBold',
-    letterSpacing: -1,
-    // Android는 includeFontPadding으로 비대칭 padding을 더해 시스템 글자 크기/굵게 설정 시
-    // 제목이 헤더 중앙보다 아래로 쳐진다. iOS는 해당 개념이 없어 항상 중앙 정렬된다.
-    // Android에서만 padding을 끄고 수직 중앙 정렬을 강제한다(두 속성 모두 iOS에서는 무시됨).
-    includeFontPadding: false,
-    textAlignVertical: 'center',
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  aboutSpacer: {
-    flex: 1,
-  },
-  sectionLabel: {
-    color: '#49454F',
-    fontSize: 17,
-    fontFamily: 'Pretendard-SemiBold',
-    marginHorizontal: 27,
-    marginBottom: 0,
-    paddingVertical: 12,
-  },
-  sectionCard: {
-    backgroundColor: 'white',
-    borderRadius: 15,
-    marginHorizontal: 8,
-    marginBottom: 16,
-    paddingHorizontal: 19,
-    paddingBottom: 20,
-    paddingTop: 16,
-  },
-  sectionDivider: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    marginBottom: 16,
-  },
-  sectionDescription: {
-    color: '#919191',
-    fontSize: 15,
-    fontFamily: 'Pretendard-SemiBold',
-    marginBottom: 16,
-  },
-  optionRow: {
-    flexDirection: 'row',
-    gap: 20,
-  },
-  optionItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 8,
-  },
-  optionCard: {
-    width: 110,
-    height: 70,
-    backgroundColor: '#F4F4F4',
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  appPreview: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  appPreviewIcon: {
-    width: 15,
-    height: 15,
-    borderRadius: 8,
-  },
-  appPreviewText: {
-    color: '#49454F',
-    fontSize: 15,
-    fontFamily: 'Pretendard-Medium',
-  },
-  optionLabel: {
-    color: '#A59EAE',
-    fontSize: 14,
-    fontFamily: 'Pretendard-Bold',
-    textAlign: 'center',
-  },
-  optionLabelActive: {
-    color: '#00A8DE',
-  },
-  radioButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#A59EAE',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  radioInner: {
-    width: 11,
-    height: 11,
-    borderRadius: 6,
-    backgroundColor: '#00A8DE',
-  },
-  primaryButton: {
-    backgroundColor: '#00A8DE',
-    height: 50,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  primaryButtonDisabled: {
-    backgroundColor: '#A59EAE',
-  },
-  primaryButtonText: {
-    color: 'white',
-    fontSize: 20,
-    fontFamily: 'Pretendard-SemiBold',
-    letterSpacing: -1,
-  },
-  devButton: {
-    height: 50,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#49454F',
-    marginTop: 12,
-  },
-  devButtonText: {
-    color: '#49454F',
-    fontSize: 18,
-    textAlign: 'center',
-    fontFamily: 'Pretendard-Bold',
-    letterSpacing: -1,
-  },
-  fcmButton: {
-    minHeight: 50,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#49454F',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    marginTop: 12,
-  },
-  fcmTokenText: {
-    color: '#A59EAE',
-    fontSize: 10,
-    textAlign: 'center',
-    fontFamily: 'Pretendard-Regular',
-    lineHeight: 14,
-    marginTop: 5,
-  },
-  fcmLoadingText: {
-    color: '#A59EAE',
-    fontSize: 12,
-    textAlign: 'center',
-    fontFamily: 'Pretendard-Regular',
-  },
-  aboutSection: {
-    backgroundColor: '#E1E5F7',
-    paddingHorizontal: 27,
-    paddingVertical: 15,
-    gap: 4,
-  },
-  aboutTitle: {
-    color: '#49454F',
-    fontSize: 17,
-    fontFamily: 'Pretendard-SemiBold',
-    marginBottom: 8,
-  },
-  aboutText: {
-    color: '#919191',
-    fontSize: 15,
-    fontFamily: 'Pretendard-SemiBold',
-    lineHeight: 23,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginHorizontal: 27,
+      marginTop: 16,
+      marginBottom: 24,
+      // height(고정값)로는 시스템 글자 크기 확대 시 제목 텍스트의 실제 렌더링 높이가
+      // 컨테이너를 넘어서며 Android에서 하단이 잘린다(iOS는 넘쳐도 자르지 않아 문제없음).
+      // minHeight로 바꿔 글자 크기에 따라 컨테이너 높이도 함께 늘어나게 한다.
+      minHeight: 30,
+    },
+    backButton: {
+      // 아이콘 주변에 실제 터치 패딩을 더해 탭 영역을 넓힌다(hitSlop과 병행).
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      marginRight: 8,
+      marginLeft: -10,
+    },
+    headerTitle: {
+      color: colors.border,
+      fontSize: 20,
+      fontFamily: 'Pretendard-SemiBold',
+      letterSpacing: -1,
+      // Android는 includeFontPadding으로 비대칭 padding을 더해 시스템 글자 크기/굵게 설정 시
+      // 제목이 헤더 중앙보다 아래로 쳐진다. iOS는 해당 개념이 없어 항상 중앙 정렬된다.
+      // Android에서만 padding을 끄고 수직 중앙 정렬을 강제한다(두 속성 모두 iOS에서는 무시됨).
+      includeFontPadding: false,
+      textAlignVertical: 'center',
+    },
+    scrollContent: {
+      flexGrow: 1,
+    },
+    aboutSpacer: {
+      flex: 1,
+    },
+    sectionLabel: {
+      color: colors.border,
+      fontSize: 17,
+      fontFamily: 'Pretendard-SemiBold',
+      marginHorizontal: 27,
+      marginBottom: 0,
+      paddingVertical: 12,
+    },
+    sectionCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 15,
+      marginHorizontal: 8,
+      marginBottom: 16,
+      paddingHorizontal: 19,
+      paddingBottom: 20,
+      paddingTop: 16,
+    },
+    sectionDivider: {
+      height: 1,
+      backgroundColor: colors.divider,
+      marginBottom: 16,
+    },
+    sectionDescription: {
+      color: colors.textMuted,
+      fontSize: 15,
+      fontFamily: 'Pretendard-SemiBold',
+      marginBottom: 16,
+    },
+    optionRow: {
+      flexDirection: 'row',
+      gap: 20,
+    },
+    optionItem: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 8,
+    },
+    optionCard: {
+      width: 110,
+      height: 70,
+      backgroundColor: colors.background,
+      borderRadius: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    appPreview: {
+      alignItems: 'center',
+      gap: 4,
+    },
+    appPreviewIcon: {
+      width: 15,
+      height: 15,
+      borderRadius: 8,
+    },
+    appPreviewText: {
+      color: colors.border,
+      fontSize: 15,
+      fontFamily: 'Pretendard-Medium',
+    },
+    optionLabel: {
+      color: colors.textTertiary,
+      fontSize: 14,
+      fontFamily: 'Pretendard-Bold',
+      textAlign: 'center',
+    },
+    optionLabelActive: {
+      color: colors.accent,
+    },
+    radioButton: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: colors.textTertiary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    radioInner: {
+      width: 11,
+      height: 11,
+      borderRadius: 6,
+      backgroundColor: colors.accent,
+    },
+    primaryButton: {
+      backgroundColor: colors.accent,
+      height: 50,
+      borderRadius: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    primaryButtonDisabled: {
+      backgroundColor: colors.textTertiary,
+    },
+    primaryButtonText: {
+      color: 'white',
+      fontSize: 20,
+      fontFamily: 'Pretendard-SemiBold',
+      letterSpacing: -1,
+    },
+    devButton: {
+      height: 50,
+      borderRadius: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginTop: 12,
+    },
+    devButtonText: {
+      color: colors.border,
+      fontSize: 18,
+      textAlign: 'center',
+      fontFamily: 'Pretendard-Bold',
+      letterSpacing: -1,
+    },
+    fcmButton: {
+      minHeight: 50,
+      borderRadius: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingVertical: 10,
+      paddingHorizontal: 15,
+      marginTop: 12,
+    },
+    fcmTokenText: {
+      color: colors.textTertiary,
+      fontSize: 10,
+      textAlign: 'center',
+      fontFamily: 'Pretendard-Regular',
+      lineHeight: 14,
+      marginTop: 5,
+    },
+    fcmLoadingText: {
+      color: colors.textTertiary,
+      fontSize: 12,
+      textAlign: 'center',
+      fontFamily: 'Pretendard-Regular',
+    },
+    aboutSection: {
+      backgroundColor: colors.infoPanelLavender,
+      paddingHorizontal: 27,
+      paddingVertical: 15,
+      gap: 4,
+    },
+    aboutTitle: {
+      color: colors.border,
+      fontSize: 17,
+      fontFamily: 'Pretendard-SemiBold',
+      marginBottom: 8,
+    },
+    aboutText: {
+      color: colors.textMuted,
+      fontSize: 15,
+      fontFamily: 'Pretendard-SemiBold',
+      lineHeight: 23,
+    },
+  });
 
 export default SettingsScreen;

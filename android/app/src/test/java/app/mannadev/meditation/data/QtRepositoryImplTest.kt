@@ -33,6 +33,7 @@ class QtRepositoryImplTest {
         override suspend fun notifyQtChanged() { qtNotifyCount++ }
         override suspend fun notifySermonDesignChanged() { designNotifyCount++ }
         override suspend fun notifyQtDesignChanged() { designNotifyCount++ }
+        override suspend fun notifyFontScaleChanged() {}
     }
 
     private val sampleDto = QtDto(

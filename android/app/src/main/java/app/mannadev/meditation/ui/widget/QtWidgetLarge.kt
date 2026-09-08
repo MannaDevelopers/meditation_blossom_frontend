@@ -99,6 +99,7 @@ private fun QtWidgetLargeContent(
     // 실제로 반영).
     val glanceSize = LocalSize.current
     val density = LocalContext.current.resources.displayMetrics.density
+    val fontScale = LocalContext.current.resources.configuration.fontScale
     val widthPx = (glanceSize.width.value * density).roundToInt()
     val heightPx = (glanceSize.height.value * density).roundToInt()
     val galleryBitmap by produceState<Bitmap?>(
@@ -130,10 +131,12 @@ private fun QtWidgetLargeContent(
         design.background.value == "gradient-default" -> baseModifier.xmlGradientBackground()
         else -> baseModifier.background(ComposeColor(android.graphics.Color.parseColor(design.background.value)))
     }
-    val titleStyle = design?.text?.toTitleTextStyle(FontWeight.Bold)
-        ?: Typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-    val bodyStyle = design?.text?.toBodyTextStyle() ?: Typography.titleMedium.copy(fontWeight = FontWeight.Normal)
-    val labelStyle = design?.text?.toIndexTextStyle(BANNER_INDEX_SIZE_RATIO) ?: Typography.labelSmall
+    val typography = Typography(fontScale)
+    val titleStyle = design?.text?.toTitleTextStyle(FontWeight.Bold, fontScale)
+        ?: typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+    val bodyStyle = design?.text?.toBodyTextStyle(fontScale)
+        ?: typography.titleMedium.copy(fontWeight = FontWeight.Normal)
+    val labelStyle = design?.text?.toIndexTextStyle(BANNER_INDEX_SIZE_RATIO, fontScale) ?: typography.labelSmall
 
     Column(
         modifier = backgroundModifier,

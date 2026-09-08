@@ -1,0 +1,11 @@
+<resources>
+
+    <!-- 다크모드 오버라이드. Base(values/styles.xml)의 라이트 고정 상태바 설정을
+         시스템이 다크모드일 때만 덮어쓴다. -->
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <item name="android:statusBarColor">#1E1E20</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+</resources>

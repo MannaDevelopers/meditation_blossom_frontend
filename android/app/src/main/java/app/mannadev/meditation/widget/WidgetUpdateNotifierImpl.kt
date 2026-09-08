@@ -62,4 +62,16 @@ class WidgetUpdateNotifierImpl @Inject constructor(
             CrashlyticsHelper.recordException(e, "WidgetUpdateNotifier: failed to update QT widgets after design change")
         }
     }
+
+    override suspend fun notifyFontScaleChanged() {
+        runCatching {
+            VerseWidgetLarge().updateAll(context)
+            VerseWidgetSmall().updateAll(context)
+            QtWidgetLarge().updateAll(context)
+            QtWidgetSmall().updateAll(context)
+            AnalyticsHelper.logWidgetUpdated("font_scale_changed")
+        }.onFailure { e ->
+            CrashlyticsHelper.recordException(e, "WidgetUpdateNotifier: failed to update widgets after font scale change")
+        }
+    }
 }

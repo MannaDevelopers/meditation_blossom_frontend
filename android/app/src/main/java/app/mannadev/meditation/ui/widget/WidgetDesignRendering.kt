@@ -8,7 +8,6 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
 import androidx.glance.text.FontWeight
 import androidx.glance.text.TextAlign
@@ -16,6 +15,7 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import app.mannadev.meditation.dto.WidgetImageTransformDto
 import app.mannadev.meditation.dto.WidgetTextDesignDto
+import app.mannadev.meditation.ui.widget.theme.fixedSp
 import kotlin.math.roundToInt
 
 /**
@@ -36,9 +36,9 @@ const val CARD_INDEX_SIZE_RATIO = 11f / 14f
  * Glance FontWeight엔 ExtraBold가 없어 "extrabold"는 Bold로 근사한다(RN은 폰트 패밀리를
  * 바꿔 표현하지만, Glance TextStyle은 커스텀 폰트 패밀리를 받지 않는다).
  */
-fun WidgetTextDesignDto.toBodyTextStyle(): TextStyle = TextStyle(
+fun WidgetTextDesignDto.toBodyTextStyle(fontScale: Float): TextStyle = TextStyle(
     color = ColorProvider(parseHexColor(color)),
-    fontSize = size.sp,
+    fontSize = fixedSp(size.toFloat(), fontScale),
     fontWeight = if (weight == "regular") FontWeight.Normal else FontWeight.Bold,
     textAlign = when (align) {
         "center" -> TextAlign.Center
@@ -52,9 +52,9 @@ fun WidgetTextDesignDto.toBodyTextStyle(): TextStyle = TextStyle(
  * (WidgetPreview.tsx의 bannerTitle/cardTitle 스타일이 textStyle 전체가 아니라 color/fontSize만
  * 개별로 덮어쓰는 것과 동일한 규칙 — weight는 본문에만 적용된다는 [#169]의 설계 결정.)
  */
-fun WidgetTextDesignDto.toTitleTextStyle(fixedWeight: FontWeight): TextStyle = TextStyle(
+fun WidgetTextDesignDto.toTitleTextStyle(fixedWeight: FontWeight, fontScale: Float): TextStyle = TextStyle(
     color = ColorProvider(parseHexColor(color)),
-    fontSize = size.sp,
+    fontSize = fixedSp(size.toFloat(), fontScale),
     fontWeight = fixedWeight,
     textAlign = TextAlign.Left,
 )
@@ -66,9 +66,9 @@ fun WidgetTextDesignDto.toTitleTextStyle(fixedWeight: FontWeight): TextStyle = T
  * 축소된 크기만 따로 적용한다(제목과 동일한 패턴). ratio는 WidgetPreview.tsx의
  * BANNER_INDEX_SIZE_RATIO/CARD_INDEX_SIZE_RATIO와 동일해야 한다.
  */
-fun WidgetTextDesignDto.toIndexTextStyle(ratio: Float): TextStyle = TextStyle(
+fun WidgetTextDesignDto.toIndexTextStyle(ratio: Float, fontScale: Float): TextStyle = TextStyle(
     color = ColorProvider(parseHexColor(color)),
-    fontSize = (size * ratio).let { Math.round(it) }.sp,
+    fontSize = (size * ratio).let { Math.round(it) }.let { fixedSp(it.toFloat(), fontScale) },
 )
 
 // 카드형(Small) 위젯의 이중 레이어 재해석([#169] 3.7절, src/utils/widgetDesignColor.ts와 동일 로직)
