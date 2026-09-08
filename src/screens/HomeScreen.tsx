@@ -228,7 +228,7 @@ const createStyles = (colors: ThemeColors) =>
     smallDivider: {
       height: 3,
       width: 50,
-      backgroundColor: colors.textSecondary,
+      backgroundColor: colors.dividerStrong,
       marginBottom: 16,
     },
     contentDivider: {

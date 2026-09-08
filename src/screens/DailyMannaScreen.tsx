@@ -234,7 +234,7 @@ const createStyles = (colors: ThemeColors) =>
     smallDivider: {
       height: 3,
       width: 50,
-      backgroundColor: colors.textSecondary,
+      backgroundColor: colors.dividerStrong,
       marginBottom: 16,
     },
     contentDivider: {
@@ -287,7 +287,7 @@ const createStyles = (colors: ThemeColors) =>
       fontStyle: 'italic',
     },
     questionsContainer: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.infoPanelBlue,
       borderRadius: 15,
       padding: 20,
       gap: 12,

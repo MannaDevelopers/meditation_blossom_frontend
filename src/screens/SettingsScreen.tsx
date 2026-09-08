@@ -357,7 +357,7 @@ const createStyles = (colors: ThemeColors) =>
       marginBottom: 16,
     },
     sectionDescription: {
-      color: colors.textSecondary,
+      color: colors.textMuted,
       fontSize: 15,
       fontFamily: 'Pretendard-SemiBold',
       marginBottom: 16,
@@ -476,7 +476,7 @@ const createStyles = (colors: ThemeColors) =>
       fontFamily: 'Pretendard-Regular',
     },
     aboutSection: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.infoPanelLavender,
       paddingHorizontal: 27,
       paddingVertical: 15,
       gap: 4,
@@ -488,7 +488,7 @@ const createStyles = (colors: ThemeColors) =>
       marginBottom: 8,
     },
     aboutText: {
-      color: colors.textSecondary,
+      color: colors.textMuted,
       fontSize: 15,
       fontFamily: 'Pretendard-SemiBold',
       lineHeight: 23,

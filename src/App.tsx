@@ -47,7 +47,11 @@ function buildNavigationTheme(base: Theme, colors: ThemeColors): Theme {
     colors: {
       ...base.colors,
       primary: colors.accent,
-      background: colors.background,
+      // 각 화면(Home/DailyManna)이 margin으로 자기 배경을 화면 가장자리보다 안쪽에 그려서
+      // margin 바깥의 네비게이터 캔버스 색이 그대로 보인다. 화면들이 스스로의 최상위
+      // 배경으로 colors.surface를 쓰므로, 여기서도 colors.background가 아니라
+      // colors.surface를 맞춰야 그 margin 틈에서 색이 어긋나 보이는 이음매가 생기지 않는다.
+      background: colors.surface,
       card: colors.surface,
       text: colors.textPrimary,
       border: colors.divider,
