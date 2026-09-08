@@ -41,3 +41,20 @@ describe('resolvePassages', () => {
     expect(passages[1].content).toContain('왕이 뭇 백성에게');
   });
 });
+
+// Kotlin 리졸버는 절이 1개면 번호를 생략하고(BibleReferenceResolver.kt:61-65)
+// Swift는 항상 붙인다. 참조당 나눠 호출하면서 단일 절 참조가 흔해져 이 차이가 드러났다.
+// 화면이 플랫폼마다 달라 보이면 안 되므로 FE에서 맞춘다.
+describe('resolvePassages — 단일 절 번호 보정', () => {
+  it('절 번호 없이 온 단일 절 본문에 번호를 붙인다', async () => {
+    const resolve = async () => '본문 : 열왕기하 22:2 요시야가 여호와 보시기에 정직히 행하여';
+    const [passage] = await resolvePassages([KINGS_22_2], resolve, noChapterLengths);
+    expect(passage.content).toBe('2 요시야가 여호와 보시기에 정직히 행하여');
+  });
+
+  it('이미 번호가 붙어 있으면 중복해서 붙이지 않는다', async () => {
+    const resolve = async () => '본문 : 열왕기하 22:2 2 요시야가 여호와 보시기에 정직히 행하여';
+    const [passage] = await resolvePassages([KINGS_22_2], resolve, noChapterLengths);
+    expect(passage.content).toBe('2 요시야가 여호와 보시기에 정직히 행하여');
+  });
+});

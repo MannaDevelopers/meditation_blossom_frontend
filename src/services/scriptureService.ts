@@ -23,6 +23,20 @@ export interface ScripturePassage {
 export type ReferenceResolver = (refsJson: string) => Promise<string>;
 
 /**
+ * 단일 절 참조의 절 번호를 채운다.
+ *
+ * Kotlin 리졸버는 절이 1개면 번호를 생략하고(BibleReferenceResolver.kt:61-65) Swift는 항상
+ * 붙인다. 여러 참조를 합쳐 부르던 때는 절이 여러 개라 이 분기에 잘 안 걸렸는데, 참조당
+ * 나눠 부르면서 단일 절 참조가 흔해져 플랫폼 차이가 드러났다. 화면이 기기마다 달라
+ * 보이면 안 되므로 여기서 맞춘다.
+ */
+function ensureVerseNumber(content: string, ref: BibleRef): string {
+  const isSingleVerse = (ref.verse_end ?? ref.verse_start) === ref.verse_start;
+  if (!isSingleVerse || !content) return content;
+  return content.startsWith(`${ref.verse_start} `) ? content : `${ref.verse_start} ${content}`;
+}
+
+/**
  * 참조 배열을 참조별 본문으로 쪼갠다([#173]).
  *
  * 브릿지는 여러 참조를 받으면 "본문 : {참조들} {절들}" 한 덩어리로 합쳐 돌려주기 때문에
@@ -42,7 +56,7 @@ export async function resolvePassages(
       const raw = await resolve(JSON.stringify([ref]));
       return {
         label: formatReferenceLabel(ref),
-        content: extractContent(raw).content,
+        content: ensureVerseNumber(extractContent(raw).content, ref),
         isWholeChapter: isWholeChapter(ref, lastVerseOf),
       };
     }),
