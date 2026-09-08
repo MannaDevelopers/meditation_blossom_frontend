@@ -1,3 +1,5 @@
+import { CHAPTER_LENGTHS } from '../constants/chapterLengths';
+
 /** Firestore `bible_references` 원소. verse_end는 서버가 생략할 수 있다. */
 export interface BibleRef {
   book: string;
@@ -11,6 +13,13 @@ export type ScriptureMode = 'inline' | 'paged';
 
 /** 해당 장의 마지막 절 번호. 모르면 undefined. */
 export type ChapterLastVerseLookup = (book: string, chapter: number) => number | undefined;
+
+/**
+ * 빌드 타임에 bible.db에서 뽑은 정적 테이블 조회(scripts/build_chapter_lengths.py).
+ * RN은 앱 실행 중 bible.db를 볼 수 없어서 이 경로가 유일하다.
+ */
+export const chapterLastVerse: ChapterLastVerseLookup = (book, chapter) =>
+  CHAPTER_LENGTHS[book]?.[String(chapter)];
 
 /**
  * 칩·선택 탭에 쓰는 참조 라벨. 네이티브 리졸버(BibleReferenceResolver.kt:57-62,
