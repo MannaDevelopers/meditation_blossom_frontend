@@ -269,9 +269,23 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
             <View style={styles.grabber} />
           </Pressable>
 
-          <Text style={styles.sheetTitle} numberOfLines={2}>
-            {title || '말씀을 불러오는 중입니다'}
-          </Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.sheetTitle} numberOfLines={2}>
+              {title || '말씀을 불러오는 중입니다'}
+            </Text>
+            {/* 헤더 드래그로 닫기는 Android에서 ViewPager2의 NestedScrollableHost가 제스처를
+                취소해 동작하지 않는 것을 실기(Pixel 6 / API 35)에서 확인했다. 제스처에 의존하지
+                않는 닫기 수단을 명시적으로 둔다. */}
+            <TouchableOpacity
+              onPress={closeSheet}
+              style={styles.closeButton}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              accessibilityLabel="묵상 입력창 닫기"
+              accessibilityRole="button"
+            >
+              <Text style={styles.closeIcon}>✕</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={styles.sheetDivider} />
 
@@ -345,7 +359,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     paddingHorizontal: 27,
-    paddingBottom: 16,
+    paddingBottom: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
@@ -364,11 +378,25 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: '#E0E0E0',
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
   sheetTitle: {
+    flex: 1,
     color: '#747474',
     fontSize: 16,
     fontFamily: 'Pretendard-SemiBold',
     marginBottom: 8,
+  },
+  closeButton: {
+    paddingHorizontal: 4,
+  },
+  closeIcon: {
+    color: '#A59EAE',
+    fontSize: 18,
+    lineHeight: 22,
   },
   sheetDivider: {
     height: 1,
