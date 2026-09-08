@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -20,9 +20,14 @@ import { useQtFCMListener } from '../hooks/useQtFCMListener';
 import { useQtWidgetSync } from '../hooks/useQtWidgetSync';
 import { isQtDataStale } from '../services/qtService';
 import { logAnalytics } from '../utils/analytics';
-import { extractContent } from '../utils/sermonParser';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
+import Clipboard from '@react-native-clipboard/clipboard';
+import CopyToast from '../components/CopyToast';
+import PassageBlock from '../components/PassageBlock';
+import ReferenceTabs from '../components/ReferenceTabs';
+import { useScripturePassages } from '../hooks/useScripturePassages';
+import { buildFullCopyText, buildPassageCopyText } from '../utils/copyText';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { ThemeColors } from '../theme/colors';
 
@@ -49,10 +54,21 @@ const DailyMannaScreen = () => {
     }, [loadLocalData]),
   );
 
-  const qtContent = useMemo(
-    () => (qt?.content ? extractContent(qt.content) : { index: '', content: '' }),
-    [qt?.content],
-  );
+  const { passages, mode } = useScripturePassages(qt?.bible_references, qt?.content);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => setSelectedIndex(0), [qt?.bible_references]);
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+  }, []);
+
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 1600);
+  }, []);
 
   const isSunday = qt?.day_of_week === 'SUN';
 
@@ -80,6 +96,25 @@ const DailyMannaScreen = () => {
       return [];
     }
   }, [qt?.meditation_questions]);
+
+  const copyPassage = useCallback(
+    (index: number) => {
+      Clipboard.setString(buildPassageCopyText(passages[index]));
+      showToast('구절을 복사했어요');
+    },
+    [passages, showToast],
+  );
+
+  const copyAll = useCallback(() => {
+    if (passages.length === 0) return;
+    // 매일 만나는 묵상질문까지 복사 대상이다([#166] 확정)
+    Clipboard.setString(
+      buildFullCopyText({ title: qt?.title, passages, questions: meditationQuestions }),
+    );
+    showToast('말씀 전체를 복사했어요');
+  }, [passages, qt?.title, meditationQuestions, showToast]);
+
+  const visiblePassages = mode === 'paged' ? passages.slice(selectedIndex, selectedIndex + 1) : passages;
 
   const targetYoutubeUrl = qt?.video_url || DAILY_MANNA_CHANNEL_URL;
   const hasLoggedScroll = useRef(false);
@@ -129,7 +164,16 @@ const DailyMannaScreen = () => {
   const showError = error && !qt;
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={400}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={400}
+        // 선택 탭이 참조 간 유일한 이동 수단이라 스크롤로 사라지면 안 된다([#173]).
+        // 3 = 위에서부터 유튜브 카드 / 구분선 / 제목 행 / 선택 탭 슬롯
+        stickyHeaderIndices={mode === 'paged' ? [3] : undefined}
+      >
         {/* 카드(시리즈/날짜/유튜브 아이콘) 전체를 유튜브 바로가기 터치 영역으로 확장.
             cancelable={false}로 스크롤/스와이프 제스처가 터치를 탈취하지 못하게 하고,
             SVG는 pointerEvents="none"으로 터치를 부모 Pressable에 통과시킨다. */}
@@ -147,15 +191,42 @@ const DailyMannaScreen = () => {
           <SvgIcon name="YoutubeButton" size={60} pointerEvents="none" />
         </Pressable>
         <View style={styles.smallDivider} />
-        <Text style={styles.titleText} numberOfLines={0}>
-          {processTitleText(qt?.title)}
-        </Text>
-        {qtContent.index ? (
-          <Text style={styles.indexText}>{qtContent.index}</Text>
-        ) : null}
+        <View style={styles.titleRow}>
+          <Text style={styles.titleText} numberOfLines={0}>
+            {processTitleText(qt?.title)}
+          </Text>
+          {passages.length > 0 ? (
+            <TouchableOpacity
+              onPress={copyAll}
+              style={styles.copyAllButton}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              accessibilityLabel="말씀 전체 복사"
+              accessibilityRole="button"
+            >
+              <SvgIcon name="CopyIcon" size={20} fill={colors.textTertiary} pointerEvents="none" />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+        {/* 선택 탭 자리. inline 모드에서도 슬롯을 렌더해야 stickyHeaderIndices가
+            가리키는 자식 인덱스가 흔들리지 않는다. */}
+        <View style={styles.tabSlot}>
+          {mode === 'paged' ? (
+            <ReferenceTabs
+              labels={passages.map(p => p.label)}
+              selectedIndex={selectedIndex}
+              onSelect={setSelectedIndex}
+            />
+          ) : null}
+        </View>
         <View style={styles.contentDivider} />
-        {qtContent.content ? (
-          <Text style={styles.contentText}>{qtContent.content}</Text>
+        {visiblePassages.length > 0 ? (
+          visiblePassages.map((passage, index) => (
+            <PassageBlock
+              key={`${passage.label}-${index}`}
+              passage={passage}
+              onCopy={() => copyPassage(mode === 'paged' ? selectedIndex : index)}
+            />
+          ))
         ) : (
           <Text style={styles.contentUnavailableText}>
             오늘 말씀은 책을 참고해주세요
@@ -192,6 +263,7 @@ const DailyMannaScreen = () => {
           </View>
         </View>
       )}
+      <CopyToast message={toast} />
       {/* 복사에는 표시용 줄바꿈이 없는 원문 제목을 넘긴다([#174]) */}
       <MeditationNoteSheet source="qt" title={qt?.title} />
     </SafeAreaView>
@@ -251,7 +323,20 @@ const createStyles = (colors: ThemeColors) =>
       fontFamily: 'Pretendard-Bold',
       marginBottom: 12,
     },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+    },
+    tabSlot: {
+      // sticky 고정 시 색 띠로 보이지 않도록 화면 배경과 같은 톤을 쓴다
+      backgroundColor: colors.surface,
+    },
+    copyAllButton: {
+      paddingTop: 6,
+    },
     titleText: {
+      flex: 1,
       color: colors.textSecondary,
       fontSize: 28,
       fontFamily: 'Pretendard-Bold',
@@ -263,18 +348,6 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       gap: 6,
       marginBottom: 8,
-    },
-    indexText: {
-      color: colors.textPrimary,
-      fontSize: 16,
-      fontFamily: 'Pretendard-Regular',
-    },
-    contentText: {
-      color: colors.textPrimary,
-      fontSize: 20,
-      fontFamily: 'Pretendard-Bold',
-      lineHeight: 24,
-      marginBottom: 32,
     },
     noQuestionText: {
       color: colors.textTertiary,
