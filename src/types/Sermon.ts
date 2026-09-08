@@ -13,6 +13,13 @@ export interface Sermon {
   category?: string; // 설교 카테고리
   day_of_week?: string; // 요일 (예: "SUN")
   video_url?: string;
+  /**
+   * Firestore `bible_references` 배열의 JSON 문자열([#173]).
+   * 화면이 참조별 칩을 그리려면 이 값이 필요한데, 예전에는 변환 과정에서 버려져
+   * AsyncStorage를 한 번 왕복하면 사라졌다. 문자열로 두는 이유는 FCM 경로(SermonRaw)와
+   * 모양을 맞춰 저장·복원이 그대로 통과하게 하기 위해서다.
+   */
+  bible_references?: string;
   created_at: FirestoreTimestamp;
   updated_at: FirestoreTimestamp;
 }
@@ -115,6 +122,7 @@ export function fcmDataToSermon(raw: SermonRaw): Sermon {
     category: raw.category,
     day_of_week: raw.day_of_week || raw.dayOfWeek,
     video_url: raw.video_url,
+    bible_references: raw.bible_references,
     created_at: resolveTimestamp(raw.created_at, raw.createdAt),
     updated_at: resolveTimestamp(raw.updated_at, raw.updatedAt),
   };
@@ -150,6 +158,9 @@ export const firestoreDocToSermon = async (
     category: firestoreData.category || '',
     day_of_week: firestoreData.day_of_week || '',
     video_url: firestoreData.video_url,
+    // 화면이 참조별 칩을 그리려면 원본 참조가 필요하다([#173]).
+    // FCM 경로(SermonRaw)와 모양을 맞춰 문자열로 보존한다.
+    bible_references: bibleRefs ? JSON.stringify(bibleRefs) : undefined,
     created_at: firestoreData.created_at || { seconds: 0, nanoseconds: 0 },
     updated_at: firestoreData.updated_at || { seconds: 0, nanoseconds: 0 },
   };
