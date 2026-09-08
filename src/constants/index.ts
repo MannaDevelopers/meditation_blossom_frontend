@@ -21,6 +21,15 @@ export const WIDGET_DESIGN_STORAGE_KEY_QT = 'widget_design_qt';
 export const RECENT_GALLERY_IMAGES_STORAGE_KEY_SERMON = 'recent_gallery_images_sermon';
 export const RECENT_GALLERY_IMAGES_STORAGE_KEY_QT = 'recent_gallery_images_qt';
 
+// 사용자가 직접 쓴 묵상 메모([#174]). 말씀 콘텐츠 캐시(FCM_SERMON_KEY/FCM_QT_KEY)와 키를 분리하는
+// 것이 이 기능의 핵심 요구사항이다 — 말씀이 새로 내려와 콘텐츠 캐시가 통째로 교체돼도 사용자가
+// 써둔 묵상은 그대로 남아야 하고, 복사할 때 제목만 최신 말씀으로 갱신된다.
+// 탭별로 하나씩 유지한다(위젯 디자인/갤러리 캐시와 동일한 소스별 분리 패턴).
+export const MEDITATION_NOTE_STORAGE_KEY_SERMON = 'meditation_note_sermon';
+export const MEDITATION_NOTE_STORAGE_KEY_QT = 'meditation_note_qt';
+/** 묵상 메모 입력 최대 길이 (기획 확정값, 추후 조정 가능) */
+export const MEDITATION_NOTE_MAX_LENGTH = 1000;
+
 // 위젯 디자인 편집 - 텍스트 색상 스와치 프리셋 (빨강/주황/노랑/초록/파랑/흰색/검정)
 // 8번째 "사용자 지정" 스와치는 프리셋이 아닌 커스텀 컬러피커 진입 버튼이라 이 배열에는 포함하지 않음
 export const WIDGET_TEXT_COLOR_PRESETS: readonly string[] = [

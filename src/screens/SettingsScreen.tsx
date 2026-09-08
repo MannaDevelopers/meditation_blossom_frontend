@@ -119,7 +119,15 @@ const SettingsScreen = ({ navigation }: Props) => {
       logger.log('AsyncStorage keys:', keys);
       for (const key of keys) {
         const value = await AsyncStorage.getItem(key);
-        logger.log(`Key: ${key}`, JSON.parse(value || '{}'));
+        // 묵상 메모([#174])처럼 JSON이 아닌 평문 값도 있어 파싱 실패 시 원문을 그대로 찍는다.
+        // 예전에는 첫 평문 키에서 throw되어 나머지 키 검사가 통째로 중단됐다.
+        let parsed: unknown = value;
+        try {
+          parsed = JSON.parse(value || '{}');
+        } catch {
+          // 평문 값 — value를 그대로 쓴다
+        }
+        logger.log(`Key: ${key}`, parsed);
       }
     } catch (error) {
       logger.error('Error inspecting AsyncStorage:', JSON.stringify(error, null, 2));

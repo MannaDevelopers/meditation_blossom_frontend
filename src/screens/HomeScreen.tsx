@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { extractContent } from '../utils/sermonParser';
+import MeditationNoteSheet from '../components/MeditationNoteSheet';
 import SvgIcon from '../components/SvgIcon';
 import { BRIDGE_INIT_DELAY_MS } from '../constants';
 import { useAppGroupSync } from '../hooks/useAppGroupSync';
@@ -161,6 +162,8 @@ const HomeScreen = () => {
           </View>
         </View>
       )}
+      {/* 복사에는 표시용 줄바꿈이 없는 원문 제목을 넘긴다([#174]) */}
+      <MeditationNoteSheet source="sermon" title={sermon?.title} />
     </SafeAreaView>
   );
 };

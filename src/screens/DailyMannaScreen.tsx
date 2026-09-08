@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import MeditationNoteSheet from '../components/MeditationNoteSheet';
 import SvgIcon from '../components/SvgIcon';
 import { useQtData } from '../hooks/useQtData';
 import { useQtFCMListener } from '../hooks/useQtFCMListener';
@@ -191,6 +192,8 @@ const DailyMannaScreen = () => {
           </View>
         </View>
       )}
+      {/* 복사에는 표시용 줄바꿈이 없는 원문 제목을 넘긴다([#174]) */}
+      <MeditationNoteSheet source="qt" title={qt?.title} />
     </SafeAreaView>
   );
 };
