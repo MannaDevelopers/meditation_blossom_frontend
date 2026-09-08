@@ -263,7 +263,8 @@ const createStyles = (colors: ThemeColors) =>
       gap: 8,
     },
     tabSlot: {
-      backgroundColor: colors.background,
+      // sticky 고정 시 색 띠로 보이지 않도록 화면 배경과 같은 톤을 쓴다
+      backgroundColor: colors.surface,
     },
     copyAllButton: {
       paddingTop: 6,

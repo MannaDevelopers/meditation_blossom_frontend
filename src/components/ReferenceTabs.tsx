@@ -73,7 +73,9 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     row: {
       // sticky로 고정되는 행이라 배경이 불투명해야 아래 본문이 비쳐 보이지 않는다.
-      backgroundColor: colors.background,
+      // 화면 배경과 같은 surface를 써야 고정됐을 때 색 띠로 보이지 않는다
+      // (화면 container가 colors.surface다).
+      backgroundColor: colors.surface,
       height: 34,
       justifyContent: 'center',
     },
