@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, View, SafeAreaView, StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import logger from './utils/logger';
@@ -9,10 +9,18 @@ import EditScreen from './screens/EditScreen';
 import ImageCropScreen from './screens/ImageCropScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import ForceUpdateModal from './components/ForceUpdateModal';
-import { LinkingOptions, NavigationContainer } from '@react-navigation/native';
+import {
+  DarkTheme,
+  DefaultTheme,
+  LinkingOptions,
+  NavigationContainer,
+  Theme,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types/navigation';
 import { useForceUpdate } from './hooks/useForceUpdate';
+import { useAppTheme } from './hooks/useAppTheme';
+import { ThemeColors } from './theme/colors';
 
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -33,9 +41,31 @@ const linking: LinkingOptions<RootStackParamList> = {
   },
 };
 
-const RootStack = () => {
+function buildNavigationTheme(base: Theme, colors: ThemeColors): Theme {
+  return {
+    ...base,
+    colors: {
+      ...base.colors,
+      primary: colors.accent,
+      // 각 화면(Home/DailyManna)이 margin으로 자기 배경을 화면 가장자리보다 안쪽에 그려서
+      // margin 바깥의 네비게이터 캔버스 색이 그대로 보인다. 화면들이 스스로의 최상위
+      // 배경으로 colors.surface를 쓰므로, 여기서도 colors.background가 아니라
+      // colors.surface를 맞춰야 그 margin 틈에서 색이 어긋나 보이는 이음매가 생기지 않는다.
+      background: colors.surface,
+      card: colors.surface,
+      text: colors.textPrimary,
+      border: colors.divider,
+    },
+  };
+}
+
+const RootStack = ({ navigationTheme }: { navigationTheme: Theme }) => {
   return (
-    <NavigationContainer linking={linking} onReady={() => logger.log('NavigationContainer ready')}>
+    <NavigationContainer
+      linking={linking}
+      theme={navigationTheme}
+      onReady={() => logger.log('NavigationContainer ready')}
+    >
       <Stack.Navigator>
         <Stack.Screen
           name="MainTabs"
@@ -65,6 +95,11 @@ const RootStack = () => {
 function App(): React.JSX.Element {
   const { isChecking, needsUpdate, config, showFallbackModal, startUpdate } =
     useForceUpdate();
+  const { colors, isDark } = useAppTheme();
+  const navigationTheme = useMemo(
+    () => buildNavigationTheme(isDark ? DarkTheme : DefaultTheme, colors),
+    [isDark, colors],
+  );
 
   useEffect(() => {
     WidgetUpdateModule?.getYoutubeLinkEnabled?.()
@@ -76,7 +111,7 @@ function App(): React.JSX.Element {
 
   if (isChecking) {
     return (
-      <View style={styles.loading}>
+      <View style={[styles.loading, { backgroundColor: colors.surface }]}>
         <ActivityIndicator size="large" />
       </View>
     );
@@ -84,9 +119,9 @@ function App(): React.JSX.Element {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaView style={{ flex: 1, backgroundColor : '#fff' }}>
-        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-        <RootStack />
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }}>
+        <StatusBar barStyle={colors.statusBarStyle} backgroundColor={colors.surface} />
+        <RootStack navigationTheme={navigationTheme} />
           {needsUpdate && showFallbackModal && config && (
             <ForceUpdateModal
               visible
