@@ -3,6 +3,7 @@ import {
   Alert,
   Animated,
   AppState,
+  BackHandler,
   Keyboard,
   LayoutChangeEvent,
   PanResponder,
@@ -14,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import SvgIcon from './SvgIcon';
 import { MEDITATION_NOTE_MAX_LENGTH } from '../constants';
@@ -45,6 +47,7 @@ interface Props {
 }
 
 const MeditationNoteSheet = ({ source, title }: Props) => {
+  const isFocused = useIsFocused();
   const [isOpen, setIsOpen] = useState(false);
   const [note, setNote] = useState('');
   const [copied, setCopied] = useState(false);
@@ -161,6 +164,26 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
     setCopied(false);
     setIsOpen(false);
   }, [flushSave, dragY]);
+
+  // Android 하드웨어 뒤로가기로 시트를 닫는다.
+  // 등록 조건이 두 가지인 이유:
+  //  - isOpen: 시트가 닫혀 있을 때 true를 반환하면 앱 전체의 뒤로가기가 막힌다.
+  //  - isFocused: 두 탭 화면이 동시에 마운트돼 있어 시트 인스턴스도 둘이다. 리스너는 역순
+  //    (LIFO)으로 호출되므로(BackHandler.android.js), 게이트가 없으면 화면에 보이지도 않는
+  //    반대 탭의 시트가 뒤로가기를 삼켜 "눌러도 아무 일이 없는" 상태가 된다.
+  // 핸들러 안에서 분기하지 않고 등록 자체를 조건부로 두어 리스너 목록을 깨끗하게 유지한다.
+  //
+  // 참고: 이 경로는 AndroidManifest에 android:enableOnBackInvokedCallback이 없어서
+  // 레거시 onBackPressed로 동작한다. 나중에 그 플래그를 켜면(RN 0.86은 아직 예측형 뒤로가기를
+  // 지원하지 않는다) 여기도 같이 손봐야 한다.
+  useEffect(() => {
+    if (!isOpen || !isFocused) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      closeSheet();
+      return true;
+    });
+    return () => sub.remove();
+  }, [isOpen, isFocused, closeSheet]);
 
   // PanResponder는 한 번만 만들어져 최초 렌더의 closeSheet를 붙잡는다.
   // ref로 최신 콜백을 가리켜 stale closure를 피한다.
