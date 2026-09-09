@@ -11,7 +11,6 @@ import {
   StyleSheet,
   Text,
   TextStyle,
-  TouchableOpacity,
   View,
   ViewStyle,
 } from 'react-native';
@@ -51,31 +50,21 @@ const CARD_PHOTO_BORDER_TINT_OPACITY = 0.55;
 const CARD_INDEX_GRADIENT = require('../assets/image/BackgroundImg.png');
 
 // Android는 홈 화면에 배치한 위젯을 가로/세로 모두 리사이즈할 수 있다(android:resizeMode
-// ="horizontal|vertical"). 최소/보통/최대 3단계로 너비·높이가 함께 늘어났을 때 텍스트/배경이
-// 어떻게 보이는지 미리 확인할 수 있게 한다.
+// ="horizontal|vertical"). 예전에는 이 리사이즈 폭을 최소/보통/최대 3단계 탭으로 미리 보여줬지만,
+// 편집 화면만 봐서는 무엇을 조절하는 탭인지 직관적이지 않다는 QA 피드백([ISSUE-271])에 따라
+// 실제로 위젯을 홈 화면에 크게 배치하는 사용자가 많은 "최대" 크기 하나로 고정했다.
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const MAX_BANNER_WIDTH = Math.min(SCREEN_WIDTH - 40, 480);
 const WIDTH_SCALE_MAX = MAX_BANNER_WIDTH / BANNER_MIN_WIDTH;
 const HEIGHT_SCALE_MAX = 2.2;
 
-export const SIZE_PRESETS: { key: string; label: string }[] = [
-  { key: 'min', label: '최소' },
-  { key: 'medium', label: '보통' },
-  { key: 'max', label: '최대' },
-];
-
 export type PreviewSize = { bannerWidth: number; cardWidth: number; height: number };
 
-export function sizeForPreset(presetIndex: number, totalPresets: number = SIZE_PRESETS.length): PreviewSize {
-  const ratio = totalPresets <= 1 ? 0 : presetIndex / (totalPresets - 1);
-  const widthScale = 1 + (WIDTH_SCALE_MAX - 1) * ratio;
-  const heightScale = 1 + (HEIGHT_SCALE_MAX - 1) * ratio;
-  return {
-    bannerWidth: Math.round(BANNER_MIN_WIDTH * widthScale),
-    cardWidth: Math.round(CARD_MIN_WIDTH * widthScale),
-    height: Math.round(MIN_CARD_HEIGHT * heightScale),
-  };
-}
+export const MAX_PREVIEW_SIZE: PreviewSize = {
+  bannerWidth: Math.round(BANNER_MIN_WIDTH * WIDTH_SCALE_MAX),
+  cardWidth: Math.round(CARD_MIN_WIDTH * WIDTH_SCALE_MAX),
+  height: Math.round(MIN_CARD_HEIGHT * HEIGHT_SCALE_MAX),
+};
 
 type PreviewText = { title: string; index: string; content: string };
 
@@ -516,21 +505,12 @@ type WidgetPreviewProps = {
 
 const AndroidWidgetPreview = ({ title, content, design, dateLabel, referenceAtTop }: WidgetPreviewProps) => {
   const [activePage, setActivePage] = useState(0);
-  // 기본값은 "최대" — 실제 위젯을 홈 화면에 크게 배치하는 사용자가 많아, 가장 넓은 상태를
-  // 기본으로 보여주는 편이 실제 디자인 결과에 가깝다.
-  const [sizePresetIndex, setSizePresetIndex] = useState(SIZE_PRESETS.length - 1);
   const extracted = useMemo(
     () => (content ? extractContent(content) : { index: '', content: '' }),
     [content],
   );
-  const size = sizeForPreset(sizePresetIndex);
-  // 스와이프 컨테이너(프레임/스크롤뷰/페이지)의 너비는 항상 "최대" 프리셋 기준으로 고정한다.
-  // 프리셋 변경 시 이 너비까지 함께 바뀌면 ScrollView의 contentOffset이 새 페이지 경계와
-  // 어긋나(카드형을 보는 중 크기를 바꾸면 배너형이 왼쪽에 걸쳐 보이는 문제) 자동으로 재동기화되지 않는다.
-  // 배너형은 어떤 프리셋에서도 카드형보다 항상 넓으므로, 최대 배너 너비를 프레임 너비로 고정하면
-  // 내부 카드/배너만 자신의 width prop만큼 커지고 프레임 자체는 그대로라 스크롤 위치가 틀어지지 않는다.
-  const maxSize = sizeForPreset(SIZE_PRESETS.length - 1);
-  const pageWidth = maxSize.bannerWidth + PAGE_MARGIN;
+  const size = MAX_PREVIEW_SIZE;
+  const pageWidth = size.bannerWidth + PAGE_MARGIN;
 
   const handleMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const page = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
@@ -573,19 +553,6 @@ const AndroidWidgetPreview = ({ title, content, design, dateLabel, referenceAtTo
       <View style={styles.indicatorRow}>
         <View style={[styles.dot, activePage === 0 && styles.dotActive]} />
         <View style={[styles.dot, activePage === 1 && styles.dotActive]} />
-      </View>
-
-      {/* 위젯 크기(리사이즈) 미리보기 — Android는 홈 화면에서 위젯을 가로/세로로 늘릴 수 있어
-          늘렸을 때 텍스트/배경이 어떻게 보이는지 미리 확인 가능하게 한다. */}
-      <View style={styles.sizePresetRow}>
-        {SIZE_PRESETS.map((preset, i) => {
-          const selected = i === sizePresetIndex;
-          return (
-            <TouchableOpacity key={preset.key} onPress={() => setSizePresetIndex(i)} style={styles.sizePresetButton}>
-              <Text style={[styles.sizePresetText, selected && styles.sizePresetTextActive]}>{preset.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
       </View>
     </View>
   );
@@ -962,27 +929,6 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: 'white',
-  },
-  sizePresetRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 12,
-  },
-  sizePresetButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  sizePresetText: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 12,
-    fontFamily: 'Pretendard-Bold',
-  },
-  sizePresetTextActive: {
-    color: 'white',
   },
   // iOS 위젯(systemMedium/systemLarge) 프레임 — Android처럼 배너/카드 이중 레이어가 아니라
   // 실제 MeditationBlossomWidgetEntryView와 같은 단일 레이어(제목-장절-구분선-본문) 구조.
