@@ -38,8 +38,27 @@ const BANNER_MIN_WIDTH = Math.round(LARGE_MIN_WIDTH_DP * PREVIEW_SCALE);
 const CARD_MIN_WIDTH = BANNER_MIN_WIDTH;
 const MIN_CARD_HEIGHT = Math.round(MIN_HEIGHT_DP * PREVIEW_SCALE);
 
-const CARD_TITLE_HEIGHT = 40;
 const CARD_INNER_MARGIN = 10;
+
+// VerseWidgetSmall.kt/QtWidgetSmall.kt(VerseSmallWidgetDimens.appBarVerticalPadding)와 동일한
+// 제목 영역 상하 고정 여백 — 카드형 제목 Text의 실제(흐름 기준) 레이아웃에 쓴다.
+const CARD_TITLE_VERTICAL_PADDING = 20;
+// 두 네이티브 파일 모두 CARD_TITLE_LINE_HEIGHT_RATIO는 1.3으로 같고, CARD_TITLE_ESTIMATED_LINES만
+// 콘텐츠 성격에 따라 다르다(주일 말씀 제목이 QT보다 길어지는 경향이 있어 1.6, QT는 1.3).
+export const CARD_TITLE_LINE_HEIGHT_RATIO = 1.3;
+export const CARD_TITLE_ESTIMATED_LINES_SERMON = 1.6;
+export const CARD_TITLE_ESTIMATED_LINES_QT = 1.3;
+
+// 갤러리 배경 "액자" 마스크(CardPhotoFrame)와 그 안쪽 사진 레이어는, 실제 Compose가 텍스트를
+// 레이아웃하기 전에 미리 구워야 하는 네이티브의 [decodeGalleryCardBitmap]과 똑같은 이유로 제목의
+// 실측 높이 대신 이 근사식을 쓴다 — 그래야 마스크 경계 위치가 실기기와 일치한다. 반면 제목
+// Text 자신(흐름 레이아웃)과 배경색/그라디언트 카드는 실측 높이를 그대로 쓴다(아래
+// cardTitleDark/cardTitleOnPhoto의 paddingVertical 참고).
+export function estimateCardTitleAreaHeight(fontSize: number, estimatedLines: number): number {
+  return Math.round(
+    CARD_TITLE_VERTICAL_PADDING * 2 + fontSize * CARD_TITLE_LINE_HEIGHT_RATIO * estimatedLines,
+  );
+}
 
 // 카드형(배경색) 테두리/안쪽 카드의 명도 차이 — 파스텔처럼 이미 밝은 색은 cardOuterTint가
 // 방향을 반전(어둡게)해서 처리하므로, 어느 쪽이든 이 정도 차이는 확보된다.
@@ -310,11 +329,19 @@ const BannerPreview = ({
 // 카드형(Small) 갤러리 배경의 "액자" 테두리 — 바깥 둥근 사각형(카드 전체)에서 안쪽 둥근
 // 사각형(cardInner와 같은 위치·반경)을 뺀 도넛 모양을 SVG 마스크로 그린다. View 4장을
 // 이어붙이는 방식은 안쪽 모서리가 각지게 뚫려 아래의 둥근 cardInner와 어긋나 보인다.
-const CardPhotoFrame = ({ width, height }: { width: number; height: number }) => {
+const CardPhotoFrame = ({
+  width,
+  height,
+  titleAreaHeight,
+}: {
+  width: number;
+  height: number;
+  titleAreaHeight: number;
+}) => {
   const innerLeft = CARD_INNER_MARGIN;
-  const innerTop = CARD_TITLE_HEIGHT;
+  const innerTop = titleAreaHeight;
   const innerWidth = width - CARD_INNER_MARGIN * 2;
-  const innerHeight = height - CARD_TITLE_HEIGHT - CARD_INNER_MARGIN;
+  const innerHeight = height - titleAreaHeight - CARD_INNER_MARGIN;
 
   return (
     <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -365,6 +392,12 @@ const CardPreview = ({
   const galleryUri =
     backgroundKind === 'gallery' ? toDisplayableImageUri(design.background.value) : undefined;
   const galleryLayout = useGalleryImageLayout(galleryUri, design.background.imageTransform, width, height);
+  // referenceAtTop은 QT일 때만 true([ISSUE-236] 후속 컨벤션) — 갤러리 마스크 근사식의 콘텐츠별
+  // 상수(주일 말씀/QT)를 고르는 데에도 그대로 재사용한다.
+  const titleAreaHeight = estimateCardTitleAreaHeight(
+    design.text.size,
+    referenceAtTop ? CARD_TITLE_ESTIMATED_LINES_QT : CARD_TITLE_ESTIMATED_LINES_SERMON,
+  );
 
   const referenceText = (
     <Text allowFontScaling={false} style={[styles.cardIndexText, resolveIndexTextStyle(design, CARD_INDEX_SIZE_RATIO)]}>
@@ -389,7 +422,7 @@ const CardPreview = ({
     // 쓰되, cardInner 자신의 원점(제목 높이·좌우 여백만큼 안쪽으로 들어간 지점)을 기준으로 좌표만
     // 다시 잡는다 — 그래서 시각적으로는 하나로 이어진 사진 위에 "둥근 창"만 낸 것처럼 보인다.
     const innerOffsetX = CARD_INNER_MARGIN;
-    const innerOffsetY = CARD_TITLE_HEIGHT;
+    const innerOffsetY = titleAreaHeight;
     return (
       <View style={[styles.cardOuter, sizeStyle]}>
         {galleryLayout.ready && (
@@ -408,7 +441,7 @@ const CardPreview = ({
             반투명 흰색을 덮어 "액자" 느낌을 준다. 안쪽 카드 영역은 사진이 그대로 선명하게 보인다.
             사각형 4장을 이어붙이면 모서리가 각지게 뚫려 아래 둥근 안쪽 카드와 어긋나 보이므로,
             SVG 마스크로 "바깥 둥근 사각형에서 안쪽 둥근 사각형을 뺀 도넛" 모양을 한 번에 그린다. */}
-        <CardPhotoFrame width={width} height={height} />
+        <CardPhotoFrame width={width} height={height} titleAreaHeight={titleAreaHeight} />
         <Text
           allowFontScaling={false}
           numberOfLines={2}
@@ -864,21 +897,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     overflow: 'hidden',
   },
-  // 한 줄짜리 제목은 minHeight보다 낮아서, 패딩만으로는 위쪽에 치우쳐 보인다 — 카드 맨 위(테두리)와
-  // 안쪽 카드 시작 지점 사이 정중앙에 오도록 textAlignVertical로 세로 중앙 정렬한다.
+  // VerseWidgetSmall.kt/QtWidgetSmall.kt의 제목 Row와 동일하게 상하 고정 패딩(paddingVertical)만
+  // 주고 높이는 실제 줄 수(1~2줄)에 따라 자연스럽게 늘어나게 한다 — 예전에 쓰던 고정 minHeight는
+  // 제목이 2줄일 때 실제 위젯보다 훨씬 좁게 잡혀, 제목이 아래 안쪽 카드 영역을 침범해 보이는
+  // 원인이었다([ISSUE-274]).
   cardTitleDark: {
-    minHeight: CARD_TITLE_HEIGHT,
     paddingHorizontal: 12,
+    paddingVertical: CARD_TITLE_VERTICAL_PADDING,
     fontFamily: 'Pretendard-Bold',
     includeFontPadding: false,
-    textAlignVertical: 'center',
   },
   cardTitleOnPhoto: {
-    minHeight: CARD_TITLE_HEIGHT,
     paddingHorizontal: 12,
+    paddingVertical: CARD_TITLE_VERTICAL_PADDING,
     fontFamily: 'Pretendard-Bold',
     includeFontPadding: false,
-    textAlignVertical: 'center',
   },
   cardInner: {
     flex: 1,
