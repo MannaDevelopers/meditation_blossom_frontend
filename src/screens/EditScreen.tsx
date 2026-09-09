@@ -916,18 +916,20 @@ const EditScreen = ({ navigation, route }: Props) => {
       </View>
 
       {/* 미리보기 + 편집 탭들 — 화면이 작은 기기에서는 아래 탭들이 잘리지 않도록 스크롤 가능해야 한다.
-          충분히 큰 화면에서는 flexGrow+center로 스크롤 없이 그대로 가운데 정렬되어 보인다. */}
+          충분히 큰 화면에서는 flexGrow+center로 스크롤 없이 그대로 가운데 정렬되어 보인다.
+          상하 여백을 최소화해([ISSUE-270]) 화면이 충분히 큰 기기에서는 카테고리 탭까지 스크롤 없이
+          한 화면에 들어오게 한다. */}
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
           justifyContent: 'center',
           alignItems: 'center',
           marginHorizontal: 35,
-          paddingVertical: 16,
+          paddingVertical: 4,
         }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ backgroundColor: 'transparent', marginVertical: 15, borderRadius: 20 }}>
+        <View style={{ backgroundColor: 'transparent', marginVertical: 6, borderRadius: 20 }}>
           <WidgetPreview
             title={activeContent?.title}
             content={activeContent?.content}
