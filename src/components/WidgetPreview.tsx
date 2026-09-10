@@ -23,7 +23,6 @@ import { cardOuterTint } from '../utils/widgetDesignColor';
 import { MIN_ZOOM, clampFocal, computeBaseScale, computeHalfExtent } from '../utils/imageCropMath';
 import { toDisplayableImageUri } from '../utils/localImageUri';
 
-const FRAME_HEIGHT = 480;
 const PAGE_MARGIN = 40; // 프레임 좌우 여백(20px씩)
 
 // 실제 Android Glance 위젯(VerseWidgetLarge.kt/VerseWidgetSmall.kt)은 Small(177dp)과
@@ -557,9 +556,9 @@ const AndroidWidgetPreview = ({ title, content, design, dateLabel, referenceAtTo
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleMomentumScrollEnd}
-        style={[styles.scrollView, { width: pageWidth }]}
+        style={[styles.scrollView, { width: pageWidth, height: size.height }]}
       >
-        <View style={[styles.page, { width: pageWidth }]}>
+        <View style={[styles.page, { width: pageWidth, height: size.height }]}>
           <BannerPreview
             title={title ?? ''}
             index={extracted.index}
@@ -571,7 +570,7 @@ const AndroidWidgetPreview = ({ title, content, design, dateLabel, referenceAtTo
             referenceAtTop={referenceAtTop}
           />
         </View>
-        <View style={[styles.page, { width: pageWidth }]}>
+        <View style={[styles.page, { width: pageWidth, height: size.height }]}>
           <CardPreview
             title={title ?? ''}
             index={extracted.index}
@@ -839,11 +838,12 @@ const styles = StyleSheet.create({
   frame: {
     alignItems: 'center',
   },
-  scrollView: {
-    height: FRAME_HEIGHT,
-  },
+  // height는 항상 호출부(AndroidWidgetPreview/IOSWidgetPreview)가 실제 미리보기 콘텐츠 높이로
+  // 인라인 오버라이드한다([ISSUE-276] 후속) — 예전에 여기 고정값(480)을 기본으로 두고
+  // AndroidWidgetPreview만 오버라이드를 빠뜨려서, 실제 카드/배너(약 273px)보다 프레임이 훨씬 커
+  // 위아래에 약 100px씩 불필요한 빈 공간이 생기고 있었다.
+  scrollView: {},
   page: {
-    height: FRAME_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',

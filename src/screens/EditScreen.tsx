@@ -114,12 +114,15 @@ const SubMenuRow = styled.View`
   margin-bottom: 15;
 `;
 
+// margin-bottom은 다른 행(DetailRow/SubMenuRow)과 같은 15로 맞춘다([ISSUE-276]) — 예전 60은
+// 기능적 이유 없는 순수 여백이라, 스크롤 없이 화면에 다 들어와야 하는 큰 화면 기기([ISSUE-270])에서
+// 불필요하게 필요 높이를 키우고 있었다.
 const CategoryRow = styled.View`
   width: 157;
   flex-direction: row;
   justify-content: space-between;
   margin-horizontal: 74;
-  margin-bottom: 60;
+  margin-bottom: 15;
 `;
 
 const CategoryIconBox = styled.TouchableOpacity<{ selected: boolean }>`
@@ -916,20 +919,22 @@ const EditScreen = ({ navigation, route }: Props) => {
       </View>
 
       {/* 미리보기 + 편집 탭들 — 화면이 작은 기기에서는 아래 탭들이 잘리지 않도록 스크롤 가능해야 한다.
-          충분히 큰 화면에서는 flexGrow+center로 스크롤 없이 그대로 가운데 정렬되어 보인다.
-          상하 여백을 최소화해([ISSUE-270]) 화면이 충분히 큰 기기에서는 카테고리 탭까지 스크롤 없이
-          한 화면에 들어오게 한다. */}
+          충분히 큰 화면에서는 flexGrow와 미리보기 위/아래의 동일한 flex:1 spacer 두 개가 남는 여백을
+          정확히 절반씩 나눠 가져([ISSUE-270] 후속), 미리보기가 소스 필과 3번 탭(renderDetailTab)
+          사이 정중앙에 위치하면서도 그 아래(3번~1번 탭)는 그대로 이어져 카테고리 탭이 화면 하단에
+          붙는다. 화면이 작아 스크롤이 필요해지면 남는 여백이 없어 두 spacer 모두 0으로 접혀
+          자연스럽게 맨 위부터 스크롤된다. */}
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
-          justifyContent: 'center',
           alignItems: 'center',
           marginHorizontal: 35,
           paddingVertical: 4,
         }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ backgroundColor: 'transparent', marginVertical: 6, borderRadius: 20 }}>
+        <View style={{ flex: 1 }} />
+        <View style={{ backgroundColor: 'transparent', marginVertical: 16, borderRadius: 20 }}>
           <WidgetPreview
             title={activeContent?.title}
             content={activeContent?.content}
@@ -938,6 +943,7 @@ const EditScreen = ({ navigation, route }: Props) => {
             referenceAtTop={previewReferenceAtTop}
           />
         </View>
+        <View style={{ flex: 1 }} />
 
         {/* 3번 탭: 2번 탭 선택에 따른 세부 옵션, 미리보기 바로 아래 */}
         {renderDetailTab()}
