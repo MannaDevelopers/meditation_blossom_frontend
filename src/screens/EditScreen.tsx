@@ -114,12 +114,15 @@ const SubMenuRow = styled.View`
   margin-bottom: 15;
 `;
 
+// margin-bottom은 다른 행(DetailRow/SubMenuRow)과 같은 15로 맞춘다([ISSUE-276]) — 예전 60은
+// 기능적 이유 없는 순수 여백이라, 스크롤 없이 화면에 다 들어와야 하는 큰 화면 기기([ISSUE-270])에서
+// 불필요하게 필요 높이를 키우고 있었다.
 const CategoryRow = styled.View`
   width: 157;
   flex-direction: row;
   justify-content: space-between;
   margin-horizontal: 74;
-  margin-bottom: 60;
+  margin-bottom: 15;
 `;
 
 const CategoryIconBox = styled.TouchableOpacity<{ selected: boolean }>`
