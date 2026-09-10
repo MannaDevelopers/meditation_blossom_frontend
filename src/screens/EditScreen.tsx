@@ -919,23 +919,21 @@ const EditScreen = ({ navigation, route }: Props) => {
       </View>
 
       {/* 미리보기 + 편집 탭들 — 화면이 작은 기기에서는 아래 탭들이 잘리지 않도록 스크롤 가능해야 한다.
-          충분히 큰 화면에서는 flexGrow+flex-end로 스크롤 없이 맨 아래 카테고리 탭이 화면 하단(내비게이션
-          바로 위)에 붙어 보인다([ISSUE-270] 후속) — 남는 여백이 위쪽(소스 필과 미리보기 사이)에
-          모이고, 미리보기 자체의 하단 여백이 과하게 줄어 보이지 않는다. 콘텐츠가 화면보다 커지면
-          flexGrow의 최소 높이만 채우고 실제 크기는 콘텐츠를 따라가므로 남는 공간이 없어 center와
-          동일하게 동작 — 즉 화면이 작은 기기에서는 자연스럽게 맨 위부터 스크롤된다. */}
+          충분히 큰 화면에서는 flexGrow와 미리보기 위/아래의 동일한 flex:1 spacer 두 개가 남는 여백을
+          정확히 절반씩 나눠 가져([ISSUE-270] 후속), 미리보기가 소스 필과 3번 탭(renderDetailTab)
+          사이 정중앙에 위치하면서도 그 아래(3번~1번 탭)는 그대로 이어져 카테고리 탭이 화면 하단에
+          붙는다. 화면이 작아 스크롤이 필요해지면 남는 여백이 없어 두 spacer 모두 0으로 접혀
+          자연스럽게 맨 위부터 스크롤된다. */}
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
-          justifyContent: 'flex-end',
           alignItems: 'center',
           marginHorizontal: 35,
           paddingVertical: 4,
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* marginVertical을 6→16으로 늘려([ISSUE-270] 후속) 미리보기 프레임 여백 제거 이후
-            아래(정렬 등 세부 옵션 행)와의 간격이 과하게 좁아 보이던 것을 보완한다. */}
+        <View style={{ flex: 1 }} />
         <View style={{ backgroundColor: 'transparent', marginVertical: 16, borderRadius: 20 }}>
           <WidgetPreview
             title={activeContent?.title}
@@ -945,6 +943,7 @@ const EditScreen = ({ navigation, route }: Props) => {
             referenceAtTop={previewReferenceAtTop}
           />
         </View>
+        <View style={{ flex: 1 }} />
 
         {/* 3번 탭: 2번 탭 선택에 따른 세부 옵션, 미리보기 바로 아래 */}
         {renderDetailTab()}
