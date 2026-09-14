@@ -24,10 +24,10 @@ import DeviceInfo from 'react-native-device-info';
 import Svg, { Path } from 'react-native-svg';
 import SvgIcon from '../components/SvgIcon';
 import { RootStackParamList } from '../types/navigation';
-import { FCM_SERMON_KEY, WorshipType, WORSHIP_TYPES, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
+import { FCM_SERMON_KEY, WorshipType, WorshipSetting, WORSHIP_SETTINGS, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
 import { FCM_QT_KEY } from '../types/QT';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
-import { fetchLatestSermonFromServer, pushSermonToWidget, syncSelectedSermonToWidget, saveWeeklySermonsToAsyncStorage } from '../services/sermonService';
+import { fetchLatestSermonFromServer, pushSermonToWidget, saveSermonToAsyncStorage, syncSelectedSermonToWidget, saveWeeklySermonsToAsyncStorage } from '../services/sermonService';
 import { fetchLatestQtFromServer, pushQtToWidget } from '../services/qtService';
 import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
@@ -54,13 +54,22 @@ const SettingsScreen = ({ navigation }: Props) => {
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [youtubeLinkEnabled, setYoutubeLinkEnabled] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedWorship, setSelectedWorship] = useState<WorshipType>(DEFAULT_WORSHIP_TYPE);
+  const [selectedWorship, setSelectedWorship] = useState<WorshipSetting>(DEFAULT_WORSHIP_TYPE);
 
-  const handleWorshipChange = async (type: WorshipType) => {
+  const handleWorshipChange = async (type: WorshipSetting) => {
     setSelectedWorship(type);
     try {
       await AsyncStorage.setItem(USER_WORSHIP_SETTING_KEY, type);
-      await syncSelectedSermonToWidget(type);
+      if (type === 'ALL') {
+        // 전체: 레거시 단일 최신 문서 경로([#278]) — weekly_sermons 캐시/매칭 로직 사용 안 함
+        const legacy = await fetchLatestSermonFromServer();
+        if (legacy) {
+          await saveSermonToAsyncStorage(legacy);
+          await pushSermonToWidget(legacy);
+        }
+      } else {
+        await syncSelectedSermonToWidget(type);
+      }
     } catch (error) {
       logger.error('예배 시간 설정 저장 실패:', error);
     }
@@ -214,7 +223,7 @@ const SettingsScreen = ({ navigation }: Props) => {
       try {
         const saved = await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY);
         if (saved) {
-          setSelectedWorship(saved as WorshipType);
+          setSelectedWorship(saved as WorshipSetting);
         }
       } catch (error) {
         logger.error('예배 시간 설정 불러오기 실패:', error);
@@ -326,7 +335,7 @@ const SettingsScreen = ({ navigation }: Props) => {
             참석하시는 예배 시간에 맞게 말씀을 표시합니다.
           </Text>
           <View style={styles.worshipGrid}>
-            {WORSHIP_TYPES.map((w) => {
+            {WORSHIP_SETTINGS.map((w) => {
               const isSelected = selectedWorship === w.key;
 
               return (

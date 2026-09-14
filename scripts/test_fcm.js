@@ -351,6 +351,126 @@ async function sendWeeklySermonsScenario(token, topic = 'sermons_v2_events') {
   });
 }
 
+// sermons-v2 4개 예배를 video_url 없이 등록 (주보 크롤링 직후, 예배 전 상태 재현).
+// 유튜브 버튼 비활성(반투명) UI([#279])를 확인할 때 사용한다.
+async function sendWeeklySermonsNoVideoScenario(token, topic = 'sermons_v2_events') {
+  const db = admin.firestore();
+
+  const today = new Date();
+  const diffToSunday = 7 - today.getDay();
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() + (diffToSunday === 7 ? 0 : diffToSunday));
+  const saturday = new Date(sunday);
+  saturday.setDate(sunday.getDate() - 1);
+  const sundayStr = sunday.toISOString().split('T')[0];
+  const saturdayStr = saturday.toISOString().split('T')[0];
+  const weekStr = toIsoWeek(sunday);
+
+  console.log(`\n📅 주간 묶음 키(week): ${weekStr} (video_url 없이 등록)`);
+
+  const worshipOptions = [
+    { type: 'SAT_1700', date: saturdayStr, dayLabel: '토요일 오후 5시 예배' },
+    { type: 'SUN_0950', date: sundayStr, dayLabel: '주일 9시 50분 예배' },
+    { type: 'SUN_1150', date: sundayStr, dayLabel: '주일 11시 50분 예배' },
+    { type: 'SUN_1430', date: sundayStr, dayLabel: '주일 2시 30분 예배' },
+  ];
+
+  const bibleReferences = [{ book: '요한복음', chapter: 3, verse_start: 16, verse_end: 16 }];
+  const createdDocs = [];
+
+  for (const opt of worshipOptions) {
+    const docId = `${weekStr}_${opt.type}`;
+    const sourceId = `mock-${docId}`;
+    // video_url 필드 자체를 생략 — sermons-v2-events.md 스펙상 CREATED 이벤트엔 포함되지 않는다.
+    const docData = {
+      week: weekStr,
+      worship_type: opt.type,
+      date: opt.date,
+      title: `${opt.dayLabel} 생명의 말씀 / 모의 설교자`,
+      bible_references: bibleReferences,
+      source_id: sourceId,
+      raw_hash: `mock-hash-${docId}-novideo`,
+      created_at: admin.firestore.FieldValue.serverTimestamp(),
+      updated_at: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    console.log(`  🔥 sermons-v2 '${docId}' 문서 등록 중(video_url 없음)...`);
+    await db.collection('sermons-v2').doc(docId).set(docData, { merge: true });
+    console.log(`  ✅ '${docId}' 등록 완료!`);
+    createdDocs.push({ id: docId, ...docData, sourceId });
+  }
+
+  const representative = createdDocs.find(d => d.worship_type === 'SUN_0950');
+  const payload = {
+    week: weekStr,
+    worship_type: representative.worship_type,
+    date: representative.date,
+    title: representative.title,
+    bible_references: JSON.stringify(bibleReferences),
+    source_id: representative.sourceId,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    operation: 'CREATED',
+    topic: topic,
+  };
+
+  console.log(`  📤 FCM 푸시 알림(${topic}) 전송 중...`);
+  return admin.messaging().send({
+    ...(token ? { token } : { topic: topic }),
+    android: { priority: 'high', data: toStr(payload) },
+    apns: {
+      headers: { 'apns-push-type': 'background', 'apns-priority': '5' },
+      payload: { aps: { 'content-available': 1 }, ...toStr(payload) },
+    },
+  });
+}
+
+// 이미 등록된 최신 주간의 SAT_1700 문서 하나에 video_url을 채우고 UPDATED 이벤트를 보낸다.
+// sendWeeklySermonsNoVideoScenario로 먼저 등록한 뒤 실행하는 후속 시나리오 —
+// weekly_sermons 캐시가 전체 재조회 없이 이 문서 하나만 patch되는지([#280]),
+// 유튜브 버튼이 비활성→활성으로 바뀌는지([#279]) 확인한다.
+async function sendVideoUrlUpdateScenario(token, topic = 'sermons_v2_events') {
+  const db = admin.firestore();
+
+  const snapshot = await db.collection('sermons-v2').orderBy('week', 'desc').limit(4).get();
+  if (snapshot.empty) {
+    throw new Error('sermons-v2에 등록된 문서가 없습니다. 먼저 weeklyNoVideo(또는 weekly)를 실행하세요.');
+  }
+  const latestWeek = snapshot.docs[0].data().week;
+  const target = snapshot.docs.find(d => d.data().week === latestWeek && d.data().worship_type === 'SAT_1700')
+    ?? snapshot.docs.find(d => d.data().week === latestWeek);
+  const data = target.data();
+
+  const videoUrl = 'https://www.youtube.com/watch?v=mock-video-arrived';
+  console.log(`\n🎥 '${target.id}' 문서에 video_url 채우는 중... (week=${latestWeek})`);
+  await target.ref.update({ video_url: videoUrl, updated_at: admin.firestore.FieldValue.serverTimestamp() });
+  console.log(`  ✅ video_url 업데이트 완료!`);
+
+  const payload = {
+    week: data.week,
+    worship_type: data.worship_type,
+    date: data.date,
+    title: data.title,
+    bible_references: JSON.stringify(data.bible_references),
+    source_id: data.source_id,
+    video_url: videoUrl,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    operation: 'UPDATED',
+    topic: topic,
+  };
+
+  console.log(`  📤 FCM 푸시 알림(${topic}) 전송 중...`);
+  return admin.messaging().send({
+    ...(token ? { token } : { topic: topic }),
+    android: { priority: 'high', data: toStr(payload) },
+    apns: {
+      headers: { 'apns-push-type': 'background', 'apns-priority': '5' },
+      payload: { aps: { 'content-available': 1 }, ...toStr(payload) },
+    },
+  });
+}
+
 // ── 메뉴 정의 ────────────────────────────────────────────────
 const METHODS = [
   { label: 'sendSermonEvent  — 실제 서버 방식 (권장)', fn: sendSermonEvent },
@@ -359,6 +479,8 @@ const METHODS = [
   { label: 'sendWidgetKitPush — 위젯만 업데이트 (2단계)', fn: sendWidgetKitPush },
   { label: 'updateFirestoreAndSendFcm — Firestore 데이터 등록 후 FCM 발송', fn: updateFirestoreAndSendFcm },
   { label: 'sendWeeklySermonsScenario — sermons-v2 4개 예배 일괄 등록 후 FCM 발송', fn: sendWeeklySermonsScenario },
+  { label: 'sendWeeklySermonsNoVideoScenario — video_url 없이 4개 예배 등록 (유튜브 버튼 비활성 테스트)', fn: sendWeeklySermonsNoVideoScenario },
+  { label: 'sendVideoUrlUpdateScenario — 최신 주 SAT_1700에 video_url 지연 업데이트 (단일 문서 patch 테스트)', fn: sendVideoUrlUpdateScenario },
 ];
 
 const TOPICS = [
@@ -490,6 +612,10 @@ if (!command) {
     updateFirestoreAndSendFcm: updateFirestoreAndSendFcm,
     sendWeeklySermonsScenario: sendWeeklySermonsScenario,
     weekly: sendWeeklySermonsScenario,
+    sendWeeklySermonsNoVideoScenario: sendWeeklySermonsNoVideoScenario,
+    weeklyNoVideo: sendWeeklySermonsNoVideoScenario,
+    sendVideoUrlUpdateScenario: sendVideoUrlUpdateScenario,
+    videoUrlUpdate: sendVideoUrlUpdateScenario,
   };
 
   const fn = fnMap[command];

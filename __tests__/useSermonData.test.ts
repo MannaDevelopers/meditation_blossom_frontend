@@ -334,4 +334,54 @@ describe('useSermonData', () => {
       expect(result.current.sermon).toEqual(mockWeeklyList[0]); // matching Thursday
     });
   });
+
+  describe('전체(ALL) 설정 — 레거시 경로 ([#278])', () => {
+    beforeEach(() => {
+      (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+        if (key === 'user_worship_setting') return Promise.resolve('ALL');
+        return Promise.resolve(null);
+      });
+    });
+
+    it('loadLocalData: 주간 캐시를 조회하지 않고 레거시 단일 문서를 그대로 사용한다', async () => {
+      mockFetchFromAsyncStorage.mockResolvedValue(mockSermon);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => { await result.current.loadLocalData(); });
+
+      expect(mockFetchWeeklyFromAsyncStorage).not.toHaveBeenCalled();
+      expect(result.current.sermon).toEqual(mockSermon);
+    });
+
+    it('fetchFromServer: sermons-v2 주간 조회 없이 레거시 서버 조회만 한다', async () => {
+      mockFetchFromServer.mockResolvedValue(mockSermon);
+      mockSaveSermonToAsyncStorage.mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => { await result.current.fetchFromServer(); });
+
+      expect(mockFetchWeeklyFromServer).not.toHaveBeenCalled();
+      expect(mockFetchFromServer).toHaveBeenCalled();
+      expect(mockPushSermonToWidget).toHaveBeenCalledWith(mockSermon);
+      expect(result.current.sermon).toEqual(mockSermon);
+    });
+
+    it('onSnapshot: 새 레거시 문서를 주간 재조회 없이 그대로 반영한다', async () => {
+      let capturedOnUpdate: (sermon: typeof mockSermon) => Promise<void>;
+      mockSubscribeToLatestSermon.mockImplementation((onUpdate: typeof capturedOnUpdate) => {
+        capturedOnUpdate = onUpdate;
+        return jest.fn();
+      });
+      mockFetchFromAsyncStorage.mockResolvedValue(null);
+      mockSaveSermonToAsyncStorage.mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => { await result.current.loadLocalData(); });
+      await act(async () => { await capturedOnUpdate(mockSermon); });
+
+      expect(mockFetchWeeklyFromServer).not.toHaveBeenCalled();
+      expect(mockPushSermonToWidget).toHaveBeenCalledWith(mockSermon);
+      expect(result.current.sermon).toEqual(mockSermon);
+    });
+  });
 });

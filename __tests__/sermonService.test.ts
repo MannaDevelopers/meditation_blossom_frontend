@@ -7,8 +7,9 @@ import {
   fetchLatestWeeklySermonsFromAsyncStorage,
   saveWeeklySermonsToAsyncStorage,
   syncSelectedSermonToWidget,
+  upsertWeeklySermonFromEvent,
 } from '../src/services/sermonService';
-import { Sermon, WorshipType } from '../src/types/Sermon';
+import { Sermon, SermonRaw, WorshipType } from '../src/types/Sermon';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(),
@@ -22,6 +23,7 @@ jest.mock('../src/types/WidgetUpdateModule', () => ({
     onSermonUpdated: jest.fn().mockResolvedValue(true),
     onQtUpdated: jest.fn().mockResolvedValue(true),
     getAppGroupData: jest.fn().mockResolvedValue(null),
+    resolveBibleReferences: jest.fn().mockResolvedValue(''),
   },
 }));
 
@@ -208,5 +210,104 @@ describe('weekly sermons caching and syncing', () => {
     expect(AsyncStorage.setItem).toHaveBeenCalledWith('fcm_sermon', JSON.stringify(sundaySermon));
     // Should call WidgetUpdateModule
     expect(bridge.onSermonUpdated).toHaveBeenCalledWith(JSON.stringify(sundaySermon));
+  });
+});
+
+describe('upsertWeeklySermonFromEvent ([#280])', () => {
+  const bridge = require('../src/types/WidgetUpdateModule').default;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (bridge.resolveBibleReferences as jest.Mock).mockResolvedValue('본문 : 요한복음 3:16 하나님이...');
+  });
+
+  it('returns null when week or worship_type is missing (레거시 이벤트 등)', async () => {
+    const raw: SermonRaw = { id: '', title: 'T', content: '', date: '2026-09-15', worship_type: 'SAT_1700' };
+    expect(await upsertWeeklySermonFromEvent(raw)).toBeNull();
+    expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+  });
+
+  it('inserts into an empty cache', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+
+    const raw: SermonRaw = {
+      id: '', title: 'T', content: '', date: '2026-09-12',
+      week: '2026-W38', worship_type: 'SAT_1700', bible_references: '[]',
+    };
+    const result = await upsertWeeklySermonFromEvent(raw);
+
+    expect(result?.worship_type).toBe('SAT_1700');
+    const saved = JSON.parse((AsyncStorage.setItem as jest.Mock).mock.calls[0][1]);
+    expect(saved).toHaveLength(1);
+    expect(saved[0].worship_type).toBe('SAT_1700');
+  });
+
+  it('replaces the matching entry within the same week, leaving others untouched', async () => {
+    const existing: Sermon[] = [
+      { id: 'w38_sat', title: 'old sat', content: 'C', date: '2026-09-12', week: '2026-W38', worship_type: 'SAT_1700', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } },
+      { id: 'w38_sun', title: 'sun', content: 'C', date: '2026-09-13', week: '2026-W38', worship_type: 'SUN_0950', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } },
+    ];
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(existing));
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+
+    const raw: SermonRaw = {
+      id: '', title: 'new sat (video 추가됨)', content: '', date: '2026-09-12',
+      week: '2026-W38', worship_type: 'SAT_1700', video_url: 'https://youtu.be/new', bible_references: '[]',
+    };
+    await upsertWeeklySermonFromEvent(raw);
+
+    const saved: Sermon[] = JSON.parse((AsyncStorage.setItem as jest.Mock).mock.calls[0][1]);
+    expect(saved).toHaveLength(2);
+    const sat = saved.find(s => s.worship_type === 'SAT_1700');
+    const sun = saved.find(s => s.worship_type === 'SUN_0950');
+    expect(sat?.title).toBe('new sat (video 추가됨)');
+    expect(sat?.video_url).toBe('https://youtu.be/new');
+    expect(sun?.title).toBe('sun'); // 다른 예배는 그대로
+  });
+
+  it('discards stale entries from a previous week when a new week arrives', async () => {
+    const existing: Sermon[] = [
+      { id: 'w37_sat', title: 'old week', content: 'C', date: '2026-09-05', week: '2026-W37', worship_type: 'SAT_1700', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } },
+    ];
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(existing));
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+
+    const raw: SermonRaw = {
+      id: '', title: 'new week sat', content: '', date: '2026-09-12',
+      week: '2026-W38', worship_type: 'SAT_1700', bible_references: '[]',
+    };
+    await upsertWeeklySermonFromEvent(raw);
+
+    const saved: Sermon[] = JSON.parse((AsyncStorage.setItem as jest.Mock).mock.calls[0][1]);
+    expect(saved).toHaveLength(1);
+    expect(saved[0].week).toBe('2026-W38');
+  });
+
+  it('resolves content from bible_references when content is missing', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+
+    const raw: SermonRaw = {
+      id: '', title: 'T', content: '', date: '2026-09-12',
+      week: '2026-W38', worship_type: 'SAT_1700', bible_references: '[{"book":"요한복음","chapter":3,"verse_start":16,"verse_end":16}]',
+    };
+    const result = await upsertWeeklySermonFromEvent(raw);
+
+    expect(bridge.resolveBibleReferences).toHaveBeenCalledWith(raw.bible_references);
+    expect(result?.content).toBe('본문 : 요한복음 3:16 하나님이...');
+  });
+
+  it('falls back to a {week}_{worship_type} id when the payload has no id (matches Firestore doc ID)', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+
+    const raw: SermonRaw = {
+      id: '', title: 'T', content: '', date: '2026-09-12',
+      week: '2026-W38', worship_type: 'SAT_1700', bible_references: '[]',
+    };
+    const result = await upsertWeeklySermonFromEvent(raw);
+
+    expect(result?.id).toBe('2026-W38_SAT_1700');
   });
 });

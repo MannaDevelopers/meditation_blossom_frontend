@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { compareSermon, Sermon, WorshipType, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
+import { compareSermon, Sermon, WorshipSetting, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
 import {
   fetchLatestSermonFromAsyncStorage,
   fetchLatestSermonFromServer,
@@ -36,11 +36,15 @@ export function useSermonData(): UseSermonDataReturn {
 
   const loadLocalData = useCallback(async (): Promise<Sermon | null> => {
     try {
-      const worshipSetting = (await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipType || DEFAULT_WORSHIP_TYPE;
-      const weeklySermons = (await fetchLatestWeeklySermonsFromAsyncStorage()) || [];
-      let selected = weeklySermons.find(s => s.worship_type === worshipSetting) || null;
+      const worshipSetting = (await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipSetting || DEFAULT_WORSHIP_TYPE;
+      let selected: Sermon | null = null;
+      if (worshipSetting !== 'ALL') {
+        const weeklySermons = (await fetchLatestWeeklySermonsFromAsyncStorage()) || [];
+        selected = weeklySermons.find(s => s.worship_type === worshipSetting) || null;
+      }
 
       if (!selected) {
+        // '전체' 설정이거나(레거시 경로, [#278]) 주간 캐시에 아직 데이터가 없으면 레거시 단일 문서로 폴백
         selected = await fetchLatestSermonFromAsyncStorage();
       }
 
@@ -53,7 +57,7 @@ export function useSermonData(): UseSermonDataReturn {
       if (selected && (!selected.video_url || !selected.content) && !triedServerFill.current) {
         triedServerFill.current = true;
         try {
-          const freshWeekly = await fetchLatestWeeklySermonsFromServer();
+          const freshWeekly = worshipSetting !== 'ALL' ? await fetchLatestWeeklySermonsFromServer() : [];
           if (freshWeekly && freshWeekly.length > 0) {
             await saveWeeklySermonsToAsyncStorage(freshWeekly);
             const freshSelected = freshWeekly.find(s => s.worship_type === worshipSetting) || freshWeekly[0];
@@ -95,11 +99,11 @@ export function useSermonData(): UseSermonDataReturn {
     setIsLoading(true);
     setError(null);
     try {
-      const weeklyResults = (await fetchLatestWeeklySermonsFromServer()) || [];
+      const worshipSetting = (await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipSetting || DEFAULT_WORSHIP_TYPE;
+      const weeklyResults = worshipSetting !== 'ALL' ? (await fetchLatestWeeklySermonsFromServer()) || [] : [];
       logger.log('[SermonData] fetchFromServer: result count=' + weeklyResults.length);
       if (weeklyResults.length > 0) {
         await saveWeeklySermonsToAsyncStorage(weeklyResults);
-        const worshipSetting = (await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipType || DEFAULT_WORSHIP_TYPE;
         const matched = weeklyResults.find(s => s.worship_type === worshipSetting) || weeklyResults[0];
 
         await saveSermonToAsyncStorage(matched);
@@ -107,10 +111,11 @@ export function useSermonData(): UseSermonDataReturn {
         setSermon(matched);
         logger.log('[SermonData] fetchFromServer: setSermon called with worship_type=' + matched.worship_type);
       } else {
-        // Fallback to legacy single fetch
+        // '전체' 설정이거나([#278]) 주간 데이터가 없으면 레거시 단일 조회로 폴백
         const result = await fetchLatestSermonFromServer();
         if (result) {
           await saveSermonToAsyncStorage(result);
+          await pushSermonToWidget(result);
           setSermon(result);
         }
       }
@@ -131,15 +136,16 @@ export function useSermonData(): UseSermonDataReturn {
         if (compareSermon(fresh, sermonRef.current) > 0) {
           logger.log('onSnapshot: newer sermon received, updating weekly cache');
           try {
-            const weeklySermons = await fetchLatestWeeklySermonsFromServer();
+            const worshipSetting = (await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipSetting || DEFAULT_WORSHIP_TYPE;
+            const weeklySermons = worshipSetting !== 'ALL' ? await fetchLatestWeeklySermonsFromServer() : [];
             if (weeklySermons.length > 0) {
               await saveWeeklySermonsToAsyncStorage(weeklySermons);
-              const worshipSetting = (await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipType || DEFAULT_WORSHIP_TYPE;
               const matched = weeklySermons.find(s => s.worship_type === worshipSetting) || weeklySermons[0];
               await saveSermonToAsyncStorage(matched);
               await pushSermonToWidget(matched);
               setSermon(matched);
             } else {
+              // '전체' 설정이거나([#278]) 주간 데이터가 없으면 스냅샷으로 받은 레거시 문서를 그대로 사용
               await saveSermonToAsyncStorage(fresh);
               await pushSermonToWidget(fresh);
               setSermon(fresh);

@@ -37,7 +37,7 @@ RCT_EXPORT_MODULE(MyEventModule);
   self = [super init];
   if (self) {
     [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(onSermonUpdate)
+                                             selector:@selector(onSermonUpdate:)
                                                  name:FCMSermonUpdateNotification
                                                object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self
@@ -55,9 +55,12 @@ RCT_EXPORT_MODULE(MyEventModule);
 
 #pragma mark - NSNotification handlers
 
-- (void)onSermonUpdate
+- (void)onSermonUpdate:(NSNotification *)notification
 {
-  [self sendEventWithName:@"ON_SERMON_UPDATE" body:@{@"message": @"FCM sermon update"}];
+  // sermons-v2 이벤트는 userInfo에 원본 FCM data(week/worship_type/video_url 등)가 담겨 온다([#280]).
+  // 레거시 sermon_events_v2는 userInfo가 nil이라 기존과 동일한 메시지 바디로 보낸다.
+  NSDictionary *body = notification.userInfo ?: @{@"message": @"FCM sermon update"};
+  [self sendEventWithName:@"ON_SERMON_UPDATE" body:body];
 }
 
 - (void)onQtUpdate

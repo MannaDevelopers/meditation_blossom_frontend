@@ -4,13 +4,24 @@ import logger from "../utils/logger";
 import WidgetUpdateModule from './WidgetUpdateModule';
 
 // 주말 4개 예배 (목요찬양집회는 설교 제목/본문이 없어 제외, 시각은 sermons-v2.md 기준)
+// sermons-v2 문서의 worship_type은 항상 이 4개 값 중 하나다.
 export type WorshipType = 'SAT_1700' | 'SUN_0950' | 'SUN_1150' | 'SUN_1430';
+
+// 사용자가 설정 화면에서 고를 수 있는 값. 'ALL'은 클라이언트 로컬 설정에만 존재하며
+// Firestore sermons-v2 문서에는 절대 저장되지 않는다([#278]) — 레거시 sermon_events_v2 /
+// 'sermons' 컬렉션 단일 최신 문서를 그대로 보여주는 기존 동작을 보존하는 옵션이다.
+export type WorshipSetting = WorshipType | 'ALL';
 
 export const WORSHIP_TYPES: { key: WorshipType; label: string }[] = [
   { key: 'SAT_1700', label: '토요일 오후 5시' },
   { key: 'SUN_0950', label: '주일 9시 50분' },
   { key: 'SUN_1150', label: '주일 11시 50분' },
   { key: 'SUN_1430', label: '주일 2시 30분' },
+];
+
+export const WORSHIP_SETTINGS: { key: WorshipSetting; label: string }[] = [
+  { key: 'ALL', label: '전체' },
+  ...WORSHIP_TYPES,
 ];
 
 export type FirestoreTimestamp = { seconds: number; nanoseconds: number };
