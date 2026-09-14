@@ -26,7 +26,7 @@ describe('SettingsScreen', () => {
   });
 
   it('renders worship time settings options and saves changes', async () => {
-    // Mock user_worship_setting in AsyncStorage to be null (default to SUN_1000)
+    // Mock user_worship_setting in AsyncStorage to be null (default to SUN_0950)
     (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
       if (key === 'user_worship_setting') return Promise.resolve(null);
       return Promise.resolve(null);
@@ -40,22 +40,21 @@ describe('SettingsScreen', () => {
       expect(getByText('예배 시간 설정')).toBeTruthy();
     });
 
-    // Check if the 5 options are rendered
-    expect(getByText('목요일 저녁')).toBeTruthy();
-    expect(getByText('토요일 오후')).toBeTruthy();
-    expect(getByText('주일 10:00')).toBeTruthy();
-    expect(getByText('주일 12:00')).toBeTruthy();
-    expect(getByText('주일 14:30')).toBeTruthy();
+    // Check if the 4 options are rendered
+    expect(getByText('토요일 오후 5시')).toBeTruthy();
+    expect(getByText('주일 9시 50분')).toBeTruthy();
+    expect(getByText('주일 11시 50분')).toBeTruthy();
+    expect(getByText('주일 2시 30분')).toBeTruthy();
 
-    // Select "주일 12:00" option
-    const optionButton = getByText('주일 12:00');
+    // Select "주일 11시 50분" option
+    const optionButton = getByText('주일 11시 50분');
     fireEvent.press(optionButton);
 
     // Should save to AsyncStorage
     await waitFor(() => {
-      expect(AsyncStorage.setItem).toHaveBeenCalledWith('user_worship_setting', 'SUN_1200');
+      expect(AsyncStorage.setItem).toHaveBeenCalledWith('user_worship_setting', 'SUN_1150');
       // Should sync widget
-      expect(syncSelectedSermonToWidget).toHaveBeenCalledWith('SUN_1200');
+      expect(syncSelectedSermonToWidget).toHaveBeenCalledWith('SUN_1150');
     });
   });
 });

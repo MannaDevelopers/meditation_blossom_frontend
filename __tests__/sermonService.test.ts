@@ -165,7 +165,7 @@ describe('weekly sermons caching and syncing', () => {
 
   it('saves weekly sermons list to AsyncStorage', async () => {
     const list: Sermon[] = [
-      { id: '1', title: 'A', content: 'C', date: '2026-07-19', worship_type: 'SUN_1000', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } }
+      { id: '1', title: 'A', content: 'C', date: '2026-09-13', week: '2026-W37', worship_type: 'SUN_0950', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } }
     ];
     (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
     await saveWeeklySermonsToAsyncStorage(list);
@@ -174,7 +174,7 @@ describe('weekly sermons caching and syncing', () => {
 
   it('reads weekly sermons list from AsyncStorage', async () => {
     const list: Sermon[] = [
-      { id: '1', title: 'A', content: 'C', date: '2026-07-19', worship_type: 'SUN_1000', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } }
+      { id: '1', title: 'A', content: 'C', date: '2026-09-13', week: '2026-W37', worship_type: 'SUN_0950', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } }
     ];
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(list));
     const result = await fetchLatestWeeklySermonsFromAsyncStorage();
@@ -190,8 +190,8 @@ describe('weekly sermons caching and syncing', () => {
   it('syncs selected worship sermon to widget and legacy storage key', async () => {
     const bridge = require('../src/types/WidgetUpdateModule').default;
     const list: Sermon[] = [
-      { id: 'thu', title: 'Thursday', content: 'C', date: '2026-07-19', worship_type: 'THU_EVE', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } },
-      { id: 'sun', title: 'Sunday', content: 'C', date: '2026-07-19', worship_type: 'SUN_1000', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } }
+      { id: 'sat', title: 'Saturday', content: 'C', date: '2026-09-12', week: '2026-W37', worship_type: 'SAT_1700', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } },
+      { id: 'sun', title: 'Sunday', content: 'C', date: '2026-09-13', week: '2026-W37', worship_type: 'SUN_0950', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } }
     ];
     // Mock AsyncStorage reads/writes
     (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
@@ -201,7 +201,7 @@ describe('weekly sermons caching and syncing', () => {
     (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
     bridge.onSermonUpdated.mockClear();
 
-    await syncSelectedSermonToWidget('SUN_1000');
+    await syncSelectedSermonToWidget('SUN_0950');
 
     // Should save Sunday sermon to legacy key
     const sundaySermon = list[1];

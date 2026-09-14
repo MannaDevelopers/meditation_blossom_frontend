@@ -3,6 +3,8 @@ package app.mannadev.meditation
 object Constants {
     const val SERMON_SUBJECT = "sermon_events" // For unsubscription
     const val SERMON_SUBJECT_V2 = "sermon_events_v2"
+    // sermons-v2: 예배 시간별(worship_type) 주간 데이터 전용 토픽. sermon_events_v2와 별도로 동시 운영된다.
+    const val SERMONS_V2_SUBJECT = "sermons_v2_events"
     const val QT_SUBJECT = "qt_events"
 
     const val ACTION_SERMON_UPDATE_EVENT = "app.mannadev.meditation.SERMON_UPDATE_EVENT"

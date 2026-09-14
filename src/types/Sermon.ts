@@ -3,14 +3,14 @@ import { Platform } from 'react-native';
 import logger from "../utils/logger";
 import WidgetUpdateModule from './WidgetUpdateModule';
 
-export type WorshipType = 'THU_EVE' | 'SAT_PM' | 'SUN_1000' | 'SUN_1200' | 'SUN_1430';
+// 주말 4개 예배 (목요찬양집회는 설교 제목/본문이 없어 제외, 시각은 sermons-v2.md 기준)
+export type WorshipType = 'SAT_1700' | 'SUN_0950' | 'SUN_1150' | 'SUN_1430';
 
 export const WORSHIP_TYPES: { key: WorshipType; label: string }[] = [
-  { key: 'THU_EVE', label: '목요일 저녁 예배' },
-  { key: 'SAT_PM', label: '토요일 오후 예배' },
-  { key: 'SUN_1000', label: '주일 2부 (10:00)' },
-  { key: 'SUN_1200', label: '주일 3부 (12:00)' },
-  { key: 'SUN_1430', label: '주일 4부 (14:30)' },
+  { key: 'SAT_1700', label: '토요일 오후 5시' },
+  { key: 'SUN_0950', label: '주일 9시 50분' },
+  { key: 'SUN_1150', label: '주일 11시 50분' },
+  { key: 'SUN_1430', label: '주일 2시 30분' },
 ];
 
 export type FirestoreTimestamp = { seconds: number; nanoseconds: number };
@@ -24,7 +24,7 @@ export interface Sermon {
   day_of_week?: string; // 요일 (예: "SUN")
   video_url?: string;
   worship_type?: WorshipType;
-  actual_date?: string;
+  week?: string; // ISO 8601 week_number (예: "2026-W37"), sermons-v2 주간 묶음 키
   created_at: FirestoreTimestamp;
   updated_at: FirestoreTimestamp;
 }
@@ -42,7 +42,7 @@ export interface SermonRaw {
   video_url?: string;
   source_id?: string;
   worship_type?: WorshipType;
-  actual_date?: string;
+  week?: string;
   created_at?: FirestoreTimestamp | string;
   createdAt?: FirestoreTimestamp | string;
   updated_at?: FirestoreTimestamp | string;
@@ -58,7 +58,7 @@ export interface SermonMetadata {
 // 스토리지 키
 export const FCM_SERMON_KEY = 'fcm_sermon';
 export const USER_WORSHIP_SETTING_KEY = 'user_worship_setting';
-export const DEFAULT_WORSHIP_TYPE: WorshipType = 'SUN_1000';
+export const DEFAULT_WORSHIP_TYPE: WorshipType = 'SUN_0950';
 
 
 export function convertStringToTimestamp(isoString: string | null | undefined): FirestoreTimestamp {
@@ -132,7 +132,7 @@ export function fcmDataToSermon(raw: SermonRaw): Sermon {
     day_of_week: raw.day_of_week || raw.dayOfWeek,
     video_url: raw.video_url,
     worship_type: raw.worship_type,
-    actual_date: raw.actual_date,
+    week: raw.week,
     created_at: resolveTimestamp(raw.created_at, raw.createdAt),
     updated_at: resolveTimestamp(raw.updated_at, raw.updatedAt),
   };
@@ -169,7 +169,7 @@ export const firestoreDocToSermon = async (
     day_of_week: firestoreData.day_of_week || '',
     video_url: firestoreData.video_url,
     worship_type: firestoreData.worship_type,
-    actual_date: firestoreData.actual_date,
+    week: firestoreData.week,
     created_at: firestoreData.created_at || { seconds: 0, nanoseconds: 0 },
     updated_at: firestoreData.updated_at || { seconds: 0, nanoseconds: 0 },
   };

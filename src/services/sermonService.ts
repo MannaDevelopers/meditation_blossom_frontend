@@ -156,12 +156,14 @@ export async function syncSelectedSermonToWidget(worshipType: WorshipType): Prom
   await pushSermonToWidget(matched);
 }
 
+// sermons-v2: 주말 4개 예배 문서가 공통 'week'(ISO 8601 week_number, 예: "2026-W37")를 공유한다.
+// 토요/주일 예배는 실제 date가 다르므로 date가 아닌 week로 같은 주 문서를 묶는다.
 export async function fetchLatestWeeklySermonsFromServer(): Promise<Sermon[]> {
   const db = getFirestore();
   const q = query(
-    collection(db, 'sermons'),
-    orderBy('date', 'desc'),
-    limit(6)
+    collection(db, 'sermons-v2'),
+    orderBy('week', 'desc'),
+    limit(8)
   );
   const snapshot = await getDocsFromServer(q);
   if (snapshot.empty) return [];
@@ -177,6 +179,6 @@ export async function fetchLatestWeeklySermonsFromServer(): Promise<Sermon[]> {
   }
 
   if (allSermons.length === 0) return [];
-  const latestDate = allSermons[0].date;
-  return allSermons.filter(s => s.date === latestDate);
+  const latestWeek = allSermons[0].week;
+  return allSermons.filter(s => s.week === latestWeek);
 }

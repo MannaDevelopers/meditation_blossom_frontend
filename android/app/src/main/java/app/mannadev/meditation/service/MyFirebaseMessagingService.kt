@@ -10,6 +10,7 @@ import app.mannadev.meditation.Constants.ASYNC_STORAGE_FCM_QT
 import app.mannadev.meditation.Constants.ASYNC_STORAGE_FCM_SERMON
 import app.mannadev.meditation.Constants.QT_SUBJECT
 import app.mannadev.meditation.Constants.SERMON_SUBJECT_V2
+import app.mannadev.meditation.Constants.SERMONS_V2_SUBJECT
 import app.mannadev.meditation.analytics.AnalyticsHelper
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.analytics.SermonEventSource
@@ -50,6 +51,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         private val ALLOWED_SERMON_TOPICS = setOf(SERMON_SUBJECT_V2, "sermon_events_v2_test")
         private val ALLOWED_QT_TOPICS = setOf(QT_SUBJECT, "qt_events_test")
+        private val ALLOWED_SERMONS_V2_TOPICS = setOf(SERMONS_V2_SUBJECT, "sermons_v2_events_test")
     }
 
     @Inject lateinit var sermonRepository: SermonRepository
@@ -71,6 +73,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         when {
             topic in ALLOWED_SERMON_TOPICS -> serviceScope.launch { consumeSermonEvent(message) }
             topic in ALLOWED_QT_TOPICS -> serviceScope.launch { consumeQtEvent(message) }
+            topic in ALLOWED_SERMONS_V2_TOPICS -> consumeSermonsV2Event()
             else -> Unit // silent drop (v1 and anything unknown)
         }
     }
@@ -126,6 +129,19 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }.onFailure { e ->
             CrashlyticsHelper.recordException(e, "Failed to update sermon AsyncStorage/broadcast")
         }
+    }
+
+    /**
+     * sermons-v2: 한 주에 예배별(worship_type) 문서가 최대 4번 개별 발행되므로,
+     * 레거시 [consumeSermonEvent]처럼 단일 슬롯([ASYNC_STORAGE_FCM_SERMON])/위젯에 바로 쓰면
+     * 사용자가 선택한 예배와 무관한 마지막 메시지가 위젯을 덮어쓰게 된다.
+     * worship_type 매칭과 위젯 반영은 JS(useFCMListener → sermonService.fetchLatestWeeklySermonsFromServer)가
+     * Firestore 'sermons-v2'를 직접 조회해 전담하므로, 네이티브는 JS를 깨우는 역할만 한다.
+     */
+    private fun consumeSermonsV2Event() {
+        LocalBroadcastManager
+            .getInstance(this@MyFirebaseMessagingService)
+            .sendBroadcast(Intent(ACTION_SERMON_UPDATE_EVENT))
     }
 
     private suspend fun consumeQtEvent(message: RemoteMessage) {

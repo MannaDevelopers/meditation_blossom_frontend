@@ -199,18 +199,18 @@ describe('fcmDataToSermon', () => {
     expect(result.updated_at).toEqual(snakeTs);
   });
 
-  it('converts raw data with worship_type and actual_date', () => {
+  it('converts raw data with worship_type and week', () => {
     const raw: SermonRaw = {
       id: '1',
       title: 'T',
       content: 'C',
-      date: '2026-07-19',
-      worship_type: 'SUN_1000' as any,
-      actual_date: '2026-07-19',
+      date: '2026-09-13',
+      worship_type: 'SUN_0950' as any,
+      week: '2026-W37',
     };
     const result = fcmDataToSermon(raw);
-    expect(result.worship_type).toBe('SUN_1000');
-    expect(result.actual_date).toBe('2026-07-19');
+    expect(result.worship_type).toBe('SUN_0950');
+    expect(result.week).toBe('2026-W37');
   });
 });
 
@@ -283,15 +283,15 @@ describe('firestoreDocToSermon (async)', () => {
     expect(bridge.resolveBibleReferences).not.toHaveBeenCalled();
   });
 
-  it('includes worship_type and actual_date from Firestore doc', async () => {
+  it('includes worship_type and week from Firestore doc', async () => {
     const doc = makeDoc({
       title: 'T',
-      date: '2026-07-19',
-      worship_type: 'SUN_1200' as any,
-      actual_date: '2026-07-19',
+      date: '2026-09-13',
+      worship_type: 'SUN_1150' as any,
+      week: '2026-W37',
     });
     const result = await firestoreDocToSermon(doc);
-    expect(result.worship_type).toBe('SUN_1200');
-    expect(result.actual_date).toBe('2026-07-19');
+    expect(result.worship_type).toBe('SUN_1150');
+    expect(result.week).toBe('2026-W37');
   });
 });

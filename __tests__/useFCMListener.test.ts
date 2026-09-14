@@ -41,8 +41,8 @@ describe('useFCMListener', () => {
 
   it('subscribes to ON_SERMON_UPDATE and fetches weekly sermons on event', async () => {
     const onUpdateMock = jest.fn();
-    (AsyncStorage.getItem as jest.Mock).mockResolvedValue('THU_EVE');
-    const mockWeeklyList = [{ id: '1', date: '2026-07-19', worship_type: 'THU_EVE' }];
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue('SAT_1700');
+    const mockWeeklyList = [{ id: '1', date: '2026-09-12', week: '2026-W37', worship_type: 'SAT_1700' }];
     (sermonService.fetchLatestWeeklySermonsFromServer as jest.Mock).mockResolvedValue(mockWeeklyList);
     (sermonService.saveWeeklySermonsToAsyncStorage as jest.Mock).mockResolvedValue(undefined);
     (sermonService.syncSelectedSermonToWidget as jest.Mock).mockResolvedValue(undefined);
@@ -56,7 +56,7 @@ describe('useFCMListener', () => {
 
     expect(sermonService.fetchLatestWeeklySermonsFromServer).toHaveBeenCalled();
     expect(sermonService.saveWeeklySermonsToAsyncStorage).toHaveBeenCalledWith(mockWeeklyList);
-    expect(sermonService.syncSelectedSermonToWidget).toHaveBeenCalledWith('THU_EVE');
+    expect(sermonService.syncSelectedSermonToWidget).toHaveBeenCalledWith('SAT_1700');
     expect(onUpdateMock).toHaveBeenCalled();
   });
 });

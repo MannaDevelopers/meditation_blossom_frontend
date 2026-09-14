@@ -283,27 +283,27 @@ describe('useSermonData', () => {
 
   describe('worship time selection integration', () => {
     const mockWeeklyList = [
-      { id: 'thu', title: 'Thu Sermon', content: 'C', date: '2026-07-19', worship_type: 'THU_EVE' as any, created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } },
-      { id: 'sun', title: 'Sun Sermon', content: 'C', date: '2026-07-19', worship_type: 'SUN_1000' as any, created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } }
+      { id: 'sat', title: 'Sat Sermon', content: 'C', date: '2026-09-12', week: '2026-W37', worship_type: 'SAT_1700' as any, created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } },
+      { id: 'sun', title: 'Sun Sermon', content: 'C', date: '2026-09-13', week: '2026-W37', worship_type: 'SUN_0950' as any, created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } }
     ];
 
     beforeEach(() => {
       // Mock AsyncStorage user_worship_setting
       (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
-        if (key === 'user_worship_setting') return Promise.resolve('THU_EVE');
+        if (key === 'user_worship_setting') return Promise.resolve('SAT_1700');
         return Promise.resolve(null);
       });
     });
 
     it('loads selected worship sermon from weekly list cache', async () => {
       mockFetchWeeklyFromAsyncStorage.mockResolvedValue(mockWeeklyList);
-      
+
       const { result } = renderHook(() => useSermonData());
       await act(async () => {
         await result.current.loadLocalData();
       });
 
-      expect(result.current.sermon).toEqual(mockWeeklyList[0]); // should be Thursday sermon
+      expect(result.current.sermon).toEqual(mockWeeklyList[0]); // should be Saturday sermon
     });
 
     it('falls back to legacy fcm_sermon if weekly cache is empty', async () => {
