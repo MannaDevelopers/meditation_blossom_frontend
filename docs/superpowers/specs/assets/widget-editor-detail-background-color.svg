@@ -1,0 +1,24 @@
+<svg viewBox="0 0 400 150" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+  <rect width="400" height="150" fill="#1C1C1E"/>
+  <text x="16" y="24" fill="#A59EAE" font-size="12">배경 &gt; 배경색 (신규 결정) — 텍스트&gt;색상과 동일 스와치 컴포넌트 재사용, 박스 305x90</text>
+  <g>
+    <rect x="30" y="55" width="30" height="30" rx="6" fill="#FFFFFF" stroke="#5F5E5A"/>
+    <rect x="70" y="52" width="36" height="36" rx="7" fill="#FFF3B0" stroke="#FFFFFF" stroke-width="2"/>
+    <path d="M83 70 l5 5 l10 -10" stroke="#4A1B0C" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="118" y="55" width="30" height="30" rx="6" fill="#D2F2D8"/>
+    <rect x="158" y="55" width="30" height="30" rx="6" fill="#CFE8FF"/>
+    <rect x="198" y="55" width="30" height="30" rx="6" fill="#FFD6E8"/>
+    <rect x="238" y="55" width="30" height="30" rx="6" fill="#F5E6D3"/>
+    <rect x="278" y="55" width="30" height="30" rx="6" fill="#4A4A4A"/>
+    <rect x="318" y="55" width="30" height="30" rx="6" fill="#2C2C2E" stroke="#A59EAE" stroke-dasharray="3 2"/>
+    <text x="333" y="74" fill="#A59EAE" font-size="14" text-anchor="middle">+</text>
+  </g>
+  <text x="45" y="105" fill="#A59EAE" font-size="10" text-anchor="middle">화이트</text>
+  <text x="88" y="112" fill="#FFFFFF" font-size="10" text-anchor="middle">라이트옐로우(선택)</text>
+  <text x="133" y="105" fill="#A59EAE" font-size="10" text-anchor="middle">라이트그린</text>
+  <text x="173" y="105" fill="#A59EAE" font-size="10" text-anchor="middle">라이트블루</text>
+  <text x="213" y="105" fill="#A59EAE" font-size="10" text-anchor="middle">라이트핑크</text>
+  <text x="253" y="105" fill="#A59EAE" font-size="10" text-anchor="middle">베이지</text>
+  <text x="293" y="105" fill="#A59EAE" font-size="10" text-anchor="middle">다크그레이</text>
+  <text x="333" y="105" fill="#A59EAE" font-size="10" text-anchor="middle">사용자지정</text>
+</svg>

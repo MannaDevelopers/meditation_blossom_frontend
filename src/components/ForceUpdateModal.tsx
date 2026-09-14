@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useAppTheme } from '../hooks/useAppTheme';
+import { ThemeColors } from '../theme/colors';
 
 interface ForceUpdateModalProps {
   visible: boolean;
@@ -12,6 +14,9 @@ function ForceUpdateModal({
   message,
   onPressUpdate,
 }: ForceUpdateModalProps): React.JSX.Element {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <Modal
       visible={visible}
@@ -33,46 +38,47 @@ function ForceUpdateModal({
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  container: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-    marginHorizontal: 32,
-    alignItems: 'center',
-  },
-  title: {
-    fontFamily: 'Pretendard-Bold',
-    fontSize: 20,
-    color: '#1A1A1A',
-    marginBottom: 12,
-  },
-  message: {
-    fontFamily: 'Pretendard-Regular',
-    fontSize: 15,
-    color: '#555555',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 24,
-  },
-  button: {
-    backgroundColor: '#4A90D9',
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 48,
-  },
-  buttonText: {
-    fontFamily: 'Pretendard-SemiBold',
-    fontSize: 16,
-    color: '#FFFFFF',
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: colors.overlay,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    container: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      paddingVertical: 32,
+      paddingHorizontal: 24,
+      marginHorizontal: 32,
+      alignItems: 'center',
+    },
+    title: {
+      fontFamily: 'Pretendard-Bold',
+      fontSize: 20,
+      color: colors.textPrimary,
+      marginBottom: 12,
+    },
+    message: {
+      fontFamily: 'Pretendard-Regular',
+      fontSize: 15,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+      marginBottom: 24,
+    },
+    button: {
+      backgroundColor: '#4A90D9',
+      borderRadius: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 48,
+    },
+    buttonText: {
+      fontFamily: 'Pretendard-SemiBold',
+      fontSize: 16,
+      color: '#FFFFFF',
+    },
+  });
 
 export default ForceUpdateModal;

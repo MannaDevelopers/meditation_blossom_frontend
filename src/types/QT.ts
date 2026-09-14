@@ -14,6 +14,12 @@ export interface QT {
   date: string;
   day_of_week?: string;
   video_url?: string;
+  /**
+   * Firestore `bible_references` 배열의 JSON 문자열([#173]).
+   * 화면이 참조별 칩을 그리려면 필요한데, 예전에는 변환에서 버려져 AsyncStorage를
+   * 왕복하면 사라졌다. FCM 경로(QTRaw)와 모양을 맞춰 문자열로 둔다.
+   */
+  bible_references?: string;
   meditation_questions?: string;
   created_at: FirestoreTimestamp;
   updated_at: FirestoreTimestamp;
@@ -66,6 +72,7 @@ export function fcmDataToQt(raw: QTRaw): QT {
     date: raw.date || '',
     day_of_week: raw.day_of_week || raw.dayOfWeek,
     video_url: raw.video_url,
+    bible_references: raw.bible_references,
     meditation_questions: normalizeMeditationQuestions(raw.meditation_questions),
     created_at: resolveTimestamp(raw.created_at, raw.createdAt),
     updated_at: resolveTimestamp(raw.updated_at, raw.updatedAt),
@@ -97,6 +104,7 @@ export const firestoreDocToQt = async (
     date: data.date || new Date().toISOString().split('T')[0],
     day_of_week: data.day_of_week || '',
     video_url: data.video_url,
+    bible_references: bibleRefs ? JSON.stringify(bibleRefs) : undefined,
     meditation_questions: data.meditation_questions
       ? JSON.stringify(data.meditation_questions)
       : undefined,

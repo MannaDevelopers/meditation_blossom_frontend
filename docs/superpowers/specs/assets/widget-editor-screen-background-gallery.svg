@@ -1,0 +1,26 @@
+<svg viewBox="0 0 220 300" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+  <rect width="220" height="300" rx="18" fill="#17171A"/>
+  <path d="M18 20 l-5 5 l5 5" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="110" y="27" fill="#7A7A7E" font-size="11" text-anchor="middle">초기화</text>
+  <text x="200" y="27" fill="#FFFFFF" font-size="11" font-weight="700" text-anchor="end">저장</text>
+
+  <rect x="16" y="40" width="188" height="70" rx="10" fill="#F0997B"/>
+  <text x="110" y="72" fill="#FFFFFF" font-size="11" font-weight="700" text-anchor="middle">또 비유로 말씀하시되</text>
+  <text x="110" y="96" fill="#FDECE5" font-size="9" text-anchor="middle">마태복음 13:33</text>
+
+  <g>
+    <rect x="58" y="128" width="24" height="24" rx="6" fill="#17171A" stroke="#8A8A8E" stroke-dasharray="2 2"/>
+    <path d="M70 134 v12 M64 140 h12" stroke="#8A8A8E" stroke-width="1.5" stroke-linecap="round"/>
+    <rect x="86" y="128" width="24" height="24" rx="6" fill="#5DCAA5"/>
+    <rect x="114" y="126" width="24" height="24" rx="6" fill="#85B7EB" stroke="#FFFFFF" stroke-width="1.5"/>
+    <rect x="142" y="128" width="24" height="24" rx="6" fill="#ED93B1"/>
+  </g>
+
+  <text x="70" y="185" fill="#8A8A8E" font-size="11" text-anchor="middle">배경색</text>
+  <text x="150" y="185" fill="#FF9A2E" font-size="11" font-weight="700" text-anchor="middle">갤러리</text>
+
+  <rect x="82" y="215" width="26" height="26" rx="7" fill="#2C2C2E"/>
+  <text x="95" y="232" fill="#8A8A8E" font-size="12" text-anchor="middle">가</text>
+  <rect x="112" y="215" width="26" height="26" rx="7" fill="rgba(255,255,255,0.18)"/>
+  <rect x="120" y="223" width="10" height="10" fill="#FFFFFF"/>
+</svg>

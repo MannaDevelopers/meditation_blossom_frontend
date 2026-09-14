@@ -1,15 +1,6 @@
-import { NativeModules } from 'react-native';
+import { TurboModuleRegistry } from 'react-native';
+import type { Spec } from '../specs/NativeWidgetUpdateModule';
 
-interface WidgetUpdateModuleInterface {
-  onSermonUpdated(sermonData: string): Promise<boolean>;
-  onQtUpdated(qtData: string): Promise<boolean>;
-  resolveBibleReferences(jsonString: string): Promise<string>;
-  onClear(): Promise<void>;
-  getAppGroupData(key: string): Promise<string | null>;
-  setYoutubeLinkEnabled(enabled: boolean): Promise<void>;
-  getYoutubeLinkEnabled(): Promise<boolean>;
-}
+const WidgetUpdateModule = TurboModuleRegistry.get<Spec>('WidgetUpdateModule');
 
-const { WidgetUpdateModule } = NativeModules;
-
-export default WidgetUpdateModule as WidgetUpdateModuleInterface;
+export default WidgetUpdateModule;

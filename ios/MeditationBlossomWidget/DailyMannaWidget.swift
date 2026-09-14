@@ -13,6 +13,7 @@ private enum DailyMannaWidgetConstants {
   static let appGroupId = "group.mannachurch.meditationblossom"
   static let fcmQtKey = "fcm_qt"
   static let youtubeLinkEnabledKey = "youtube_link_enabled"
+  static let widgetDesignQtKey = "widget_design_qt"
   static let fallbackYoutubeUrl = URL(string: "https://www.youtube.com/@만나")!
   static let deepLinkDailyManna = URL(string: "meditationblossom://open?tab=daily_manna")!
   static let contentWidgetKind = "DailyMannaContentWidget"
@@ -21,25 +22,16 @@ private enum DailyMannaWidgetConstants {
 
 // MARK: - Design Tokens
 
+// 텍스트 색상/크기는 WidgetDesign(디자인 편집 기능)을 따른다 — 아래 레이아웃 토큰만 고정값.
+// 라벨(날짜/장절 참조/"묵상 질문")은 본문 대비 축소 비율을 적용한다. src/components/WidgetPreview.tsx의
+// BANNER_INDEX_SIZE_RATIO/CARD_INDEX_SIZE_RATIO, Android WidgetDesignRendering.kt와 동일 값.
 private enum WT {
-  static let outerPad: CGFloat = 18
+  static let outerPad: CGFloat = 10
   static let innerGap: CGFloat = 6
   static let sectionGap: CGFloat = 10
 
-  static let dateFontSize: CGFloat = 12
-  static let titleFontSizeLarge: CGFloat = 17
-  static let titleFontSizeMedium: CGFloat = 14
-  static let refFontSize: CGFloat = 12
-  static let verseFontSizeLarge: CGFloat = 15
-  static let verseFontSizeMedium: CGFloat = 14
-  static let questionFontSize: CGFloat = 14
-  static let sectionLabelFontSize: CGFloat = 11
-
-  // Colors (읽기 좋게: near-black 계열, 배경 gradient에 맞춤)
-  static let primaryText = Color(red: 0.10, green: 0.10, blue: 0.10)
-  static let secondaryText = Color(red: 0.10, green: 0.10, blue: 0.10).opacity(0.50)
-  static let accentText = Color(red: 0.18, green: 0.42, blue: 0.25)   // 짙은 녹색 계열
-  static let dividerColor = Color(red: 0.10, green: 0.10, blue: 0.10).opacity(0.12)
+  static let bannerIndexSizeRatio: Double = 12.0 / 16.0
+  static let cardIndexSizeRatio: Double = 11.0 / 14.0
 }
 
 // MARK: - Timeline Entry
@@ -54,6 +46,7 @@ struct QTEntry: TimelineEntry {
   let isSunday: Bool
   let videoUrl: String?
   let youtubeLinkEnabled: Bool
+  let design: WidgetDesign
 
   var targetURL: URL {
     if youtubeLinkEnabled {
@@ -79,13 +72,16 @@ private let emptyQTEntry = QTEntry(
   meditationQuestions: [widgetInstalledGuideMessage],
   isSunday: false,
   videoUrl: nil,
-  youtubeLinkEnabled: false
+  youtubeLinkEnabled: false,
+  design: defaultWidgetDesign
 )
 
 // MARK: - Verse Parser
 
 private func parseQTContent(_ content: String) -> (reference: String, verses: [String]) {
-  let pattern = #"(본문\s*[:：]?\s*)?([^\d\s]+ ?\d+:\d+(?:-\d+)?(?:,\s*[^\d\s]+ ?\d+:\d+(?:-\d+)?)*)"#
+  // 책 이름 토큰은 \S+로 매칭 — "요한1서"처럼 이름에 숫자가 포함된 경우
+  // [^\d\s]+(숫자 제외)로는 "1" 앞에서 끊겨 "서 4:1"처럼 잘못 파싱되는 문제가 있어 수정함
+  let pattern = #"(본문\s*[:：]?\s*)?(\S+ ?\d+:\d+(?:-\d+)?(?:,\s*\S+ ?\d+:\d+(?:-\d+)?)*)"#
   guard let regex = try? NSRegularExpression(pattern: pattern),
         let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content))
   else { return (reference: "", verses: content.isEmpty ? [] : [content]) }
@@ -136,9 +132,25 @@ struct QTProvider: TimelineProvider {
   }
 
   private func createQTEntry() -> QTEntry {
-    guard let defaults = UserDefaults(suiteName: DailyMannaWidgetConstants.appGroupId),
-          let qt: QT = defaults.getObjectFromString(forKey: DailyMannaWidgetConstants.fcmQtKey, castTo: QT.self)
-    else { return emptyQTEntry }
+    guard let defaults = UserDefaults(suiteName: DailyMannaWidgetConstants.appGroupId) else {
+      return emptyQTEntry
+    }
+    let design = defaults.getObjectFromString(forKey: DailyMannaWidgetConstants.widgetDesignQtKey, castTo: WidgetDesign.self) ?? defaultWidgetDesign
+
+    guard let qt: QT = defaults.getObjectFromString(forKey: DailyMannaWidgetConstants.fcmQtKey, castTo: QT.self) else {
+      return QTEntry(
+        date: emptyQTEntry.date,
+        mergedTitle: emptyQTEntry.mergedTitle,
+        dateLabel: emptyQTEntry.dateLabel,
+        reference: emptyQTEntry.reference,
+        verses: emptyQTEntry.verses,
+        meditationQuestions: emptyQTEntry.meditationQuestions,
+        isSunday: emptyQTEntry.isSunday,
+        videoUrl: emptyQTEntry.videoUrl,
+        youtubeLinkEnabled: emptyQTEntry.youtubeLinkEnabled,
+        design: design
+      )
+    }
 
     let (reference, verses) = parseQTContent(qt.content)
     return QTEntry(
@@ -150,19 +162,9 @@ struct QTProvider: TimelineProvider {
       meditationQuestions: qt.meditationQuestions,
       isSunday: qt.isSunday,
       videoUrl: qt.videoUrl,
-      youtubeLinkEnabled: defaults.bool(forKey: DailyMannaWidgetConstants.youtubeLinkEnabledKey)
+      youtubeLinkEnabled: defaults.bool(forKey: DailyMannaWidgetConstants.youtubeLinkEnabledKey),
+      design: design
     )
-  }
-}
-
-// MARK: - Shared Background
-
-private struct QTWidgetBackground: View {
-  let family: WidgetFamily
-  var body: some View {
-    Image(family == .systemLarge ? "background_364_382" : "background_364_170")
-      .resizable()
-      .aspectRatio(contentMode: .fill)
   }
 }
 
@@ -170,14 +172,16 @@ private struct QTWidgetBackground: View {
 
 private struct SectionHeader: View {
   let title: String
+  let color: Color
+  let fontSize: CGFloat
   var body: some View {
     HStack(spacing: 5) {
       RoundedRectangle(cornerRadius: 1.5)
-        .fill(WT.accentText)
+        .fill(color)
         .frame(width: 3, height: 12)
       Text(title)
-        .font(.system(size: WT.sectionLabelFontSize, weight: .semibold))
-        .foregroundColor(WT.accentText)
+        .font(.system(size: fontSize, weight: .semibold))
+        .foregroundColor(color)
     }
   }
 }
@@ -190,7 +194,6 @@ struct DailyMannaContentWidget: Widget {
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: QTProvider()) { entry in
       DailyMannaContentEntryView(entry: entry)
-        .qtContainerBackground()
         .widgetURL(entry.targetURL)
     }
     .configurationDisplayName("매일만나 말씀")
@@ -203,11 +206,14 @@ struct DailyMannaContentEntryView: View {
   var entry: QTEntry
   @Environment(\.widgetFamily) var family
 
+  private var onPhoto: Bool { entry.design.background.type == "gallery" }
+  private var textColor: Color { hexColor(entry.design.text.color) }
+
   var body: some View {
-    ZStack(alignment: .topLeading) {
-      QTWidgetBackground(family: family)
+    Group {
       if family == .systemLarge { largeContent } else { mediumContent }
     }
+    .widgetContainerBackground(entry.design.background, defaultImageName: family == .systemLarge ? "background_364_382" : "background_364_170")
   }
 
   // Large (364 × 382)
@@ -215,71 +221,95 @@ struct DailyMannaContentEntryView: View {
     VStack(alignment: .leading, spacing: 0) {
       if !entry.dateLabel.isEmpty {
         Text(entry.dateLabel)
-          .font(.system(size: WT.dateFontSize, weight: .medium))
-          .foregroundColor(WT.secondaryText)
+          .font(.system(size: CGFloat(entry.design.text.size) * WT.bannerIndexSizeRatio, weight: .medium))
+          .foregroundColor(textColor)
+          .widgetTextShadow(onPhoto: onPhoto)
       }
 
-      Text(entry.mergedTitle)
-        .font(.system(size: WT.titleFontSizeLarge, weight: .bold))
-        .foregroundColor(WT.primaryText)
-        .lineLimit(2)
-        .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
+      HStack(alignment: .center) {
+        Text(entry.mergedTitle)
+          .font(.system(size: CGFloat(entry.design.text.size), weight: .bold))
+          .foregroundColor(textColor)
+          .lineLimit(2)
+          .widgetTextShadow(onPhoto: onPhoto)
+        Spacer(minLength: 4)
+        if entry.youtubeLinkEnabled {
+          // .center 정렬이어도 폰트 메트릭 특성상 살짝 아래로 치우쳐 보여서 위로 보정.
+          YoutubeMarkerView()
+            .offset(y: -1.5)
+        }
+      }
+      .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
 
       if !entry.reference.isEmpty {
         Text(entry.reference)
-          .font(.system(size: WT.refFontSize, weight: .semibold))
-          .foregroundColor(WT.accentText)
+          .font(.system(size: CGFloat(entry.design.text.size) * WT.bannerIndexSizeRatio, weight: .semibold))
+          .foregroundColor(textColor)
           .padding(.top, WT.innerGap)
+          .widgetTextShadow(onPhoto: onPhoto)
       }
 
       Rectangle()
-        .fill(WT.dividerColor)
+        .fill(dividerColor(onPhoto: onPhoto))
         .frame(height: 1)
         .padding(.top, WT.sectionGap)
 
       Text(entry.verses.prefix(5).joined(separator: "\n\n"))
-        .font(.system(size: WT.verseFontSizeLarge))
-        .foregroundColor(WT.primaryText)
+        .font(.system(size: CGFloat(entry.design.text.size), weight: contentFontWeight(entry.design.text.weight)))
+        .foregroundColor(textColor)
+        .multilineTextAlignment(textAlignment(entry.design.text.align))
         .lineLimit(8)
         .lineSpacing(2)
+        .frame(maxWidth: .infinity, alignment: frameAlignment(entry.design.text.align))
         .padding(.top, WT.sectionGap)
+        .widgetTextShadow(onPhoto: onPhoto)
 
       Spacer(minLength: 0)
     }
-    .padding(EdgeInsets(top: WT.outerPad, leading: 24, bottom: WT.outerPad, trailing: 24))
+    .padding(EdgeInsets(top: WT.outerPad, leading: 10, bottom: WT.outerPad, trailing: 10))
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
   }
 
   // Medium (364 × 170)
   private var mediumContent: some View {
     VStack(alignment: .leading, spacing: WT.innerGap) {
-      HStack(alignment: .firstTextBaseline) {
+      // QT 묵상질문 위젯과 동일하게 .center 정렬로 마커를 배치한다.
+      HStack(alignment: .center) {
         Text(entry.mergedTitle)
-          .font(.system(size: WT.titleFontSizeMedium, weight: .bold))
-          .foregroundColor(WT.primaryText)
+          .font(.system(size: CGFloat(entry.design.text.size), weight: .bold))
+          .foregroundColor(textColor)
           .lineLimit(1)
+          .widgetTextShadow(onPhoto: onPhoto)
         if !entry.reference.isEmpty {
           Spacer(minLength: 4)
           Text(entry.reference)
-            .font(.system(size: WT.refFontSize, weight: .semibold))
-            .foregroundColor(WT.accentText)
+            .font(.system(size: CGFloat(entry.design.text.size) * WT.cardIndexSizeRatio, weight: .semibold))
+            .foregroundColor(textColor)
             .lineLimit(1)
+            .widgetTextShadow(onPhoto: onPhoto)
+        }
+        if entry.youtubeLinkEnabled {
+          Spacer(minLength: 4)
+          YoutubeMarkerView()
         }
       }
       .padding(.horizontal, WT.outerPad)
       .padding(.top, WT.outerPad)
 
       Rectangle()
-        .fill(WT.dividerColor)
+        .fill(dividerColor(onPhoto: onPhoto))
         .frame(height: 1)
         .padding(.horizontal, WT.outerPad)
 
       Text(entry.verses.joined(separator: " "))
-        .font(.system(size: WT.verseFontSizeMedium))
-        .foregroundColor(WT.primaryText)
+        .font(.system(size: CGFloat(entry.design.text.size), weight: contentFontWeight(entry.design.text.weight)))
+        .foregroundColor(textColor)
+        .multilineTextAlignment(textAlignment(entry.design.text.align))
         .lineLimit(4)
         .lineSpacing(1.5)
+        .frame(maxWidth: .infinity, alignment: frameAlignment(entry.design.text.align))
         .padding(.horizontal, WT.outerPad)
+        .widgetTextShadow(onPhoto: onPhoto)
 
       Spacer(minLength: WT.outerPad)
     }
@@ -295,7 +325,6 @@ struct DailyMannaMeditationWidget: Widget {
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: QTProvider()) { entry in
       DailyMannaMeditationEntryView(entry: entry)
-        .qtContainerBackground()
         .widgetURL(entry.targetURL)
     }
     .configurationDisplayName("매일만나 묵상질문")
@@ -307,6 +336,9 @@ struct DailyMannaMeditationWidget: Widget {
 struct DailyMannaMeditationEntryView: View {
   var entry: QTEntry
   @Environment(\.widgetFamily) var family
+
+  private var onPhoto: Bool { entry.design.background.type == "gallery" }
+  private var textColor: Color { hexColor(entry.design.text.color) }
 
   private var hasQuestions: Bool { !entry.isSunday && !entry.meditationQuestions.isEmpty }
   private var noQuestionsText: String {
@@ -322,10 +354,10 @@ struct DailyMannaMeditationEntryView: View {
   }
 
   var body: some View {
-    ZStack(alignment: .topLeading) {
-      QTWidgetBackground(family: family)
+    Group {
       if family == .systemLarge { largeContent } else { mediumContent }
     }
+    .widgetContainerBackground(entry.design.background, defaultImageName: family == .systemLarge ? "background_364_382" : "background_364_170")
   }
 
   // Large
@@ -333,21 +365,32 @@ struct DailyMannaMeditationEntryView: View {
     VStack(alignment: .leading, spacing: 0) {
       if !entry.dateLabel.isEmpty {
         Text(entry.dateLabel)
-          .font(.system(size: WT.dateFontSize, weight: .medium))
-          .foregroundColor(WT.secondaryText)
+          .font(.system(size: CGFloat(entry.design.text.size) * WT.bannerIndexSizeRatio, weight: .medium))
+          .foregroundColor(textColor)
+          .widgetTextShadow(onPhoto: onPhoto)
       }
 
-      Text(entry.mergedTitle)
-        .font(.system(size: WT.titleFontSizeLarge, weight: .bold))
-        .foregroundColor(WT.primaryText)
-        .lineLimit(2)
-        .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
+      HStack(alignment: .center) {
+        Text(entry.mergedTitle)
+          .font(.system(size: CGFloat(entry.design.text.size), weight: .bold))
+          .foregroundColor(textColor)
+          .lineLimit(2)
+          .widgetTextShadow(onPhoto: onPhoto)
+        Spacer(minLength: 4)
+        if entry.youtubeLinkEnabled {
+          // .center 정렬이어도 폰트 메트릭 특성상 살짝 아래로 치우쳐 보여서 위로 보정.
+          YoutubeMarkerView()
+            .offset(y: -1.5)
+        }
+      }
+      .padding(.top, entry.dateLabel.isEmpty ? 0 : WT.innerGap)
 
-      SectionHeader(title: "묵상 질문")
+      SectionHeader(title: "묵상 질문", color: textColor, fontSize: CGFloat(entry.design.text.size) * WT.bannerIndexSizeRatio)
         .padding(.top, WT.sectionGap)
+        .widgetTextShadow(onPhoto: onPhoto)
 
       Rectangle()
-        .fill(WT.dividerColor)
+        .fill(dividerColor(onPhoto: onPhoto))
         .frame(height: 1)
         .padding(.top, WT.innerGap)
 
@@ -356,29 +399,32 @@ struct DailyMannaMeditationEntryView: View {
           ForEach(Array(meditationLines.prefix(6).enumerated()), id: \.offset) { idx, line in
             HStack(alignment: .top, spacing: 2) {
               Text(idx == 0 ? "•" : "")
-                .font(.system(size: WT.questionFontSize, weight: .semibold))
-                .foregroundColor(WT.accentText)
+                .font(.system(size: CGFloat(entry.design.text.size), weight: .semibold))
+                .foregroundColor(textColor)
                 .frame(width: 18, alignment: .leading)
               Text(line)
-                .font(.system(size: WT.questionFontSize))
-                .foregroundColor(WT.primaryText)
+                .font(.system(size: CGFloat(entry.design.text.size), weight: contentFontWeight(entry.design.text.weight)))
+                .foregroundColor(textColor)
+                .multilineTextAlignment(textAlignment(entry.design.text.align))
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: frameAlignment(entry.design.text.align))
             }
+            .widgetTextShadow(onPhoto: onPhoto)
           }
         }
         .padding(.top, WT.sectionGap)
       } else {
         Text(noQuestionsText)
-          .font(.system(size: WT.questionFontSize))
-          .foregroundColor(WT.secondaryText)
+          .font(.system(size: CGFloat(entry.design.text.size)))
+          .foregroundColor(textColor.opacity(0.6))
           .padding(.top, WT.sectionGap)
+          .widgetTextShadow(onPhoto: onPhoto)
       }
 
       Spacer(minLength: 0)
     }
-    .padding(EdgeInsets(top: WT.outerPad, leading: 24, bottom: WT.outerPad, trailing: 24))
+    .padding(EdgeInsets(top: WT.outerPad, leading: 10, bottom: WT.outerPad, trailing: 10))
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
   }
 
@@ -386,18 +432,23 @@ struct DailyMannaMeditationEntryView: View {
   private var mediumContent: some View {
     VStack(alignment: .leading, spacing: WT.innerGap) {
       HStack(alignment: .center) {
-        SectionHeader(title: "묵상 질문")
+        SectionHeader(title: "묵상 질문", color: textColor, fontSize: CGFloat(entry.design.text.size) * WT.cardIndexSizeRatio)
         Spacer(minLength: 6)
         Text(entry.mergedTitle)
-          .font(.system(size: 12, weight: .bold))
-          .foregroundColor(WT.primaryText)
+          .font(.system(size: CGFloat(entry.design.text.size) * WT.cardIndexSizeRatio, weight: .bold))
+          .foregroundColor(textColor)
           .lineLimit(1)
+        if entry.youtubeLinkEnabled {
+          Spacer(minLength: 4)
+          YoutubeMarkerView()
+        }
       }
       .padding(.horizontal, WT.outerPad)
       .padding(.top, WT.outerPad)
+      .widgetTextShadow(onPhoto: onPhoto)
 
       Rectangle()
-        .fill(WT.dividerColor)
+        .fill(dividerColor(onPhoto: onPhoto))
         .frame(height: 1)
         .padding(.horizontal, WT.outerPad)
 
@@ -406,47 +457,30 @@ struct DailyMannaMeditationEntryView: View {
           ForEach(Array(meditationLines.prefix(4).enumerated()), id: \.offset) { idx, line in
             HStack(alignment: .top, spacing: 2) {
               Text(idx == 0 ? "•" : "")
-                .font(.system(size: WT.questionFontSize, weight: .semibold))
-                .foregroundColor(WT.accentText)
+                .font(.system(size: CGFloat(entry.design.text.size), weight: .semibold))
+                .foregroundColor(textColor)
                 .frame(width: 16, alignment: .leading)
               Text(line)
-                .font(.system(size: WT.questionFontSize))
-                .foregroundColor(WT.primaryText)
+                .font(.system(size: CGFloat(entry.design.text.size), weight: contentFontWeight(entry.design.text.weight)))
+                .foregroundColor(textColor)
+                .multilineTextAlignment(textAlignment(entry.design.text.align))
                 .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: frameAlignment(entry.design.text.align))
             }
+            .widgetTextShadow(onPhoto: onPhoto)
           }
         }
         .padding(.horizontal, WT.outerPad)
       } else {
         Text(noQuestionsText)
-          .font(.system(size: WT.questionFontSize))
-          .foregroundColor(WT.secondaryText)
+          .font(.system(size: CGFloat(entry.design.text.size)))
+          .foregroundColor(textColor.opacity(0.6))
           .padding(.horizontal, WT.outerPad)
+          .widgetTextShadow(onPhoto: onPhoto)
       }
 
       Spacer(minLength: WT.outerPad)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-  }
-}
-
-// MARK: - iOS 16/17 containerBackground 헬퍼
-
-extension View {
-  func qtContainerBackground() -> some View {
-    if #available(iOS 17.0, *) {
-      return AnyView(self.containerBackground(.fill.tertiary, for: .widget))
-    } else {
-      return AnyView(self.background(Color.clear))
-    }
-  }
-
-  func qtWidgetBackground(_ color: Color) -> some View {
-    if #available(iOS 17.0, *) {
-      return AnyView(self.containerBackground(for: .widget) { color })
-    } else {
-      return AnyView(self.background(color))
-    }
   }
 }

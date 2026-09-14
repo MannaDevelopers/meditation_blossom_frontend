@@ -63,6 +63,27 @@ class VerseTest {
     }
 
     @Test
+    fun `fromDto handles book name containing a digit`() {
+        // "요한1서"처럼 책 이름 중간에 숫자가 포함된 경우, [^\d\s]+ 방식으로는
+        // 숫자 앞에서 끊겨 "서 4:1"로 잘못 파싱되던 회귀 테스트.
+        val sermonDto = SermonDto(
+            title = "179 하나님의 음성을 구별하라",
+            content = "요한1서 4:1 사랑하는 자들아 영을 다 믿지 말고 오직 영들이 하나님께 속하였나 분별하라 많은 거짓 선지자가 세상에 나왔음이라",
+            date = "2026-07-28",
+            dayOfWeek = "TUE"
+        )
+        val expectedBookName = "요한1서 4:1"
+        val expectedContents = listOf(
+            "사랑하는 자들아 영을 다 믿지 말고 오직 영들이 하나님께 속하였나 분별하라 많은 거짓 선지자가 세상에 나왔음이라"
+        )
+
+        val actualVerse = VerseParser.verseDtoToVerse(sermonDto)
+
+        assertEquals(expectedBookName, actualVerse.bookName)
+        assertArrayEquals(expectedContents.toTypedArray(), actualVerse.verses.toTypedArray())
+    }
+
+    @Test
     fun `fromDto handles content without '본문 colon' prefix gracefully`() {
         val sermonDto = SermonDto(
             title = "시편의 찬양",

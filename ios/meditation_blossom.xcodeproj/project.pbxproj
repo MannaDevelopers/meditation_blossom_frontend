@@ -14,10 +14,11 @@
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		1C3EE8771088DB7C1EB864B8 /* Pods_MeditationBlossomWidgetExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A9635F5505F850465FED39C /* Pods_MeditationBlossomWidgetExtension.framework */; };
 		35449F6D2E5EF66F005824B9 /* PushNotificationService.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 35449F662E5EF66F005824B9 /* PushNotificationService.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		354EC78E2E13D06F00E2A018 /* WidgetUpdateModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 354EC78C2E13D06F00E2A018 /* WidgetUpdateModule.m */; };
+		354EC78E2E13D06F00E2A018 /* WidgetUpdateModule.mm in Sources */ = {isa = PBXBuildFile; fileRef = 354EC78C2E13D06F00E2A018 /* WidgetUpdateModule.mm */; };
 		354EC78F2E13D06F00E2A018 /* WidgetUpdateModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 354EC78D2E13D06F00E2A018 /* WidgetUpdateModule.swift */; };
 		35570001BBBB0001BBBBBBBB /* QT.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35570000BBBB0001BBBBBBBB /* QT.swift */; };
 		35570003BBBB0001BBBBBBBB /* DailyMannaWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35570002BBBB0001BBBBBBBB /* DailyMannaWidget.swift */; };
+		35580001CAFE0001CAFECAFE /* YoutubeMarkerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35580000CAFE0001CAFECAFE /* YoutubeMarkerView.swift */; };
 		3578DB062DEA121C0046B6A0 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3578DB052DEA121C0046B6A0 /* WidgetKit.framework */; };
 		3578DB082DEA121C0046B6A0 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3578DB072DEA121C0046B6A0 /* SwiftUI.framework */; };
 		3578DB192DEA121D0046B6A0 /* MeditationBlossomWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3578DB042DEA121C0046B6A0 /* MeditationBlossomWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -42,6 +43,7 @@
 		55CC77BCBC3D467B81B47C62 /* Pretendard-ExtraBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 9DDBC33AF57F48DA99EBFD26 /* Pretendard-ExtraBold.otf */; };
 		5FFA7AF4CB71498989F6EAC3 /* Pretendard-Light.otf in Resources */ = {isa = PBXBuildFile; fileRef = 24B4574C15E64071AE2213F2 /* Pretendard-Light.otf */; };
 		648990BED925AB88A487D541 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
+		715A76C378C14644D8C35F14 /* WidgetDesignPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15E762226223CF9453DC48DA /* WidgetDesignPersistenceTests.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		92C5C884FCF54E7ABBCD3904 /* BibleDbHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35DF7D9A2F87741F004FEDA3 /* BibleDbHelper.swift */; };
 		B31C3428F30D34E28BBC910F /* Pods_meditation_blossom_meditation_blossomTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E2F272DB449267E51D19031 /* Pods_meditation_blossom_meditation_blossomTests.framework */; };
@@ -100,15 +102,17 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = meditation_blossom/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = meditation_blossom/main.m; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = meditation_blossom/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		15E762226223CF9453DC48DA /* WidgetDesignPersistenceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetDesignPersistenceTests.swift; sourceTree = "<group>"; };
 		24B4574C15E64071AE2213F2 /* Pretendard-Light.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Pretendard-Light.otf"; path = "../src/assets/fonts/Pretendard-Light.otf"; sourceTree = "<group>"; };
 		24BF42212F500E773D902BDA /* Pods-PushNotificationService.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PushNotificationService.debug.xcconfig"; path = "Target Support Files/Pods-PushNotificationService/Pods-PushNotificationService.debug.xcconfig"; sourceTree = "<group>"; };
 		2A9635F5505F850465FED39C /* Pods_MeditationBlossomWidgetExtension.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_MeditationBlossomWidgetExtension.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3256181C03F96D58BB23C4F0 /* Pods-MeditationBlossomWidgetExtension.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MeditationBlossomWidgetExtension.release.xcconfig"; path = "Target Support Files/Pods-MeditationBlossomWidgetExtension/Pods-MeditationBlossomWidgetExtension.release.xcconfig"; sourceTree = "<group>"; };
 		35449F662E5EF66F005824B9 /* PushNotificationService.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PushNotificationService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		354EC78C2E13D06F00E2A018 /* WidgetUpdateModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WidgetUpdateModule.m; sourceTree = "<group>"; };
+		354EC78C2E13D06F00E2A018 /* WidgetUpdateModule.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = WidgetUpdateModule.mm; sourceTree = "<group>"; };
 		354EC78D2E13D06F00E2A018 /* WidgetUpdateModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetUpdateModule.swift; sourceTree = "<group>"; };
 		35570000BBBB0001BBBBBBBB /* QT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QT.swift; sourceTree = "<group>"; };
 		35570002BBBB0001BBBBBBBB /* DailyMannaWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyMannaWidget.swift; sourceTree = "<group>"; };
+		35580000CAFE0001CAFECAFE /* YoutubeMarkerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YoutubeMarkerView.swift; sourceTree = "<group>"; };
 		3578DB042DEA121C0046B6A0 /* MeditationBlossomWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MeditationBlossomWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		3578DB052DEA121C0046B6A0 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		3578DB072DEA121C0046B6A0 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -210,6 +214,7 @@
 			isa = PBXGroup;
 			children = (
 				00E356F01AD99517003FC87E /* Supporting Files */,
+				15E762226223CF9453DC48DA /* WidgetDesignPersistenceTests.swift */,
 			);
 			path = meditation_blossomTests;
 			sourceTree = "<group>";
@@ -231,7 +236,7 @@
 				35DF7D9A2F87741F004FEDA3 /* BibleDbHelper.swift */,
 				3586FEA22E66DC780003ADE5 /* GoogleService-Info.plist */,
 				35D57CC62E4E12C1006A8872 /* MyEventModule.m */,
-				354EC78C2E13D06F00E2A018 /* WidgetUpdateModule.m */,
+				354EC78C2E13D06F00E2A018 /* WidgetUpdateModule.mm */,
 				354EC78D2E13D06F00E2A018 /* WidgetUpdateModule.swift */,
 				358368DD2E01989500AC2237 /* meditation_blossom.entitlements */,
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
@@ -270,6 +275,7 @@
 				3595A3072DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift */,
 				3595A3092DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift */,
 				35570002BBBB0001BBBBBBBB /* DailyMannaWidget.swift */,
+				35580000CAFE0001CAFECAFE /* YoutubeMarkerView.swift */,
 			);
 			path = MeditationBlossomWidget;
 			sourceTree = "<group>";
@@ -544,7 +550,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"$REACT_NATIVE_PATH/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"$WITH_ENVIRONMENT $REACT_NATIVE_XCODE\"\n";
+			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"$REACT_NATIVE_PATH/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"\\\"$WITH_ENVIRONMENT\\\" \\\"$REACT_NATIVE_XCODE\\\"\"\n";
 		};
 		400F84D841D4796F376A7614 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -754,6 +760,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				715A76C378C14644D8C35F14 /* WidgetDesignPersistenceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -765,7 +772,7 @@
 				35CF0001AAAA0001AAAAAAAA /* RCTView+ColorFix.m in Sources */,
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				35D57CC72E4E12CF006A8872 /* MyEventModule.m in Sources */,
-				354EC78E2E13D06F00E2A018 /* WidgetUpdateModule.m in Sources */,
+				354EC78E2E13D06F00E2A018 /* WidgetUpdateModule.mm in Sources */,
 				354EC78F2E13D06F00E2A018 /* WidgetUpdateModule.swift in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				35DF7D9B2F87741F004FEDA3 /* BibleDbHelper.swift in Sources */,
@@ -791,6 +798,7 @@
 				35B6CFCF2E01AC0E004A13DD /* Sermon.swift in Sources */,
 				35570001BBBB0001BBBBBBBB /* QT.swift in Sources */,
 				35570003BBBB0001BBBBBBBB /* DailyMannaWidget.swift in Sources */,
+				35580001CAFE0001CAFECAFE /* YoutubeMarkerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -826,7 +834,7 @@
 					"$(inherited)",
 				);
 				INFOPLIST_FILE = meditation_blossomTests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -840,6 +848,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = mannachurch.meditationblossom.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/meditation_blossom.app/meditation_blossom";
 			};
 			name = Debug;
@@ -854,7 +863,7 @@
 				COPY_PHASE_STRIP = NO;
 				DEVELOPMENT_TEAM = FYUDUBX5E5;
 				INFOPLIST_FILE = meditation_blossomTests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -868,6 +877,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = mannachurch.meditationblossom.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/meditation_blossom.app/meditation_blossom";
 			};
 			name = Release;
@@ -881,7 +891,7 @@
 				CODE_SIGN_ENTITLEMENTS = meditation_blossom/meditation_blossom.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = FYUDUBX5E5;
 				ENABLE_BITCODE = NO;
 				HEADER_SEARCH_PATHS = (
@@ -902,7 +912,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.15;
+				MARKETING_VERSION = 1.2.3;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -927,7 +937,7 @@
 				CODE_SIGN_ENTITLEMENTS = meditation_blossom/meditation_blossom.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = FYUDUBX5E5;
 				INFOPLIST_FILE = meditation_blossom/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
@@ -935,7 +945,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.15;
+				MARKETING_VERSION = 1.2.3;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -963,7 +973,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CODE_SIGN_ENTITLEMENTS = PushNotificationService/PushNotificationService.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = FYUDUBX5E5;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -991,7 +1001,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.1.15;
+				MARKETING_VERSION = 1.2.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = mannachurch.meditationblossom.PushNotificationService;
@@ -1020,7 +1030,7 @@
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = FYUDUBX5E5;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -1048,7 +1058,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.1.15;
+				MARKETING_VERSION = 1.2.3;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = mannachurch.meditationblossom.PushNotificationService;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1076,7 +1086,7 @@
 				CODE_SIGN_ENTITLEMENTS = MeditationBlossomWidgetExtension.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = FYUDUBX5E5;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -1104,7 +1114,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.1.15;
+				MARKETING_VERSION = 1.2.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = mannachurch.meditationblossom.MeditationBlossomWidgetExtension;
@@ -1135,7 +1145,7 @@
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = FYUDUBX5E5;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -1163,7 +1173,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.1.15;
+				MARKETING_VERSION = 1.2.3;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = mannachurch.meditationblossom.MeditationBlossomWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1235,6 +1245,18 @@
 					"${PODS_CONFIGURATION_BUILD_DIR}/React-NativeModulesApple/React_NativeModulesApple.framework/Headers",
 					"${PODS_CONFIGURATION_BUILD_DIR}/React-graphics/React_graphics.framework/Headers",
 					"${PODS_CONFIGURATION_BUILD_DIR}/React-graphics/React_graphics.framework/Headers/react/renderer/graphics/platform/ios",
+					"${PODS_ROOT}/ReactCommon",
+					"${PODS_ROOT}/ReactCommon/react/nativemodule/core",
+					"${PODS_ROOT}/React-runtimeexecutor",
+					"${PODS_ROOT}/React-runtimeexecutor/platform/ios",
+					"${PODS_ROOT}/ReactCommon-Samples",
+					"${PODS_ROOT}/ReactCommon-Samples/platform/ios",
+					"${PODS_ROOT}/React-Fabric/react/renderer/components/view/platform/cxx",
+					"${PODS_ROOT}/React-NativeModulesApple",
+					"${PODS_ROOT}/React-graphics",
+					"${PODS_ROOT}/React-graphics/react/renderer/graphics/platform/ios",
+					"${PODS_ROOT}/React-featureflags",
+					"${PODS_ROOT}/React-renderercss",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 13.4;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1248,6 +1270,10 @@
 				);
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = (
+					"$(inherited)",
+					"-DRCT_REMOVE_LEGACY_ARCH=1",
+				);
 				OTHER_CPLUSPLUSFLAGS = (
 					"$(OTHER_CFLAGS)",
 					"-DFOLLY_NO_CONFIG",
@@ -1255,14 +1281,17 @@
 					"-DFOLLY_USE_LIBCPP=1",
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
+					"-DRCT_REMOVE_LEGACY_ARCH=1",
 				);
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					" ",
 				);
+				PODFILE_DIR = "$(SRCROOT)";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_ENABLE_EXPLICIT_MODULES = NO;
 				USE_HERMES = true;
 			};
 			name = Debug;
@@ -1319,6 +1348,18 @@
 					"${PODS_CONFIGURATION_BUILD_DIR}/React-NativeModulesApple/React_NativeModulesApple.framework/Headers",
 					"${PODS_CONFIGURATION_BUILD_DIR}/React-graphics/React_graphics.framework/Headers",
 					"${PODS_CONFIGURATION_BUILD_DIR}/React-graphics/React_graphics.framework/Headers/react/renderer/graphics/platform/ios",
+					"${PODS_ROOT}/ReactCommon",
+					"${PODS_ROOT}/ReactCommon/react/nativemodule/core",
+					"${PODS_ROOT}/React-runtimeexecutor",
+					"${PODS_ROOT}/React-runtimeexecutor/platform/ios",
+					"${PODS_ROOT}/ReactCommon-Samples",
+					"${PODS_ROOT}/ReactCommon-Samples/platform/ios",
+					"${PODS_ROOT}/React-Fabric/react/renderer/components/view/platform/cxx",
+					"${PODS_ROOT}/React-NativeModulesApple",
+					"${PODS_ROOT}/React-graphics",
+					"${PODS_ROOT}/React-graphics/react/renderer/graphics/platform/ios",
+					"${PODS_ROOT}/React-featureflags",
+					"${PODS_ROOT}/React-renderercss",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 13.4;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1331,6 +1372,10 @@
 					"\"$(inherited)\"",
 				);
 				MTL_ENABLE_DEBUG_INFO = NO;
+				OTHER_CFLAGS = (
+					"$(inherited)",
+					"-DRCT_REMOVE_LEGACY_ARCH=1",
+				);
 				OTHER_CPLUSPLUSFLAGS = (
 					"$(OTHER_CFLAGS)",
 					"-DFOLLY_NO_CONFIG",
@@ -1338,13 +1383,16 @@
 					"-DFOLLY_USE_LIBCPP=1",
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
+					"-DRCT_REMOVE_LEGACY_ARCH=1",
 				);
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					" ",
 				);
+				PODFILE_DIR = "$(SRCROOT)";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
+				SWIFT_ENABLE_EXPLICIT_MODULES = NO;
 				USE_HERMES = true;
 				VALIDATE_PRODUCT = YES;
 			};

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { extractContent } from '../utils/sermonParser';
+import MeditationNoteSheet from '../components/MeditationNoteSheet';
 import SvgIcon from '../components/SvgIcon';
 import { BRIDGE_INIT_DELAY_MS } from '../constants';
 import { useAppGroupSync } from '../hooks/useAppGroupSync';
@@ -25,17 +25,57 @@ import { isSermonDataStale } from '../services/sermonService';
 import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
 import { processTitleText } from '../utils/textFormatting';
+import Clipboard from '@react-native-clipboard/clipboard';
+import CopyToast from '../components/CopyToast';
+import PassageBlock from '../components/PassageBlock';
+import ReferenceTabs from '../components/ReferenceTabs';
+import { useScripturePassages } from '../hooks/useScripturePassages';
+import { buildFullCopyText, buildPassageCopyText } from '../utils/copyText';
+import { useAppTheme } from '../hooks/useAppTheme';
+import { ThemeColors } from '../theme/colors';
 
 const SUNDAY_SERMON_YOUTUBE_URL = encodeURI('https://www.youtube.com/@만나');
 
 const HomeScreen = () => {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const { sermon, isLoading, setIsLoading, error, loadLocalData, fetchFromServer, onRefresh } =
     useSermonData();
 
-  const sermonContent = useMemo(
-    () => (sermon?.content ? extractContent(sermon.content) : { index: '', content: '' }),
-    [sermon?.content],
+  const { passages, mode } = useScripturePassages(sermon?.bible_references, sermon?.content);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 말씀이 바뀌면 보고 있던 참조 인덱스가 범위를 벗어날 수 있다.
+  useEffect(() => setSelectedIndex(0), [sermon?.bible_references]);
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+  }, []);
+
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 1600);
+  }, []);
+
+  const copyPassage = useCallback(
+    (index: number) => {
+      Clipboard.setString(buildPassageCopyText(passages[index]));
+      showToast('구절을 복사했어요');
+    },
+    [passages, showToast],
   );
+
+  const copyAll = useCallback(() => {
+    if (passages.length === 0) return;
+    // 표시용 줄바꿈이 없는 원문 제목을 넘긴다([#166])
+    Clipboard.setString(buildFullCopyText({ title: sermon?.title, passages }));
+    showToast('말씀 전체를 복사했어요');
+  }, [passages, sermon?.title, showToast]);
+
+  const visiblePassages = mode === 'paged' ? passages.slice(selectedIndex, selectedIndex + 1) : passages;
 
   const { performInitialSync } = useAppGroupSync({
     onDataSynced: loadLocalData,
@@ -116,7 +156,16 @@ const HomeScreen = () => {
   logger.log('[Home] rendering, sermon=' + (sermon?.date ?? 'null') + ', isLoading=' + isLoading + ', showSpinner=' + showSpinner);
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={400}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={400}
+        // 선택 탭이 참조 간 유일한 이동 수단이라 스크롤로 사라지면 안 된다([#173]).
+        // 3 = 위에서부터 유튜브 카드 / 구분선 / 제목 행 / 선택 탭 슬롯
+        stickyHeaderIndices={mode === 'paged' ? [3] : undefined}
+      >
         {/* 카드(카테고리/날짜/유튜브 아이콘) 전체를 유튜브 바로가기 터치 영역으로 확장.
             cancelable={false}로 스크롤/스와이프 제스처가 터치를 탈취하지 못하게 하고,
             SVG는 pointerEvents="none"으로 터치를 부모 Pressable에 통과시킨다. */}
@@ -134,16 +183,45 @@ const HomeScreen = () => {
           <SvgIcon name="YoutubeButton" size={60} pointerEvents="none" />
         </Pressable>
         <View style={styles.smallDivider} />
-        <Text style={styles.titleText} numberOfLines={0}>
-          {processTitleText(sermon?.title)}
-        </Text>
-        <Text style={styles.indexText}>{sermonContent.index}</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.titleText} numberOfLines={0}>
+            {processTitleText(sermon?.title)}
+          </Text>
+          {passages.length > 0 ? (
+            <TouchableOpacity
+              onPress={copyAll}
+              style={styles.copyAllButton}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              accessibilityLabel="말씀 전체 복사"
+              accessibilityRole="button"
+            >
+              <SvgIcon name="CopyIcon" size={20} fill={colors.textTertiary} pointerEvents="none" />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+        {/* 선택 탭 자리. inline 모드에서도 슬롯을 비워두지 않고 렌더해야
+            stickyHeaderIndices가 가리키는 자식 인덱스가 흔들리지 않는다. */}
+        <View style={styles.tabSlot}>
+          {mode === 'paged' ? (
+            <ReferenceTabs
+              labels={passages.map(p => p.label)}
+              selectedIndex={selectedIndex}
+              onSelect={setSelectedIndex}
+            />
+          ) : null}
+        </View>
         <View style={styles.contentDivider} />
-        <Text style={styles.contentText}>{sermonContent.content}</Text>
+        {visiblePassages.map((passage, index) => (
+          <PassageBlock
+            key={`${passage.label}-${index}`}
+            passage={passage}
+            onCopy={() => copyPassage(mode === 'paged' ? selectedIndex : index)}
+          />
+        ))}
       </ScrollView>
       {showSpinner && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#A59EAE" />
+          <ActivityIndicator size="large" color={colors.textTertiary} />
         </View>
       )}
       {showError && (
@@ -156,106 +234,113 @@ const HomeScreen = () => {
           </View>
         </View>
       )}
+      <CopyToast message={toast} />
+      {/* 복사에는 표시용 줄바꿈이 없는 원문 제목을 넘긴다([#174]) */}
+      <MeditationNoteSheet source="sermon" title={sermon?.title} />
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    marginHorizontal: 27,
-    marginTop: 16,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  indexText: {
-    color: '#000000',
-    fontSize: 16,
-    fontFamily: 'Pretendard-Regular',
-  },
-  titleText: {
-    color: '#747474',
-    fontSize: 28,
-    fontFamily: 'Pretendard-Bold',
-    flexWrap: 'wrap',
-    marginBottom: 16,
-  },
-  contentText: {
-    color: '#000000',
-    fontSize: 20,
-    fontFamily: 'Pretendard-Bold',
-    lineHeight: 24,
-    marginBottom: 32,
-  },
-  seriesCard: {
-    backgroundColor: '#F3F4F9',
-    borderRadius: 22,
-    paddingHorizontal: 25,
-    paddingVertical: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  seriesCardText: {
-    flex: 1,
-    gap: 4,
-    marginRight: 12,
-  },
-  cardTitleText: {
-    color: '#747474',
-    fontSize: 18,
-    fontFamily: 'Pretendard-SemiBold',
-  },
-  seriesDateText: {
-    color: '#A59EAE',
-    fontSize: 18,
-    fontFamily: 'Pretendard-Regular',
-  },
-  smallDivider: {
-    height: 3,
-    width: 50,
-    backgroundColor: '#8C8C8C',
-    marginBottom: 16,
-  },
-  contentDivider: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    marginBottom: 16,
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-  },
-  errorContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: {
-    color: '#A59EAE',
-    fontSize: 16,
-    fontFamily: 'Pretendard-Medium',
-    marginBottom: 16,
-  },
-  retryButton: {
-    borderWidth: 1,
-    borderColor: '#A59EAE',
-    borderRadius: 10,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-  },
-  retryText: {
-    color: '#A59EAE',
-    fontSize: 16,
-    fontFamily: 'Pretendard-Bold',
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      // 화면 자체 배경은 항상 밝은 카드(surface) 톤 — 아래 seriesCard(background 톤)와
+      // 대비되어야 하므로 네비게이션 기본 배경에 기대지 않고 명시적으로 지정한다.
+      backgroundColor: colors.surface,
+      marginHorizontal: 27,
+      marginTop: 16,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingBottom: 40,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+    },
+    tabSlot: {
+      // sticky 고정 시 색 띠로 보이지 않도록 화면 배경과 같은 톤을 쓴다
+      backgroundColor: colors.surface,
+    },
+    copyAllButton: {
+      paddingTop: 6,
+    },
+    titleText: {
+      flex: 1,
+      color: colors.textSecondary,
+      fontSize: 28,
+      fontFamily: 'Pretendard-Bold',
+      flexWrap: 'wrap',
+      marginBottom: 16,
+    },
+    seriesCard: {
+      backgroundColor: colors.background,
+      borderRadius: 22,
+      paddingHorizontal: 25,
+      paddingVertical: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+    },
+    seriesCardText: {
+      flex: 1,
+      gap: 4,
+      marginRight: 12,
+    },
+    cardTitleText: {
+      color: colors.textSecondary,
+      fontSize: 18,
+      fontFamily: 'Pretendard-SemiBold',
+    },
+    seriesDateText: {
+      color: colors.textTertiary,
+      fontSize: 18,
+      fontFamily: 'Pretendard-Regular',
+    },
+    smallDivider: {
+      height: 3,
+      width: 50,
+      backgroundColor: colors.dividerStrong,
+      marginBottom: 16,
+    },
+    contentDivider: {
+      height: 1,
+      backgroundColor: colors.divider,
+      marginBottom: 16,
+    },
+    loadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'transparent',
+    },
+    errorContainer: {
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    errorText: {
+      color: colors.textTertiary,
+      fontSize: 16,
+      fontFamily: 'Pretendard-Medium',
+      marginBottom: 16,
+    },
+    retryButton: {
+      borderWidth: 1,
+      borderColor: colors.textTertiary,
+      borderRadius: 10,
+      paddingHorizontal: 24,
+      paddingVertical: 10,
+    },
+    retryText: {
+      color: colors.textTertiary,
+      fontSize: 16,
+      fontFamily: 'Pretendard-Bold',
+    },
+  });
 
 export default HomeScreen;

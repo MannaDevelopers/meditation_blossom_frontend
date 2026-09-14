@@ -137,6 +137,6 @@ App Group ID: `group.mannachurch.meditationblossom` (앱 + Widget Extension + No
 
 ## Environment
 
-- Node.js >= 18, React Native 0.78, React 19
+- Node.js >= 22.11.0 (`.nvmrc` 참고), React Native 0.86.2, React 19
 - Android: targetSdk 35, minSdk 28, JDK 17
 - iOS: deployment target 16.6, Ruby 3.0+ with CocoaPods

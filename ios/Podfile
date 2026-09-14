@@ -24,6 +24,19 @@ target 'meditation_blossom' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
+  # RN 0.84+의 "prebuilt RNCore" 배포 시스템이 react-native-firebase의 정적 링킹과 충돌해
+  # iOS 빌드가 깨짐 (invertase/react-native-firebase#8883). RNFB 계열 pod만 static library로
+  # 강제해서 회피 - 메인테이너가 권장하는 bare RN CLI용 워크어라운드.
+  pre_install do |installer|
+    installer.pod_targets.each do |pod|
+      if pod.name.start_with?('RNFB')
+        def pod.build_type
+          Pod::BuildType.static_library
+        end
+      end
+    end
+  end
+
   target 'meditation_blossomTests' do
     inherit! :complete
     # Pods for testing
@@ -42,14 +55,13 @@ target 'meditation_blossom' do
   end
 
   post_install do |installer|
-    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
     react_native_post_install(
       installer,
       config[:reactNativePath],
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
-    
+
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
         config.build_settings['ENABLE_BITCODE'] = 'NO'
