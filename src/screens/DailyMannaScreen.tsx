@@ -387,7 +387,7 @@ const createStyles = (colors: ThemeColors) =>
       lineHeight: 24,
     },
     loadingOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: 'transparent',

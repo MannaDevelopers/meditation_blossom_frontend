@@ -314,7 +314,7 @@ const createStyles = (colors: ThemeColors) =>
       marginBottom: 16,
     },
     loadingOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: 'transparent',
