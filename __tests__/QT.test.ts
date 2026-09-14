@@ -119,14 +119,15 @@ describe('firestoreDocToQt', () => {
     expect(result.content).toBe('본문 : 에베소서 5:15-16 RESOLVED');
   });
 
-  it('on iOS returns empty content', async () => {
+  it('on iOS resolves content via bridge', async () => {
     (Platform as any).OS = 'ios';
+    bridge.resolveBibleReferences.mockResolvedValue('본문 : 에베소서 5:15-16 RESOLVED');
     const doc = makeDoc({
       title: 'T', series_title: 'Daily', date: '2026-04-17',
       bible_references: [{ book: '에베소서', chapter: 5, verse_start: 15, verse_end: 16 }],
     });
     const result = await firestoreDocToQt(doc);
-    expect(result.content).toBe('');
+    expect(result.content).toBe('본문 : 에베소서 5:15-16 RESOLVED');
   });
 
   it('Firestore array를 JSON 문자열로 변환', async () => {

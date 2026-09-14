@@ -24,10 +24,10 @@ import DeviceInfo from 'react-native-device-info';
 import Svg, { Path } from 'react-native-svg';
 import SvgIcon from '../components/SvgIcon';
 import { RootStackParamList } from '../types/navigation';
-import { FCM_SERMON_KEY } from '../types/Sermon';
+import { FCM_SERMON_KEY, WorshipType, WORSHIP_TYPES, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
 import { FCM_QT_KEY } from '../types/QT';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
-import { fetchLatestSermonFromServer, pushSermonToWidget } from '../services/sermonService';
+import { fetchLatestSermonFromServer, pushSermonToWidget, syncSelectedSermonToWidget, saveWeeklySermonsToAsyncStorage } from '../services/sermonService';
 import { fetchLatestQtFromServer, pushQtToWidget } from '../services/qtService';
 import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
@@ -35,6 +35,16 @@ import { useAppTheme } from '../hooks/useAppTheme';
 import { ThemeColors } from '../theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SettingsScreen'>;
+
+// sermons-v2 'week' 필드 계산용 (docs/firestore/sermons-v2.md의 ISO 8601 week_number 정의와 동일)
+function toIsoWeek(date: Date): string {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
 
 const SettingsScreen = ({ navigation }: Props) => {
   const { colors } = useAppTheme();
@@ -44,6 +54,17 @@ const SettingsScreen = ({ navigation }: Props) => {
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [youtubeLinkEnabled, setYoutubeLinkEnabled] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedWorship, setSelectedWorship] = useState<WorshipType>(DEFAULT_WORSHIP_TYPE);
+
+  const handleWorshipChange = async (type: WorshipType) => {
+    setSelectedWorship(type);
+    try {
+      await AsyncStorage.setItem(USER_WORSHIP_SETTING_KEY, type);
+      await syncSelectedSermonToWidget(type);
+    } catch (error) {
+      logger.error('예배 시간 설정 저장 실패:', error);
+    }
+  };
 
   const toggleDeveloperMenu = () => {
     const newTapCount = tapCount + 1;
@@ -134,6 +155,46 @@ const SettingsScreen = ({ navigation }: Props) => {
     }
   };
 
+  const registerMockWeeklySermons = async () => {
+    try {
+      const today = new Date();
+      const diffToSunday = 7 - today.getDay();
+      const sunday = new Date(today);
+      sunday.setDate(today.getDate() + (diffToSunday === 7 ? 0 : diffToSunday));
+      const saturday = new Date(sunday);
+      saturday.setDate(sunday.getDate() - 1);
+      const sundayStr = sunday.toISOString().split('T')[0];
+      const saturdayStr = saturday.toISOString().split('T')[0];
+      const weekStr = toIsoWeek(sunday);
+
+      const worshipOptions = [
+        { type: 'SAT_1700' as WorshipType, dayLabel: '토요일 오후 5시', date: saturdayStr },
+        { type: 'SUN_0950' as WorshipType, dayLabel: '주일 9시 50분', date: sundayStr },
+        { type: 'SUN_1150' as WorshipType, dayLabel: '주일 11시 50분', date: sundayStr },
+        { type: 'SUN_1430' as WorshipType, dayLabel: '주일 2시 30분', date: sundayStr },
+      ];
+
+      const mockSermons = worshipOptions.map((opt) => ({
+        id: `mock-weekly-${opt.type}-${weekStr}`,
+        title: `[${opt.dayLabel}] 생명의 말씀`,
+        content: `이것은 ${opt.dayLabel} 묵상만개 모의 말씀입니다.\n어떠한 상황 속에서도 기쁨으로 살아갑시다. (${opt.date})`,
+        date: opt.date,
+        week: weekStr,
+        worship_type: opt.type,
+        video_url: 'https://www.youtube.com/watch?v=mock',
+        created_at: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
+        updated_at: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
+      }));
+
+      await saveWeeklySermonsToAsyncStorage(mockSermons);
+      await syncSelectedSermonToWidget(selectedWorship);
+      Alert.alert('성공', `주간 모의 데이터(4개)가 로컬 캐시에 등록되었습니다.\nweek: ${weekStr}\n현재 설정된 예배(${selectedWorship})로 동기화되었습니다.`);
+    } catch (error) {
+      logger.error('모의 데이터 등록 실패:', error);
+      Alert.alert('오류', '모의 데이터 등록에 실패했습니다.');
+    }
+  };
+
   useEffect(() => {
     const loadYoutubeLinkSetting = async () => {
       try {
@@ -146,6 +207,20 @@ const SettingsScreen = ({ navigation }: Props) => {
       }
     };
     loadYoutubeLinkSetting();
+  }, []);
+
+  useEffect(() => {
+    const loadWorshipSetting = async () => {
+      try {
+        const saved = await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY);
+        if (saved) {
+          setSelectedWorship(saved as WorshipType);
+        }
+      } catch (error) {
+        logger.error('예배 시간 설정 불러오기 실패:', error);
+      }
+    };
+    loadWorshipSetting();
   }, []);
 
   useEffect(() => {
@@ -244,6 +319,42 @@ const SettingsScreen = ({ navigation }: Props) => {
           </View>
         </View>
 
+        {/* 예배 시간 설정 섹션 */}
+        <Text style={styles.sectionLabel}>예배 시간 설정</Text>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionDescription}>
+            참석하시는 예배 시간에 맞게 말씀을 표시합니다.
+          </Text>
+          <View style={styles.worshipGrid}>
+            {WORSHIP_TYPES.map((w) => {
+              const isSelected = selectedWorship === w.key;
+
+              return (
+                <TouchableOpacity
+                  key={w.key}
+                  style={[
+                    styles.worshipCard,
+                    isSelected && styles.worshipCardActive,
+                  ]}
+                  onPress={() => handleWorshipChange(w.key)}
+                >
+                  <Text
+                    style={[
+                      styles.worshipCardText,
+                      isSelected && styles.worshipCardTextActive,
+                    ]}
+                  >
+                    {w.label}
+                  </Text>
+                  <View style={styles.radioButton}>
+                    {isSelected && <View style={styles.radioInner} />}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
         {/* 앱 관리 섹션 (여러 번 탭하면 숨겨진 개발자 메뉴가 열린다)
             activeOpacity={1}로 누름 효과를 없애 버튼임을 인지하지 못하게 한다. */}
         <TouchableOpacity onPress={toggleDeveloperMenu} activeOpacity={1}>
@@ -267,6 +378,9 @@ const SettingsScreen = ({ navigation }: Props) => {
             <>
               <TouchableOpacity onPress={inspectStorage} style={styles.devButton}>
                 <Text style={styles.devButtonText}>스토리지 검사</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={registerMockWeeklySermons} style={styles.devButton}>
+                <Text style={styles.devButtonText}>주간 모의 데이터 등록 (로컬 캐시)</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={copyFCMToken} style={styles.fcmButton}>
                 <Text style={styles.devButtonText}>FCM 토큰 복사</Text>
@@ -482,6 +596,37 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: 12,
       textAlign: 'center',
       fontFamily: 'Pretendard-Regular',
+    },
+    worshipGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+    worshipCard: {
+      width: '48%',
+      minWidth: 140,
+      flexGrow: 1,
+      height: 75,
+      backgroundColor: colors.background,
+      borderRadius: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 6,
+      borderWidth: 1.5,
+      borderColor: colors.background,
+    },
+    worshipCardActive: {
+      borderColor: colors.accent,
+      backgroundColor: colors.infoPanelBlue,
+    },
+    worshipCardText: {
+      color: colors.textTertiary,
+      fontSize: 14,
+      fontFamily: 'Pretendard-Bold',
+      textAlign: 'center',
+    },
+    worshipCardTextActive: {
+      color: colors.accent,
     },
     aboutSection: {
       backgroundColor: colors.infoPanelLavender,

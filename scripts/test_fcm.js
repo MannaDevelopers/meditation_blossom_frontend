@@ -13,10 +13,29 @@ const TOKEN_FILE = path.join(__dirname, '.fcm_token.local');
 const COUNTER_FILE = path.join(__dirname, '.fcm_counter.local');
 const DATA_FILE = path.join(__dirname, 'fcm_test_data.json');
 
-if (fs.existsSync(LOCAL_SA)) {
+let serviceAccountPath = LOCAL_SA;
+if (!fs.existsSync(serviceAccountPath)) {
+  const SECRETS_DIR = path.join(__dirname, '../.secrets');
+  if (fs.existsSync(SECRETS_DIR)) {
+    try {
+      const files = fs.readdirSync(SECRETS_DIR);
+      const matched = files.find(f => f.startsWith('muksang-mangae') && f.endsWith('.json'));
+      if (matched) {
+        serviceAccountPath = path.join(SECRETS_DIR, matched);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+}
+
+if (fs.existsSync(serviceAccountPath)) {
   // eslint-disable-next-line global-require, import/no-dynamic-require
-  admin.initializeApp({ credential: admin.credential.cert(require(LOCAL_SA)), projectId: process.env.FIREBASE_PROJECT_ID || 'muksang-mangae' });
-  console.log('🔐 firebase-service-account.json 사용');
+  admin.initializeApp({
+    credential: admin.credential.cert(require(serviceAccountPath)),
+    projectId: process.env.FIREBASE_PROJECT_ID || 'muksang-mangae',
+  });
+  console.log(`🔐 Service Account 사용: ${path.basename(serviceAccountPath)}`);
 } else {
   admin.initializeApp({ credential: admin.credential.applicationDefault(), projectId: process.env.FIREBASE_PROJECT_ID || 'muksang-mangae' });
   console.log('🔐 Application Default Credentials 사용');
@@ -186,17 +205,166 @@ async function sendWidgetKitPush(token, dataType = 'sermon_events', label = null
   });
 }
 
+// Firestore 데이터 등록 + FCM 전송
+async function updateFirestoreAndSendFcm(token, dataType = 'sermon_events', label = null) {
+  const rawData = loadData(dataType, label);
+  const db = admin.firestore();
+  const collectionName = dataType === 'qt_events' ? 'qt' : 'sermons';
+
+  // Firestore 문서 데이터 준비
+  const docData = {
+    title: rawData.title,
+    date: rawData.date || new Date().toISOString().split('T')[0],
+    day_of_week: rawData.day_of_week || '',
+    video_url: rawData.video_url || '',
+    created_at: admin.firestore.FieldValue.serverTimestamp(),
+    updated_at: admin.firestore.FieldValue.serverTimestamp(),
+  };
+
+  if (dataType === 'qt_events') {
+    docData.series_title = rawData.series_title || '';
+    if (rawData.meditation_questions) {
+      try {
+        docData.meditation_questions = JSON.parse(rawData.meditation_questions);
+      } catch (e) {
+        docData.meditation_questions = rawData.meditation_questions.split('\n').filter(Boolean);
+      }
+    }
+  } else {
+    docData.category = rawData.category || '';
+  }
+
+  if (rawData.bible_references) {
+    try {
+      docData.bible_references = JSON.parse(rawData.bible_references);
+    } catch (e) {
+      docData.bible_references = [];
+    }
+  }
+
+  console.log(`  🔥 Step 1: Firestore 컬렉션 '${collectionName}'에 문서 등록 중...`);
+  const docRef = await db.collection(collectionName).add(docData);
+  console.log(`  ✅ Firestore 문서 등록 완료! (ID: ${docRef.id})`);
+
+  // FCM 메시지 전송 데이터에 새로 생성된 문서 ID 반영
+  rawData.id = docRef.id;
+  rawData.source_id = docRef.id;
+
+  const dataFields = toStr(rawData);
+
+  console.log(`  📤 Step 2: FCM 전송 중...`);
+  return admin.messaging().send({
+    ...(token ? { token } : { topic: rawData.topic }),
+    android: { priority: 'high', data: dataFields },
+    apns: {
+      headers: { 'apns-push-type': 'alert', 'apns-priority': '10' },
+      payload: { aps: { 'content-available': 1, 'mutable-content': 1, alert: { title: '', body: '' }, badge: 0 }, ...dataFields },
+    },
+  });
+}
+
+// 주간 전체 5개 예배 일괄 등록 + FCM 전송
+// docs/firestore/sermons-v2.md의 ISO 8601 week_number 정의와 동일한 계산
+function toIsoWeek(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
+// sermons-v2 컬렉션에 주말 4개 예배 문서를 등록하고 sermons_v2_events로 FCM을 보낸다.
+// (docs/firestore/sermons-v2.md, docs/fcm-event/sermons-v2-events.md 스펙 기준)
+async function sendWeeklySermonsScenario(token, topic = 'sermons_v2_events') {
+  const db = admin.firestore();
+
+  const today = new Date();
+  const diffToSunday = 7 - today.getDay();
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() + (diffToSunday === 7 ? 0 : diffToSunday));
+  const saturday = new Date(sunday);
+  saturday.setDate(sunday.getDate() - 1);
+  const sundayStr = sunday.toISOString().split('T')[0];
+  const saturdayStr = saturday.toISOString().split('T')[0];
+  const weekStr = toIsoWeek(sunday);
+
+  console.log(`\n📅 주간 묶음 키(week): ${weekStr}`);
+
+  const worshipOptions = [
+    { type: 'SAT_1700', date: saturdayStr, dayLabel: '토요일 오후 5시 예배', videoUrl: 'https://www.youtube.com/watch?v=mock-sat' },
+    { type: 'SUN_0950', date: sundayStr, dayLabel: '주일 9시 50분 예배', videoUrl: 'https://www.youtube.com/watch?v=mock-sun' },
+    { type: 'SUN_1150', date: sundayStr, dayLabel: '주일 11시 50분 예배', videoUrl: 'https://www.youtube.com/watch?v=mock-sun' },
+    { type: 'SUN_1430', date: sundayStr, dayLabel: '주일 2시 30분 예배', videoUrl: 'https://www.youtube.com/watch?v=mock-sun' },
+  ];
+
+  const bibleReferences = [{ book: '요한복음', chapter: 3, verse_start: 16, verse_end: 16 }];
+  const createdDocs = [];
+
+  for (const opt of worshipOptions) {
+    const docId = `${weekStr}_${opt.type}`;
+    const sourceId = `mock-${docId}`;
+    const docData = {
+      week: weekStr,
+      worship_type: opt.type,
+      date: opt.date,
+      title: `${opt.dayLabel} 생명의 말씀 / 모의 설교자`,
+      bible_references: bibleReferences,
+      source_id: sourceId,
+      raw_hash: `mock-hash-${docId}`,
+      video_url: opt.videoUrl,
+      created_at: admin.firestore.FieldValue.serverTimestamp(),
+      updated_at: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    console.log(`  🔥 sermons-v2 '${docId}' 문서 등록 중...`);
+    await db.collection('sermons-v2').doc(docId).set(docData, { merge: true });
+    console.log(`  ✅ '${docId}' 등록 완료!`);
+    createdDocs.push({ id: docId, ...docData, sourceId });
+  }
+
+  const representative = createdDocs.find(d => d.worship_type === 'SUN_0950');
+  const payload = {
+    week: weekStr,
+    worship_type: representative.worship_type,
+    date: representative.date,
+    title: representative.title,
+    bible_references: JSON.stringify(bibleReferences),
+    source_id: representative.sourceId,
+    video_url: representative.video_url,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    operation: 'CREATED',
+    topic: topic,
+  };
+
+  const dataFields = toStr(payload);
+
+  console.log(`  📤 FCM 푸시 알림(${topic}) 전송 중...`);
+  return admin.messaging().send({
+    ...(token ? { token } : { topic: topic }),
+    android: { priority: 'high', data: dataFields },
+    apns: {
+      headers: { 'apns-push-type': 'background', 'apns-priority': '5' },
+      payload: { aps: { 'content-available': 1 }, ...dataFields },
+    },
+  });
+}
+
 // ── 메뉴 정의 ────────────────────────────────────────────────
 const METHODS = [
   { label: 'sendSermonEvent  — 실제 서버 방식 (권장)', fn: sendSermonEvent },
   { label: 'sendDataOnly     — data-only, 백그라운드', fn: sendDataOnly },
   { label: 'sendNotification — 알림 포함', fn: sendNotification },
   { label: 'sendWidgetKitPush — 위젯만 업데이트 (2단계)', fn: sendWidgetKitPush },
+  { label: 'updateFirestoreAndSendFcm — Firestore 데이터 등록 후 FCM 발송', fn: updateFirestoreAndSendFcm },
+  { label: 'sendWeeklySermonsScenario — sermons-v2 4개 예배 일괄 등록 후 FCM 발송', fn: sendWeeklySermonsScenario },
 ];
 
 const TOPICS = [
-  { label: 'sermon_events  → sermon_events_v2 (주일 말씀)', value: 'sermon_events' },
+  { label: 'sermon_events  → sermon_events_v2 (주일 말씀, 레거시/전체)', value: 'sermon_events' },
   { label: 'qt_events      → qt_events (매일 만나 QT)',      value: 'qt_events' },
+  { label: 'sermons_v2_events (예배 시간별 말씀, sendWeeklySermonsScenario 전용)', value: 'sermons_v2_events' },
 ];
 
 // ── readline 헬퍼 ────────────────────────────────────────────
@@ -319,6 +487,9 @@ if (!command) {
     sendDataOnly: sendDataOnly,
     sendNotification: sendNotification,
     sendWidgetKitPush: sendWidgetKitPush,
+    updateFirestoreAndSendFcm: updateFirestoreAndSendFcm,
+    sendWeeklySermonsScenario: sendWeeklySermonsScenario,
+    weekly: sendWeeklySermonsScenario,
   };
 
   const fn = fnMap[command];
@@ -326,7 +497,7 @@ if (!command) {
     console.error(`❌ 알 수 없는 명령어: ${command}`);
     console.log('사용법: yarn fcm  (인터랙티브 모드)');
     console.log('        node test_fcm.js save-token TOKEN');
-    console.log('        node test_fcm.js [sendSermonEvent|sendDataOnly|sendNotification|sendWidgetKitPush] [TOKEN|TOPIC] [sermon_events|qt_events]');
+    console.log('        node test_fcm.js [sendSermonEvent|sendDataOnly|sendNotification|sendWidgetKitPush|updateFirestoreAndSendFcm|sendWeeklySermonsScenario] [TOKEN|TOPIC] [sermon_events|qt_events]');
     process.exit(1);
   }
 

@@ -82,6 +82,20 @@ class MainApplication : Application(), ReactApplication {
                 }
             }
 
+        // sermons-v2(예배 시간별 주간 데이터) 토픽 구독
+        FirebaseMessaging.getInstance()
+            .subscribeToTopic(Constants.SERMONS_V2_SUBJECT)
+            .addOnCompleteListener { task ->
+                task.exception?.let { exception ->
+                    CrashlyticsHelper.recordException(
+                        exception,
+                        "FirebaseMessaging subscribeToTopic (sermons_v2_events) failed"
+                    )
+                } ?: run {
+                    Timber.d("Successfully subscribed to ${Constants.SERMONS_V2_SUBJECT} topic")
+                }
+            }
+
         // 새 QT 토픽 구독
         FirebaseMessaging.getInstance()
             .subscribeToTopic(Constants.QT_SUBJECT)
@@ -124,6 +138,19 @@ class MainApplication : Application(), ReactApplication {
                         )
                     } ?: run {
                         Timber.d("[DEBUG] Successfully subscribed to qt_events_test topic")
+                    }
+                }
+
+            FirebaseMessaging.getInstance()
+                .subscribeToTopic("sermons_v2_events_test")
+                .addOnCompleteListener { task ->
+                    task.exception?.let { exception ->
+                        CrashlyticsHelper.recordException(
+                            exception,
+                            "FirebaseMessaging subscribeToTopic (sermons_v2_events_test) failed"
+                        )
+                    } ?: run {
+                        Timber.d("[DEBUG] Successfully subscribed to sermons_v2_events_test topic")
                     }
                 }
         }

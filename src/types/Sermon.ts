@@ -3,6 +3,16 @@ import { Platform } from 'react-native';
 import logger from "../utils/logger";
 import WidgetUpdateModule from './WidgetUpdateModule';
 
+// 주말 4개 예배 (목요찬양집회는 설교 제목/본문이 없어 제외, 시각은 sermons-v2.md 기준)
+export type WorshipType = 'SAT_1700' | 'SUN_0950' | 'SUN_1150' | 'SUN_1430';
+
+export const WORSHIP_TYPES: { key: WorshipType; label: string }[] = [
+  { key: 'SAT_1700', label: '토요일 오후 5시' },
+  { key: 'SUN_0950', label: '주일 9시 50분' },
+  { key: 'SUN_1150', label: '주일 11시 50분' },
+  { key: 'SUN_1430', label: '주일 2시 30분' },
+];
+
 export type FirestoreTimestamp = { seconds: number; nanoseconds: number };
 
 export interface Sermon {
@@ -13,6 +23,8 @@ export interface Sermon {
   category?: string; // 설교 카테고리
   day_of_week?: string; // 요일 (예: "SUN")
   video_url?: string;
+  worship_type?: WorshipType;
+  week?: string; // ISO 8601 week_number (예: "2026-W37"), sermons-v2 주간 묶음 키
   /**
    * Firestore `bible_references` 배열의 JSON 문자열([#173]).
    * 화면이 참조별 칩을 그리려면 이 값이 필요한데, 예전에는 변환 과정에서 버려져
@@ -36,6 +48,8 @@ export interface SermonRaw {
   bible_references?: string;
   video_url?: string;
   source_id?: string;
+  worship_type?: WorshipType;
+  week?: string;
   created_at?: FirestoreTimestamp | string;
   createdAt?: FirestoreTimestamp | string;
   updated_at?: FirestoreTimestamp | string;
@@ -50,6 +64,8 @@ export interface SermonMetadata {
 
 // 스토리지 키
 export const FCM_SERMON_KEY = 'fcm_sermon';
+export const USER_WORSHIP_SETTING_KEY = 'user_worship_setting';
+export const DEFAULT_WORSHIP_TYPE: WorshipType = 'SUN_0950';
 
 
 export function convertStringToTimestamp(isoString: string | null | undefined): FirestoreTimestamp {
@@ -122,6 +138,8 @@ export function fcmDataToSermon(raw: SermonRaw): Sermon {
     category: raw.category,
     day_of_week: raw.day_of_week || raw.dayOfWeek,
     video_url: raw.video_url,
+    worship_type: raw.worship_type,
+    week: raw.week,
     bible_references: raw.bible_references,
     created_at: resolveTimestamp(raw.created_at, raw.createdAt),
     updated_at: resolveTimestamp(raw.updated_at, raw.updatedAt),
@@ -158,6 +176,8 @@ export const firestoreDocToSermon = async (
     category: firestoreData.category || '',
     day_of_week: firestoreData.day_of_week || '',
     video_url: firestoreData.video_url,
+    worship_type: firestoreData.worship_type,
+    week: firestoreData.week,
     // 화면이 참조별 칩을 그리려면 원본 참조가 필요하다([#173]).
     // FCM 경로(SermonRaw)와 모양을 맞춰 문자열로 보존한다.
     bible_references: bibleRefs ? JSON.stringify(bibleRefs) : undefined,
