@@ -178,7 +178,10 @@ export const firestoreDocToSermon = async (
       );
       content = resolved;
     } catch (e) {
-      logger.error('firestoreDocToSermon: bridge resolveBibleReferences failed', e);
+      // bible_references가 빈 배열("말씀 없는 날")인 경우가 흔해 오류가 아니라 정상 상태다.
+      // content가 비는 정도로 우아하게 넘어가므로 error(빨간 화면/Crashlytics 비정상 기록)가 아닌
+      // warn(Crashlytics 로그만 남김)으로 낮춘다.
+      logger.warn('firestoreDocToSermon: bridge resolveBibleReferences failed', e);
       content = '';
     }
   }

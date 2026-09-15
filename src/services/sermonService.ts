@@ -162,7 +162,8 @@ export async function upsertWeeklySermonFromEvent(raw: SermonRaw): Promise<Sermo
     try {
       incoming.content = await WidgetUpdateModule.resolveBibleReferences(raw.bible_references);
     } catch (e) {
-      logger.error('upsertWeeklySermonFromEvent: bridge resolveBibleReferences failed', e);
+      // firestoreDocToSermon과 동일한 이유로 warn — 빈 bible_references는 정상적인 "말씀 없는 날" 상태다.
+      logger.warn('upsertWeeklySermonFromEvent: bridge resolveBibleReferences failed', e);
     }
   }
   // sermons-v2-events.md 페이로드엔 id가 없다 — Firestore 문서 ID 규칙과 동일하게 구성한다.
