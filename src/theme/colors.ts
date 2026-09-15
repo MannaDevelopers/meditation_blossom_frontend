@@ -51,6 +51,6 @@ export const darkColors: ThemeColors = {
   statusBarStyle: 'light-content',
 };
 
-export function getThemeColors(scheme: ColorSchemeName): ThemeColors {
+export function getThemeColors(scheme: ColorSchemeName | null | undefined): ThemeColors {
   return scheme === 'dark' ? darkColors : lightColors;
 }
