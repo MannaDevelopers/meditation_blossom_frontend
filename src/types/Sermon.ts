@@ -19,9 +19,10 @@ export const WORSHIP_TYPES: { key: WorshipType; label: string }[] = [
   { key: 'SUN_1430', label: '주일 2시 30분' },
 ];
 
+// '전체'는 그리드 맨 마지막(2열 wrap에서 홀수 5번째 = 넓은 단독 칸)에 오도록 끝에 둔다([#278] UI 피드백).
 export const WORSHIP_SETTINGS: { key: WorshipSetting; label: string }[] = [
-  { key: 'ALL', label: '전체' },
   ...WORSHIP_TYPES,
+  { key: 'ALL', label: '전체' },
 ];
 
 export type FirestoreTimestamp = { seconds: number; nanoseconds: number };
