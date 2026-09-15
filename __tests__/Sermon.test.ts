@@ -212,6 +212,18 @@ describe('fcmDataToSermon', () => {
     expect(result.worship_type).toBe('SUN_0950');
     expect(result.week).toBe('2026-W37');
   });
+
+  it('defaults day_of_week to empty string when missing (sermons-v2 payload에는 이 필드가 없음)', () => {
+    // 네이티브 SermonDto(day_of_week 필수 필드)가 undefined 시 JSON.stringify가 키를 날려버려
+    // MissingFieldException을 던지는 실기기 크래시를 막기 위한 회귀 테스트([#280]).
+    const raw: SermonRaw = {
+      id: '1', title: 'T', content: 'C', date: '2026-09-12',
+      worship_type: 'SAT_1700' as any, week: '2026-W37',
+    };
+    const result = fcmDataToSermon(raw);
+    expect(result.day_of_week).toBe('');
+    expect(JSON.parse(JSON.stringify(result))).toHaveProperty('day_of_week', '');
+  });
 });
 
 import { Platform } from 'react-native';

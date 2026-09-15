@@ -148,7 +148,10 @@ export function fcmDataToSermon(raw: SermonRaw): Sermon {
     content: raw.content || '',
     date: raw.date || '',
     category: raw.category,
-    day_of_week: raw.day_of_week || raw.dayOfWeek,
+    // sermons-v2 payload엔 day_of_week가 없다. undefined면 JSON.stringify가 키 자체를
+    // 날려버려 네이티브 SermonDto(필수 필드)가 MissingFieldException을 던진다([#280] 실기기 확인).
+    // firestoreDocToSermon과 동일하게 빈 문자열로 기본값을 채운다.
+    day_of_week: raw.day_of_week || raw.dayOfWeek || '',
     video_url: raw.video_url,
     worship_type: raw.worship_type,
     week: raw.week,
