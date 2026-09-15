@@ -147,6 +147,39 @@ export async function saveWeeklySermonsToAsyncStorage(sermons: Sermon[]): Promis
   await AsyncStorage.setItem(WEEKLY_SERMONS_KEY, JSON.stringify(sermons));
 }
 
+// sermons-v2 UPDATED/CREATED FCM payload 하나로 weekly_sermons 캐시의 해당 문서 하나만
+// 갱신한다([#280]). week/worship_type이 없으면(레거시 이벤트 등) 패치할 수 없으므로 null 반환 —
+// 호출자는 이 경우 fetchLatestWeeklySermonsFromServer()로 폴백해야 한다.
+// 캐시가 다른(이전) 주간 데이터만 갖고 있으면, 그 주 데이터는 버리고 이 문서 하나로 새 주를 시작한다
+// (주가 바뀌는 시점에 오래된 예배 데이터가 새 주 데이터와 섞이는 것을 방지).
+export async function upsertWeeklySermonFromEvent(raw: SermonRaw): Promise<Sermon | null> {
+  if (!raw.week || !raw.worship_type) return null;
+
+  const incoming = fcmDataToSermon(raw);
+  // fcmDataToSermon은 동기 함수라 content를 그대로 옮길 뿐 bible_references를 해석하지 않는다.
+  // firestoreDocToSermon과 동일하게 여기서 직접 해석해야 본문이 비어 보이지 않는다.
+  if (!incoming.content && raw.bible_references) {
+    try {
+      incoming.content = await WidgetUpdateModule.resolveBibleReferences(raw.bible_references);
+    } catch (e) {
+      // firestoreDocToSermon과 동일한 이유로 warn — 빈 bible_references는 정상적인 "말씀 없는 날" 상태다.
+      logger.warn('upsertWeeklySermonFromEvent: bridge resolveBibleReferences failed', e);
+    }
+  }
+  // sermons-v2-events.md 페이로드엔 id가 없다 — Firestore 문서 ID 규칙과 동일하게 구성한다.
+  if (!incoming.id) {
+    incoming.id = `${raw.week}_${raw.worship_type}`;
+  }
+
+  const weekly = await fetchLatestWeeklySermonsFromAsyncStorage();
+  const sameWeekOthers = weekly.filter(
+    s => s.week === incoming.week && s.worship_type !== incoming.worship_type,
+  );
+  const next = [...sameWeekOthers, incoming];
+  await saveWeeklySermonsToAsyncStorage(next);
+  return incoming;
+}
+
 export async function syncSelectedSermonToWidget(worshipType: WorshipType): Promise<void> {
   const weekly = await fetchLatestWeeklySermonsFromAsyncStorage();
   if (weekly.length === 0) return;

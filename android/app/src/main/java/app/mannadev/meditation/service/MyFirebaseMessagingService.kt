@@ -52,6 +52,11 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         private val ALLOWED_SERMON_TOPICS = setOf(SERMON_SUBJECT_V2, "sermon_events_v2_test")
         private val ALLOWED_QT_TOPICS = setOf(QT_SUBJECT, "qt_events_test")
         private val ALLOWED_SERMONS_V2_TOPICS = setOf(SERMONS_V2_SUBJECT, "sermons_v2_events_test")
+
+        // sermons-v2 wake-up 이벤트에 원본 FCM data를 함께 실어 보낼 때 쓰는 Intent extra 키.
+        // JS(useFCMListener)가 week/worship_type을 알아야 weekly_sermons 캐시를 전체 재조회 없이
+        // 단일 문서만 patch할 수 있다([#280]).
+        const val EXTRA_SERMONS_V2_DATA = "sermons_v2_data"
     }
 
     @Inject lateinit var sermonRepository: SermonRepository
@@ -73,7 +78,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         when {
             topic in ALLOWED_SERMON_TOPICS -> serviceScope.launch { consumeSermonEvent(message) }
             topic in ALLOWED_QT_TOPICS -> serviceScope.launch { consumeQtEvent(message) }
-            topic in ALLOWED_SERMONS_V2_TOPICS -> consumeSermonsV2Event()
+            topic in ALLOWED_SERMONS_V2_TOPICS -> consumeSermonsV2Event(message)
             else -> Unit // silent drop (v1 and anything unknown)
         }
     }
@@ -138,10 +143,14 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
      * worship_type 매칭과 위젯 반영은 JS(useFCMListener → sermonService.fetchLatestWeeklySermonsFromServer)가
      * Firestore 'sermons-v2'를 직접 조회해 전담하므로, 네이티브는 JS를 깨우는 역할만 한다.
      */
-    private fun consumeSermonsV2Event() {
+    private fun consumeSermonsV2Event(message: RemoteMessage) {
+        val intent = Intent(ACTION_SERMON_UPDATE_EVENT)
+        if (message.data.isNotEmpty()) {
+            intent.putExtra(EXTRA_SERMONS_V2_DATA, HashMap(message.data))
+        }
         LocalBroadcastManager
             .getInstance(this@MyFirebaseMessagingService)
-            .sendBroadcast(Intent(ACTION_SERMON_UPDATE_EVENT))
+            .sendBroadcast(intent)
     }
 
     private suspend fun consumeQtEvent(message: RemoteMessage) {

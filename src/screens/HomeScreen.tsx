@@ -92,6 +92,7 @@ const HomeScreen = () => {
     }, [loadLocalData]),
   );
 
+  const hasVideoUrl = Boolean(sermon?.video_url);
   const targetYoutubeUrl = sermon?.video_url || SUNDAY_SERMON_YOUTUBE_URL;
   const hasLoggedScroll = useRef(false);
 
@@ -180,7 +181,14 @@ const HomeScreen = () => {
             ) : null}
             <Text style={styles.seriesDateText}>{sermon?.date}</Text>
           </View>
-          <SvgIcon name="YoutubeButton" size={60} pointerEvents="none" />
+          {/* video_url이 아직 없는 설교(주보 등록 직후)는 버튼을 반투명하게 표시해
+              비활성 상태임을 알린다([#279]). 클릭은 계속 가능 — 기본 채널 링크로 이동한다. */}
+          <SvgIcon
+            name="YoutubeButton"
+            size={60}
+            pointerEvents="none"
+            opacity={hasVideoUrl ? 1 : 0.4}
+          />
         </Pressable>
         <View style={styles.smallDivider} />
         <View style={styles.titleRow}>

@@ -1,21 +1,31 @@
 {
   "sermon_events": {
     "topic": "sermon_events_v2",
-    "title": "4. 믿음은 하나님의 주권을 인정하는 것이다!",
-    "category": "믿음으로 새롭게",
-    "date": "2026-04-28",
+    "title": "14. 개혁! 좌로나 우로 치우치지 않는 것(요시야)",
+    "category": "왕들의 전쟁",
+    "date": "2026-09-09",
     "year": "2026",
     "day_of_week": "SUN",
-    "bible_references": "[{\"book\": \"갈라디아서\", \"chapter\": 2, \"verse_start\": 20, \"verse_end\": 20}]"
+    "bible_references": "[{\"book\": \"열왕기하\", \"chapter\": 22, \"verse_start\": 2, \"verse_end\": 2}, {\"book\": \"열왕기하\", \"chapter\": 23, \"verse_start\": 21, \"verse_end\": 25}]"
+  },
+  "sermons_v2_events": {
+    "topic": "sermons_v2_events_test",
+    "title": "sermons-v2 단일 문서 patch 테스트용 ping ([#280] 이후 네이티브가 payload를 그대로 JS에 전달하고, JS가 week+worship_type으로 weekly_sermons 캐시를 실제로 patch함 — 내용이 그대로 반영됨)",
+    "date": "2026-09-15",
+    "week": "2026-W99-test",
+    "worship_type": "SUN_1150",
+    "bible_references": "[]",
+    "source_id": "test-ping",
+    "video_url": ""
   },
   "qt_events": {
     "topic": "qt_events",
     "title": "QT 테스트: 오늘의 묵상",
     "series_title": "매일만나",
-    "date": "2026-04-28",
+    "date": "2026-09-09",
     "year": "2026",
     "day_of_week": "MON",
-    "bible_references": "[{\"book\": \"시편\", \"chapter\": 23, \"verse_start\": 1, \"verse_end\": 3}]",
+    "bible_references": "[{\"book\": \"열왕기하\", \"chapter\": 22, \"verse_start\": 2, \"verse_end\": 2}, {\"book\": \"열왕기하\", \"chapter\": 23, \"verse_start\": 21, \"verse_end\": 25}]",
     "meditation_questions": "[\"오늘 말씀에서 하나님은 어떤 분으로 나타나시나요?\", \"이 말씀이 나의 삶에 어떻게 적용될 수 있을까요?\", \"오늘 하루 이 말씀을 어떻게 실천할 수 있을까요?\"]"
   }
 }

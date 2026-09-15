@@ -448,7 +448,9 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
   // 전담하므로, 네이티브는 JS를 깨우는 역할만 한다.
   NSString *rawTopic = [NSString stringWithFormat:@"%@", data[@"topic"] ?: @""].lowercaseString;
   if ([rawTopic containsString:@"sermons_v2_events"]) {
-    [self sendSermonUpdateEvent];
+    // week/worship_type/video_url 등 원본 payload를 함께 보내면 JS가 weekly_sermons 캐시를
+    // 전체 재조회 없이 해당 문서 하나만 patch할 수 있다([#280]).
+    [self sendSermonUpdateEventWithData:data];
     return;
   }
 
@@ -586,10 +588,15 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
 }
 
 - (void)sendSermonUpdateEvent {
+  [self sendSermonUpdateEventWithData:nil];
+}
+
+- (void)sendSermonUpdateEventWithData:(NSDictionary *)data {
   // MyEventModule이 FCM_SERMON_UPDATE_INTERNAL를 구독하고 있다.
   // self.bridge 의존 없이 모듈 자신의 bridge로 JS에 emit → New Architecture 호환.
+  // userInfo가 nil이면 레거시와 동일하게 payload 없는 wake-up 이벤트로 처리된다.
   dispatch_async(dispatch_get_main_queue(), ^{
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"FCM_SERMON_UPDATE_INTERNAL" object:nil];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"FCM_SERMON_UPDATE_INTERNAL" object:nil userInfo:data];
   });
 }
 

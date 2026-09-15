@@ -4,13 +4,25 @@ import logger from "../utils/logger";
 import WidgetUpdateModule from './WidgetUpdateModule';
 
 // 주말 4개 예배 (목요찬양집회는 설교 제목/본문이 없어 제외, 시각은 sermons-v2.md 기준)
+// sermons-v2 문서의 worship_type은 항상 이 4개 값 중 하나다.
 export type WorshipType = 'SAT_1700' | 'SUN_0950' | 'SUN_1150' | 'SUN_1430';
+
+// 사용자가 설정 화면에서 고를 수 있는 값. 'ALL'은 클라이언트 로컬 설정에만 존재하며
+// Firestore sermons-v2 문서에는 절대 저장되지 않는다([#278]) — 레거시 sermon_events_v2 /
+// 'sermons' 컬렉션 단일 최신 문서를 그대로 보여주는 기존 동작을 보존하는 옵션이다.
+export type WorshipSetting = WorshipType | 'ALL';
 
 export const WORSHIP_TYPES: { key: WorshipType; label: string }[] = [
   { key: 'SAT_1700', label: '토요일 오후 5시' },
   { key: 'SUN_0950', label: '주일 9시 50분' },
   { key: 'SUN_1150', label: '주일 11시 50분' },
   { key: 'SUN_1430', label: '주일 2시 30분' },
+];
+
+// '전체'는 그리드 맨 마지막(2열 wrap에서 홀수 5번째 = 넓은 단독 칸)에 오도록 끝에 둔다([#278] UI 피드백).
+export const WORSHIP_SETTINGS: { key: WorshipSetting; label: string }[] = [
+  ...WORSHIP_TYPES,
+  { key: 'ALL', label: '전체' },
 ];
 
 export type FirestoreTimestamp = { seconds: number; nanoseconds: number };
@@ -136,7 +148,10 @@ export function fcmDataToSermon(raw: SermonRaw): Sermon {
     content: raw.content || '',
     date: raw.date || '',
     category: raw.category,
-    day_of_week: raw.day_of_week || raw.dayOfWeek,
+    // sermons-v2 payload엔 day_of_week가 없다. undefined면 JSON.stringify가 키 자체를
+    // 날려버려 네이티브 SermonDto(필수 필드)가 MissingFieldException을 던진다([#280] 실기기 확인).
+    // firestoreDocToSermon과 동일하게 빈 문자열로 기본값을 채운다.
+    day_of_week: raw.day_of_week || raw.dayOfWeek || '',
     video_url: raw.video_url,
     worship_type: raw.worship_type,
     week: raw.week,
@@ -163,7 +178,10 @@ export const firestoreDocToSermon = async (
       );
       content = resolved;
     } catch (e) {
-      logger.error('firestoreDocToSermon: bridge resolveBibleReferences failed', e);
+      // bible_references가 빈 배열("말씀 없는 날")인 경우가 흔해 오류가 아니라 정상 상태다.
+      // content가 비는 정도로 우아하게 넘어가므로 error(빨간 화면/Crashlytics 비정상 기록)가 아닌
+      // warn(Crashlytics 로그만 남김)으로 낮춘다.
+      logger.warn('firestoreDocToSermon: bridge resolveBibleReferences failed', e);
       content = '';
     }
   }

@@ -369,4 +369,35 @@ sermon_events_test 관련 로그 없음
 ### iOS 빌드 모드별 테스트
 - [ ] DEBUG: sermon_events_test 토픽이 정상 작동하는지 확인
 - [ ] RELEASE: sermon_events_test 토픽이 무시되는지 확인
-- [ ] RELEASE: sermon_events 토픽은 정상 작동하는지 확인 
+- [ ] RELEASE: sermon_events 토픽은 정상 작동하는지 확인
+
+## 10. 예배 시간 설정(sermons-v2) 시나리오
+
+주말 4개 예배별 말씀([기획] #168, [EPIC-1] #184) 관련 시나리오. `yarn fcm`(대화형) 또는
+`node scripts/test_fcm.js <명령> [TOKEN] [TOPIC]`으로 실행한다. 아래 3개는 모두
+`sermons_v2_events`(DEBUG는 `sermons_v2_events_test`) 토픽을 쓴다.
+
+| 명령 | 설명 |
+|------|------|
+| `weekly` | 4개 예배 문서를 video_url 포함해서 등록 (빠른 기본 확인용) |
+| `weeklyNoVideo` | 4개 예배 문서를 video_url 없이 등록 — 주보만 올라오고 예배 전인 상태 재현 |
+| `videoUrlUpdate` | 최신 주의 `SAT_1700` 문서 하나에 video_url을 채워 UPDATED 이벤트 전송 |
+
+### 10.1 유튜브 버튼 비활성 UI 확인 ([#279](https://github.com/MannaDevelopers/meditation_blossom_frontend/issues/279))
+1. `node scripts/test_fcm.js weeklyNoVideo <TOKEN>` 실행
+2. 앱에서 알림 수신 확인 → 홈 화면 유튜브 버튼이 반투명(비활성)으로 보이는지 확인
+3. 버튼을 눌러도 앱이 죽지 않고 기본 채널 링크(`https://www.youtube.com/@만나`)로 이동하는지 확인
+
+### 10.2 video_url 단일 문서 patch 확인 ([#280](https://github.com/MannaDevelopers/meditation_blossom_frontend/issues/280))
+1. 위 10.1을 먼저 실행해 `SAT_1700` 문서를 video_url 없이 만들어둔다
+2. 설정 화면에서 예배 시간을 `토요일 오후 5시`로 선택해둔다
+3. `node scripts/test_fcm.js videoUrlUpdate <TOKEN>` 실행
+4. 홈 화면이 전체 재조회 없이 갱신되고(로그에서 `fetchLatestWeeklySermonsFromServer` 호출이 **없는지** 확인), 유튜브 버튼이 활성(빨간색)으로 바뀌는지 확인
+5. 다른 예배(`주일 9시 50분` 등)로 설정을 바꾼 상태에서 같은 명령을 실행하면, 화면/위젯은 바뀌지 않아야 한다(해당 예배가 아니므로) — 다시 `토요일 오후 5시`로 돌아왔을 때만 반영되는지 확인
+
+### 10.3 "전체" 옵션 확인 ([#278](https://github.com/MannaDevelopers/meditation_blossom_frontend/issues/278))
+"전체"는 새 토픽/캐시를 쓰지 않는 레거시 경로이므로 기존 `sermon_events`/`sermon_events_v2` 시나리오를 그대로 재사용한다.
+1. 설정 화면에서 예배 시간을 `전체`로 선택
+2. `yarn fcm` → `sendDataOnly` → 데이터 토픽 `sermon_events` 선택 후 전송 (또는 `node scripts/test_fcm.js sendDataOnly <TOKEN> sermon_events`)
+3. 앱이 `sermons-v2`/`weekly_sermons` 캐시를 건드리지 않고, 기존 `sermons` 컬렉션의 최신 문서로만 갱신되는지 확인
+4. 이후 예배 시간을 다시 특정 예배(예: `주일 9시 50분`)로 바꾸고 `weekly` 시나리오를 보내 정상적으로 해당 예배 데이터로 전환되는지 확인 (양방향 전환 검증) 
