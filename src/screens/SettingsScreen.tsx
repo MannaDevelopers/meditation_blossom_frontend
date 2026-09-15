@@ -24,10 +24,10 @@ import DeviceInfo from 'react-native-device-info';
 import Svg, { Path } from 'react-native-svg';
 import SvgIcon from '../components/SvgIcon';
 import { RootStackParamList } from '../types/navigation';
-import { FCM_SERMON_KEY, WorshipType, WorshipSetting, WORSHIP_SETTINGS, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
+import { FCM_SERMON_KEY, Sermon, WorshipType, WorshipSetting, WORSHIP_SETTINGS, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
 import { FCM_QT_KEY } from '../types/QT';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
-import { fetchLatestSermonFromServer, pushSermonToWidget, saveSermonToAsyncStorage, syncSelectedSermonToWidget, saveWeeklySermonsToAsyncStorage } from '../services/sermonService';
+import { fetchLatestSermonFromServer, fetchLatestWeeklySermonsFromServer, pushSermonToWidget, saveSermonToAsyncStorage, syncSelectedSermonToWidget, saveWeeklySermonsToAsyncStorage } from '../services/sermonService';
 import { fetchLatestQtFromServer, pushQtToWidget } from '../services/qtService';
 import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
@@ -99,13 +99,29 @@ const SettingsScreen = ({ navigation }: Props) => {
     }
   };
 
+  // '전체'가 아니면 sermons-v2 주간 데이터에서 선택된 예배를 찾고, 없으면(주간 데이터가
+  // 아직 없거나 '전체' 설정) 레거시 'sermons' 컬렉션 단일 최신 문서로 폴백한다.
+  // handleWorshipChange/useSermonData.fetchFromServer와 동일한 분기 규칙([#278]).
+  const fetchLatestSermonRespectingWorshipSetting = async (): Promise<Sermon | null> => {
+    const worshipSetting =
+      ((await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipSetting) || DEFAULT_WORSHIP_TYPE;
+    if (worshipSetting !== 'ALL') {
+      const weekly = await fetchLatestWeeklySermonsFromServer();
+      if (weekly.length > 0) {
+        await saveWeeklySermonsToAsyncStorage(weekly);
+        return weekly.find(s => s.worship_type === worshipSetting) || weekly[0];
+      }
+    }
+    return fetchLatestSermonFromServer();
+  };
+
   const clearAndRefreshStorage = async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
     logAnalytics.dataRefresh();
     try {
       const [sermon, qt] = await Promise.all([
-        fetchLatestSermonFromServer(),
+        fetchLatestSermonRespectingWorshipSetting(),
         fetchLatestQtFromServer(),
       ]);
       const keysToRemove: string[] = [];
