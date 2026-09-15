@@ -5,7 +5,9 @@ import SettingsScreen from '../src/screens/SettingsScreen';
 import {
   syncSelectedSermonToWidget,
   fetchLatestSermonFromServer,
+  fetchLatestWeeklySermonsFromServer,
   saveSermonToAsyncStorage,
+  saveWeeklySermonsToAsyncStorage,
   pushSermonToWidget,
 } from '../src/services/sermonService';
 
@@ -13,8 +15,16 @@ jest.mock('../src/services/sermonService', () => ({
   ...jest.requireActual('../src/services/sermonService'),
   syncSelectedSermonToWidget: jest.fn().mockResolvedValue(undefined),
   fetchLatestSermonFromServer: jest.fn().mockResolvedValue(null),
+  fetchLatestWeeklySermonsFromServer: jest.fn().mockResolvedValue([]),
   saveSermonToAsyncStorage: jest.fn().mockResolvedValue(undefined),
+  saveWeeklySermonsToAsyncStorage: jest.fn().mockResolvedValue(undefined),
   pushSermonToWidget: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../src/services/qtService', () => ({
+  ...jest.requireActual('../src/services/qtService'),
+  fetchLatestQtFromServer: jest.fn().mockResolvedValue(null),
+  pushQtToWidget: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('../src/components/SvgIcon', () => {
@@ -85,6 +95,79 @@ describe('SettingsScreen', () => {
       expect(pushSermonToWidget).toHaveBeenCalledWith(legacySermon);
       // '전체'는 weekly_sermons 매칭 경로를 타지 않아야 한다
       expect(syncSelectedSermonToWidget).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('데이터 새로고침 버튼', () => {
+    it('특정 예배가 선택돼 있으면 주간(sermons-v2) 데이터에서 매칭된 예배로 갱신한다', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+        if (key === 'user_worship_setting') return Promise.resolve('SUN_1150');
+        return Promise.resolve(null);
+      });
+      (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+      (AsyncStorage.multiRemove as jest.Mock).mockResolvedValue(undefined);
+      const weekly = [
+        { id: 'sat', worship_type: 'SAT_1700', date: '2026-09-19' },
+        { id: 'sun1150', worship_type: 'SUN_1150', date: '2026-09-20' },
+      ];
+      (fetchLatestWeeklySermonsFromServer as jest.Mock).mockResolvedValue(weekly);
+
+      const { getByText } = render(<SettingsScreen navigation={mockNavigation} route={{} as any} />);
+      await waitFor(() => expect(getByText('예배 시간 설정')).toBeTruthy());
+
+      fireEvent.press(getByText('데이터 새로고침'));
+
+      await waitFor(() => {
+        expect(fetchLatestWeeklySermonsFromServer).toHaveBeenCalled();
+        expect(fetchLatestSermonFromServer).not.toHaveBeenCalled();
+        expect(saveWeeklySermonsToAsyncStorage).toHaveBeenCalledWith(weekly);
+        expect(pushSermonToWidget).toHaveBeenCalledWith(weekly[1]);
+      });
+    });
+
+    it('"전체"가 선택돼 있으면 레거시 단일 문서로 갱신한다', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+        if (key === 'user_worship_setting') return Promise.resolve('ALL');
+        return Promise.resolve(null);
+      });
+      (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+      (AsyncStorage.multiRemove as jest.Mock).mockResolvedValue(undefined);
+      const legacySermon = { id: 'legacy-1', date: '2026-09-20' };
+      (fetchLatestSermonFromServer as jest.Mock).mockResolvedValue(legacySermon);
+
+      const { getByText } = render(<SettingsScreen navigation={mockNavigation} route={{} as any} />);
+      await waitFor(() => expect(getByText('예배 시간 설정')).toBeTruthy());
+
+      fireEvent.press(getByText('데이터 새로고침'));
+
+      await waitFor(() => {
+        expect(fetchLatestWeeklySermonsFromServer).not.toHaveBeenCalled();
+        expect(fetchLatestSermonFromServer).toHaveBeenCalled();
+        expect(pushSermonToWidget).toHaveBeenCalledWith(legacySermon);
+      });
+    });
+
+    it('주간 데이터가 비어있으면 레거시 단일 문서로 폴백한다', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+        if (key === 'user_worship_setting') return Promise.resolve('SAT_1700');
+        return Promise.resolve(null);
+      });
+      (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+      (AsyncStorage.multiRemove as jest.Mock).mockResolvedValue(undefined);
+      (fetchLatestWeeklySermonsFromServer as jest.Mock).mockResolvedValue([]);
+      const legacySermon = { id: 'legacy-2', date: '2026-09-20' };
+      (fetchLatestSermonFromServer as jest.Mock).mockResolvedValue(legacySermon);
+
+      const { getByText } = render(<SettingsScreen navigation={mockNavigation} route={{} as any} />);
+      await waitFor(() => expect(getByText('예배 시간 설정')).toBeTruthy());
+
+      fireEvent.press(getByText('데이터 새로고침'));
+
+      await waitFor(() => {
+        expect(fetchLatestWeeklySermonsFromServer).toHaveBeenCalled();
+        expect(fetchLatestSermonFromServer).toHaveBeenCalled();
+        expect(pushSermonToWidget).toHaveBeenCalledWith(legacySermon);
+      });
     });
   });
 });
