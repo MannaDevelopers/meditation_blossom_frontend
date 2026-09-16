@@ -180,8 +180,22 @@ export async function upsertWeeklySermonFromEvent(raw: SermonRaw): Promise<Sermo
   return incoming;
 }
 
+// 예배 시간 설정을 막 바꾼 사용자(특히 앱을 처음 이 버전으로 업데이트해서
+// weekly_sermons 캐시가 아직 한 번도 채워진 적 없는 경우)를 위해, 로컬 캐시가
+// 비어 있으면 서버에서 직접 가져온다. 이게 없으면 "설정만 바꾸고 데이터 새로고침을
+// 따로 눌러야 반영되는" 문제가 생긴다(실사용자 리포트로 발견).
 export async function syncSelectedSermonToWidget(worshipType: WorshipType): Promise<void> {
-  const weekly = await fetchLatestWeeklySermonsFromAsyncStorage();
+  let weekly = await fetchLatestWeeklySermonsFromAsyncStorage();
+  if (weekly.length === 0) {
+    try {
+      weekly = await fetchLatestWeeklySermonsFromServer();
+      if (weekly.length > 0) {
+        await saveWeeklySermonsToAsyncStorage(weekly);
+      }
+    } catch (e) {
+      logger.warn('syncSelectedSermonToWidget: 로컬 캐시가 비어 서버 폴백 조회 시도했으나 실패 (오프라인?)', e);
+    }
+  }
   if (weekly.length === 0) return;
 
   const matched = weekly.find(s => s.worship_type === worshipType) || weekly[0];

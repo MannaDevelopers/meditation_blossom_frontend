@@ -211,6 +211,47 @@ describe('weekly sermons caching and syncing', () => {
     // Should call WidgetUpdateModule
     expect(bridge.onSermonUpdated).toHaveBeenCalledWith(JSON.stringify(sundaySermon));
   });
+
+  it('로컬 weekly_sermons 캐시가 비어있으면 서버에서 조회해 채우고 동기화한다 (앱을 막 업데이트한 사용자가 예배 시간을 바꿨을 때)', async () => {
+    const bridge = require('../src/types/WidgetUpdateModule').default;
+    const firestoreMock = require('@react-native-firebase/firestore');
+    const docs = [
+      { id: 'w40_sat', data: () => ({ title: 'Sat', date: '2026-10-03', week: '2026-W40', worship_type: 'SAT_1700', content: 'C' }) },
+      { id: 'w40_sun1150', data: () => ({ title: 'Sun 1150', date: '2026-10-04', week: '2026-W40', worship_type: 'SUN_1150', content: 'C' }) },
+    ];
+    firestoreMock.getDocsFromServer.mockResolvedValue({ empty: false, docs });
+
+    (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+      if (key === 'weekly_sermons') return Promise.resolve(null); // 캐시 없음
+      return Promise.resolve(null);
+    });
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    bridge.onSermonUpdated.mockClear();
+
+    await syncSelectedSermonToWidget('SUN_1150');
+
+    // 서버에서 받아온 주간 데이터를 캐시에 저장해야 한다
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+      'weekly_sermons',
+      expect.stringContaining('"worship_type":"SUN_1150"'),
+    );
+    // 선택된 예배로 위젯/레거시 키가 갱신돼야 한다
+    expect(bridge.onSermonUpdated).toHaveBeenCalledWith(
+      expect.stringContaining('"worship_type":"SUN_1150"'),
+    );
+  });
+
+  it('로컬 캐시도 비어있고 서버 조회도 실패하면(오프라인) 조용히 아무 것도 하지 않는다', async () => {
+    const bridge = require('../src/types/WidgetUpdateModule').default;
+    const firestoreMock = require('@react-native-firebase/firestore');
+    firestoreMock.getDocsFromServer.mockRejectedValue(new Error('network error'));
+
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    bridge.onSermonUpdated.mockClear();
+
+    await expect(syncSelectedSermonToWidget('SUN_0950')).resolves.toBeUndefined();
+    expect(bridge.onSermonUpdated).not.toHaveBeenCalled();
+  });
 });
 
 describe('upsertWeeklySermonFromEvent ([#280])', () => {
