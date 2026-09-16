@@ -191,6 +191,12 @@ describe('useSermonData', () => {
     });
 
     it('video_url이 이미 있으면 서버 보충 조회를 하지 않는다', async () => {
+      // '전체' 설정으로 고정 — weekly 캐시 미스로 인한 마이그레이션 강제 조회([#289])와
+      // 섞이지 않도록, 이 테스트는 순수하게 video_url 유무만으로 판단하는 경로를 검증한다.
+      (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+        if (key === 'user_worship_setting') return Promise.resolve('ALL');
+        return Promise.resolve(null);
+      });
       const localWithVideo = { ...localNoVideo, video_url: 'https://youtu.be/zzz' };
       mockFetchFromAsyncStorage.mockResolvedValue(localWithVideo);
 
@@ -316,6 +322,29 @@ describe('useSermonData', () => {
       });
 
       expect(result.current.sermon).toEqual(mockSermon);
+    });
+
+    it('마이그레이션: 레거시 캐시에 video_url/content가 이미 있어도 weekly 캐시 미스면 서버 데이터로 교체한다 (실사용자 리포트)', async () => {
+      const legacySermonWithEverything = {
+        id: 'legacy-1', title: 'Legacy', content: '기존 내용', date: '2026-08-01',
+        video_url: 'https://youtu.be/legacy',
+        created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+      };
+      mockFetchWeeklyFromAsyncStorage.mockResolvedValue([]); // 아직 sermons-v2 캐시를 받은 적 없음
+      mockFetchFromAsyncStorage.mockResolvedValue(legacySermonWithEverything);
+      mockFetchWeeklyFromServer.mockResolvedValue(mockWeeklyList); // 설정된 SAT_1700이 이 안에 있음
+      mockSaveWeeklyToAsyncStorage.mockResolvedValue(undefined);
+      mockSaveSermonToAsyncStorage.mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => {
+        await result.current.loadLocalData();
+      });
+
+      // video_url/content가 이미 채워져 있었으므로 예전 로직이면 서버 조회를 안 했을 것이다.
+      expect(mockFetchWeeklyFromServer).toHaveBeenCalled();
+      // 레거시 데이터가 아니라 서버에서 받은 SAT_1700 매칭 데이터로 교체돼야 한다.
+      expect(result.current.sermon).toEqual(mockWeeklyList[0]);
     });
 
     it('fetches weekly sermons list from server and saves them', async () => {

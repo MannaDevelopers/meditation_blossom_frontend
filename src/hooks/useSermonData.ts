@@ -38,9 +38,11 @@ export function useSermonData(): UseSermonDataReturn {
     try {
       const worshipSetting = (await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipSetting || DEFAULT_WORSHIP_TYPE;
       let selected: Sermon | null = null;
+      let matchedFromWeeklyCache = false;
       if (worshipSetting !== 'ALL') {
         const weeklySermons = (await fetchLatestWeeklySermonsFromAsyncStorage()) || [];
         selected = weeklySermons.find(s => s.worship_type === worshipSetting) || null;
+        matchedFromWeeklyCache = selected !== null;
       }
 
       if (!selected) {
@@ -53,8 +55,16 @@ export function useSermonData(): UseSermonDataReturn {
       setSermon(selected);
       setError(null);
 
-      // 로컬 데이터에 video_url/content가 비어 있으면 Firestore에서 강제 조회해 보충한다.
-      if (selected && (!selected.video_url || !selected.content) && !triedServerFill.current) {
+      // 특정 예배가 선택돼 있는데 weekly 캐시에서 못 찾아 레거시로 폴백한 경우(앱을 막
+      // sermons-v2 버전으로 업데이트해서 아직 주간 데이터를 한 번도 받은 적 없는 사용자 등),
+      // 화면에 보이는 레거시 데이터는 video_url/content가 이미 다 차 있어도 실제로는
+      // 선택한 예배와 무관한(전체) 콘텐츠일 수 있다. 이 경우 필드 유무와 무관하게
+      // 강제로 서버에서 주간 데이터를 가져와야 한다(실사용자 리포트로 발견).
+      const needsWeeklyRefill = worshipSetting !== 'ALL' && !matchedFromWeeklyCache;
+
+      // 로컬 데이터에 video_url/content가 비어 있거나(기존 사유) 위 마이그레이션 케이스면
+      // Firestore에서 강제 조회해 보충한다.
+      if (selected && (needsWeeklyRefill || !selected.video_url || !selected.content) && !triedServerFill.current) {
         triedServerFill.current = true;
         try {
           const freshWeekly = worshipSetting !== 'ALL' ? await fetchLatestWeeklySermonsFromServer() : [];
@@ -63,7 +73,9 @@ export function useSermonData(): UseSermonDataReturn {
             const freshSelected = freshWeekly.find(s => s.worship_type === worshipSetting) || freshWeekly[0];
             const next = reconcileFreshDoc(freshSelected, selected, compareSermon);
             if (next) {
-              logger.log('[loadLocalData] 로컬 video_url/content 누락 → 서버에서 보충함');
+              logger.log(needsWeeklyRefill
+                ? '[loadLocalData] 선택된 예배의 weekly 캐시 미스(마이그레이션) → 서버에서 교체함'
+                : '[loadLocalData] 로컬 video_url/content 누락 → 서버에서 보충함');
               await saveSermonToAsyncStorage(next);
               setSermon(next);
               return next;
