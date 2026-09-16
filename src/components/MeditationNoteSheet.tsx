@@ -312,15 +312,17 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
             </Text>
             {/* 헤더 드래그로 닫기는 Android에서 ViewPager2의 NestedScrollableHost가 제스처를
                 취소해 동작하지 않는 것을 실기(Pixel 6 / API 35)에서 확인했다. 제스처에 의존하지
-                않는 닫기 수단을 명시적으로 둔다. */}
+                않는 닫기 수단을 명시적으로 둔다.
+                문구가 ✕가 아니라 "완료"인 이유: 저장은 자동인데 ✕는 "쓴 내용을 버리고 닫기"로
+                읽혀 누르기 불안하다는 피드백([#282]). 닫아도 내용이 남는다는 것을 버튼이 말한다. */}
             <TouchableOpacity
               onPress={closeSheet}
-              style={styles.closeButton}
+              style={styles.doneButton}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              accessibilityLabel="묵상 입력창 닫기"
+              accessibilityLabel="묵상 작성 완료"
               accessibilityRole="button"
             >
-              <Text style={styles.closeIcon}>✕</Text>
+              <Text style={styles.doneText}>완료</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -432,13 +434,14 @@ const createStyles = (colors: ThemeColors) =>
     fontFamily: 'Pretendard-SemiBold',
     marginBottom: 8,
   },
-  closeButton: {
+  doneButton: {
     paddingHorizontal: 4,
   },
-  closeIcon: {
-    color: colors.textTertiary,
-    fontSize: 18,
+  doneText: {
+    color: colors.accent,
+    fontSize: 15,
     lineHeight: 22,
+    fontFamily: 'Pretendard-SemiBold',
   },
   sheetDivider: {
     height: 1,
