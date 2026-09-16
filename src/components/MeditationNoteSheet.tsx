@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { ThemeColors } from '../theme/colors';
 import Clipboard from '@react-native-clipboard/clipboard';
@@ -37,6 +38,8 @@ const COPIED_TOAST_MS = 1800;
 const DISMISS_DRAG_DISTANCE = 60;
 /** 짧게 내려도 아래로 튕기는 속도면 닫는다 */
 const DISMISS_DRAG_VELOCITY = 0.5;
+/** FAB가 컨테이너 바닥에서 떨어진 거리. Android에서는 여기에 내비 바 inset이 더해진다. */
+const FAB_BOTTOM_MARGIN = 40;
 
 interface Props {
   source: MeditationNoteSource;
@@ -50,6 +53,7 @@ interface Props {
 const MeditationNoteSheet = ({ source, title }: Props) => {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const [isOpen, setIsOpen] = useState(false);
   const [note, setNote] = useState('');
@@ -121,8 +125,15 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
     );
   };
 
+  // Android(edge-to-edge)에서는 컨테이너 바닥이 화면 바닥이라, 절대 배치인 FAB와 시트가 시스템
+  // 내비게이션 바(3버튼 48dp / 제스처 영역) 아래로 들어간다([#283]). 화면 SafeAreaView(edges
+  // bottom)의 패딩은 절대 배치 자식에게 적용되지 않는다. iOS는 App.tsx 루트 SafeAreaView(RN 내장,
+  // iOS 전용)가 컨테이너 자체를 홈 인디케이터 위로 올려두므로 0. 키보드가 열려 있을 때는 시트가
+  // 키보드 상단에 붙어 있어(#282) 내비 바와 무관하다.
+  const navBarInset = Platform.OS === 'android' ? insets.bottom : 0;
+
   const keyboardOffset =
-    keyboardTopY === null ? 0 : Math.max(0, containerBottomY - keyboardTopY);
+    keyboardTopY === null ? navBarInset : Math.max(0, containerBottomY - keyboardTopY);
 
   const flushSave = useCallback(() => {
     if (saveTimer.current) {
@@ -259,7 +270,7 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
   if (!isOpen) {
     return (
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, { bottom: FAB_BOTTOM_MARGIN + navBarInset }]}
         onPress={() => setIsOpen(true)}
         accessibilityLabel="묵상 작성"
         accessibilityRole="button"
@@ -373,7 +384,6 @@ const createStyles = (colors: ThemeColors) =>
   fab: {
     position: 'absolute',
     right: 0, // 부모 컨테이너가 이미 marginHorizontal 27을 가지므로 화면 우측에서 27
-    bottom: 40,
     width: 56,
     height: 56,
     borderRadius: 28,

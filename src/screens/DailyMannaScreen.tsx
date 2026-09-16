@@ -26,6 +26,7 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import CopyToast from '../components/CopyToast';
 import PassageBlock from '../components/PassageBlock';
 import ReferenceTabs from '../components/ReferenceTabs';
+import SelectableText from '../components/SelectableText';
 import { useScripturePassages } from '../hooks/useScripturePassages';
 import { buildFullCopyText, buildPassageCopyText } from '../utils/copyText';
 import { useAppTheme } from '../hooks/useAppTheme';
@@ -192,13 +193,10 @@ const DailyMannaScreen = () => {
         </Pressable>
         <View style={styles.smallDivider} />
         <View style={styles.titleRow}>
-          <Text style={styles.titleText} numberOfLines={0}>
-            {processTitleText(qt?.title)}
-          </Text>
+          <SelectableText text={processTitleText(qt?.title)} style={styles.titleText} />
           {passages.length > 0 ? (
             <TouchableOpacity
               onPress={copyAll}
-              style={styles.copyAllButton}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               accessibilityLabel="말씀 전체 복사"
               accessibilityRole="button"
@@ -325,15 +323,14 @@ const createStyles = (colors: ThemeColors) =>
     },
     titleRow: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      // 제목이 여러 줄이어도 전체 복사 버튼이 제목 블록의 세로 중앙에 오게 한다([#283]).
+      alignItems: 'center',
       gap: 8,
+      marginBottom: 16,
     },
     tabSlot: {
       // sticky 고정 시 색 띠로 보이지 않도록 화면 배경과 같은 톤을 쓴다
       backgroundColor: colors.surface,
-    },
-    copyAllButton: {
-      paddingTop: 6,
     },
     titleText: {
       flex: 1,
@@ -341,7 +338,6 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: 28,
       fontFamily: 'Pretendard-Bold',
       flexWrap: 'wrap',
-      marginBottom: 16,
     },
     indexRow: {
       flexDirection: 'row',

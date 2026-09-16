@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import SelectableText from './SelectableText';
 import SvgIcon from './SvgIcon';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { ScripturePassage } from '../services/scriptureService';
@@ -14,12 +15,7 @@ interface Props {
 
 /**
  * 참조 하나를 그리는 블록 — 칩(장절 라벨) + 복사 버튼 + 본문([#173], [#166]).
- *
- * 본문을 Text가 아니라 읽기 전용 TextInput으로 그리는 이유:
- * iOS의 <Text selectable>은 롱프레스해도 부분 선택이 되지 않고 Text 전체가 복사된다
- * (RCTParagraphComponentView.mm의 copy:가 NSMakeRange(0, length)를 쓴다).
- * multiline TextInput은 UITextView가 백킹이라 드래그 핸들로 원하는 구간만 고를 수 있다.
- * iPhone 17 Pro에서 두 방식을 나란히 놓고 확인했다.
+ * 본문은 플랫폼별 선택 방식을 가진 SelectableText로 그린다(이유는 그 파일 참고).
  */
 const PassageBlock = ({ passage, showChip = true, onCopy }: Props) => {
   const { colors } = useAppTheme();
@@ -46,14 +42,7 @@ const PassageBlock = ({ passage, showChip = true, onCopy }: Props) => {
           ) : null}
         </View>
       ) : null}
-      <TextInput
-        style={styles.body}
-        value={passage.content}
-        editable={false}
-        multiline
-        scrollEnabled={false}
-        textAlignVertical="top"
-      />
+      <SelectableText text={passage.content} style={styles.body} />
     </View>
   );
 };
@@ -85,8 +74,6 @@ const createStyles = (colors: ThemeColors) =>
       padding: 2,
     },
     body: {
-      // 기존 본문(contentText)과 같은 타이포. TextInput은 자체 패딩이 있어 0으로 지운다.
-      padding: 0,
       color: colors.textPrimary,
       fontSize: 20,
       fontFamily: 'Pretendard-Bold',
