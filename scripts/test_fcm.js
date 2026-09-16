@@ -72,7 +72,7 @@ function bumpCounter() {
 // ── 테스트 데이터 로드 ───────────────────────────────────────
 // fcm_test_data.json 을 편집하면 JS 파일 수정 없이 데이터 변경 가능
 // label: 전체 시나리오 테스트 시 앱 상태 표시 (예: "포그라운드")
-function loadData(topic, label = null) {
+async function loadData(topic, label = null) {
   const base = {
     source_id: Date.now().toString(),
     created_at: new Date().toISOString(),
@@ -111,6 +111,49 @@ function loadData(topic, label = null) {
         };
   }
 
+  // sermons_v2_events는 실기기에 이미 캐시된 weekly_sermons와 같은 week여야 한다.
+  // fcm_test_data.json의 고정값을 그대로 쓰면 upsertWeeklySermonFromEvent가 "새 주"로
+  // 오인해 나머지 예배 시간 캐시를 통째로 지워버린다(실사용자 리포트로 발견).
+  // "오늘 날짜 기준 계산"도 위험하다 — 일~토 중 어느 요일에 실행하느냐에 따라
+  // `7 - today.getDay()` 계산식이 다음 주 일요일을 가리킬 수 있어(평일에 실행 시 실제
+  // sermons-v2에 이미 저장된 "이번 주" week와 어긋남), 역시 캐시가 지워지는 문제가
+  // 재발했다(실사용자 리포트로 재확인). 그래서 계산 대신 Firestore에 실제 저장된
+  // 최신 week를 그대로 조회해서 쓴다 — sendVideoUrlUpdateScenario와 동일한 방식.
+  if (topic === 'sermons_v2_events') {
+    try {
+      const snapshot = await admin.firestore()
+        .collection('sermons-v2')
+        .orderBy('week', 'desc')
+        .limit(8)
+        .get();
+      if (!snapshot.empty) {
+        const latestWeek = snapshot.docs[0].data().week;
+        const sameTypeDoc = snapshot.docs.find(
+          d => d.data().week === latestWeek && d.data().worship_type === data.worship_type,
+        );
+        const anyLatestDoc = sameTypeDoc ?? snapshot.docs.find(d => d.data().week === latestWeek);
+        data.week = latestWeek;
+        if (anyLatestDoc) data.date = anyLatestDoc.data().date;
+      } else {
+        console.warn('⚠️  sermons-v2에 등록된 문서가 없어 오늘 날짜 기준으로 week를 계산합니다.');
+        const today = new Date();
+        const diffToSunday = 7 - today.getDay();
+        const sunday = new Date(today);
+        sunday.setDate(today.getDate() + (diffToSunday === 7 ? 0 : diffToSunday));
+        data.week = toIsoWeek(sunday);
+        data.date = sunday.toISOString().split('T')[0];
+      }
+    } catch (e) {
+      console.warn(`⚠️  sermons-v2 최신 week 조회 실패, 오늘 날짜 기준으로 계산합니다: ${e.message}`);
+      const today = new Date();
+      const diffToSunday = 7 - today.getDay();
+      const sunday = new Date(today);
+      sunday.setDate(today.getDate() + (diffToSunday === 7 ? 0 : diffToSunday));
+      data.week = toIsoWeek(sunday);
+      data.date = sunday.toISOString().split('T')[0];
+    }
+  }
+
   // 수신 구분을 위해 제목 앞에 [#N] 또는 [#N 상태] 추가
   const n = bumpCounter();
   const prefix = label ? `[#${n} ${label}]` : `[#${n}]`;
@@ -124,7 +167,7 @@ function toStr(obj) {
 // ── 전송 함수 ────────────────────────────────────────────────
 // sermon_event.py 의 _send_to_topic() 구조와 동일 (기본 권장)
 async function sendSermonEvent(token, dataType = 'sermon_events', label = null) {
-  const rawData = loadData(dataType, label);
+  const rawData = await loadData(dataType, label);
   const dataFields = toStr(rawData);
   return admin.messaging().send({
     ...(token ? { token } : { topic: rawData.topic }),
@@ -140,7 +183,7 @@ async function sendSermonEvent(token, dataType = 'sermon_events', label = null) 
 
 // data-only 백그라운드 메시지
 async function sendDataOnly(token, dataType = 'sermon_events', label = null) {
-  const rawData = loadData(dataType, label);
+  const rawData = await loadData(dataType, label);
   const dataFields = toStr(rawData);
   return admin.messaging().send({
     ...(token ? { token } : { topic: rawData.topic }),
@@ -155,7 +198,7 @@ async function sendDataOnly(token, dataType = 'sermon_events', label = null) {
 
 // 알림 포함 메시지 (앱 종료 상태에서도 수신 가능)
 async function sendNotification(token, dataType = 'sermon_events', label = null) {
-  const rawData = loadData(dataType, label);
+  const rawData = await loadData(dataType, label);
   const dataFields = toStr(rawData);
   return admin.messaging().send({
     ...(token ? { token } : { topic: rawData.topic }),
@@ -171,7 +214,7 @@ async function sendNotification(token, dataType = 'sermon_events', label = null)
 
 // WidgetKit Push - iOS 위젯 업데이트 + Android onMessageReceived 트리거
 async function sendWidgetKitPush(token, dataType = 'sermon_events', label = null) {
-  const rawData = loadData(dataType, label);
+  const rawData = await loadData(dataType, label);
   const dataFields = toStr(rawData);
   const silentFields = { ...dataFields, silent: 'true', widget_update_only: 'true' };
   const dest = token ? { token } : { topic: rawData.topic };
@@ -207,7 +250,7 @@ async function sendWidgetKitPush(token, dataType = 'sermon_events', label = null
 
 // Firestore 데이터 등록 + FCM 전송
 async function updateFirestoreAndSendFcm(token, dataType = 'sermon_events', label = null) {
-  const rawData = loadData(dataType, label);
+  const rawData = await loadData(dataType, label);
   const db = admin.firestore();
   const collectionName = dataType === 'qt_events' ? 'qt' : 'sermons';
 
@@ -437,7 +480,7 @@ async function sendVideoUrlUpdateScenario(token, topic = 'sermons_v2_events') {
     throw new Error('sermons-v2에 등록된 문서가 없습니다. 먼저 weeklyNoVideo(또는 weekly)를 실행하세요.');
   }
   const latestWeek = snapshot.docs[0].data().week;
-  const target = snapshot.docs.find(d => d.data().week === latestWeek && d.data().worship_type === 'SAT_1700')
+  const target = snapshot.docs.find(d => d.data().week === latestWeek && d.data().worship_type === 'SUN_1150')
     ?? snapshot.docs.find(d => d.data().week === latestWeek);
   const data = target.data();
 

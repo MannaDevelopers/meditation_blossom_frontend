@@ -11,8 +11,8 @@
   "sermons_v2_events": {
     "topic": "sermons_v2_events",
     "title": "sermons-v2 단일 문서 patch 테스트용 ping ([#280] 이후 네이티브가 payload를 그대로 JS에 전달하고, JS가 week+worship_type으로 weekly_sermons 캐시를 실제로 patch함 — 내용이 그대로 반영됨). _test 접미사가 아닌 실제 토픽 — DEBUG/RELEASE 빌드 둘 다 인식함. 이 도구는 항상 토큰(내 기기) 직접 전송만 하므로 안전함.",
-    "date": "2026-09-15",
-    "week": "2026-W99-test",
+    "date": "(test_fcm.js가 전송 시점에 Firestore sermons-v2의 실제 최신 문서에서 조회해 덮어씀)",
+    "week": "(test_fcm.js가 전송 시점에 Firestore sermons-v2의 실제 최신 week를 조회해 덮어씀 — 고정값이나 오늘 날짜 기준 계산을 쓰면 요일에 따라 실제 캐시된 week와 어긋나 다른 예배 시간이 지워짐)",
     "worship_type": "SUN_1150",
     "bible_references": "[{\"book\": \"열왕기하\", \"chapter\": 22, \"verse_start\": 2, \"verse_end\": 2}, {\"book\": \"열왕기하\", \"chapter\": 23, \"verse_start\": 21, \"verse_end\": 25}]",
     "source_id": "test-ping",
