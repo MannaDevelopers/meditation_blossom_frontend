@@ -26,6 +26,7 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import CopyToast from '../components/CopyToast';
 import PassageBlock from '../components/PassageBlock';
 import ReferenceTabs from '../components/ReferenceTabs';
+import SelectableText from '../components/SelectableText';
 import { useScripturePassages } from '../hooks/useScripturePassages';
 import { buildFullCopyText, buildPassageCopyText } from '../utils/copyText';
 import { useAppTheme } from '../hooks/useAppTheme';
@@ -192,9 +193,7 @@ const DailyMannaScreen = () => {
         </Pressable>
         <View style={styles.smallDivider} />
         <View style={styles.titleRow}>
-          <Text style={styles.titleText} numberOfLines={0}>
-            {processTitleText(qt?.title)}
-          </Text>
+          <SelectableText text={processTitleText(qt?.title)} style={styles.titleText} />
           {passages.length > 0 ? (
             <TouchableOpacity
               onPress={copyAll}

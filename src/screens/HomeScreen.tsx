@@ -29,6 +29,7 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import CopyToast from '../components/CopyToast';
 import PassageBlock from '../components/PassageBlock';
 import ReferenceTabs from '../components/ReferenceTabs';
+import SelectableText from '../components/SelectableText';
 import { useScripturePassages } from '../hooks/useScripturePassages';
 import { buildFullCopyText, buildPassageCopyText } from '../utils/copyText';
 import { useAppTheme } from '../hooks/useAppTheme';
@@ -192,9 +193,7 @@ const HomeScreen = () => {
         </Pressable>
         <View style={styles.smallDivider} />
         <View style={styles.titleRow}>
-          <Text style={styles.titleText} numberOfLines={0}>
-            {processTitleText(sermon?.title)}
-          </Text>
+          <SelectableText text={processTitleText(sermon?.title)} style={styles.titleText} />
           {passages.length > 0 ? (
             <TouchableOpacity
               onPress={copyAll}
