@@ -5,7 +5,6 @@ import {
   AppState,
   BackHandler,
   Keyboard,
-  LayoutChangeEvent,
   PanResponder,
   Platform,
   Pressable,
@@ -55,7 +54,6 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
   const [note, setNote] = useState('');
   const [copied, setCopied] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -82,42 +80,49 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
   // 시트가 화면 하단에 absolute로 붙어 있어 키보드가 그대로 덮는다.
   // KeyboardAvoidingView는 absolute 자식에 잘 먹지 않아 bottom을 직접 밀어 올린다.
   //
-  // 얼마나 밀어야 하는지가 플랫폼 하나로 갈리지 않는다:
-  //  - iOS: 창이 줄지 않는다 → 키보드 높이만큼 전부 밀어야 한다.
-  //  - Android + windowSoftInputMode="adjustResize"(AndroidManifest.xml:28): 창이 줄어들어
-  //    하단 absolute 요소가 이미 올라온다 → 또 밀면 이중 보정으로 시트가 화면 중간에 뜬다.
+  // 얼마나 밀어야 하는지를 "키보드 높이"로 계산하면 안 된다. 키보드 높이는 화면 바닥 기준인데
+  // 시트의 bottom: 0은 부모 컨테이너 바닥 기준이고, 그 둘은 같은 자리가 아니다:
+  //  - iOS: App.tsx 루트 SafeAreaView가 홈 인디케이터 인셋만큼 컨테이너를 화면 바닥 위로
+  //    올려두므로, 키보드 높이만큼 밀면 그 인셋만큼 이중으로 밀려 시트와 키보드 사이에 틈이
+  //    생기고 그 틈으로 뒤 본문이 비쳐 보인다([#282], 실기기 영상으로 확인).
+  //  - Android 14 이하 + windowSoftInputMode="adjustResize"(AndroidManifest.xml:28): 창이
+  //    줄어들어 컨테이너 바닥이 키보드 상단까지 내려온다 → 밀 필요가 없다.
   //  - Android 15/16: targetSdk 36(android/build.gradle.kts)이라 RN이 edge-to-edge를 강제로
-  //    켜면서(WindowUtil.updateEdgeToEdgeFeatureFlag) 창이 줄지 않는다 → iOS처럼 밀어야 한다.
+  //    켜면서 창이 줄지 않는다 → 밀어야 한다.
   //
-  // 즉 Platform.OS로 나누면 어느 한쪽 Android 세대가 반드시 깨진다. 그래서 분기 대신
-  // "창이 실제로 줄어든 양"을 재서 그만큼을 빼고 남은 만큼만 민다. 어느 조합이든 성립한다.
+  // 그래서 상수를 빼거나 Platform.OS로 나누지 않고, 컨테이너 바닥과 키보드 상단의 실제 위치를
+  // 같은 좌표계(window)에서 재서 그 차이만큼만 민다. 어느 조합이든 성립한다.
+  //
+  // 키보드 상단의 window 좌표 Y. 키보드가 내려가 있으면 null.
+  // (iOS: UIKeyboardFrameEndUserInfoKey의 origin.y / Android: ReactRootView가
+  //  getWindowVisibleDisplayFrame().bottom을 dp로 준다. 둘 다 measureInWindow와 같은 좌표계.)
+  const [keyboardTopY, setKeyboardTopY] = useState<number | null>(null);
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const showSub = Keyboard.addListener(showEvent, e =>
-      setKeyboardHeight(e.endCoordinates.height),
+      setKeyboardTopY(e.endCoordinates.screenY),
     );
-    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardTopY(null));
     return () => {
       showSub.remove();
       hideSub.remove();
     };
   }, []);
 
-  // 부모(화면 컨테이너)의 실제 레이아웃 높이. 창이 줄면 같이 줄어든다.
-  const [viewportHeight, setViewportHeight] = useState(0);
-  const maxViewportHeight = useRef(0);
-  const handleProbeLayout = (e: LayoutChangeEvent) => {
-    const h = e.nativeEvent.layout.height;
-    maxViewportHeight.current = Math.max(maxViewportHeight.current, h);
-    setViewportHeight(h);
+  // 컨테이너 바닥의 window 좌표 Y. 측정용 probe 뷰가 컨테이너를 세로로 꽉 채우므로
+  // probe의 (y + height)가 곧 컨테이너 바닥이다. Android adjustResize로 창이 줄면 probe가
+  // 다시 레이아웃되어 onLayout이 또 불리고, 그때 재측정된다.
+  const probeRef = useRef<View>(null);
+  const [containerBottomY, setContainerBottomY] = useState(0);
+  const handleProbeLayout = () => {
+    probeRef.current?.measureInWindow((_x, y, _width, height) =>
+      setContainerBottomY(y + height),
+    );
   };
 
-  const windowShrink =
-    maxViewportHeight.current > 0 && viewportHeight > 0
-      ? Math.max(0, maxViewportHeight.current - viewportHeight)
-      : 0;
-  const keyboardOffset = Math.max(0, keyboardHeight - windowShrink);
+  const keyboardOffset =
+    keyboardTopY === null ? 0 : Math.max(0, containerBottomY - keyboardTopY);
 
   const flushSave = useCallback(() => {
     if (saveTimer.current) {
@@ -270,9 +275,14 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
 
   return (
     <>
-      {/* 창이 실제로 줄어든 양을 재기 위한 측정용 뷰. pointerEvents="none"이라 터치에 관여하지
-          않는다. Android adjustResize/edge-to-edge 조합을 런타임에 구분하는 유일한 수단이다. */}
-      <View style={styles.viewportProbe} pointerEvents="none" onLayout={handleProbeLayout} />
+      {/* 컨테이너 바닥의 window 좌표를 재기 위한 측정용 뷰(top: 0 / bottom: 0으로 컨테이너를
+          세로로 꽉 채운다). pointerEvents="none"이라 터치에 관여하지 않는다. */}
+      <View
+        ref={probeRef}
+        style={styles.viewportProbe}
+        pointerEvents="none"
+        onLayout={handleProbeLayout}
+      />
       {/* 시트 바깥을 덮는 탭-닫기 오버레이는 두지 않는다. 실기 확인 결과(iPhone 17 Pro,
           iOS 26.3) 그 오버레이가 터치를 가져가면서 뒤 ScrollView가 스크롤되지 않았고,
           이는 "시트가 떠 있어도 말씀 영역 스크롤이 가능해야 한다"는 기획 요구사항과
