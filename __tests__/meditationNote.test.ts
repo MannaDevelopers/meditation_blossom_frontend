@@ -1,12 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
+  MEDITATION_NOTE_IDENTITY_STORAGE_KEY_QT,
+  MEDITATION_NOTE_IDENTITY_STORAGE_KEY_SERMON,
   MEDITATION_NOTE_STORAGE_KEY_QT,
   MEDITATION_NOTE_STORAGE_KEY_SERMON,
 } from '../src/constants';
 import {
   clearMeditationNote,
   loadMeditationNote,
+  loadNoteIdentity,
   saveMeditationNote,
+  saveNoteIdentity,
 } from '../src/services/meditationNoteService';
 import {
   formatMeditationNoteForCopy,
@@ -91,5 +95,49 @@ describe('meditationNoteService', () => {
     expect(AsyncStorage.removeItem).not.toHaveBeenCalledWith(
       MEDITATION_NOTE_STORAGE_KEY_SERMON,
     );
+  });
+});
+
+describe('meditationNoteService - 식별자(자동 삭제 판단용)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('탭별로 다른 키에 JSON으로 저장한다', async () => {
+    await saveNoteIdentity('sermon', { primary: '2026-W37', onMismatch: 'confirm_clear' });
+    await saveNoteIdentity('qt', { primary: '2026-09-14', onMismatch: 'auto_clear' });
+
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+      MEDITATION_NOTE_IDENTITY_STORAGE_KEY_SERMON,
+      JSON.stringify({ primary: '2026-W37', onMismatch: 'confirm_clear' }),
+    );
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+      MEDITATION_NOTE_IDENTITY_STORAGE_KEY_QT,
+      JSON.stringify({ primary: '2026-09-14', onMismatch: 'auto_clear' }),
+    );
+  });
+
+  it('저장된 값을 파싱해 돌려준다', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(
+      JSON.stringify({ primary: '2026-W37', onMismatch: 'confirm_clear' }),
+    );
+    await expect(loadNoteIdentity('sermon')).resolves.toEqual({
+      primary: '2026-W37',
+      onMismatch: 'confirm_clear',
+    });
+  });
+
+  it('저장된 값이 없으면 null', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(null);
+    await expect(loadNoteIdentity('sermon')).resolves.toBeNull();
+  });
+
+  it('읽기/쓰기 실패해도 예외를 던지지 않는다', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockRejectedValueOnce(new Error('storage down'));
+    (AsyncStorage.setItem as jest.Mock).mockRejectedValueOnce(new Error('storage full'));
+    await expect(loadNoteIdentity('sermon')).resolves.toBeNull();
+    await expect(
+      saveNoteIdentity('sermon', { primary: 'x', onMismatch: 'confirm_clear' }),
+    ).resolves.toBeUndefined();
   });
 });

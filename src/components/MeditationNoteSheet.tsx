@@ -24,10 +24,13 @@ import { MEDITATION_NOTE_MAX_LENGTH } from '../constants';
 import {
   clearMeditationNote,
   loadMeditationNote,
+  loadNoteIdentity,
   MeditationNoteSource,
   saveMeditationNote,
+  saveNoteIdentity,
 } from '../services/meditationNoteService';
 import { formatMeditationNoteForCopy, hasCopyableNote } from '../utils/meditationNote';
+import { decideNoteGuardAction, NoteIdentity } from '../utils/meditationNoteGuard';
 import logger from '../utils/logger';
 
 /** 입력 중 매 글자마다 AsyncStorage를 때리지 않도록 묶어서 저장하는 간격 */
@@ -48,9 +51,17 @@ interface Props {
    * 말씀이 갱신되면 이 값만 바뀌고 사용자가 쓴 묵상은 유지된다([#174]).
    */
   title: string | undefined;
+  /**
+   * 현재 표시 중인 말씀의 식별자(sermonNoteIdentity/qtNoteIdentity). 시트를 열 때 마지막으로
+   * 저장해둔 식별자와 비교해 다르면 identity별 정책대로 지운다(QT는 자동, sermon은 배너로
+   * 확인). sermon의 식별자는 week만 보므로 예배시간 설정을 바꿔 같은 주의 다른 예배를 봐도
+   * 지워지지 않는다. FCM 도착 시점이 아니라 "여는 시점"에 판단하므로, 입력창이 열려 있는
+   * 동안 FCM이 와도 지워지지 않는다(테스터 피드백).
+   */
+  identity: NoteIdentity | null;
 }
 
-const MeditationNoteSheet = ({ source, title }: Props) => {
+const MeditationNoteSheet = ({ source, title, identity }: Props) => {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
@@ -58,6 +69,8 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
   const [note, setNote] = useState('');
   const [copied, setCopied] = useState(false);
+  // 말씀 week이 실제로 넘어간 경우, 자동 삭제 대신 물어본다(sermon만 — QT는 바로 지운다).
+  const [pendingConfirmClear, setPendingConfirmClear] = useState(false);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -182,8 +195,57 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
       copiedTimer.current = null;
     }
     setCopied(false);
+    setPendingConfirmClear(false);
     setIsOpen(false);
   }, [flushSave, dragY]);
+
+  // 시트를 여는 순간에만 "새 말씀인지" 판단한다. FCM 도착 즉시 지우지 않는 이유는
+  // 입력 중(시트가 열려 있는 동안)에 지워지면 안 되기 때문 — 다음에 열 때 판단하면 충분하다.
+  const handleOpenPress = useCallback(async () => {
+    if (identity) {
+      const stored = await loadNoteIdentity(source);
+      const action = decideNoteGuardAction(stored, identity);
+      if (action === 'auto_clear') {
+        if (saveTimer.current) {
+          clearTimeout(saveTimer.current);
+          saveTimer.current = null;
+        }
+        setNote('');
+        latestNote.current = '';
+        await clearMeditationNote(source);
+        await saveNoteIdentity(source, identity);
+      } else if (action === 'confirm_clear') {
+        // 지울 내용이 없으면 물어볼 필요 없이 식별자만 갱신한다.
+        if (latestNote.current) {
+          setPendingConfirmClear(true);
+        } else {
+          await saveNoteIdentity(source, identity);
+        }
+      } else {
+        await saveNoteIdentity(source, identity);
+      }
+    }
+    setIsOpen(true);
+  }, [identity, source]);
+
+  const resolvePendingConfirmClear = useCallback(
+    async (shouldClear: boolean) => {
+      setPendingConfirmClear(false);
+      if (shouldClear) {
+        if (saveTimer.current) {
+          clearTimeout(saveTimer.current);
+          saveTimer.current = null;
+        }
+        setNote('');
+        latestNote.current = '';
+        await clearMeditationNote(source);
+      }
+      if (identity) {
+        await saveNoteIdentity(source, identity);
+      }
+    },
+    [identity, source],
+  );
 
   // Android 하드웨어 뒤로가기로 시트를 닫는다.
   // 등록 조건이 두 가지인 이유:
@@ -271,7 +333,7 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
     return (
       <TouchableOpacity
         style={[styles.fab, { bottom: FAB_BOTTOM_MARGIN + navBarInset }]}
-        onPress={() => setIsOpen(true)}
+        onPress={handleOpenPress}
         accessibilityLabel="묵상 작성"
         accessibilityRole="button"
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -338,6 +400,30 @@ const MeditationNoteSheet = ({ source, title }: Props) => {
           </View>
         </View>
         <View style={styles.sheetDivider} />
+
+        {pendingConfirmClear ? (
+          <View style={styles.confirmBanner}>
+            <Text style={styles.confirmBannerText}>
+              새 말씀이 올라왔어요. 이전 묵상을 지울까요?
+            </Text>
+            <View style={styles.confirmBannerActions}>
+              <TouchableOpacity
+                onPress={() => resolvePendingConfirmClear(false)}
+                hitSlop={8}
+                accessibilityRole="button"
+              >
+                <Text style={styles.confirmBannerKeepText}>유지</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => resolvePendingConfirmClear(true)}
+                hitSlop={8}
+                accessibilityRole="button"
+              >
+                <Text style={styles.confirmBannerClearText}>지우기</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
 
         <TextInput
           style={styles.input}
@@ -456,6 +542,33 @@ const createStyles = (colors: ThemeColors) =>
   sheetDivider: {
     height: 1,
     backgroundColor: colors.divider,
+  },
+  confirmBanner: {
+    backgroundColor: colors.infoPanelBlue,
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 12,
+    gap: 10,
+  },
+  confirmBannerText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontFamily: 'Pretendard-Medium',
+  },
+  confirmBannerActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 16,
+  },
+  confirmBannerKeepText: {
+    color: colors.textTertiary,
+    fontSize: 14,
+    fontFamily: 'Pretendard-SemiBold',
+  },
+  confirmBannerClearText: {
+    color: colors.accent,
+    fontSize: 14,
+    fontFamily: 'Pretendard-SemiBold',
   },
   input: {
     minHeight: 88,

@@ -29,6 +29,7 @@ import ReferenceTabs from '../components/ReferenceTabs';
 import SelectableText from '../components/SelectableText';
 import { useScripturePassages } from '../hooks/useScripturePassages';
 import { buildFullCopyText, buildPassageCopyText } from '../utils/copyText';
+import { qtNoteIdentity } from '../utils/meditationNoteIdentity';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { ThemeColors } from '../theme/colors';
 
@@ -116,6 +117,8 @@ const DailyMannaScreen = () => {
   }, [passages, qt?.title, meditationQuestions, showToast]);
 
   const visiblePassages = mode === 'paged' ? passages.slice(selectedIndex, selectedIndex + 1) : passages;
+
+  const noteIdentity = useMemo(() => qtNoteIdentity(qt), [qt]);
 
   const targetYoutubeUrl = qt?.video_url || DAILY_MANNA_CHANNEL_URL;
   const hasLoggedScroll = useRef(false);
@@ -263,7 +266,7 @@ const DailyMannaScreen = () => {
       )}
       <CopyToast message={toast} />
       {/* 복사에는 표시용 줄바꿈이 없는 원문 제목을 넘긴다([#174]) */}
-      <MeditationNoteSheet source="qt" title={qt?.title} />
+      <MeditationNoteSheet source="qt" title={qt?.title} identity={noteIdentity} />
     </SafeAreaView>
   );
 };
