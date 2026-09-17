@@ -76,7 +76,7 @@ const SharedHeader = ({
           style={styles.editButton}
           hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
         >
-          <SvgIcon name="EditPencil" size={22} fill={colors.textPrimary} pointerEvents="none" />
+          <SvgIcon name="EditPalette" size={22} fill={colors.textPrimary} pointerEvents="none" />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => navigation.navigate('SettingsScreen')}
