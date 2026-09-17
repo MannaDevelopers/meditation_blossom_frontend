@@ -32,6 +32,7 @@ import ReferenceTabs from '../components/ReferenceTabs';
 import SelectableText from '../components/SelectableText';
 import { useScripturePassages } from '../hooks/useScripturePassages';
 import { buildFullCopyText, buildPassageCopyText } from '../utils/copyText';
+import { sermonNoteIdentity } from '../utils/meditationNoteIdentity';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { ThemeColors } from '../theme/colors';
 
@@ -77,6 +78,8 @@ const HomeScreen = () => {
   }, [passages, sermon?.title, showToast]);
 
   const visiblePassages = mode === 'paged' ? passages.slice(selectedIndex, selectedIndex + 1) : passages;
+
+  const noteIdentity = useMemo(() => sermonNoteIdentity(sermon), [sermon]);
 
   const { performInitialSync } = useAppGroupSync({
     onDataSynced: loadLocalData,
@@ -242,7 +245,7 @@ const HomeScreen = () => {
       )}
       <CopyToast message={toast} />
       {/* 복사에는 표시용 줄바꿈이 없는 원문 제목을 넘긴다([#174]) */}
-      <MeditationNoteSheet source="sermon" title={sermon?.title} />
+      <MeditationNoteSheet source="sermon" title={sermon?.title} identity={noteIdentity} />
     </SafeAreaView>
   );
 };

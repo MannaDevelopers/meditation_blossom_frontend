@@ -33,18 +33,9 @@ import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { ThemeColors } from '../theme/colors';
+import { toIsoWeek } from '../utils/isoWeek';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SettingsScreen'>;
-
-// sermons-v2 'week' 필드 계산용 (docs/firestore/sermons-v2.md의 ISO 8601 week_number 정의와 동일)
-function toIsoWeek(date: Date): string {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
-}
 
 const SettingsScreen = ({ navigation }: Props) => {
   const { colors } = useAppTheme();

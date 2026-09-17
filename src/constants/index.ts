@@ -30,6 +30,12 @@ export const MEDITATION_NOTE_STORAGE_KEY_QT = 'meditation_note_qt';
 /** 묵상 메모 입력 최대 길이 (기획 확정값, 추후 조정 가능) */
 export const MEDITATION_NOTE_MAX_LENGTH = 1000;
 
+// 묵상 메모가 마지막으로 어떤 말씀(sermonNoteIdentity/qtNoteIdentity)에 대해 쓰였는지 기록해두는
+// 키. 새 말씀이 내려왔을 때 자동 삭제할지 판단하는 기준선으로 쓰인다(테스터 피드백:
+// video_url만 갱신된 경우엔 지우지 않아야 하고, 주일 말씀 입력 중엔 지워지면 안 됨).
+export const MEDITATION_NOTE_IDENTITY_STORAGE_KEY_SERMON = 'meditation_note_identity_sermon';
+export const MEDITATION_NOTE_IDENTITY_STORAGE_KEY_QT = 'meditation_note_identity_qt';
+
 // 위젯 디자인 편집 - 텍스트 색상 스와치 프리셋 (빨강/주황/노랑/초록/파랑/흰색/검정)
 // 8번째 "사용자 지정" 스와치는 프리셋이 아닌 커스텀 컬러피커 진입 버튼이라 이 배열에는 포함하지 않음
 export const WIDGET_TEXT_COLOR_PRESETS: readonly string[] = [
