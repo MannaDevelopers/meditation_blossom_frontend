@@ -43,9 +43,9 @@ const CATEGORY_OPTIONS: { key: Category; label: string; icon: 'EditText' | 'Edit
 ];
 
 const TEXT_SUB_TABS: { key: TextSubTab; label: string }[] = [
+  { key: 'size', label: '크기' },
   { key: 'align', label: '정렬' },
   { key: 'color', label: '색상' },
-  { key: 'size', label: '크기' },
   { key: 'weight', label: '두께' },
 ];
 
@@ -503,7 +503,7 @@ const EditScreen = ({ navigation, route }: Props) => {
   const previewReferenceAtTop = activeSource === 'qt';
 
   const [category, setCategory] = useState<Category>('text');
-  const [textSubTab, setTextSubTab] = useState<TextSubTab>('align');
+  const [textSubTab, setTextSubTab] = useState<TextSubTab>('size');
   const [backgroundSubTab, setBackgroundSubTab] = useState<BackgroundSubTab>('color');
   const [customColorTarget, setCustomColorTarget] = useState<'text' | 'background' | null>(null);
   // 소스(주일 말씀/QT)별로 독립적으로 유지 — 재진입 시에도 사라지지 않도록 AsyncStorage에도
