@@ -104,26 +104,26 @@ describe('meditationNoteService - 식별자(자동 삭제 판단용)', () => {
   });
 
   it('탭별로 다른 키에 JSON으로 저장한다', async () => {
-    await saveNoteIdentity('sermon', { primary: '2026-W37_SUN_0950' });
-    await saveNoteIdentity('qt', { primary: '2026-09-14' });
+    await saveNoteIdentity('sermon', { primary: '2026-W37', onMismatch: 'confirm_clear' });
+    await saveNoteIdentity('qt', { primary: '2026-09-14', onMismatch: 'auto_clear' });
 
     expect(AsyncStorage.setItem).toHaveBeenCalledWith(
       MEDITATION_NOTE_IDENTITY_STORAGE_KEY_SERMON,
-      JSON.stringify({ primary: '2026-W37_SUN_0950' }),
+      JSON.stringify({ primary: '2026-W37', onMismatch: 'confirm_clear' }),
     );
     expect(AsyncStorage.setItem).toHaveBeenCalledWith(
       MEDITATION_NOTE_IDENTITY_STORAGE_KEY_QT,
-      JSON.stringify({ primary: '2026-09-14' }),
+      JSON.stringify({ primary: '2026-09-14', onMismatch: 'auto_clear' }),
     );
   });
 
   it('저장된 값을 파싱해 돌려준다', async () => {
     (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(
-      JSON.stringify({ primary: '2026-W37', secondary: 'doc-1' }),
+      JSON.stringify({ primary: '2026-W37', onMismatch: 'confirm_clear' }),
     );
     await expect(loadNoteIdentity('sermon')).resolves.toEqual({
       primary: '2026-W37',
-      secondary: 'doc-1',
+      onMismatch: 'confirm_clear',
     });
   });
 
@@ -136,6 +136,8 @@ describe('meditationNoteService - 식별자(자동 삭제 판단용)', () => {
     (AsyncStorage.getItem as jest.Mock).mockRejectedValueOnce(new Error('storage down'));
     (AsyncStorage.setItem as jest.Mock).mockRejectedValueOnce(new Error('storage full'));
     await expect(loadNoteIdentity('sermon')).resolves.toBeNull();
-    await expect(saveNoteIdentity('sermon', { primary: 'x' })).resolves.toBeUndefined();
+    await expect(
+      saveNoteIdentity('sermon', { primary: 'x', onMismatch: 'confirm_clear' }),
+    ).resolves.toBeUndefined();
   });
 });

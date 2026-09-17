@@ -53,9 +53,10 @@ interface Props {
   title: string | undefined;
   /**
    * 현재 표시 중인 말씀의 식별자(sermonNoteIdentity/qtNoteIdentity). 시트를 열 때 마지막으로
-   * 저장해둔 식별자와 비교해 새 말씀이면 자동으로(또는 애매하면 배너로 확인 후) 지운다.
-   * FCM 도착 시점이 아니라 "여는 시점"에 판단하므로, 입력창이 열려 있는 동안 FCM이 와도
-   * 지워지지 않는다(테스터 피드백).
+   * 저장해둔 식별자와 비교해 다르면 identity별 정책대로 지운다(QT는 자동, sermon은 배너로
+   * 확인). sermon의 식별자는 week만 보므로 예배시간 설정을 바꿔 같은 주의 다른 예배를 봐도
+   * 지워지지 않는다. FCM 도착 시점이 아니라 "여는 시점"에 판단하므로, 입력창이 열려 있는
+   * 동안 FCM이 와도 지워지지 않는다(테스터 피드백).
    */
   identity: NoteIdentity | null;
 }
@@ -68,7 +69,7 @@ const MeditationNoteSheet = ({ source, title, identity }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
   const [note, setNote] = useState('');
   const [copied, setCopied] = useState(false);
-  // '전체' 옵션에서 같은 ISO week 안에 문서가 바뀐 애매한 경우, 자동 삭제 대신 물어본다.
+  // 말씀 week이 실제로 넘어간 경우, 자동 삭제 대신 물어본다(sermon만 — QT는 바로 지운다).
   const [pendingConfirmClear, setPendingConfirmClear] = useState(false);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
