@@ -243,7 +243,9 @@ const DailyMannaScreen = () => {
                 <Text style={styles.questionNumber}>
                   {index === 0 ? '•' : ''}
                 </Text>
-                <Text style={styles.questionText}>{question}</Text>
+                {/* 제목·본문처럼 롱프레스로 구간을 골라 복사할 수 있게 한다([#298]). 질문은 줄 단위로
+                    나뉘어 행마다 따로 그려지므로 선택도 행 단위다. */}
+                <SelectableText text={question} style={styles.questionText} />
               </View>
             ))}
           </View>
