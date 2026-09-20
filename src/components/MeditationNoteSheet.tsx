@@ -8,6 +8,7 @@ import {
   PanResponder,
   Platform,
   Pressable,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -18,7 +19,6 @@ import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { ThemeColors } from '../theme/colors';
-import Clipboard from '@react-native-clipboard/clipboard';
 import SvgIcon from './SvgIcon';
 import { MEDITATION_NOTE_MAX_LENGTH } from '../constants';
 import {
@@ -35,8 +35,6 @@ import logger from '../utils/logger';
 
 /** 입력 중 매 글자마다 AsyncStorage를 때리지 않도록 묶어서 저장하는 간격 */
 const SAVE_DEBOUNCE_MS = 600;
-/** 복사 완료 문구가 떠 있는 시간 */
-const COPIED_TOAST_MS = 1800;
 /** 이만큼 아래로 끌어내리면 시트를 닫는다 */
 const DISMISS_DRAG_DISTANCE = 60;
 /** 짧게 내려도 아래로 튕기는 속도면 닫는다 */
@@ -47,7 +45,7 @@ const FAB_BOTTOM_MARGIN = 40;
 interface Props {
   source: MeditationNoteSource;
   /**
-   * 복사에 쓸 말씀 제목. processTitleText를 거치지 않은 원문(sermon.title / qt.title)을 넘긴다.
+   * 공유에 쓸 말씀 제목. processTitleText를 거치지 않은 원문(sermon.title / qt.title)을 넘긴다.
    * 말씀이 갱신되면 이 값만 바뀌고 사용자가 쓴 묵상은 유지된다([#174]).
    */
   title: string | undefined;
@@ -68,12 +66,10 @@ const MeditationNoteSheet = ({ source, title, identity }: Props) => {
   const isFocused = useIsFocused();
   const [isOpen, setIsOpen] = useState(false);
   const [note, setNote] = useState('');
-  const [copied, setCopied] = useState(false);
   // 말씀 week이 실제로 넘어간 경우, 자동 삭제 대신 물어본다(sermon만 — QT는 바로 지운다).
   const [pendingConfirmClear, setPendingConfirmClear] = useState(false);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** 아래로 끌어내린 거리. 손가락을 따라 시트가 내려가게 한다. */
   const dragY = useRef(new Animated.Value(0)).current;
   // 디바운스 타이머가 아직 안 터진 상태로 시트를 닫거나 언마운트될 때 마지막 입력을 잃지 않도록
@@ -169,12 +165,6 @@ const MeditationNoteSheet = ({ source, title, identity }: Props) => {
     return () => sub.remove();
   }, [flushSave]);
 
-  useEffect(() => {
-    return () => {
-      if (copiedTimer.current) clearTimeout(copiedTimer.current);
-    };
-  }, []);
-
   const handleChangeText = (text: string) => {
     hasTypedRef.current = true;
     setNote(text);
@@ -190,11 +180,6 @@ const MeditationNoteSheet = ({ source, title, identity }: Props) => {
     Keyboard.dismiss();
     flushSave();
     dragY.setValue(0);
-    if (copiedTimer.current) {
-      clearTimeout(copiedTimer.current);
-      copiedTimer.current = null;
-    }
-    setCopied(false);
     setPendingConfirmClear(false);
     setIsOpen(false);
   }, [flushSave, dragY]);
@@ -299,14 +284,18 @@ const MeditationNoteSheet = ({ source, title, identity }: Props) => {
     }),
   ).current;
 
-  const handleCopy = () => {
+  // 시스템 공유 시트로 넘긴다([#298]). 카카오톡·메시지 등 어디로 보낼지는 사용자가 고른다.
+  // 포맷은 [#174] 확정안(제목 + 묵상) 그대로다. 별도 복사 버튼은 두지 않는다 — iOS 공유 시트의
+  // "복사하기"와 Android 공유 시트의 텍스트 미리보기 옆 복사 버튼이 같은 일을 한다(iPhone 17 Pro /
+  // Pixel 6 API 35에서 확인, 기획 합의). Android는 취소해도 항상 sharedAction으로 돌아와 성공
+  // 여부를 알 수 없으므로 완료 문구도 두지 않는다 — 시트가 뜨는 것 자체가 피드백이다.
+  const handleShare = () => {
     if (!hasCopyableNote(note)) return;
-    Clipboard.setString(formatMeditationNoteForCopy(title, note));
     flushSave();
-    setCopied(true);
-    if (copiedTimer.current) clearTimeout(copiedTimer.current);
-    copiedTimer.current = setTimeout(() => setCopied(false), COPIED_TOAST_MS);
-    logger.log(`[MeditationNote] copied (${source})`);
+    Share.share(
+      { message: formatMeditationNoteForCopy(title, note) },
+      { dialogTitle: '묵상 공유' },
+    ).catch(e => logger.error(`[MeditationNote] share 실패 (${source})`, e));
   };
 
   const handleClearAll = () => {
@@ -344,7 +333,7 @@ const MeditationNoteSheet = ({ source, title, identity }: Props) => {
     );
   }
 
-  const canCopy = hasCopyableNote(note);
+  const canShare = hasCopyableNote(note);
 
   return (
     <>
@@ -429,7 +418,7 @@ const MeditationNoteSheet = ({ source, title, identity }: Props) => {
           style={styles.input}
           value={note}
           onChangeText={handleChangeText}
-          placeholder={'오늘의 묵상을 입력하세요\n(예: 본문에서 받은 은혜, 나의 고백…)'}
+          placeholder={'오늘의 묵상을 입력하고 공유해보세요\n(예: 본문에서 받은 은혜, 나의 고백…)'}
           placeholderTextColor={colors.textTertiary}
           multiline
           maxLength={MEDITATION_NOTE_MAX_LENGTH}
@@ -445,16 +434,15 @@ const MeditationNoteSheet = ({ source, title, identity }: Props) => {
           <TouchableOpacity onPress={handleClearAll} disabled={!note} hitSlop={12}>
             <Text style={[styles.clearText, !note && styles.disabledText]}>전체 지우기</Text>
           </TouchableOpacity>
-          <View style={styles.actionRight}>
-            {copied ? <Text style={styles.copiedText}>복사했어요</Text> : null}
-            <TouchableOpacity
-              style={[styles.copyButton, !canCopy && styles.copyButtonDisabled]}
-              onPress={handleCopy}
-              disabled={!canCopy}
-            >
-              <Text style={styles.copyButtonText}>복사</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={[styles.shareButton, !canShare && styles.shareButtonDisabled]}
+            onPress={handleShare}
+            disabled={!canShare}
+            accessibilityLabel="묵상 공유"
+            accessibilityRole="button"
+          >
+            <Text style={styles.shareButtonText}>공유</Text>
+          </TouchableOpacity>
         </View>
       </Animated.View>
     </>
@@ -597,11 +585,6 @@ const createStyles = (colors: ThemeColors) =>
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  actionRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
   clearText: {
     color: colors.textTertiary,
     fontSize: 14,
@@ -610,22 +593,17 @@ const createStyles = (colors: ThemeColors) =>
   disabledText: {
     opacity: 0.4,
   },
-  copiedText: {
-    color: colors.accent,
-    fontSize: 13,
-    fontFamily: 'Pretendard-Medium',
-  },
-  copyButton: {
+  shareButton: {
     backgroundColor: colors.accent,
     borderRadius: 16,
     paddingHorizontal: 20,
     paddingVertical: 7,
   },
-  copyButtonDisabled: {
+  shareButtonDisabled: {
     // 별도 색을 두면 테마마다 대비를 다시 맞춰야 해서 불투명도로 처리한다.
     opacity: 0.4,
   },
-  copyButtonText: {
+  shareButtonText: {
     color: FAB_ICON_COLOR,
     fontSize: 14,
     fontFamily: 'Pretendard-Bold',
