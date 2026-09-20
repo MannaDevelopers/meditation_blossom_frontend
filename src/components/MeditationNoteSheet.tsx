@@ -8,6 +8,7 @@ import {
   PanResponder,
   Platform,
   Pressable,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -309,6 +310,18 @@ const MeditationNoteSheet = ({ source, title, identity }: Props) => {
     logger.log(`[MeditationNote] copied (${source})`);
   };
 
+  // 시스템 공유 시트로 넘긴다([#298]). 카카오톡·메시지 등 어디로 보낼지는 사용자가 고른다.
+  // 내용은 복사와 같은 포맷이다. Android는 취소해도 항상 sharedAction으로 돌아와 성공 여부를
+  // 알 수 없으므로 완료 문구는 두지 않는다 — 시트가 뜨는 것 자체가 피드백이다.
+  const handleShare = () => {
+    if (!hasCopyableNote(note)) return;
+    flushSave();
+    Share.share(
+      { message: formatMeditationNoteForCopy(title, note) },
+      { dialogTitle: '묵상 공유' },
+    ).catch(e => logger.error(`[MeditationNote] share 실패 (${source})`, e));
+  };
+
   const handleClearAll = () => {
     if (!note) return;
     Alert.alert('전체 지우기', '작성한 내용을 전부 지우려면 확인을 눌러주세요', [
@@ -447,6 +460,15 @@ const MeditationNoteSheet = ({ source, title, identity }: Props) => {
           </TouchableOpacity>
           <View style={styles.actionRight}>
             {copied ? <Text style={styles.copiedText}>복사했어요</Text> : null}
+            <TouchableOpacity
+              style={[styles.shareButton, !canCopy && styles.copyButtonDisabled]}
+              onPress={handleShare}
+              disabled={!canCopy}
+              accessibilityLabel="묵상 공유"
+              accessibilityRole="button"
+            >
+              <Text style={styles.shareButtonText}>공유</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.copyButton, !canCopy && styles.copyButtonDisabled]}
               onPress={handleCopy}
@@ -614,6 +636,20 @@ const createStyles = (colors: ThemeColors) =>
     color: colors.accent,
     fontSize: 13,
     fontFamily: 'Pretendard-Medium',
+  },
+  shareButton: {
+    // 복사(채움형) 옆에 나란히 놓이는 보조 버튼이라 테두리형으로 둔다. 테두리 1만큼 세로 패딩을
+    // 줄여 복사 버튼과 높이를 맞춘다.
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 6,
+  },
+  shareButtonText: {
+    color: colors.accent,
+    fontSize: 14,
+    fontFamily: 'Pretendard-Bold',
   },
   copyButton: {
     backgroundColor: colors.accent,
