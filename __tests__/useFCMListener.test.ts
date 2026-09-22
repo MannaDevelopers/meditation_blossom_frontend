@@ -20,6 +20,7 @@ jest.mock('../src/services/sermonService', () => ({
   syncAppGroupToAsyncStorage: jest.fn(),
   fetchLatestSermonFromServer: jest.fn(),
   fetchLatestWeeklySermonsFromServer: jest.fn(),
+  saveLegacySermonToCache: jest.fn(),
   saveSermonToAsyncStorage: jest.fn(),
   saveWeeklySermonsToAsyncStorage: jest.fn(),
   sermonFromLegacyEvent: jest.fn(),
@@ -77,6 +78,7 @@ describe('useFCMListener', () => {
     expect(sermonService.fetchLatestSermonFromServer).toHaveBeenCalled();
     expect(sermonService.sermonFromLegacyEvent).not.toHaveBeenCalled();
     expect(sermonService.saveSermonToAsyncStorage).toHaveBeenCalledWith(legacySermon);
+    expect(sermonService.saveLegacySermonToCache).toHaveBeenCalledWith(legacySermon);
     expect(sermonService.pushSermonToWidget).toHaveBeenCalledWith(legacySermon);
     expect(sermonService.fetchLatestWeeklySermonsFromServer).not.toHaveBeenCalled();
     expect(onUpdateMock).toHaveBeenCalled();
@@ -105,6 +107,7 @@ describe('useFCMListener', () => {
     expect(sermonService.sermonFromLegacyEvent).toHaveBeenCalled();
     expect(sermonService.fetchLatestSermonFromServer).not.toHaveBeenCalled();
     expect(sermonService.saveSermonToAsyncStorage).toHaveBeenCalledWith(converted);
+    expect(sermonService.saveLegacySermonToCache).toHaveBeenCalledWith(converted);
     expect(sermonService.pushSermonToWidget).toHaveBeenCalledWith(converted);
   });
 
@@ -142,11 +145,13 @@ describe('useFCMListener', () => {
     expect(sermonService.pushSermonToWidget).not.toHaveBeenCalledWith(patched);
   });
 
-  // '전체'가 아닌 특정 예배시간을 보는 중에도 레거시 sermon_events(_v2)가 오면 캐시는
-  // 최신화해둬야 한다 — 안 그러면 나중에 '전체'로 설정을 바꿨을 때 Firestore가 아직
-  // 갱신 전인 경우(테스트 등) 방금 온 최신 내용이 안 보인다. 다만 지금 화면(특정
-  // 예배시간)과는 무관한 내용이므로 위젯은 갱신하지 않는다.
-  it('특정 예배시간 설정에서 레거시 sermon_events payload가 오면 캐시만 최신화하고 위젯은 그대로 둔다', async () => {
+  // '전체'가 아닌 특정 예배시간을 보는 중에도 레거시 sermon_events(_v2)가 오면 legacy 전용
+  // 캐시는 최신화해둬야 한다 — 안 그러면 나중에 '전체'로 설정을 바꿨을 때 Firestore가
+  // 아직 갱신 전인 경우(테스트 등) 방금 온 최신 내용이 안 보인다. 반드시 FCM_SERMON_KEY가
+  // 아니라 legacy 전용 캐시에만 남겨야 한다 — FCM_SERMON_KEY에 쓰면 "지금 화면(특정
+  // 예배시간)" 슬롯이 오염돼, 나중에 '전체'로 돌아왔을 때 이 예배 내용을 legacy 내용으로
+  // 착각하는 사고가 난다(실사용자 리포트로 발견된 버그).
+  it('특정 예배시간 설정에서 레거시 sermon_events payload가 오면 legacy 전용 캐시만 최신화한다', async () => {
     const onUpdateMock = jest.fn();
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue('SUN_0950');
     const converted = { id: 'src-1', title: '새 설교', date: '2026-09-22' };
@@ -164,7 +169,8 @@ describe('useFCMListener', () => {
 
     expect(sermonService.sermonFromLegacyEvent).toHaveBeenCalled();
     expect(sermonService.fetchLatestWeeklySermonsFromServer).not.toHaveBeenCalled();
-    expect(sermonService.saveSermonToAsyncStorage).toHaveBeenCalledWith(converted);
+    expect(sermonService.saveLegacySermonToCache).toHaveBeenCalledWith(converted);
+    expect(sermonService.saveSermonToAsyncStorage).not.toHaveBeenCalled();
     expect(sermonService.pushSermonToWidget).not.toHaveBeenCalled();
   });
 

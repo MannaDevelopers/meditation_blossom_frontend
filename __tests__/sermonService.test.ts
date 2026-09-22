@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   fetchLatestSermonFromAsyncStorage,
+  fetchLegacySermonFromCache,
   isSermonDataStale,
+  saveLegacySermonToCache,
   saveSermonToAsyncStorage,
   syncAppGroupToAsyncStorage,
   fetchLatestWeeklySermonsFromAsyncStorage,
@@ -10,7 +12,7 @@ import {
   syncSelectedSermonToWidget,
   upsertWeeklySermonFromEvent,
 } from '../src/services/sermonService';
-import { Sermon, SermonRaw, WorshipType } from '../src/types/Sermon';
+import { LEGACY_SERMON_CACHE_KEY, Sermon, SermonRaw, WorshipType } from '../src/types/Sermon';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(),
@@ -97,6 +99,42 @@ describe('fetchLatestSermonFromAsyncStorage', () => {
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue('not-valid-json{{{');
     const result = await fetchLatestSermonFromAsyncStorage();
     expect(result).toBeNull();
+  });
+});
+
+// '전체' 옵션 전용 캐시 — FCM_SERMON_KEY와 완전히 분리된 키를 쓰는지가 이 기능의 핵심
+// 불변식이다. 섞이면 특정 예배시간을 보다가 '전체'로 돌아왔을 때 그 예배(sermons-v2)
+// 내용을 legacy 내용으로 착각하는 사고가 난다(실사용자 리포트).
+describe('fetchLegacySermonFromCache / saveLegacySermonToCache', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('FCM_SERMON_KEY가 아니라 LEGACY_SERMON_CACHE_KEY를 읽고 쓴다', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    const sermon: Sermon = {
+      id: 'legacy-1', title: 'T', content: 'C', date: '2026-09-22',
+      created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+    };
+
+    await saveLegacySermonToCache(sermon);
+    await fetchLegacySermonFromCache();
+
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(LEGACY_SERMON_CACHE_KEY, JSON.stringify(sermon));
+    expect(AsyncStorage.getItem).toHaveBeenCalledWith(LEGACY_SERMON_CACHE_KEY);
+  });
+
+  it('저장된 데이터가 없으면 null', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    expect(await fetchLegacySermonFromCache()).toBeNull();
+  });
+
+  it('손상된 JSON이면 null을 반환하고 캐시를 지운다', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue('not-valid-json{{{');
+    const result = await fetchLegacySermonFromCache();
+    expect(result).toBeNull();
+    expect(AsyncStorage.removeItem).toHaveBeenCalledWith(LEGACY_SERMON_CACHE_KEY);
   });
 });
 

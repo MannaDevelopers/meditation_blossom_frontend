@@ -2,7 +2,7 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SettingsScreen from '../src/screens/SettingsScreen';
-import { FCM_SERMON_KEY } from '../src/types/Sermon';
+import { FCM_SERMON_KEY, LEGACY_SERMON_CACHE_KEY } from '../src/types/Sermon';
 import {
   syncSelectedSermonToWidget,
   fetchLatestSermonFromServer,
@@ -99,16 +99,16 @@ describe('SettingsScreen', () => {
     });
   });
 
-  // useFCMListener가 FCM payload를 FCM_SERMON_KEY 캐시에 미리 반영해뒀는데(#302), Firestore를
-  // 무조건 신뢰해 덮어써버리면 테스트 도구처럼 Firestore를 아직 안 쓴 경우 방금 온 내용이
-  // 사라져 보인다. 캐시가 Firestore보다 최신이면 캐시를 써야 한다.
-  it('"전체"로 바꿀 때 캐시가 Firestore 최신 문서보다 최신이면 캐시를 쓴다', async () => {
+  // useFCMListener가 FCM payload를 legacy 전용 캐시(LEGACY_SERMON_CACHE_KEY)에 미리
+  // 반영해뒀는데(#302), Firestore를 무조건 신뢰해 덮어써버리면 테스트 도구처럼 Firestore를
+  // 아직 안 쓴 경우 방금 온 내용이 사라져 보인다. 캐시가 Firestore보다 최신이면 캐시를 써야 한다.
+  it('"전체"로 바꿀 때 legacy 캐시가 Firestore 최신 문서보다 최신이면 캐시를 쓴다', async () => {
     const cachedFromFcm = {
       id: 'fcm-1', title: '캐시(방금 FCM으로 들어옴)', content: 'C', date: '2026-09-22',
       created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 2000, nanoseconds: 0 },
     };
     (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
-      if (key === FCM_SERMON_KEY) return Promise.resolve(JSON.stringify(cachedFromFcm));
+      if (key === LEGACY_SERMON_CACHE_KEY) return Promise.resolve(JSON.stringify(cachedFromFcm));
       return Promise.resolve(null);
     });
     (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
@@ -128,6 +128,45 @@ describe('SettingsScreen', () => {
         expect.objectContaining({ id: 'fcm-1' }),
       );
       expect(pushSermonToWidget).toHaveBeenCalledWith(expect.objectContaining({ id: 'fcm-1' }));
+    });
+  });
+
+  // 실사용자 리포트로 발견된 버그: 특정 예배시간(sermons-v2)을 보다가 '전체'로 돌아오면
+  // FCM_SERMON_KEY에 남아있던 그 예배 내용을 legacy 내용으로 착각해서 보여줬다.
+  // FCM_SERMON_KEY가 아무리 최신이어도 '전체'는 그걸 무시하고 Firestore(또는 legacy 전용
+  // 캐시)만 봐야 한다.
+  it('"전체"로 돌아올 때 FCM_SERMON_KEY에 남은 다른 예배(sermons-v2) 내용을 legacy로 착각하지 않는다', async () => {
+    const otherWorshipSermon = {
+      id: 'w38_sun_0950', title: '주일 9시 50분 예배(sermons-v2)', content: 'C', date: '2026-09-22',
+      worship_type: 'SUN_0950', week: '2026-W38',
+      created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 9999, nanoseconds: 0 },
+    };
+    (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+      // FCM_SERMON_KEY엔 마지막으로 보던 특정 예배(sermons-v2) 내용이 남아있다 —
+      // legacy 전용 캐시(LEGACY_SERMON_CACHE_KEY)는 비어있는 상태(아직 legacy 이벤트가
+      // 온 적 없음)를 가정한다.
+      if (key === FCM_SERMON_KEY) return Promise.resolve(JSON.stringify(otherWorshipSermon));
+      return Promise.resolve(null);
+    });
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    const legacySermon = {
+      id: 'legacy-1', title: 'Firestore의 실제 legacy 문서', content: 'C', date: '2026-09-15',
+      created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 1000, nanoseconds: 0 },
+    };
+    (fetchLatestSermonFromServer as jest.Mock).mockResolvedValue(legacySermon);
+
+    const { getByText } = render(<SettingsScreen navigation={mockNavigation} route={{} as any} />);
+    await waitFor(() => expect(getByText('예배 시간 설정')).toBeTruthy());
+
+    fireEvent.press(getByText('전체'));
+
+    await waitFor(() => {
+      expect(saveSermonToAsyncStorage).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'legacy-1' }),
+      );
+      expect(pushSermonToWidget).not.toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'w38_sun_0950' }),
+      );
     });
   });
 

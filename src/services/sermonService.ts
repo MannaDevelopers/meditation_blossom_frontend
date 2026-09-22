@@ -15,6 +15,7 @@ import {
   FCM_SERMON_KEY,
   fcmDataToSermon,
   firestoreDocToSermon,
+  LEGACY_SERMON_CACHE_KEY,
   Sermon,
   SermonRaw,
   WorshipType,
@@ -35,6 +36,27 @@ export async function fetchLatestSermonFromAsyncStorage(): Promise<Sermon | null
     await AsyncStorage.removeItem(FCM_SERMON_KEY).catch(() => {});
   }
   return null;
+}
+
+// '전체' 옵션 전용 — legacy 'sermons' 컬렉션의 최신 문서만 담아둔다. FCM_SERMON_KEY는
+// 예배시간 설정에 따라 sermons-v2 문서로도 덮어써지는 "지금 화면에 표시 중인 설교" 슬롯이라,
+// 그걸 legacy 문서로 착각하면 안 되는 곳(SettingsScreen의 '전체' 전환/새로고침 재조정)에서
+// 이 전용 키를 쓴다.
+export async function fetchLegacySermonFromCache(): Promise<Sermon | null> {
+  try {
+    const raw = await AsyncStorage.getItem(LEGACY_SERMON_CACHE_KEY);
+    if (raw) {
+      return fcmDataToSermon(JSON.parse(raw) as SermonRaw);
+    }
+  } catch (error) {
+    logger.warn('Failed to load legacy sermon cache, clearing corrupted data');
+    await AsyncStorage.removeItem(LEGACY_SERMON_CACHE_KEY).catch(() => {});
+  }
+  return null;
+}
+
+export async function saveLegacySermonToCache(sermon: Sermon): Promise<void> {
+  await AsyncStorage.setItem(LEGACY_SERMON_CACHE_KEY, JSON.stringify(sermon));
 }
 
 export function subscribeToLatestSermon(

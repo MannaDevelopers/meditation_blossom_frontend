@@ -7,6 +7,7 @@ import {
   syncAppGroupToAsyncStorage,
   fetchLatestSermonFromServer,
   fetchLatestWeeklySermonsFromServer,
+  saveLegacySermonToCache,
   saveSermonToAsyncStorage,
   saveWeeklySermonsToAsyncStorage,
   sermonFromLegacyEvent,
@@ -56,10 +57,13 @@ export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
       const patched = isWeeklyEvent
         ? await upsertWeeklySermonFromEvent(event as SermonRaw)
         : null;
-      // '전체'가 아니어도 레거시 이벤트는 미리 변환해둔다 — 지금 화면엔 안 쓰더라도
-      // FCM_SERMON_KEY 캐시에 남겨서, 나중에 '전체'로 설정을 바꿨을 때 Firestore가 아직
-      // 갱신 전이어도(테스트 등) 방금 받은 최신 내용이 바로 보이게 한다([#302]와 동일한
-      // 이유 — weekly 캐시를 항상 patch해두는 것과 대칭).
+      // '전체'가 아니어도 레거시 이벤트는 미리 변환해 legacy 전용 캐시에 남겨둔다 —
+      // FCM_SERMON_KEY에 저장하면 안 된다. 그 키는 예배시간 설정에 따라 sermons-v2
+      // 문서로도 덮어써지는 "지금 화면" 슬롯이라, 나중에 '전체'로 돌아왔을 때 마지막에
+      // 봤던 특정 예배의 sermons-v2 내용을 legacy 내용으로 착각하는 사고가 났다
+      // (실사용자 리포트). legacy 전용 캐시([[LEGACY_SERMON_CACHE_KEY]])에 남겨두면
+      // Firestore가 아직 갱신 전이어도(테스트 등) '전체'로 돌아왔을 때 방금 받은 최신
+      // 내용이 바로 보인다([#302]와 동일한 이유 — weekly 캐시를 항상 patch해두는 것과 대칭).
       const legacyFromPayload = isLegacySermonEvent
         ? await sermonFromLegacyEvent(event as SermonRaw)
         : null;
@@ -72,6 +76,7 @@ export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
         const legacy = legacyFromPayload ?? (await fetchLatestSermonFromServer());
         if (legacy) {
           await saveSermonToAsyncStorage(legacy);
+          await saveLegacySermonToCache(legacy);
           await pushSermonToWidget(legacy);
         }
       } else if (isWeeklyEvent) {
@@ -81,8 +86,9 @@ export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
           await pushSermonToWidget(patched);
         }
       } else if (legacyFromPayload) {
-        // 지금 화면(특정 예배시간)과는 무관한 내용이라 위젯은 갱신하지 않고 캐시만 최신화한다.
-        await saveSermonToAsyncStorage(legacyFromPayload);
+        // 지금 화면(특정 예배시간)과는 무관한 내용이라 FCM_SERMON_KEY/위젯은 건드리지
+        // 않고 legacy 전용 캐시만 최신화한다.
+        await saveLegacySermonToCache(legacyFromPayload);
       } else {
         // 정말 payload가 없는 wake-up(레거시 토픽 등) → 폴백으로 전체 재조회
         const weekly = await fetchLatestWeeklySermonsFromServer();
