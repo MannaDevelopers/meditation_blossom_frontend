@@ -142,6 +142,32 @@ describe('useFCMListener', () => {
     expect(sermonService.pushSermonToWidget).not.toHaveBeenCalledWith(patched);
   });
 
+  // '전체'가 아닌 특정 예배시간을 보는 중에도 레거시 sermon_events(_v2)가 오면 캐시는
+  // 최신화해둬야 한다 — 안 그러면 나중에 '전체'로 설정을 바꿨을 때 Firestore가 아직
+  // 갱신 전인 경우(테스트 등) 방금 온 최신 내용이 안 보인다. 다만 지금 화면(특정
+  // 예배시간)과는 무관한 내용이므로 위젯은 갱신하지 않는다.
+  it('특정 예배시간 설정에서 레거시 sermon_events payload가 오면 캐시만 최신화하고 위젯은 그대로 둔다', async () => {
+    const onUpdateMock = jest.fn();
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue('SUN_0950');
+    const converted = { id: 'src-1', title: '새 설교', date: '2026-09-22' };
+    (sermonService.sermonFromLegacyEvent as jest.Mock).mockResolvedValue(converted);
+
+    renderHook(() => useFCMListener(onUpdateMock));
+    await capturedCallback({
+      source_id: 'src-1',
+      title: '새 설교',
+      date: '2026-09-22',
+      day_of_week: 'SUN',
+      bible_references: '[]',
+      operation: 'UPDATED',
+    });
+
+    expect(sermonService.sermonFromLegacyEvent).toHaveBeenCalled();
+    expect(sermonService.fetchLatestWeeklySermonsFromServer).not.toHaveBeenCalled();
+    expect(sermonService.saveSermonToAsyncStorage).toHaveBeenCalledWith(converted);
+    expect(sermonService.pushSermonToWidget).not.toHaveBeenCalled();
+  });
+
   it('event에 week/worship_type이 있으면 전체 재조회 없이 단일 문서만 patch한다 ([#280])', async () => {
     const onUpdateMock = jest.fn();
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue('SAT_1700');

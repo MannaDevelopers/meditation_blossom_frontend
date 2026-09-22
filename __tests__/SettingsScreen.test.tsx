@@ -2,6 +2,7 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SettingsScreen from '../src/screens/SettingsScreen';
+import { FCM_SERMON_KEY } from '../src/types/Sermon';
 import {
   syncSelectedSermonToWidget,
   fetchLatestSermonFromServer,
@@ -95,6 +96,38 @@ describe('SettingsScreen', () => {
       expect(pushSermonToWidget).toHaveBeenCalledWith(legacySermon);
       // '전체'는 weekly_sermons 매칭 경로를 타지 않아야 한다
       expect(syncSelectedSermonToWidget).not.toHaveBeenCalled();
+    });
+  });
+
+  // useFCMListener가 FCM payload를 FCM_SERMON_KEY 캐시에 미리 반영해뒀는데(#302), Firestore를
+  // 무조건 신뢰해 덮어써버리면 테스트 도구처럼 Firestore를 아직 안 쓴 경우 방금 온 내용이
+  // 사라져 보인다. 캐시가 Firestore보다 최신이면 캐시를 써야 한다.
+  it('"전체"로 바꿀 때 캐시가 Firestore 최신 문서보다 최신이면 캐시를 쓴다', async () => {
+    const cachedFromFcm = {
+      id: 'fcm-1', title: '캐시(방금 FCM으로 들어옴)', content: 'C', date: '2026-09-22',
+      created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 2000, nanoseconds: 0 },
+    };
+    (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+      if (key === FCM_SERMON_KEY) return Promise.resolve(JSON.stringify(cachedFromFcm));
+      return Promise.resolve(null);
+    });
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    const staleFirestoreSermon = {
+      id: 'legacy-1', title: 'Firestore(아직 안 갱신됨)', content: 'C', date: '2026-09-15',
+      created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 1000, nanoseconds: 0 },
+    };
+    (fetchLatestSermonFromServer as jest.Mock).mockResolvedValue(staleFirestoreSermon);
+
+    const { getByText } = render(<SettingsScreen navigation={mockNavigation} route={{} as any} />);
+    await waitFor(() => expect(getByText('예배 시간 설정')).toBeTruthy());
+
+    fireEvent.press(getByText('전체'));
+
+    await waitFor(() => {
+      expect(saveSermonToAsyncStorage).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'fcm-1' }),
+      );
+      expect(pushSermonToWidget).toHaveBeenCalledWith(expect.objectContaining({ id: 'fcm-1' }));
     });
   });
 

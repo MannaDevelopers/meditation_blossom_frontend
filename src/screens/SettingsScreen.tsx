@@ -24,10 +24,10 @@ import DeviceInfo from 'react-native-device-info';
 import Svg, { Path } from 'react-native-svg';
 import SvgIcon from '../components/SvgIcon';
 import { RootStackParamList } from '../types/navigation';
-import { FCM_SERMON_KEY, Sermon, WorshipType, WorshipSetting, WORSHIP_SETTINGS, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
+import { compareSermon, FCM_SERMON_KEY, Sermon, WorshipType, WorshipSetting, WORSHIP_SETTINGS, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
 import { FCM_QT_KEY } from '../types/QT';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
-import { fetchLatestSermonFromServer, fetchLatestWeeklySermonsFromServer, pushSermonToWidget, saveSermonToAsyncStorage, syncSelectedSermonToWidget, saveWeeklySermonsToAsyncStorage } from '../services/sermonService';
+import { fetchLatestSermonFromAsyncStorage, fetchLatestSermonFromServer, fetchLatestWeeklySermonsFromServer, pushSermonToWidget, saveSermonToAsyncStorage, syncSelectedSermonToWidget, saveWeeklySermonsToAsyncStorage } from '../services/sermonService';
 import { fetchLatestQtFromServer, pushQtToWidget } from '../services/qtService';
 import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
@@ -47,13 +47,26 @@ const SettingsScreen = ({ navigation }: Props) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedWorship, setSelectedWorship] = useState<WorshipSetting>(DEFAULT_WORSHIP_TYPE);
 
+  // Firestore를 항상 신뢰하고 새로 조회하면, useFCMListener가 방금 FCM payload로 캐시에
+  // 반영해둔 내용이 있어도(예: 테스트 도구처럼 FCM만 보내고 Firestore는 아직 안 쓴 경우)
+  // 무시하고 옛날 Firestore 문서로 덮어써버린다. 캐시된 값과 새로 받아온 값을 비교해
+  // 실제로 더 최신인 쪽을 쓴다 — 정상적인 경우(백엔드가 Firestore도 같이 씀)엔 항상 fresh가
+  // 이기므로 동작이 그대로다.
+  const fetchReconciledLegacySermon = async (): Promise<Sermon | null> => {
+    const [cached, fresh] = await Promise.all([
+      fetchLatestSermonFromAsyncStorage(),
+      fetchLatestSermonFromServer(),
+    ]);
+    return compareSermon(cached, fresh) > 0 ? cached : fresh;
+  };
+
   const handleWorshipChange = async (type: WorshipSetting) => {
     setSelectedWorship(type);
     try {
       await AsyncStorage.setItem(USER_WORSHIP_SETTING_KEY, type);
       if (type === 'ALL') {
         // 전체: 레거시 단일 최신 문서 경로([#278]) — weekly_sermons 캐시/매칭 로직 사용 안 함
-        const legacy = await fetchLatestSermonFromServer();
+        const legacy = await fetchReconciledLegacySermon();
         if (legacy) {
           await saveSermonToAsyncStorage(legacy);
           await pushSermonToWidget(legacy);
@@ -109,7 +122,7 @@ const SettingsScreen = ({ navigation }: Props) => {
         return weekly.find(s => s.worship_type === worshipSetting) || weekly[0];
       }
     }
-    return fetchLatestSermonFromServer();
+    return fetchReconciledLegacySermon();
   };
 
   const clearAndRefreshStorage = async () => {
