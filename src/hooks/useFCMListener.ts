@@ -39,17 +39,26 @@ export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
     try {
       const worshipSetting =
         ((await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipSetting) || DEFAULT_WORSHIP_TYPE;
+      const isWeeklyEvent = Boolean(event?.week && event?.worship_type);
+
+      // sermons-v2 단일 문서 이벤트는 '전체' 옵션이어도 weekly_sermons 캐시에 patch해둔다.
+      // 예전엔 '전체'일 때 이 이벤트를 통째로 무시했는데, 그러면 나중에 특정 예배시간으로
+      // 설정을 바꿨을 때 캐시가 그 사이 온 FCM을 못 받아 오래된 말씀이 그대로 보였다
+      // (실사용자 리포트로 발견). 화면 표시(아래 분기)는 그대로 '전체'면 레거시 경로를
+      // 쓰고, 캐시 patch만 항상 해둔다.
+      const patched = isWeeklyEvent
+        ? await upsertWeeklySermonFromEvent(event as SermonRaw)
+        : null;
 
       if (worshipSetting === 'ALL') {
-        // 전체 옵션: 레거시 단일 최신 문서 경로 그대로 사용, sermons-v2 이벤트 데이터는 무관([#278])
+        // 전체 옵션 화면 표시: 레거시 단일 최신 문서 경로 그대로 사용([#278])
         const legacy = await fetchLatestSermonFromServer();
         if (legacy) {
           await saveSermonToAsyncStorage(legacy);
           await pushSermonToWidget(legacy);
         }
-      } else if (event?.week && event?.worship_type) {
-        // sermons-v2 단일 문서 이벤트: 전체 재조회 없이 캐시 한 건만 patch([#280])
-        const patched = await upsertWeeklySermonFromEvent(event as SermonRaw);
+      } else if (isWeeklyEvent) {
+        // sermons-v2 단일 문서 이벤트: 전체 재조회 없이 위에서 patch한 결과만 반영([#280])
         if (patched && patched.worship_type === worshipSetting) {
           await saveSermonToAsyncStorage(patched);
           await pushSermonToWidget(patched);

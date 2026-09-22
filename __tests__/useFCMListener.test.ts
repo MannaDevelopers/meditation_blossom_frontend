@@ -64,7 +64,7 @@ describe('useFCMListener', () => {
     expect(onUpdateMock).toHaveBeenCalled();
   });
 
-  it('전체(ALL) 설정이면 event 데이터와 무관하게 레거시 단일 문서 경로를 사용한다 ([#278])', async () => {
+  it('전체(ALL) 설정이어도 화면 표시는 레거시 단일 문서 경로를 사용한다 ([#278])', async () => {
     const onUpdateMock = jest.fn();
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue('ALL');
     const legacySermon = { id: 'legacy-1', date: '2026-09-15' };
@@ -77,8 +77,26 @@ describe('useFCMListener', () => {
     expect(sermonService.saveSermonToAsyncStorage).toHaveBeenCalledWith(legacySermon);
     expect(sermonService.pushSermonToWidget).toHaveBeenCalledWith(legacySermon);
     expect(sermonService.fetchLatestWeeklySermonsFromServer).not.toHaveBeenCalled();
-    expect(sermonService.upsertWeeklySermonFromEvent).not.toHaveBeenCalled();
     expect(onUpdateMock).toHaveBeenCalled();
+  });
+
+  // 전체 옵션에서 sermons-v2 이벤트를 완전히 무시하면, 나중에 특정 예배시간으로 설정을
+  // 바꿨을 때 weekly_sermons 캐시가 그 사이 온 FCM을 못 받아 오래된 말씀을 보여줬다
+  // (실사용자 리포트). 화면 표시는 레거시 경로를 쓰더라도 캐시는 항상 patch해둬야 한다.
+  it('전체(ALL) 설정이어도 sermons-v2 이벤트는 weekly 캐시에 patch해둔다', async () => {
+    const onUpdateMock = jest.fn();
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue('ALL');
+    (sermonService.fetchLatestSermonFromServer as jest.Mock).mockResolvedValue(null);
+    const patched = { id: '2026-W38_SAT_1700', worship_type: 'SAT_1700' };
+    (sermonService.upsertWeeklySermonFromEvent as jest.Mock).mockResolvedValue(patched);
+
+    renderHook(() => useFCMListener(onUpdateMock));
+    await capturedCallback({ week: '2026-W38', worship_type: 'SAT_1700', title: 'T' });
+
+    expect(sermonService.upsertWeeklySermonFromEvent).toHaveBeenCalled();
+    // 전체 옵션 화면 표시엔 여전히 patch 결과가 아니라 레거시 경로를 쓴다.
+    expect(sermonService.saveSermonToAsyncStorage).not.toHaveBeenCalledWith(patched);
+    expect(sermonService.pushSermonToWidget).not.toHaveBeenCalledWith(patched);
   });
 
   it('event에 week/worship_type이 있으면 전체 재조회 없이 단일 문서만 patch한다 ([#280])', async () => {
