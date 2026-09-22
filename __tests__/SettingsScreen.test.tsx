@@ -258,6 +258,43 @@ describe('SettingsScreen', () => {
       });
     });
 
+    // 실사용자 리포트로 발견된 버그: FCM 테스트 등으로 legacy 전용 캐시에 실제보다 미래
+    // 날짜의 문서가 남아있으면, "새로고침"을 눌러도 그 캐시가 Firestore 최신 문서보다
+    // "더 최신처럼" 보여서 영원히 그 캐시만 보여줬다. "새로고침"은 캐시를 신뢰하지 않고
+    // 항상 서버 값을 그대로 써야 한다.
+    it('"전체"에서 새로고침하면 legacy 캐시에 남은(오염된) 미래 날짜 문서 대신 서버 최신 문서를 쓴다', async () => {
+      const poisonedCache = { id: 'poisoned', date: '2099-01-01' };
+      (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+        if (key === 'user_worship_setting') return Promise.resolve('ALL');
+        if (key === LEGACY_SERMON_CACHE_KEY) return Promise.resolve(JSON.stringify(poisonedCache));
+        return Promise.resolve(null);
+      });
+      (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+      (AsyncStorage.multiRemove as jest.Mock).mockResolvedValue(undefined);
+      (fetchLatestWeeklySermonsFromServer as jest.Mock).mockResolvedValue([]);
+      const serverLatest = { id: 'server-latest', date: '2026-09-22' };
+      (fetchLatestSermonFromServer as jest.Mock).mockResolvedValue(serverLatest);
+
+      const { getByText } = render(<SettingsScreen navigation={mockNavigation} route={{} as any} />);
+      await waitFor(() => expect(getByText('예배 시간 설정')).toBeTruthy());
+
+      fireEvent.press(getByText('데이터 새로고침'));
+
+      await waitFor(() => {
+        expect(pushSermonToWidget).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'server-latest' }),
+        );
+        expect(pushSermonToWidget).not.toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'poisoned' }),
+        );
+        // 오염된 캐시도 서버 최신 문서로 덮어써서 고쳐둬야 다음번에도 안전하다.
+        expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+          LEGACY_SERMON_CACHE_KEY,
+          JSON.stringify(serverLatest),
+        );
+      });
+    });
+
     it('주간 데이터가 비어있으면 레거시 단일 문서로 폴백한다', async () => {
       (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
         if (key === 'user_worship_setting') return Promise.resolve('SAT_1700');

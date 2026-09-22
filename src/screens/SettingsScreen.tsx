@@ -117,18 +117,28 @@ const SettingsScreen = ({ navigation }: Props) => {
   // 문서로 폴백한다. handleWorshipChange/useSermonData.fetchFromServer와 동일한 분기
   // 규칙([#278]).
   //
-  // weekly 캐시와 legacy 캐시 둘 다 지금 설정이 무엇이든 항상 같이 최신화해둔다 — 하나만
-  // 하면 반대쪽 옵션으로 나중에 설정을 바꿨을 때 새로고침을 다시 눌러야만 최신 내용이
-  // 보이는 문제가 매번 재발했다(weekly만 그랬을 때 [#302], legacy만 그랬을 때 같은
-  // 이유로 재확인 — 특정 예배시간에서 새로고침해도 '전체' 캐시는 그대로였음).
+  // weekly 캐시는 지금 설정이 무엇이든 항상 같이 최신화해둔다 — 안 그러면 반대 옵션으로
+  // 나중에 설정을 바꿨을 때 새로고침을 다시 눌러야만 최신 내용이 보이는 문제가 있었다
+  // ([#302]).
+  //
+  // legacy는 fetchReconciledLegacySermon(캐시-vs-fresh 비교)이 아니라 항상
+  // fetchLatestSermonFromServer로 직접 새로 받아온다 — "새로고침" 버튼은 사용자가
+  // 명시적으로 "지금 서버에 있는 걸 그대로 보여달라"는 뜻이라 캐시를 신뢰하면 안 된다.
+  // 예전엔 여기도 reconciledLegacySermon을 썼는데, FCM 테스트로 남은 legacy 캐시가
+  // 실제보다 미래 날짜를 갖고 있으면 새로고침을 아무리 눌러도 그 캐시만 계속 이겨서
+  // 서버의 진짜 최신 내용이 영원히 안 보이는 사고가 났다(실사용자 리포트로 발견).
   const fetchLatestSermonRespectingWorshipSetting = async (): Promise<Sermon | null> => {
     const worshipSetting =
       ((await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipSetting) || DEFAULT_WORSHIP_TYPE;
 
     const [weekly, legacy] = await Promise.all([
       fetchLatestWeeklySermonsFromServer(),
-      fetchReconciledLegacySermon(),
+      fetchLatestSermonFromServer(),
     ]);
+
+    if (legacy) {
+      await saveLegacySermonToCache(legacy);
+    }
 
     if (weekly.length > 0) {
       await saveWeeklySermonsToAsyncStorage(weekly);
