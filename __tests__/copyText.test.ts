@@ -1,4 +1,4 @@
-import { buildFullCopyText, buildPassageCopyText } from '../src/utils/copyText';
+import { buildFullCopyText, buildPassageCopyText, buildQuestionsCopyText } from '../src/utils/copyText';
 
 describe('buildPassageCopyText', () => {
   // 칩 옆 복사 버튼은 "그 구절"을 복사한다([#166]). 붙여넣었을 때 어느 장절인지
@@ -11,6 +11,26 @@ describe('buildPassageCopyText', () => {
         isWholeChapter: false,
       }),
     ).toBe('열왕기하 23:21-25\n21 왕이 뭇 백성에게 명령하여\n\n22 사사가 이스라엘을 다스리던');
+  });
+});
+
+describe('buildQuestionsCopyText', () => {
+  // 묵상 질문 섹션 복사 버튼([#300]) · 전체 복사(buildFullCopyText)가 공유하는 포맷.
+  it('묵상 질문 헤더와 함께 불릿으로 나열한다', () => {
+    expect(
+      buildQuestionsCopyText([
+        '오늘 내 자리에서 거룩은 무엇입니까?',
+        '이 말씀을 삶에 어떻게 적용하겠습니까?',
+      ]),
+    ).toBe(
+      '묵상 질문\n' +
+        '- 오늘 내 자리에서 거룩은 무엇입니까?\n' +
+        '- 이 말씀을 삶에 어떻게 적용하겠습니까?',
+    );
+  });
+
+  it('빈 문자열/공백뿐인 질문은 제외한다', () => {
+    expect(buildQuestionsCopyText(['질문 하나', '   ', ''])).toBe('묵상 질문\n- 질문 하나');
   });
 });
 
