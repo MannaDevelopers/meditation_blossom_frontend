@@ -254,17 +254,17 @@ const DailyMannaScreen = () => {
                 <SvgIcon name="CopyIcon" size={18} fill={colors.textTertiary} pointerEvents="none" />
               </TouchableOpacity>
             </View>
-            <View style={styles.questionCard}>
-              <Text style={styles.questionNumber}>•</Text>
-              {/* 제목·본문처럼 롱프레스로 구간을 골라 복사할 수 있게 한다([#298]). 질문 전체를
-                  하나의 블록으로 합쳐서 줄(질문) 경계와 상관없이 자유롭게 선택할 수 있다([#300]).
-                  질문 사이는 빈 줄(\n\n)로 띄워 이전의 questionCard 간 gap(12)이 주던
-                  구분감을 유지한다 — 단일 Text/TextInput 안에서는 View의 gap을 쓸 수 없다. */}
-              <SelectableText
-                text={meditationQuestions.join('\n\n')}
-                style={styles.questionText}
-              />
-            </View>
+            {meditationQuestions.map((question, index) => (
+              <View key={index} style={styles.questionCard}>
+                <Text style={styles.questionNumber}>
+                  {index === 0 ? '•' : ''}
+                </Text>
+                {/* 제목·본문처럼 롱프레스로 구간을 골라 복사할 수 있게 한다([#298]). 질문은 줄 단위로
+                    나뉘어 행마다 따로 그려지므로 선택도 행 단위다 — 전체 복사 버튼이 있으므로
+                    줄 경계를 넘는 선택은 지원하지 않는다(디자인 유지, 리뷰 피드백 [#300]). */}
+                <SelectableText text={question} style={styles.questionText} />
+              </View>
+            ))}
           </View>
         ) : null}
       </ScrollView>
