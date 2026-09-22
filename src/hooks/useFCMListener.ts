@@ -69,15 +69,21 @@ export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
         : null;
 
       if (worshipSetting === 'ALL') {
-        // 전체 옵션 화면 표시: payload가 온전하면 Firestore 재조회 없이 바로 반영한다
-        // (포그라운드/백그라운드 모두 이 경로를 탄다 — 종료 상태는 네이티브가 App
-        // Group/네이티브 위젯 저장소에 직접 써서 JS와 무관하게 이미 처리됨). payload가
-        // 부족한 wake-up만 예전처럼 Firestore를 다시 읽어 안전하게 폴백한다.
-        const legacy = legacyFromPayload ?? (await fetchLatestSermonFromServer());
-        if (legacy) {
-          await saveSermonToAsyncStorage(legacy);
-          await saveLegacySermonToCache(legacy);
-          await pushSermonToWidget(legacy);
+        if (isWeeklyEvent) {
+          // sermons-v2 이벤트는 '전체' 화면과 무관하다 — '전체'는 sermon_events(_v2)가
+          // 왔을 때만 갱신돼야 한다(기획 확정). weekly 캐시는 위에서 이미 patch했으니
+          // 여기서는 Firestore를 다시 읽거나 화면/위젯을 건드리지 않는다.
+        } else {
+          // 전체 옵션 화면 표시: payload가 온전하면 Firestore 재조회 없이 바로 반영한다
+          // (포그라운드/백그라운드 모두 이 경로를 탄다 — 종료 상태는 네이티브가 App
+          // Group/네이티브 위젯 저장소에 직접 써서 JS와 무관하게 이미 처리됨). payload가
+          // 부족한 wake-up만 예전처럼 Firestore를 다시 읽어 안전하게 폴백한다.
+          const legacy = legacyFromPayload ?? (await fetchLatestSermonFromServer());
+          if (legacy) {
+            await saveSermonToAsyncStorage(legacy);
+            await saveLegacySermonToCache(legacy);
+            await pushSermonToWidget(legacy);
+          }
         }
       } else if (isWeeklyEvent) {
         // sermons-v2 단일 문서 이벤트: 전체 재조회 없이 위에서 patch한 결과만 반영([#280])
