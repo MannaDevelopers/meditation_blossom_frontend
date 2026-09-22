@@ -22,6 +22,7 @@ jest.mock('../src/services/sermonService', () => ({
   fetchLatestWeeklySermonsFromServer: jest.fn(),
   saveSermonToAsyncStorage: jest.fn(),
   saveWeeklySermonsToAsyncStorage: jest.fn(),
+  sermonFromLegacyEvent: jest.fn(),
   syncSelectedSermonToWidget: jest.fn(),
   pushSermonToWidget: jest.fn(),
   upsertWeeklySermonFromEvent: jest.fn(),
@@ -64,7 +65,7 @@ describe('useFCMListener', () => {
     expect(onUpdateMock).toHaveBeenCalled();
   });
 
-  it('전체(ALL) 설정이어도 화면 표시는 레거시 단일 문서 경로를 사용한다 ([#278])', async () => {
+  it('전체(ALL) 설정에서 sermons-v2 이벤트가 오면 화면 표시는 여전히 레거시 단일 문서 경로를 쓴다 ([#278])', async () => {
     const onUpdateMock = jest.fn();
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue('ALL');
     const legacySermon = { id: 'legacy-1', date: '2026-09-15' };
@@ -74,10 +75,52 @@ describe('useFCMListener', () => {
     await capturedCallback({ week: '2026-W38', worship_type: 'SAT_1700', title: 'T' });
 
     expect(sermonService.fetchLatestSermonFromServer).toHaveBeenCalled();
+    expect(sermonService.sermonFromLegacyEvent).not.toHaveBeenCalled();
     expect(sermonService.saveSermonToAsyncStorage).toHaveBeenCalledWith(legacySermon);
     expect(sermonService.pushSermonToWidget).toHaveBeenCalledWith(legacySermon);
     expect(sermonService.fetchLatestWeeklySermonsFromServer).not.toHaveBeenCalled();
     expect(onUpdateMock).toHaveBeenCalled();
+  });
+
+  // 레거시 sermon_events(_v2) payload는 그 자체로 화면에 필요한 내용을 다 담고 있어서
+  // (docs/fcm-events/sermon-events.md), '전체' 옵션에서도 Firestore를 다시 읽지 않고
+  // payload를 바로 반영해야 한다 — 예전엔 여기서 항상 Firestore를 재조회해서, 실제 서버가
+  // Firestore에 쓰기 전엔(테스트 등) 화면이 갱신되지 않는 문제가 있었다.
+  it('전체(ALL) 설정에서 레거시 sermon_events payload가 오면 Firestore 재조회 없이 바로 반영한다', async () => {
+    const onUpdateMock = jest.fn();
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue('ALL');
+    const converted = { id: 'src-1', title: '새 설교', date: '2026-09-22' };
+    (sermonService.sermonFromLegacyEvent as jest.Mock).mockResolvedValue(converted);
+
+    renderHook(() => useFCMListener(onUpdateMock));
+    await capturedCallback({
+      source_id: 'src-1',
+      title: '새 설교',
+      date: '2026-09-22',
+      day_of_week: 'SUN',
+      bible_references: '[]',
+      operation: 'UPDATED',
+    });
+
+    expect(sermonService.sermonFromLegacyEvent).toHaveBeenCalled();
+    expect(sermonService.fetchLatestSermonFromServer).not.toHaveBeenCalled();
+    expect(sermonService.saveSermonToAsyncStorage).toHaveBeenCalledWith(converted);
+    expect(sermonService.pushSermonToWidget).toHaveBeenCalledWith(converted);
+  });
+
+  // payload가 없거나 title/date조차 없는 진짜 빈 wake-up은 안전하게 Firestore 재조회로 폴백한다.
+  it('전체(ALL) 설정에서 payload가 부족한 wake-up은 Firestore 재조회로 폴백한다', async () => {
+    const onUpdateMock = jest.fn();
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue('ALL');
+    const legacySermon = { id: 'legacy-1', date: '2026-09-15' };
+    (sermonService.fetchLatestSermonFromServer as jest.Mock).mockResolvedValue(legacySermon);
+
+    renderHook(() => useFCMListener(onUpdateMock));
+    await capturedCallback();
+
+    expect(sermonService.sermonFromLegacyEvent).not.toHaveBeenCalled();
+    expect(sermonService.fetchLatestSermonFromServer).toHaveBeenCalled();
+    expect(sermonService.saveSermonToAsyncStorage).toHaveBeenCalledWith(legacySermon);
   });
 
   // 전체 옵션에서 sermons-v2 이벤트를 완전히 무시하면, 나중에 특정 예배시간으로 설정을

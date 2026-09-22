@@ -6,6 +6,7 @@ import {
   syncAppGroupToAsyncStorage,
   fetchLatestWeeklySermonsFromAsyncStorage,
   saveWeeklySermonsToAsyncStorage,
+  sermonFromLegacyEvent,
   syncSelectedSermonToWidget,
   upsertWeeklySermonFromEvent,
 } from '../src/services/sermonService';
@@ -350,5 +351,60 @@ describe('upsertWeeklySermonFromEvent ([#280])', () => {
     const result = await upsertWeeklySermonFromEvent(raw);
 
     expect(result?.id).toBe('2026-W38_SAT_1700');
+  });
+});
+
+describe('sermonFromLegacyEvent (레거시 sermon_events/sermon_events_v2, "전체" 옵션)', () => {
+  const bridge = require('../src/types/WidgetUpdateModule').default;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  // v1(sermon_events)은 content를 평문으로 그대로 실어 보내므로 추가 조회가 필요 없다.
+  it('v1(content 포함) payload는 content를 그대로 쓰고 bible DB를 조회하지 않는다', async () => {
+    const raw: SermonRaw = {
+      id: '', title: 'T', content: '본문 : 요나 3:1-10\n...', date: '2026-09-12',
+      day_of_week: 'SUN', source_id: '199134',
+    };
+    const result = await sermonFromLegacyEvent(raw);
+
+    expect(result.content).toBe('본문 : 요나 3:1-10\n...');
+    expect(bridge.resolveBibleReferences).not.toHaveBeenCalled();
+  });
+
+  // v2(sermon_events_v2)는 4KB payload 제한 때문에 content 없이 bible_references만 보낸다.
+  // verses[].content가 실려 오더라도 긴 설교는 잘려 빠질 수 있어 신뢰하지 않고, 항상
+  // book/chapter/verse 범위로 로컬 성경 DB를 다시 조회해 본문을 조립한다.
+  it('v2(bible_references만 있는) payload는 verses를 무시하고 로컬 성경 DB에서 본문을 조회한다', async () => {
+    (bridge.resolveBibleReferences as jest.Mock).mockResolvedValue('본문 : 요나 3:1-10 여호와의 말씀이...');
+    const raw: SermonRaw = {
+      id: '', title: 'T', content: '', date: '2026-09-12', day_of_week: 'SUN',
+      source_id: '199134',
+      bible_references: '[{"book":"요나","chapter":3,"verse_start":1,"verse_end":10,"verses":[{"verse_number":1,"content":"페이로드에 실려온(잘렸을 수도 있는) 본문"}]}]',
+    };
+    const result = await sermonFromLegacyEvent(raw);
+
+    expect(bridge.resolveBibleReferences).toHaveBeenCalledWith(raw.bible_references);
+    expect(result.content).toBe('본문 : 요나 3:1-10 여호와의 말씀이...');
+    expect(result.content).not.toContain('페이로드에 실려온');
+  });
+
+  it('payload에 id가 없으면 source_id를 id로 쓴다', async () => {
+    const raw: SermonRaw = {
+      id: '', title: 'T', content: 'C', date: '2026-09-12', day_of_week: 'SUN', source_id: '199134',
+    };
+    const result = await sermonFromLegacyEvent(raw);
+    expect(result.id).toBe('199134');
+  });
+
+  it('bible DB 조회가 실패해도 예외를 던지지 않고 빈 본문으로 진행한다', async () => {
+    (bridge.resolveBibleReferences as jest.Mock).mockRejectedValue(new Error('bridge down'));
+    const raw: SermonRaw = {
+      id: '', title: 'T', content: '', date: '2026-09-12', day_of_week: 'SUN',
+      bible_references: '[]',
+    };
+    const result = await sermonFromLegacyEvent(raw);
+    expect(result.content).toBe('');
   });
 });

@@ -9,6 +9,7 @@ import {
   fetchLatestWeeklySermonsFromServer,
   saveSermonToAsyncStorage,
   saveWeeklySermonsToAsyncStorage,
+  sermonFromLegacyEvent,
   syncSelectedSermonToWidget,
   pushSermonToWidget,
   upsertWeeklySermonFromEvent,
@@ -40,6 +41,11 @@ export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
       const worshipSetting =
         ((await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipSetting) || DEFAULT_WORSHIP_TYPE;
       const isWeeklyEvent = Boolean(event?.week && event?.worship_type);
+      // sermon_events/sermon_events_v2(레거시, week/worship_type 없음) payload는 그 자체로
+      // 화면에 필요한 내용을 다 담고 있다(docs/fcm-events/sermon-events.md) — Firestore를
+      // 다시 조회하지 않고 바로 반영할 수 있다. title/date조차 없는 진짜 빈 wake-up만
+      // 걸러내 아래에서 안전하게 폴백한다.
+      const isLegacySermonEvent = !isWeeklyEvent && Boolean(event?.title && event?.date);
 
       // sermons-v2 단일 문서 이벤트는 '전체' 옵션이어도 weekly_sermons 캐시에 patch해둔다.
       // 예전엔 '전체'일 때 이 이벤트를 통째로 무시했는데, 그러면 나중에 특정 예배시간으로
@@ -51,8 +57,13 @@ export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
         : null;
 
       if (worshipSetting === 'ALL') {
-        // 전체 옵션 화면 표시: 레거시 단일 최신 문서 경로 그대로 사용([#278])
-        const legacy = await fetchLatestSermonFromServer();
+        // 전체 옵션 화면 표시: payload가 온전하면 Firestore 재조회 없이 바로 반영한다
+        // (포그라운드/백그라운드 모두 이 경로를 탄다 — 종료 상태는 네이티브가 App
+        // Group/네이티브 위젯 저장소에 직접 써서 JS와 무관하게 이미 처리됨). payload가
+        // 부족한 wake-up만 예전처럼 Firestore를 다시 읽어 안전하게 폴백한다.
+        const legacy = isLegacySermonEvent
+          ? await sermonFromLegacyEvent(event as SermonRaw)
+          : await fetchLatestSermonFromServer();
         if (legacy) {
           await saveSermonToAsyncStorage(legacy);
           await pushSermonToWidget(legacy);
