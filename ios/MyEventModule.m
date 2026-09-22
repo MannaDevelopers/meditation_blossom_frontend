@@ -58,7 +58,8 @@ RCT_EXPORT_MODULE(MyEventModule);
 - (void)onSermonUpdate:(NSNotification *)notification
 {
   // sermons-v2 이벤트는 userInfo에 원본 FCM data(week/worship_type/video_url 등)가 담겨 온다([#280]).
-  // 레거시 sermon_events_v2는 userInfo가 nil이라 기존과 동일한 메시지 바디로 보낸다.
+  // 레거시 sermon_events(_v2)도 원본 payload가 담겨 와서 JS가 Firestore 재조회 없이 바로
+  // 반영할 수 있다. 정말 payload가 없는 wake-up만 기존과 동일한 메시지 바디로 보낸다.
   NSDictionary *body = notification.userInfo ?: @{@"message": @"FCM sermon update"};
   [self sendEventWithName:@"ON_SERMON_UPDATE" body:body];
 }

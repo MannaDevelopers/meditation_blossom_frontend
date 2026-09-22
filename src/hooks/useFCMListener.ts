@@ -17,8 +17,9 @@ import {
 import { SermonRaw, WorshipSetting, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
 import logger from '../utils/logger';
 
-// 네이티브가 sermons-v2 이벤트일 때만 원본 FCM data(week/worship_type 등)를 실어 보낸다.
-// 레거시 sermon_events_v2 wake-up은 params 없이(undefined) 온다.
+// 네이티브(Android NativeEventModule / iOS MyEventModule)는 sermons-v2와 레거시
+// sermon_events(_v2) 모두 원본 FCM data를 params로 실어 보낸다. 정말 payload가 없는
+// wake-up만 params 없이(undefined) 온다.
 type SermonUpdateEvent = Partial<SermonRaw> & { operation?: string };
 
 export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {

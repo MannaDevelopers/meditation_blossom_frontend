@@ -580,21 +580,20 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
     [WidgetUpdateModuleImpl reloadWidgets];
 
     if (shouldUpdateDisplaySermon) {
-      [self sendSermonUpdateEvent];
+      // 레거시 sermon_events(_v2)도 원본 payload(data)를 그대로 실어 보낸다 — JS가
+      // Firestore를 다시 조회하지 않고 sermonService.sermonFromLegacyEvent로 바로
+      // 화면/위젯에 반영할 수 있게 한다(sermons-v2와 동일한 패턴).
+      [self sendSermonUpdateEventWithData:data];
     } else if ([storageKey isEqualToString:@"fcm_qt"]) {
       [self sendQtUpdateEvent];
     }
   }
 }
 
-- (void)sendSermonUpdateEvent {
-  [self sendSermonUpdateEventWithData:nil];
-}
-
 - (void)sendSermonUpdateEventWithData:(NSDictionary *)data {
   // MyEventModule이 FCM_SERMON_UPDATE_INTERNAL를 구독하고 있다.
   // self.bridge 의존 없이 모듈 자신의 bridge로 JS에 emit → New Architecture 호환.
-  // userInfo가 nil이면 레거시와 동일하게 payload 없는 wake-up 이벤트로 처리된다.
+  // userInfo가 nil이면(정말 payload가 없는 wake-up만) JS가 안전하게 폴백 처리한다.
   dispatch_async(dispatch_get_main_queue(), ^{
     [[NSNotificationCenter defaultCenter] postNotificationName:@"FCM_SERMON_UPDATE_INTERNAL" object:nil userInfo:data];
   });
