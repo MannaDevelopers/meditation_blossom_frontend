@@ -28,7 +28,7 @@ import PassageBlock from '../components/PassageBlock';
 import ReferenceTabs from '../components/ReferenceTabs';
 import SelectableText from '../components/SelectableText';
 import { useScripturePassages } from '../hooks/useScripturePassages';
-import { buildFullCopyText, buildPassageCopyText } from '../utils/copyText';
+import { buildFullCopyText, buildPassageCopyText, buildQuestionsCopyText } from '../utils/copyText';
 import { qtNoteIdentity } from '../utils/meditationNoteIdentity';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { ThemeColors } from '../theme/colors';
@@ -115,6 +115,12 @@ const DailyMannaScreen = () => {
     );
     showToast('말씀 전체를 복사했어요');
   }, [passages, qt?.title, meditationQuestions, showToast]);
+
+  const copyQuestions = useCallback(() => {
+    if (meditationQuestions.length === 0) return;
+    Clipboard.setString(buildQuestionsCopyText(meditationQuestions));
+    showToast('묵상 질문을 모두 복사했어요');
+  }, [meditationQuestions, showToast]);
 
   const visiblePassages = mode === 'paged' ? passages.slice(selectedIndex, selectedIndex + 1) : passages;
 
@@ -237,17 +243,23 @@ const DailyMannaScreen = () => {
           <Text style={styles.noQuestionText}>오늘은 묵상 질문이 없습니다</Text>
         ) : meditationQuestions.length > 0 ? (
           <View style={styles.questionsContainer}>
-            <Text style={styles.questionsSectionTitle}>묵상 질문</Text>
-            {meditationQuestions.map((question, index) => (
-              <View key={index} style={styles.questionCard}>
-                <Text style={styles.questionNumber}>
-                  {index === 0 ? '•' : ''}
-                </Text>
-                {/* 제목·본문처럼 롱프레스로 구간을 골라 복사할 수 있게 한다([#298]). 질문은 줄 단위로
-                    나뉘어 행마다 따로 그려지므로 선택도 행 단위다. */}
-                <SelectableText text={question} style={styles.questionText} />
-              </View>
-            ))}
+            <View style={styles.questionsSectionHeader}>
+              <Text style={styles.questionsSectionTitle}>묵상 질문</Text>
+              <TouchableOpacity
+                onPress={copyQuestions}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityLabel="묵상 질문 전체 복사"
+                accessibilityRole="button"
+              >
+                <SvgIcon name="CopyIcon" size={18} fill={colors.textTertiary} pointerEvents="none" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.questionCard}>
+              <Text style={styles.questionNumber}>•</Text>
+              {/* 제목·본문처럼 롱프레스로 구간을 골라 복사할 수 있게 한다([#298]). 질문 전체를
+                  하나의 블록으로 합쳐서 줄(질문) 경계와 상관없이 자유롭게 선택할 수 있다([#300]). */}
+              <SelectableText text={meditationQuestions.join('\n')} style={styles.questionText} />
+            </View>
           </View>
         ) : null}
       </ScrollView>
@@ -320,11 +332,16 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.divider,
       marginBottom: 16,
     },
+    questionsSectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
     questionsSectionTitle: {
       color: colors.textSecondary,
       fontSize: 18,
       fontFamily: 'Pretendard-Bold',
-      marginBottom: 12,
     },
     titleRow: {
       flexDirection: 'row',
