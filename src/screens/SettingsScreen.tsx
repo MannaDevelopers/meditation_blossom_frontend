@@ -90,16 +90,22 @@ const SettingsScreen = ({ navigation }: Props) => {
     }
   };
 
-  // '전체'가 아니면 sermons-v2 주간 데이터에서 선택된 예배를 찾고, 없으면(주간 데이터가
-  // 아직 없거나 '전체' 설정) 레거시 'sermons' 컬렉션 단일 최신 문서로 폴백한다.
-  // handleWorshipChange/useSermonData.fetchFromServer와 동일한 분기 규칙([#278]).
+  // 화면에 지금 보여줄 것: '전체'가 아니면 sermons-v2 주간 데이터에서 선택된 예배를 찾고,
+  // 없으면(주간 데이터가 아직 없거나 '전체' 설정) 레거시 'sermons' 컬렉션 단일 최신
+  // 문서로 폴백한다. handleWorshipChange/useSermonData.fetchFromServer와 동일한 분기
+  // 규칙([#278]).
+  //
+  // weekly 캐시는 '전체' 옵션이어도 항상 최신화해둔다 — 그러지 않으면 '전체'로 새로고침한
+  // 뒤 특정 예배시간으로 설정을 바꿨을 때 새로고침을 다시 눌러야만 최신 내용이 보였다
+  // (useFCMListener의 [#302]와 동일한 이유로 발견된 문제).
   const fetchLatestSermonRespectingWorshipSetting = async (): Promise<Sermon | null> => {
     const worshipSetting =
       ((await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipSetting) || DEFAULT_WORSHIP_TYPE;
-    if (worshipSetting !== 'ALL') {
-      const weekly = await fetchLatestWeeklySermonsFromServer();
-      if (weekly.length > 0) {
-        await saveWeeklySermonsToAsyncStorage(weekly);
+
+    const weekly = await fetchLatestWeeklySermonsFromServer();
+    if (weekly.length > 0) {
+      await saveWeeklySermonsToAsyncStorage(weekly);
+      if (worshipSetting !== 'ALL') {
         return weekly.find(s => s.worship_type === worshipSetting) || weekly[0];
       }
     }

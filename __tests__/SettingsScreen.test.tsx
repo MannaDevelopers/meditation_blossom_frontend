@@ -125,13 +125,17 @@ describe('SettingsScreen', () => {
       });
     });
 
-    it('"전체"가 선택돼 있으면 레거시 단일 문서로 갱신한다', async () => {
+    // '전체' 화면 표시는 레거시 단일 문서를 쓰지만, weekly 캐시도 함께 최신화해둬야
+    // 나중에 특정 예배시간으로 설정을 바꿨을 때 새로고침을 다시 누르지 않아도 된다([#302]).
+    it('"전체"가 선택돼 있으면 레거시 단일 문서로 화면을 갱신하면서 weekly 캐시도 같이 최신화한다', async () => {
       (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
         if (key === 'user_worship_setting') return Promise.resolve('ALL');
         return Promise.resolve(null);
       });
       (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
       (AsyncStorage.multiRemove as jest.Mock).mockResolvedValue(undefined);
+      const weekly = [{ id: 'sat', worship_type: 'SAT_1700', date: '2026-09-19' }];
+      (fetchLatestWeeklySermonsFromServer as jest.Mock).mockResolvedValue(weekly);
       const legacySermon = { id: 'legacy-1', date: '2026-09-20' };
       (fetchLatestSermonFromServer as jest.Mock).mockResolvedValue(legacySermon);
 
@@ -141,7 +145,8 @@ describe('SettingsScreen', () => {
       fireEvent.press(getByText('데이터 새로고침'));
 
       await waitFor(() => {
-        expect(fetchLatestWeeklySermonsFromServer).not.toHaveBeenCalled();
+        expect(fetchLatestWeeklySermonsFromServer).toHaveBeenCalled();
+        expect(saveWeeklySermonsToAsyncStorage).toHaveBeenCalledWith(weekly);
         expect(fetchLatestSermonFromServer).toHaveBeenCalled();
         expect(pushSermonToWidget).toHaveBeenCalledWith(legacySermon);
       });
