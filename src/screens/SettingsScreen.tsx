@@ -117,21 +117,26 @@ const SettingsScreen = ({ navigation }: Props) => {
   // 문서로 폴백한다. handleWorshipChange/useSermonData.fetchFromServer와 동일한 분기
   // 규칙([#278]).
   //
-  // weekly 캐시는 '전체' 옵션이어도 항상 최신화해둔다 — 그러지 않으면 '전체'로 새로고침한
-  // 뒤 특정 예배시간으로 설정을 바꿨을 때 새로고침을 다시 눌러야만 최신 내용이 보였다
-  // (useFCMListener의 [#302]와 동일한 이유로 발견된 문제).
+  // weekly 캐시와 legacy 캐시 둘 다 지금 설정이 무엇이든 항상 같이 최신화해둔다 — 하나만
+  // 하면 반대쪽 옵션으로 나중에 설정을 바꿨을 때 새로고침을 다시 눌러야만 최신 내용이
+  // 보이는 문제가 매번 재발했다(weekly만 그랬을 때 [#302], legacy만 그랬을 때 같은
+  // 이유로 재확인 — 특정 예배시간에서 새로고침해도 '전체' 캐시는 그대로였음).
   const fetchLatestSermonRespectingWorshipSetting = async (): Promise<Sermon | null> => {
     const worshipSetting =
       ((await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipSetting) || DEFAULT_WORSHIP_TYPE;
 
-    const weekly = await fetchLatestWeeklySermonsFromServer();
+    const [weekly, legacy] = await Promise.all([
+      fetchLatestWeeklySermonsFromServer(),
+      fetchReconciledLegacySermon(),
+    ]);
+
     if (weekly.length > 0) {
       await saveWeeklySermonsToAsyncStorage(weekly);
       if (worshipSetting !== 'ALL') {
         return weekly.find(s => s.worship_type === worshipSetting) || weekly[0];
       }
     }
-    return fetchReconciledLegacySermon();
+    return legacy;
   };
 
   const clearAndRefreshStorage = async () => {

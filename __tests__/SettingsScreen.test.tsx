@@ -171,7 +171,7 @@ describe('SettingsScreen', () => {
   });
 
   describe('데이터 새로고침 버튼', () => {
-    it('특정 예배가 선택돼 있으면 주간(sermons-v2) 데이터에서 매칭된 예배로 갱신한다', async () => {
+    it('특정 예배가 선택돼 있으면 주간(sermons-v2) 데이터에서 매칭된 예배로 화면을 갱신한다', async () => {
       (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
         if (key === 'user_worship_setting') return Promise.resolve('SUN_1150');
         return Promise.resolve(null);
@@ -191,9 +191,43 @@ describe('SettingsScreen', () => {
 
       await waitFor(() => {
         expect(fetchLatestWeeklySermonsFromServer).toHaveBeenCalled();
-        expect(fetchLatestSermonFromServer).not.toHaveBeenCalled();
         expect(saveWeeklySermonsToAsyncStorage).toHaveBeenCalledWith(weekly);
         expect(pushSermonToWidget).toHaveBeenCalledWith(weekly[1]);
+      });
+    });
+
+    // 특정 예배시간에서 새로고침해도 legacy('전체') 캐시를 같이 최신화해둬야 한다 —
+    // 안 그러면 나중에 '전체'로 설정을 바꿨을 때 새로고침을 다시 눌러야만 서버 최신
+    // 내용이 보였다(실사용자 리포트로 발견 — weekly만 그랬을 때의 [#302]와 대칭인 문제).
+    it('특정 예배가 선택돼 있어도 새로고침 시 legacy 캐시를 서버 최신 문서로 같이 갱신한다', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+        if (key === 'user_worship_setting') return Promise.resolve('SUN_1150');
+        return Promise.resolve(null);
+      });
+      (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+      (AsyncStorage.multiRemove as jest.Mock).mockResolvedValue(undefined);
+      const weekly = [{ id: 'sun1150', worship_type: 'SUN_1150', date: '2026-09-20' }];
+      (fetchLatestWeeklySermonsFromServer as jest.Mock).mockResolvedValue(weekly);
+      const legacySermon = { id: 'legacy-1', date: '2026-09-22' };
+      (fetchLatestSermonFromServer as jest.Mock).mockResolvedValue(legacySermon);
+
+      const { getByText } = render(<SettingsScreen navigation={mockNavigation} route={{} as any} />);
+      await waitFor(() => expect(getByText('예배 시간 설정')).toBeTruthy());
+
+      fireEvent.press(getByText('데이터 새로고침'));
+
+      await waitFor(() => {
+        // 화면(위젯)엔 여전히 특정 예배 내용이 반영돼야 한다 — legacy로 덮이면 안 된다.
+        expect(pushSermonToWidget).toHaveBeenCalledWith(weekly[0]);
+        expect(pushSermonToWidget).not.toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'legacy-1' }),
+        );
+        // 하지만 legacy('전체') 캐시는 서버 최신 문서로 백그라운드에서 갱신돼야 한다.
+        expect(fetchLatestSermonFromServer).toHaveBeenCalled();
+        expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+          LEGACY_SERMON_CACHE_KEY,
+          JSON.stringify(legacySermon),
+        );
       });
     });
 
