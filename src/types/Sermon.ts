@@ -79,6 +79,13 @@ export const FCM_SERMON_KEY = 'fcm_sermon';
 export const USER_WORSHIP_SETTING_KEY = 'user_worship_setting';
 export const DEFAULT_WORSHIP_TYPE: WorshipType = 'SUN_0950';
 
+// legacy 'sermons' 컬렉션(레거시 sermon_events(_v2) FCM, '전체' 옵션 표시)의 최신 문서만
+// 담아두는 전용 캐시. FCM_SERMON_KEY는 "지금 화면에 표시 중인 설교"를 뜻해 예배시간
+// 설정에 따라 sermons-v2 문서로도 덮어써지므로, '전체'로 돌아왔을 때 그 sermons-v2
+// 내용을 레거시 내용으로 착각하는 사고가 난다(실사용자 리포트로 발견) — 그래서 완전히
+// 분리된 키에 legacy 문서만 보관한다.
+export const LEGACY_SERMON_CACHE_KEY = 'legacy_sermon_cache';
+
 
 export function convertStringToTimestamp(isoString: string | null | undefined): FirestoreTimestamp {
   if (!isoString || typeof isoString !== 'string') {

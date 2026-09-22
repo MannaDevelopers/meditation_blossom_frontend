@@ -15,6 +15,7 @@ import {
   FCM_SERMON_KEY,
   fcmDataToSermon,
   firestoreDocToSermon,
+  LEGACY_SERMON_CACHE_KEY,
   Sermon,
   SermonRaw,
   WorshipType,
@@ -35,6 +36,27 @@ export async function fetchLatestSermonFromAsyncStorage(): Promise<Sermon | null
     await AsyncStorage.removeItem(FCM_SERMON_KEY).catch(() => {});
   }
   return null;
+}
+
+// '전체' 옵션 전용 — legacy 'sermons' 컬렉션의 최신 문서만 담아둔다. FCM_SERMON_KEY는
+// 예배시간 설정에 따라 sermons-v2 문서로도 덮어써지는 "지금 화면에 표시 중인 설교" 슬롯이라,
+// 그걸 legacy 문서로 착각하면 안 되는 곳(SettingsScreen의 '전체' 전환/새로고침 재조정)에서
+// 이 전용 키를 쓴다.
+export async function fetchLegacySermonFromCache(): Promise<Sermon | null> {
+  try {
+    const raw = await AsyncStorage.getItem(LEGACY_SERMON_CACHE_KEY);
+    if (raw) {
+      return fcmDataToSermon(JSON.parse(raw) as SermonRaw);
+    }
+  } catch (error) {
+    logger.warn('Failed to load legacy sermon cache, clearing corrupted data');
+    await AsyncStorage.removeItem(LEGACY_SERMON_CACHE_KEY).catch(() => {});
+  }
+  return null;
+}
+
+export async function saveLegacySermonToCache(sermon: Sermon): Promise<void> {
+  await AsyncStorage.setItem(LEGACY_SERMON_CACHE_KEY, JSON.stringify(sermon));
 }
 
 export function subscribeToLatestSermon(
@@ -178,6 +200,33 @@ export async function upsertWeeklySermonFromEvent(raw: SermonRaw): Promise<Sermo
   const next = [...sameWeekOthers, incoming];
   await saveWeeklySermonsToAsyncStorage(next);
   return incoming;
+}
+
+// 레거시 'sermons' 컬렉션용 FCM(sermon_events/sermon_events_v2) payload를 Firestore 재조회 없이
+// 바로 Sermon으로 변환한다. week/worship_type이 없는 이벤트는 여기로 온다(upsertWeeklySermonFromEvent와
+// 반대 경우) — '전체' 옵션은 예배별로 나뉠 필요가 없어 캐시에 patch할 목록도 없으므로 병합 없이
+// 그대로 반환한다.
+export async function sermonFromLegacyEvent(raw: SermonRaw): Promise<Sermon> {
+  const sermon = fcmDataToSermon(raw);
+  // 레거시 payload엔 id가 없고 source_id만 있다(docs/fcm-events/sermon-events.md).
+  if (!sermon.id) {
+    sermon.id = raw.source_id || '';
+  }
+  // v1(sermon_events)은 content를 평문으로 그대로 보내 여기 올 때 이미 채워져 있다.
+  // v2(sermon_events_v2)는 4KB FCM data payload 제한 때문에 content 대신 bible_references만
+  // 보내므로, upsertWeeklySermonFromEvent/firestoreDocToSermon과 동일하게 로컬 성경 DB에서
+  // 본문을 조립한다. bible_references에 verses[].content가 실려 오긴 하지만 긴 설교는 4KB
+  // 제한에 걸려 잘려 빠질 수 있어 신뢰할 수 없다 — 그대로 쓰지 않고 book/chapter/verse
+  // 범위만 참고해 항상 새로 조회한다.
+  if (!sermon.content && raw.bible_references) {
+    try {
+      sermon.content = await WidgetUpdateModule.resolveBibleReferences(raw.bible_references);
+    } catch (e) {
+      // firestoreDocToSermon과 동일한 이유로 warn — 빈 bible_references는 정상적인 "말씀 없는 날" 상태다.
+      logger.warn('sermonFromLegacyEvent: bridge resolveBibleReferences failed', e);
+    }
+  }
+  return sermon;
 }
 
 // 예배 시간 설정을 막 바꾼 사용자(특히 앱을 처음 이 버전으로 업데이트해서

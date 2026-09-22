@@ -24,10 +24,10 @@ import DeviceInfo from 'react-native-device-info';
 import Svg, { Path } from 'react-native-svg';
 import SvgIcon from '../components/SvgIcon';
 import { RootStackParamList } from '../types/navigation';
-import { FCM_SERMON_KEY, Sermon, WorshipType, WorshipSetting, WORSHIP_SETTINGS, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
+import { compareSermon, FCM_SERMON_KEY, Sermon, WorshipType, WorshipSetting, WORSHIP_SETTINGS, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
 import { FCM_QT_KEY } from '../types/QT';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
-import { fetchLatestSermonFromServer, fetchLatestWeeklySermonsFromServer, pushSermonToWidget, saveSermonToAsyncStorage, syncSelectedSermonToWidget, saveWeeklySermonsToAsyncStorage } from '../services/sermonService';
+import { fetchLegacySermonFromCache, fetchLatestSermonFromServer, fetchLatestWeeklySermonsFromServer, pushSermonToWidget, saveLegacySermonToCache, saveSermonToAsyncStorage, syncSelectedSermonToWidget, saveWeeklySermonsToAsyncStorage } from '../services/sermonService';
 import { fetchLatestQtFromServer, pushQtToWidget } from '../services/qtService';
 import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
@@ -47,13 +47,35 @@ const SettingsScreen = ({ navigation }: Props) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedWorship, setSelectedWorship] = useState<WorshipSetting>(DEFAULT_WORSHIP_TYPE);
 
+  // Firestore를 항상 신뢰하고 새로 조회하면, useFCMListener가 방금 FCM payload로 legacy
+  // 전용 캐시에 반영해둔 내용이 있어도(예: 테스트 도구처럼 FCM만 보내고 Firestore는 아직
+  // 안 쓴 경우) 무시하고 옛날 Firestore 문서로 덮어써버린다. 캐시된 값과 새로 받아온 값을
+  // 비교해 실제로 더 최신인 쪽을 쓴다 — 정상적인 경우(백엔드가 Firestore도 같이 씀)엔
+  // 항상 fresh가 이기므로 동작이 그대로다.
+  //
+  // FCM_SERMON_KEY가 아니라 LEGACY_SERMON_CACHE_KEY 전용 캐시를 봐야 한다 — FCM_SERMON_KEY는
+  // 예배시간 설정에 따라 sermons-v2 문서로도 덮어써지는 "지금 화면" 슬롯이라, 특정
+  // 예배시간을 보다가 '전체'로 돌아오면 그 sermons-v2 내용을 legacy 내용으로 착각하는
+  // 사고가 났다(실사용자 리포트).
+  const fetchReconciledLegacySermon = async (): Promise<Sermon | null> => {
+    const [cached, fresh] = await Promise.all([
+      fetchLegacySermonFromCache(),
+      fetchLatestSermonFromServer(),
+    ]);
+    const winner = compareSermon(cached, fresh) > 0 ? cached : fresh;
+    if (winner) {
+      await saveLegacySermonToCache(winner);
+    }
+    return winner;
+  };
+
   const handleWorshipChange = async (type: WorshipSetting) => {
     setSelectedWorship(type);
     try {
       await AsyncStorage.setItem(USER_WORSHIP_SETTING_KEY, type);
       if (type === 'ALL') {
         // 전체: 레거시 단일 최신 문서 경로([#278]) — weekly_sermons 캐시/매칭 로직 사용 안 함
-        const legacy = await fetchLatestSermonFromServer();
+        const legacy = await fetchReconciledLegacySermon();
         if (legacy) {
           await saveSermonToAsyncStorage(legacy);
           await pushSermonToWidget(legacy);
@@ -90,20 +112,41 @@ const SettingsScreen = ({ navigation }: Props) => {
     }
   };
 
-  // '전체'가 아니면 sermons-v2 주간 데이터에서 선택된 예배를 찾고, 없으면(주간 데이터가
-  // 아직 없거나 '전체' 설정) 레거시 'sermons' 컬렉션 단일 최신 문서로 폴백한다.
-  // handleWorshipChange/useSermonData.fetchFromServer와 동일한 분기 규칙([#278]).
+  // 화면에 지금 보여줄 것: '전체'가 아니면 sermons-v2 주간 데이터에서 선택된 예배를 찾고,
+  // 없으면(주간 데이터가 아직 없거나 '전체' 설정) 레거시 'sermons' 컬렉션 단일 최신
+  // 문서로 폴백한다. handleWorshipChange/useSermonData.fetchFromServer와 동일한 분기
+  // 규칙([#278]).
+  //
+  // weekly 캐시는 지금 설정이 무엇이든 항상 같이 최신화해둔다 — 안 그러면 반대 옵션으로
+  // 나중에 설정을 바꿨을 때 새로고침을 다시 눌러야만 최신 내용이 보이는 문제가 있었다
+  // ([#302]).
+  //
+  // legacy는 fetchReconciledLegacySermon(캐시-vs-fresh 비교)이 아니라 항상
+  // fetchLatestSermonFromServer로 직접 새로 받아온다 — "새로고침" 버튼은 사용자가
+  // 명시적으로 "지금 서버에 있는 걸 그대로 보여달라"는 뜻이라 캐시를 신뢰하면 안 된다.
+  // 예전엔 여기도 reconciledLegacySermon을 썼는데, FCM 테스트로 남은 legacy 캐시가
+  // 실제보다 미래 날짜를 갖고 있으면 새로고침을 아무리 눌러도 그 캐시만 계속 이겨서
+  // 서버의 진짜 최신 내용이 영원히 안 보이는 사고가 났다(실사용자 리포트로 발견).
   const fetchLatestSermonRespectingWorshipSetting = async (): Promise<Sermon | null> => {
     const worshipSetting =
       ((await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipSetting) || DEFAULT_WORSHIP_TYPE;
-    if (worshipSetting !== 'ALL') {
-      const weekly = await fetchLatestWeeklySermonsFromServer();
-      if (weekly.length > 0) {
-        await saveWeeklySermonsToAsyncStorage(weekly);
+
+    const [weekly, legacy] = await Promise.all([
+      fetchLatestWeeklySermonsFromServer(),
+      fetchLatestSermonFromServer(),
+    ]);
+
+    if (legacy) {
+      await saveLegacySermonToCache(legacy);
+    }
+
+    if (weekly.length > 0) {
+      await saveWeeklySermonsToAsyncStorage(weekly);
+      if (worshipSetting !== 'ALL') {
         return weekly.find(s => s.worship_type === worshipSetting) || weekly[0];
       }
     }
-    return fetchLatestSermonFromServer();
+    return legacy;
   };
 
   const clearAndRefreshStorage = async () => {

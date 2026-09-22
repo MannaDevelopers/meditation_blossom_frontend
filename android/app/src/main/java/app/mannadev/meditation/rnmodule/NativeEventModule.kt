@@ -10,7 +10,7 @@ import app.mannadev.meditation.Constants.ACTION_SERMON_UPDATE_EVENT
 import app.mannadev.meditation.Constants.MESSAGE_QT_UPDATE_EVENT
 import app.mannadev.meditation.Constants.MESSAGE_SERMON_UPDATE_EVENT
 import app.mannadev.meditation.analytics.CrashlyticsHelper
-import app.mannadev.meditation.service.MyFirebaseMessagingService.Companion.EXTRA_SERMONS_V2_DATA
+import app.mannadev.meditation.service.MyFirebaseMessagingService.Companion.EXTRA_SERMON_EVENT_DATA
 import app.mannadev.meditation.specs.NativeMyEventModuleSpec
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.ReactApplicationContext
@@ -46,10 +46,12 @@ class NativeEventModule(reactContext: ReactApplicationContext) :
         override fun onReceive(context: Context?, intent: Intent?) {
             Timber.d("Received broadcast: ${intent?.action}")
             // sermons-v2 이벤트는 원본 FCM data(week/worship_type/video_url 등)를 함께 실어 보내
-            // JS가 weekly_sermons 캐시를 단일 문서만 patch할 수 있게 한다([#280]).
-            // 레거시 sermon_events_v2는 extra가 없으므로 그대로 params=null로 보낸다.
+            // JS가 weekly_sermons 캐시를 단일 문서만 patch할 수 있게 한다([#280]). 레거시
+            // sermon_events(_v2)도 title/date/bible_references 등을 함께 실어 보내 JS가
+            // Firestore 재조회 없이 '전체' 옵션 화면을 바로 갱신할 수 있게 한다. 두 경우 모두
+            // 없는 진짜 빈 wake-up만 params=null로 보낸다.
             @Suppress("UNCHECKED_CAST")
-            val data = intent?.getSerializableExtra(EXTRA_SERMONS_V2_DATA) as? HashMap<String, String>
+            val data = intent?.getSerializableExtra(EXTRA_SERMON_EVENT_DATA) as? HashMap<String, String>
             if (data != null) {
                 val params: WritableMap = Arguments.createMap()
                 for ((k, v) in data) {
