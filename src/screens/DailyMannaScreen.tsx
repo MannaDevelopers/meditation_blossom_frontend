@@ -257,8 +257,13 @@ const DailyMannaScreen = () => {
             <View style={styles.questionCard}>
               <Text style={styles.questionNumber}>•</Text>
               {/* 제목·본문처럼 롱프레스로 구간을 골라 복사할 수 있게 한다([#298]). 질문 전체를
-                  하나의 블록으로 합쳐서 줄(질문) 경계와 상관없이 자유롭게 선택할 수 있다([#300]). */}
-              <SelectableText text={meditationQuestions.join('\n')} style={styles.questionText} />
+                  하나의 블록으로 합쳐서 줄(질문) 경계와 상관없이 자유롭게 선택할 수 있다([#300]).
+                  질문 사이는 빈 줄(\n\n)로 띄워 이전의 questionCard 간 gap(12)이 주던
+                  구분감을 유지한다 — 단일 Text/TextInput 안에서는 View의 gap을 쓸 수 없다. */}
+              <SelectableText
+                text={meditationQuestions.join('\n\n')}
+                style={styles.questionText}
+              />
             </View>
           </View>
         ) : null}

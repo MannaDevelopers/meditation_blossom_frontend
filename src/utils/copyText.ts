@@ -16,13 +16,20 @@ interface FullCopyParams {
   questions?: string[];
 }
 
+// 콘텐츠 작성자가 하위 질문에 직접 붙이는 원문자 번호(❶ ❷ … / ① ② …).
+// 이미 자체 번호가 있는 줄은 "- "를 덧붙이면 "- ❶"처럼 중복돼 보인다.
+const NUMBERED_QUESTION_PATTERN = /^[①-⑳❶-❿]/;
+
 /**
  * 묵상 질문 섹션 복사 버튼 · 전체 복사 버튼이 공유하는 포맷([#300]).
- * 빈 질문은 제외한다.
+ * 빈 질문은 제외한다. 원문자 번호가 있는 줄은 "- "를 붙이지 않는다.
  */
 export function buildQuestionsCopyText(questions: string[]): string {
   const asked = questions.map(q => q.trim()).filter(Boolean);
-  return ['묵상 질문', ...asked.map(q => `- ${q}`)].join('\n');
+  return [
+    '묵상 질문',
+    ...asked.map(q => (NUMBERED_QUESTION_PATTERN.test(q) ? q : `- ${q}`)),
+  ].join('\n');
 }
 
 /**
