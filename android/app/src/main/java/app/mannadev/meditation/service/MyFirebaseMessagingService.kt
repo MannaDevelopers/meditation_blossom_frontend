@@ -15,6 +15,7 @@ import app.mannadev.meditation.analytics.AnalyticsHelper
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.analytics.SermonEventSource
 import app.mannadev.meditation.data.AsyncStorage
+import app.mannadev.meditation.data.WorshipSetting
 import app.mannadev.meditation.domain.repository.QtRepository
 import app.mannadev.meditation.domain.repository.SermonRepository
 import app.mannadev.meditation.dto.QtDto
@@ -110,13 +111,28 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         Timber.d("Parsed sermon v2: ${sermonDto.title}")
 
-        runCatching {
-            withContext(NonCancellable) {
-                sermonRepository.save(sermonDto)
-                AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.FCM_TOPIC)
+        // 레거시 sermon_events(_v2)는 '전체' 옵션 전용 콘텐츠다. 특정 예배시간을 선택한 사용자의 위젯/
+        // '지금 화면' 슬롯을 덮어쓰면 안 된다([#307]) — JS(useFCMListener)와 동일하게 '전체'일 때만 반영하고,
+        // 그 외엔 legacy 전용 캐시만 갱신해 나중에 '전체'로 전환하면 바로 보이게 한다.
+        // 앱이 완전히 종료된 상태에선 JS가 없어 이 판단을 네이티브가 직접 해야 한다.
+        val isAllSetting = runCatching {
+            withContext(Dispatchers.IO) {
+                WorshipSetting.isAll(asyncStorage.get(WorshipSetting.ASYNC_STORAGE_KEY))
             }
         }.onFailure { e ->
-            CrashlyticsHelper.recordException(e, "Failed to save sermon v2: $sermonDto")
+            CrashlyticsHelper.recordException(e, "Failed to read worship setting for sermon v2")
+        }.getOrDefault(false)
+        Timber.d("sermon v2 isAllSetting=$isAllSetting")
+
+        if (isAllSetting) {
+            runCatching {
+                withContext(NonCancellable) {
+                    sermonRepository.save(sermonDto)
+                    AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.FCM_TOPIC)
+                }
+            }.onFailure { e ->
+                CrashlyticsHelper.recordException(e, "Failed to save sermon v2: $sermonDto")
+            }
         }
 
         runCatching {
@@ -125,9 +141,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                     put(KEY_CONTENT, sermonDto.content)
                 }
                 asyncStorage.set(
-                    key = ASYNC_STORAGE_FCM_SERMON,
-                    value = Json.encodeToString(dataWithResolvedContent),
+                    key = WorshipSetting.ASYNC_STORAGE_LEGACY_SERMON_CACHE,
+                    value = WorshipSetting.legacyCacheJson(dataWithResolvedContent),
                 )
+                if (isAllSetting) {
+                    asyncStorage.set(
+                        key = ASYNC_STORAGE_FCM_SERMON,
+                        value = Json.encodeToString(dataWithResolvedContent),
+                    )
+                }
             }
             // '전체' 옵션은 이 payload를 그대로 Sermon으로 변환해 화면에 반영한다
             // (sermonService.sermonFromLegacyEvent). Firestore 재조회 없이도 즉시 반영되도록
