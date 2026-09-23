@@ -15,6 +15,7 @@ import app.mannadev.meditation.analytics.AnalyticsHelper
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.analytics.SermonEventSource
 import app.mannadev.meditation.data.AsyncStorage
+import app.mannadev.meditation.data.WeeklySermons
 import app.mannadev.meditation.data.WorshipSetting
 import app.mannadev.meditation.domain.repository.QtRepository
 import app.mannadev.meditation.domain.repository.SermonRepository
@@ -30,6 +31,8 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import timber.log.Timber
@@ -59,6 +62,11 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         // 단일 문서만 patch할 수 있게 하고([#280]), 레거시 sermon_events(_v2)는 title/date/
         // bible_references 등을 실어 JS가 Firestore 재조회 없이 payload로 바로 반영할 수 있게 한다.
         const val EXTRA_SERMON_EVENT_DATA = "sermon_event_data"
+
+        // 한 주에 예배별 sermons-v2가 연달아(최대 4건) 오면 각 이벤트가 serviceScope에서 병렬로
+        // weekly_sermons를 read-modify-write 하므로, 직렬화하지 않으면 서로의 patch를 덮어써 잃는다.
+        // 서비스 인스턴스가 재생성돼도 공유되도록 companion에 둔다.
+        private val weeklySermonsMutex = Mutex()
     }
 
     @Inject lateinit var sermonRepository: SermonRepository
@@ -80,7 +88,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         when {
             topic in ALLOWED_SERMON_TOPICS -> serviceScope.launch { consumeSermonEvent(message) }
             topic in ALLOWED_QT_TOPICS -> serviceScope.launch { consumeQtEvent(message) }
-            topic in ALLOWED_SERMONS_V2_TOPICS -> consumeSermonsV2Event(message)
+            topic in ALLOWED_SERMONS_V2_TOPICS -> serviceScope.launch { consumeSermonsV2Event(message) }
             else -> Unit // silent drop (v1 and anything unknown)
         }
     }
@@ -166,13 +174,23 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     /**
-     * sermons-v2: 한 주에 예배별(worship_type) 문서가 최대 4번 개별 발행되므로,
-     * 레거시 [consumeSermonEvent]처럼 단일 슬롯([ASYNC_STORAGE_FCM_SERMON])/위젯에 바로 쓰면
-     * 사용자가 선택한 예배와 무관한 마지막 메시지가 위젯을 덮어쓰게 된다.
-     * worship_type 매칭과 위젯 반영은 JS(useFCMListener → sermonService.fetchLatestWeeklySermonsFromServer)가
-     * Firestore 'sermons-v2'를 직접 조회해 전담하므로, 네이티브는 JS를 깨우는 역할만 한다.
+     * sermons-v2: 한 주에 예배별(worship_type) 문서가 최대 4번 개별 발행된다. 레거시 [consumeSermonEvent]처럼
+     * 무조건 단일 슬롯/위젯에 쓰면 선택하지 않은 예배가 위젯을 덮어쓰므로 worship_type을 구분해 처리한다([#306]).
+     * 앱이 완전히 종료돼 JS가 없는 상태에서도 처리가 끝나야 하므로 JS(useFCMListener)와 동일한 판단을
+     * 네이티브에서 먼저 수행한다:
+     * 1. weekly_sermons(AsyncStorage) 캐시에 이 문서를 병합 — '전체'/불일치여도 항상(설정 변경 시 바로 쓰도록).
+     * 2. 현재 예배시간 설정과 worship_type이 일치하면('전체' 제외) 위젯 + fcm_sermon 슬롯 즉시 갱신.
+     * 이후 JS가 살아 있으면 브로드캐스트를 받아 같은 병합/반영을 한 번 더 하는데, 결과가 같아 무해하다.
      */
-    private fun consumeSermonsV2Event(message: RemoteMessage) {
+    private suspend fun consumeSermonsV2Event(message: RemoteMessage) {
+        if (message.data.isNotEmpty()) {
+            runCatching {
+                withContext(NonCancellable + Dispatchers.IO) { applySermonsV2Event(message.data) }
+            }.onFailure { e ->
+                CrashlyticsHelper.recordException(e, "Failed to apply sermons-v2 event: ${message.data}")
+            }
+        }
+
         val intent = Intent(ACTION_SERMON_UPDATE_EVENT)
         if (message.data.isNotEmpty()) {
             intent.putExtra(EXTRA_SERMON_EVENT_DATA, HashMap(message.data))
@@ -180,6 +198,37 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         LocalBroadcastManager
             .getInstance(this@MyFirebaseMessagingService)
             .sendBroadcast(intent)
+    }
+
+    private suspend fun applySermonsV2Event(data: Map<String, String>) {
+        val event = WeeklySermons.parseEvent(data) { bibleRefsJson ->
+            // JS와 동일하게 해석 실패(빈 bible_references = "말씀 없는 날" 등)는 이벤트를 버리지 않고 빈 본문으로 둔다.
+            runCatching { bibleReferenceResolver.resolveBibleReferencesJson(bibleRefsJson) }
+                .onFailure { e ->
+                    Timber.w(e, "sermons-v2: failed to resolve bible_references")
+                    CrashlyticsHelper.recordException(e, "sermons-v2: failed to resolve bible_references")
+                }
+                .getOrDefault("")
+        } ?: return // week/worship_type 없음 → patch 불가, JS 폴백에 맡긴다
+
+        val shouldApply = weeklySermonsMutex.withLock {
+            val merged = WeeklySermons.merge(
+                existingJson = asyncStorage.get(WeeklySermons.ASYNC_STORAGE_WEEKLY_SERMONS),
+                event = event,
+            )
+            asyncStorage.set(key = WeeklySermons.ASYNC_STORAGE_WEEKLY_SERMONS, value = merged)
+            WeeklySermons.shouldApplyToWidget(
+                storedSetting = asyncStorage.get(WorshipSetting.ASYNC_STORAGE_KEY),
+                worshipType = event.worshipType,
+            )
+        }
+        Timber.d("sermons-v2 ${event.week}/${event.worshipType} cached, applyToWidget=$shouldApply")
+        if (!shouldApply) return
+
+        sermonRepository.save(event.dto)
+        AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.FCM_TOPIC)
+        // JS의 saveSermonToAsyncStorage(patched)와 동일 — 앱 실행 시 '지금 화면' 슬롯도 최신이 되도록.
+        asyncStorage.set(key = ASYNC_STORAGE_FCM_SERMON, value = event.cacheEntry.toString())
     }
 
     private suspend fun consumeQtEvent(message: RemoteMessage) {
