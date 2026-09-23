@@ -31,7 +31,11 @@
         @"created_at": data[@"created_at"] ?: @"",
         @"updated_at": data[@"updated_at"] ?: @"",
         @"operation": data[@"operation"] ?: @"",
-        @"topic": data[@"topic"] ?: @""
+        @"topic": data[@"topic"] ?: @"",
+        // sermons-v2(worship_type별 예배, [#306]) 전용 필드. 레거시 payload엔 없어 빈 문자열로 채워지고,
+        // 호출자가 이 두 값을 보고 sermons-v2 이벤트인지(week/worship_type 존재) 판단한다.
+        @"week": data[@"week"] ?: @"",
+        @"worship_type": data[@"worship_type"] ?: @""
     } mutableCopy];
 
     if (data[@"video_url"] && data[@"video_url"] != [NSNull null]) {

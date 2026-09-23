@@ -20,6 +20,11 @@ export interface Spec extends TurboModule {
   onClear(): Promise<void>;
   // iOS 전용(App Group 조회). Android는 no-op으로 항상 null을 resolve한다.
   getAppGroupData(key: string): Promise<string | null>;
+  // iOS 전용(App Group 키 삭제, [#306] weekly_sermons_pending 드레인용). Android는 no-op.
+  removeAppGroupData(key: string): Promise<void>;
+  // iOS 전용([#306]) — NotificationService(Extension)가 RN AsyncStorage를 못 읽으므로 예배시간
+  // 설정을 App Group에도 미러링해둔다. Android는 AsyncStorage를 네이티브가 직접 읽을 수 있어 no-op.
+  setWorshipSetting(worshipSetting: string): Promise<void>;
   setYoutubeLinkEnabled(enabled: boolean): Promise<void>;
   getYoutubeLinkEnabled(): Promise<boolean>;
 }

@@ -404,6 +404,29 @@ class WidgetUpdateModuleImpl: NSObject {
     }
   }
 
+  // [#306] JS가 App Group 대기열(weekly_sermons_pending 등)을 weekly_sermons 캐시로
+  // 병합한 뒤 비우는 데 사용한다.
+  @objc
+  func removeAppGroupData(_ key: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    guard let sharedDefaults = Self.appGroupDefaults() else {
+      reject("APP_GROUP_ERROR", "App Group을 찾을 수 없습니다.", nil)
+      return
+    }
+    sharedDefaults.removeObject(forKey: key)
+    sharedDefaults.synchronize()
+    resolve(nil)
+  }
+
+  // MARK: - Worship Setting
+
+  // [#306] NotificationService(Extension)는 RN AsyncStorage를 못 읽으므로, SettingsScreen에서
+  // 예배시간이 바뀔 때마다 App Group에도 미러링해둔다(AppDelegate 런치 시 백필과 동일한 목적).
+  @objc
+  func setWorshipSetting(_ worshipSetting: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    WorshipSermonSync.mirrorSetting(worshipSetting)
+    resolve(nil)
+  }
+
   // MARK: - YouTube Link Preference
 
   @objc

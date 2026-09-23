@@ -151,6 +151,8 @@ export function isSermonDataStale(
 }
 
 export const WEEKLY_SERMONS_KEY = 'weekly_sermons';
+// iOS 전용 App Group 키 — Swift `WorshipSermonSync.weeklySermonsPendingKey`와 동일한 문자열이어야 한다.
+export const WEEKLY_SERMONS_PENDING_KEY = 'weekly_sermons_pending';
 
 export async function fetchLatestWeeklySermonsFromAsyncStorage(): Promise<Sermon[]> {
   try {
@@ -167,6 +169,18 @@ export async function fetchLatestWeeklySermonsFromAsyncStorage(): Promise<Sermon
 
 export async function saveWeeklySermonsToAsyncStorage(sermons: Sermon[]): Promise<void> {
   await AsyncStorage.setItem(WEEKLY_SERMONS_KEY, JSON.stringify(sermons));
+}
+
+// iOS 전용: NotificationService(Extension)가 앱 종료 상태에서 App Group에 쌓아둔 sermons-v2
+// 항목을 앱 실행 시 weekly_sermons 캐시로 병합한다([#306], useAppGroupSync). 네이티브가 이미
+// upsertWeeklySermonFromEvent와 동일한 규칙(같은 week의 다른 worship_type은 보존, 같은
+// worship_type은 교체, 다른 week는 버림)으로 대기열을 정리해뒀으므로, 여기서는 그 결과를
+// 기존 캐시에 순서대로 반복 적용하기만 하면 된다.
+export function mergeWeeklySermonIntoCache(existing: Sermon[], incoming: Sermon): Sermon[] {
+  const sameWeekOthers = existing.filter(
+    s => s.week === incoming.week && s.worship_type !== incoming.worship_type,
+  );
+  return [...sameWeekOthers, incoming];
 }
 
 // sermons-v2 UPDATED/CREATED FCM payload 하나로 weekly_sermons 캐시의 해당 문서 하나만

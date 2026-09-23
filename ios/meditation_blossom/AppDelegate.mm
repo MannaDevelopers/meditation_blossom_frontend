@@ -108,9 +108,18 @@ static NSString *MBAsyncStorageDirectory(void)
     }
   }];
 
+  // [#306] iOS 파트: NotificationService(Extension)는 RN AsyncStorage를 못 읽으므로 예배시간
+  // 설정을 App Group에도 미러링해둬야 한다. SettingsScreen에서 바뀔 때는
+  // WidgetUpdateModule.setWorshipSetting이 갱신하지만, 이 앱 버전으로 업데이트한 뒤 설정
+  // 화면을 한 번도 안 연 기존 사용자를 위해 여기서 기존 AsyncStorage 값을 백필한다.
+  NSString *worshipSetting = [self readFromAsyncStorageDirect:@"user_worship_setting"];
+  if (worshipSetting.length > 0) {
+    [WorshipSermonSync mirrorSetting:worshipSetting];
+  }
+
   // 5. 부모 클래스 호출을 통해 React Native 내부 Core 초기화 시작
   BOOL result = [super application:application didFinishLaunchingWithOptions:launchOptions];
-  
+
   // React Native 로그 레벨 설정 (디버깅용)
   RCTSetLogThreshold(RCTLogLevelInfo);
   
@@ -224,6 +233,31 @@ static NSString *MBAsyncStorageDirectory(void)
   } else {
     NSLog(@"✅ AsyncStorage write success for key: %@", key);
   }
+}
+
+// manifest.json + (1KB 초과 시) 값 파일로 나뉘는 RN 0.78 AsyncStorage 포맷을 읽는다.
+// saveToAsyncStorageDirect의 read 대응 버전([#306] 예배시간 설정 백필용).
+- (nullable NSString *)readFromAsyncStorageDirect:(NSString *)key {
+  NSString *storageDir = MBAsyncStorageDirectory();
+  NSString *manifestPath = [storageDir stringByAppendingPathComponent:@"manifest.json"];
+  NSFileManager *fm = [NSFileManager defaultManager];
+  if (![fm fileExistsAtPath:manifestPath]) return nil;
+
+  NSData *data = [NSData dataWithContentsOfFile:manifestPath];
+  if (!data) return nil;
+  NSDictionary *manifest = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+  if (!manifest) return nil;
+
+  id value = manifest[key];
+  if ([value isKindOfClass:[NSString class]]) {
+    return (NSString *)value;
+  }
+  if (value == [NSNull null]) {
+    NSString *hashedKey = RCTMD5Hash(key);
+    NSString *valuePath = [storageDir stringByAppendingPathComponent:hashedKey];
+    return [NSString stringWithContentsOfFile:valuePath encoding:NSUTF8StringEncoding error:nil];
+  }
+  return nil;
 }
 
 #pragma mark - Bundle URL & Debugging (유지됨)
@@ -441,19 +475,6 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
 }
 
 - (void)saveFcmSermon:(NSDictionary *)data {
-  // sermons-v2: 한 주에 예배별(worship_type) 문서가 최대 4번 개별 발행되므로, 레거시처럼 단일
-  // App Group/위젯 슬롯(fcm_sermon/displaySermon)에 바로 쓰면 사용자가 선택한 예배와 무관한
-  // 마지막 메시지가 위젯을 덮어쓰게 된다. worship_type 매칭과 위젯 반영은 JS(useFCMListener →
-  // sermonService.fetchLatestWeeklySermonsFromServer)가 Firestore 'sermons-v2'를 직접 조회해
-  // 전담하므로, 네이티브는 JS를 깨우는 역할만 한다.
-  NSString *rawTopic = [NSString stringWithFormat:@"%@", data[@"topic"] ?: @""].lowercaseString;
-  if ([rawTopic containsString:@"sermons_v2_events"]) {
-    // week/worship_type/video_url 등 원본 payload를 함께 보내면 JS가 weekly_sermons 캐시를
-    // 전체 재조회 없이 해당 문서 하나만 patch할 수 있다([#280]).
-    [self sendSermonUpdateEventWithData:data];
-    return;
-  }
-
   NSLog(@"=== PROCESSING SERMON EVENT ===");
   NSString *sourceId = data[@"source_id"] ?: [NSString stringWithFormat:@"%@", data[@"gcm.message_id"]];
 
@@ -558,21 +579,85 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
         sermonData[@"content"] = @"";
     }
   }
-  
+
+  // sermons-v2(예배 시간별 말씀, [#306]): week/worship_type이 있으면 이 이벤트다.
+  // payload엔 id가 없다 — Firestore 문서 ID 규칙과 동일하게 구성한다(JS/Android와 동일).
+  NSString *week = [sermonData[@"week"] isKindOfClass:[NSString class]] ? sermonData[@"week"] : @"";
+  NSString *worshipType = [sermonData[@"worship_type"] isKindOfClass:[NSString class]] ? sermonData[@"worship_type"] : @"";
+  BOOL isWeeklyEvent = week.length > 0 && worshipType.length > 0;
+  if (isWeeklyEvent) {
+    sermonData[@"id"] = [WorshipSermonSync weeklySermonIdWithWeek:week worshipType:worshipType];
+  }
+
+  // JS Sermon/SermonRaw 타입은 bible_references를 원본 FCM payload와 동일하게 JSON "문자열"로
+  // 취급한다(useScripturePassages가 JSON.parse로 다시 해석). 그런데 SermonBuilder가 위에서
+  // bible_references를 이미 파싱된 배열로 바꿔뒀고 그걸 그대로 최종 JSON에 실으면, 이 dictionary가
+  // AsyncStorage/App Group에 저장됐다가 JS가 다시 읽을 때 문자열이 아닌 배열을 받게 된다.
+  // JSON.parse(배열)은 배열을 "[object Object]" 등으로 강제 문자열화한 뒤 파싱을 시도해
+  // "Unexpected character: o" 파싱 에러로 이어진다(실기기 QA 중 발견). 최종 저장 직전에
+  // 다시 JSON 문자열로 되돌려 원본 payload와 같은 모양을 유지한다.
+  id bibleReferencesValue = sermonData[@"bible_references"];
+  if ([bibleReferencesValue isKindOfClass:[NSArray class]]) {
+    NSData *bibleRefsData = [NSJSONSerialization dataWithJSONObject:bibleReferencesValue options:0 error:nil];
+    sermonData[@"bible_references"] = bibleRefsData
+        ? [[NSString alloc] initWithData:bibleRefsData encoding:NSUTF8StringEncoding]
+        : @"[]";
+  }
+
   NSError *error;
   NSData *jsonData = [NSJSONSerialization dataWithJSONObject:sermonData options:0 error:&error];
   if (jsonData) {
     NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
-    BOOL shouldUpdateDisplaySermon = [self isSermonStorageKey:storageKey];
-    
-    // 1. App Group에 저장
     NSUserDefaults *sharedDefaults = [[NSUserDefaults alloc] initWithSuiteName:@"group.mannachurch.meditationblossom"];
+
+    if (isWeeklyEvent) {
+      // 앱이 실행되면 JS가 이 대기열을 weekly_sermons 캐시로 병합해간다([useAppGroupSync]).
+      [WorshipSermonSync appendPendingWeeklySermon:jsonString week:week worshipType:worshipType];
+
+      NSString *setting = [WorshipSermonSync currentSetting];
+      if ([WorshipSermonSync shouldApplyWeeklyEventWithWorshipType:worshipType stored:setting]) {
+        [sharedDefaults setObject:jsonString forKey:@"fcm_sermon"];
+        [sharedDefaults setObject:jsonString forKey:@"displaySermon"];
+        [sharedDefaults synchronize];
+        [self saveToAsyncStorageDirect:jsonString forKey:@"fcm_sermon"];
+        [WidgetUpdateModuleImpl reloadWidgets];
+      } else {
+        NSLog(@"saveFcmSermon: weekly sermon queued only (worship_type=%@, setting=%@)", worshipType, setting ?: @"unknown");
+      }
+
+      // week/worship_type/video_url 등 원본 payload를 함께 보내면 JS(포그라운드일 때)가
+      // weekly_sermons 캐시를 전체 재조회 없이 해당 문서 하나만 patch할 수 있다([#280]).
+      [self sendSermonUpdateEventWithData:data];
+      return;
+    }
+
+    BOOL shouldUpdateDisplaySermon = [self isSermonStorageKey:storageKey];
+
+    // 레거시 sermon_events(_v2): '전체'가 아니면(설정을 아는 상태에서 특정 예배시간을 골라둔
+    // 경우) 위젯/'지금 화면' 슬롯은 건드리지 않고 legacy 전용 캐시에만 저장한다([#307] iOS 파트).
+    // 설정을 모르면(App Group에 아직 없으면) 기존 동작을 유지한다.
+    if (shouldUpdateDisplaySermon) {
+      NSString *setting = [WorshipSermonSync currentSetting];
+      if (![WorshipSermonSync isAllOrUnknownSetting:setting]) {
+        [sharedDefaults setObject:jsonString forKey:@"legacy_sermon_cache"];
+        [sharedDefaults synchronize];
+        [self saveToAsyncStorageDirect:jsonString forKey:@"legacy_sermon_cache"];
+        NSLog(@"saveFcmSermon: setting=%@ != ALL, saved legacy payload to legacy cache only", setting ?: @"unknown");
+        [self sendSermonUpdateEventWithData:data];
+        return;
+      }
+    }
+
+    // 1. App Group에 저장
     [sharedDefaults setObject:jsonString forKey:storageKey];
     if (shouldUpdateDisplaySermon) {
       [sharedDefaults setObject:jsonString forKey:@"displaySermon"];
+      // '전체'로 반영했으니 legacy 캐시도 같이 최신화해둔다 — 특정 예배시간으로 바꿨다가 다시
+      // '전체'로 돌아왔을 때 비교할 기준선이 된다(SettingsScreen.fetchReconciledLegacySermon).
+      [sharedDefaults setObject:jsonString forKey:@"legacy_sermon_cache"];
     }
     [sharedDefaults synchronize];
-    
+
     // 2. AsyncStorage 저장 호출 (이제 내부에서 브릿지 준비 상태에 따라 스마트하게 재시도함)
     [self saveToAsyncStorageDirect:jsonString forKey:storageKey];
 
