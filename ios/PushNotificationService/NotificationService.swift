@@ -37,6 +37,17 @@ class NotificationService: UNNotificationServiceExtension {
             return
         }
 
+        // sermons-v2(예배 시간별 말씀, [#306]) — 레거시와 파싱/반영 규칙이 달라(day_of_week 없음,
+        // 설정과 일치할 때만 위젯 반영) 별도로 분기한다. parseSermonFromUserInfo는 day_of_week를
+        // 필수로 요구해 이 토픽을 그냥 두면 통째로 버려진다.
+        let topic = (userInfo["topic"] as? String ?? "").lowercased()
+        if topic.contains("sermons_v2_events") {
+            handleWeeklySermonEvent(userInfo: userInfo)
+            suppressNotification(bestAttemptContent)
+            contentHandler(bestAttemptContent)
+            return
+        }
+
         // Data-only 메시지 확인 (content-available: 1, alert 없음)
         let isSilent = (userInfo["silent"] as? String) == "true" || (userInfo["widget_update_only"] as? String) == "true"
 
@@ -120,6 +131,73 @@ class NotificationService: UNNotificationServiceExtension {
         )
 
         saveSermonToAppGroup(sermon, userInfo: userInfo)
+    }
+
+    // MARK: - sermons-v2 (Weekly)
+
+    // week/worship_type이 없으면(레거시가 이 분기로 잘못 들어온 경우 등) 처리할 수 없으므로 무시한다.
+    // Android `WeeklySermons.parseEvent`/JS `upsertWeeklySermonFromEvent`와 동일한 게이트.
+    private func handleWeeklySermonEvent(userInfo: [AnyHashable: Any]) {
+        guard let week = userInfo["week"] as? String, !week.isEmpty,
+              let worshipType = userInfo["worship_type"] as? String, !worshipType.isEmpty else {
+            NSLog("NotificationService: sermons-v2 event missing week/worship_type, ignoring")
+            return
+        }
+        guard let title = userInfo["title"] as? String, let date = userInfo["date"] as? String else {
+            NSLog("NotificationService: sermons-v2 event missing title/date, ignoring")
+            return
+        }
+
+        let content: String
+        if let resolved = resolveBibleReferencesFromUserInfo(userInfo) {
+            content = resolved
+        } else if let rawContent = userInfo["content"] as? String {
+            content = rawContent
+        } else {
+            content = ""
+        }
+
+        let idFromPayload = (userInfo["id"] as? String)?.isEmpty == false ? (userInfo["id"] as? String) : nil
+        let id = idFromPayload ?? WorshipSermonSync.weeklySermonId(week: week, worshipType: worshipType)
+        let category = userInfo["category"] as? String
+        let bibleReferences = userInfo["bible_references"] as? String
+        var createdAt: FirestoreTimeStamp? = nil
+        var updatedAt: FirestoreTimeStamp? = nil
+        if let s = userInfo["created_at"] as? String { createdAt = convertStringToTimestamp(s) }
+        if let s = userInfo["updated_at"] as? String { updatedAt = convertStringToTimestamp(s) }
+
+        // sermons-v2 payload엔 day_of_week가 없다 — JS fcmDataToSermon과 동일하게 빈 문자열로 채운다.
+        let sermon = Sermon(
+            id: id, title: title, content: content, date: date,
+            category: category, dayOfWeek: "",
+            createdAt: createdAt, updatedAt: updatedAt,
+            worshipType: worshipType, week: week, bibleReferences: bibleReferences
+        )
+
+        guard let encoded = try? JSONEncoder().encode(sermon),
+              let jsonString = String(data: encoded, encoding: .utf8) else {
+            NSLog("NotificationService: failed to encode weekly sermon")
+            return
+        }
+
+        // 앱이 실행되면 JS가 이 대기열을 weekly_sermons 캐시로 병합해간다([useAppGroupSync]).
+        WorshipSermonSync.appendPendingWeeklySermon(jsonString, week: week, worshipType: worshipType)
+
+        let setting = WorshipSermonSync.currentSetting()
+        guard WorshipSermonSync.shouldApplyWeeklyEvent(worshipType: worshipType, stored: setting) else {
+            NSLog("NotificationService: weekly sermon queued only (worship_type=%@, setting=%@)", worshipType, setting ?? "unknown")
+            return
+        }
+
+        guard let userDefaults = UserDefaults(suiteName: Constants.appGroupId) else {
+            NSLog("NotificationService: Failed to access App Group")
+            return
+        }
+        userDefaults.set(jsonString, forKey: Constants.fcmSermonKey)
+        userDefaults.set(jsonString, forKey: Constants.displaySermonKey)
+        userDefaults.synchronize()
+        WidgetCenter.shared.reloadTimelines(ofKind: Constants.widgetKind)
+        NSLog("NotificationService: weekly sermon applied to widget (worship_type=%@)", worshipType)
     }
 
     // MARK: - Sermon Parsing & Saving
@@ -224,6 +302,19 @@ class NotificationService: UNNotificationServiceExtension {
 
             let storageKey = asyncStorageKey(for: userInfo)
 
+            // 레거시 sermon_events(_v2): '전체'가 아니면(설정을 아는 상태에서 특정 예배시간을
+            // 골라둔 경우) 위젯/'지금 화면' 슬롯은 건드리지 않고 legacy 전용 캐시에만 저장한다
+            // ([#307] iOS 파트). 설정을 모르면(App Group에 아직 없으면) 기존 동작을 유지한다.
+            if storageKey == Constants.fcmSermonKey {
+                let setting = WorshipSermonSync.currentSetting()
+                if !WorshipSermonSync.isAllOrUnknownSetting(setting) {
+                    userDefaults.set(jsonString, forKey: WorshipSermonSync.legacySermonCacheKey)
+                    userDefaults.synchronize()
+                    NSLog("NotificationService: setting=%@ != ALL, saved legacy payload to legacy cache only", setting ?? "unknown")
+                    return
+                }
+            }
+
             // QT는 공용 Sermon 구조체가 표현하지 못하는 series_title / meditation_questions를
             // FCM userInfo에서 직접 보강한다. 누락 시 첫 설치 화면에서 카테고리·묵상질문이 비게 된다.
             if storageKey == Constants.fcmQtKey,
@@ -234,6 +325,9 @@ class NotificationService: UNNotificationServiceExtension {
             userDefaults.set(jsonString, forKey: storageKey)
             if storageKey == Constants.fcmSermonKey {
                 userDefaults.set(jsonString, forKey: Constants.displaySermonKey)
+                // '전체'로 반영했으니 legacy 캐시도 같이 최신화해둔다 — 특정 예배시간으로 바꿨다가
+                // 다시 '전체'로 돌아왔을 때 비교할 기준선이 된다(SettingsScreen.fetchReconciledLegacySermon).
+                userDefaults.set(jsonString, forKey: WorshipSermonSync.legacySermonCacheKey)
             }
             userDefaults.synchronize()
 

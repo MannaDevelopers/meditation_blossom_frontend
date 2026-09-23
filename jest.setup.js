@@ -123,6 +123,8 @@ NativeModules.WidgetUpdateModule = {
   resolveBibleReferences: jest.fn().mockResolvedValue(''),
   onClear: jest.fn().mockResolvedValue(undefined),
   getAppGroupData: jest.fn().mockResolvedValue(null),
+  removeAppGroupData: jest.fn().mockResolvedValue(undefined),
+  setWorshipSetting: jest.fn().mockResolvedValue(undefined),
   setYoutubeLinkEnabled: jest.fn().mockResolvedValue(undefined),
   getYoutubeLinkEnabled: jest.fn().mockResolvedValue(false),
 };

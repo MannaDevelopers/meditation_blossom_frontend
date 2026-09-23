@@ -73,6 +73,11 @@ const SettingsScreen = ({ navigation }: Props) => {
     setSelectedWorship(type);
     try {
       await AsyncStorage.setItem(USER_WORSHIP_SETTING_KEY, type);
+      // iOS: NotificationService(Extension)는 RN AsyncStorage를 못 읽으므로 App Group에도
+      // 미러링해둔다([#306]). Android는 no-op(네이티브가 AsyncStorage를 직접 읽는다).
+      if (WidgetUpdateModule) {
+        await WidgetUpdateModule.setWorshipSetting(type);
+      }
       if (type === 'ALL') {
         // 전체: 레거시 단일 최신 문서 경로([#278]) — weekly_sermons 캐시/매칭 로직 사용 안 함
         const legacy = await fetchReconciledLegacySermon();

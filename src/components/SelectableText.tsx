@@ -23,7 +23,13 @@ const SelectableText = ({ text, style }: Props) =>
       {text}
     </Text>
   ) : (
+    // key={text}: FCM으로 새 말씀이 오면 value만 바뀌는데, 그 경우 iOS 백킹 UITextView가
+    // 새 레이아웃을 다시 재는 대신 이전 렌더의 줄바꿈/자간 상태를 그대로 두고 텍스트만
+    // 바꿔치기해 첫 줄 일부가 이전 텍스트와 섞여 보이는 경우가 있었다(실사용자 리포트,
+    // 탭 전환 후 복귀하면 정상화됨 — 화면 재마운트가 우연히 새로 레이아웃을 잡았기 때문).
+    // key를 바꿔 컴포넌트를 통째로 새로 마운트시키면 매번 처음부터 레이아웃을 잡아 재현되지 않는다.
     <TextInput
+      key={text}
       style={[styles.reset, style]}
       value={text}
       editable={false}

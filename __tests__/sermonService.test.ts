@@ -3,6 +3,7 @@ import {
   fetchLatestSermonFromAsyncStorage,
   fetchLegacySermonFromCache,
   isSermonDataStale,
+  mergeWeeklySermonIntoCache,
   saveLegacySermonToCache,
   saveSermonToAsyncStorage,
   syncAppGroupToAsyncStorage,
@@ -290,6 +291,44 @@ describe('weekly sermons caching and syncing', () => {
 
     await expect(syncSelectedSermonToWidget('SUN_0950')).resolves.toBeUndefined();
     expect(bridge.onSermonUpdated).not.toHaveBeenCalled();
+  });
+});
+
+describe('mergeWeeklySermonIntoCache ([#306] iOS 대기열 병합)', () => {
+  const ts = { seconds: 0, nanoseconds: 0 };
+  const sermon = (overrides: Partial<Sermon>): Sermon => ({
+    id: 'id', title: 'T', content: 'C', date: '2026-09-13',
+    created_at: ts, updated_at: ts, ...overrides,
+  });
+
+  it('같은 week의 다른 worship_type 항목은 보존하고 같은 worship_type 항목은 교체한다', () => {
+    const existing: Sermon[] = [
+      sermon({ id: 'sat', week: '2026-W37', worship_type: 'SAT_1700' }),
+      sermon({ id: 'sun0950-old', week: '2026-W37', worship_type: 'SUN_0950', title: 'old' }),
+    ];
+    const incoming = sermon({ id: 'sun0950-new', week: '2026-W37', worship_type: 'SUN_0950', title: 'new' });
+
+    const result = mergeWeeklySermonIntoCache(existing, incoming);
+
+    expect(result).toHaveLength(2);
+    expect(result.find(s => s.worship_type === 'SAT_1700')?.id).toBe('sat');
+    expect(result.find(s => s.worship_type === 'SUN_0950')?.title).toBe('new');
+  });
+
+  it('다른 week 항목은 모두 버린다', () => {
+    const existing: Sermon[] = [
+      sermon({ id: 'old-week', week: '2026-W36', worship_type: 'SUN_0950' }),
+    ];
+    const incoming = sermon({ id: 'new-week', week: '2026-W37', worship_type: 'SUN_1150' });
+
+    const result = mergeWeeklySermonIntoCache(existing, incoming);
+
+    expect(result).toEqual([incoming]);
+  });
+
+  it('빈 캐시에 처음 병합하면 새 항목 하나만 남는다', () => {
+    const incoming = sermon({ id: 'first', week: '2026-W37', worship_type: 'SUN_0950' });
+    expect(mergeWeeklySermonIntoCache([], incoming)).toEqual([incoming]);
   });
 });
 

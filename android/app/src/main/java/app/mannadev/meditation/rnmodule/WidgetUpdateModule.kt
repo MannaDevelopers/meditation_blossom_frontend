@@ -174,6 +174,18 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
         promise.resolve(null)
     }
 
+    // iOS 전용 ([#306] App Group 대기열 드레인용). Android에는 App Group 개념이 없어 no-op.
+    override fun removeAppGroupData(key: String, promise: Promise) {
+        promise.resolve(null)
+    }
+
+    // iOS 전용 ([#306]) — NotificationService(Extension)가 RN AsyncStorage를 못 읽어 App Group
+    // 미러링이 필요한 iOS와 달리, Android는 MyFirebaseMessagingService가 AsyncStorage를 직접
+    // 읽고 쓸 수 있어(app.mannadev.meditation.data.AsyncStorage) no-op이다.
+    override fun setWorshipSetting(worshipSetting: String, promise: Promise) {
+        promise.resolve(null)
+    }
+
     override fun onQtUpdated(qtData: String, promise: Promise) {
         moduleScope.launch {
             val saveResult = runCatching {

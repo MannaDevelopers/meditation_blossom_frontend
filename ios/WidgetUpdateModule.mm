@@ -95,6 +95,20 @@ RCT_EXPORT_MODULE(WidgetUpdateModule)
   [_impl getAppGroupData:key resolver:resolve rejecter:reject];
 }
 
+- (void)removeAppGroupData:(NSString *)key
+                    resolve:(RCTPromiseResolveBlock)resolve
+                     reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl removeAppGroupData:key resolver:resolve rejecter:reject];
+}
+
+- (void)setWorshipSetting:(NSString *)worshipSetting
+                   resolve:(RCTPromiseResolveBlock)resolve
+                    reject:(RCTPromiseRejectBlock)reject
+{
+  [_impl setWorshipSetting:worshipSetting resolver:resolve rejecter:reject];
+}
+
 - (void)setYoutubeLinkEnabled:(BOOL)enabled
                        resolve:(RCTPromiseResolveBlock)resolve
                         reject:(RCTPromiseRejectBlock)reject

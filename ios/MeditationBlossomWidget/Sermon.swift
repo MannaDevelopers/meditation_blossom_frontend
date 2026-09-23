@@ -21,6 +21,11 @@ struct Sermon: Codable {
     let createdAt: FirestoreTimeStamp? // 이름 변경
     let updatedAt: FirestoreTimeStamp? // 이름 변경
     let videoUrl: String? // 유튜브 영상 URL (optional)
+    // sermons-v2(worship_type별 예배, [#306]) 전용 필드 — TS `Sermon` 타입과 동일하게 optional.
+    // 레거시 sermon_events(_v2)/QT payload엔 없다.
+    let worshipType: String?
+    let week: String? // ISO 8601 week_number(예: "2026-W37")
+    let bibleReferences: String? // Firestore bible_references 배열의 JSON 문자열([#173])
 
     enum CodingKeys: String, CodingKey {
         case id, title, content, date, category
@@ -28,10 +33,13 @@ struct Sermon: Codable {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case videoUrl = "video_url"
+        case worshipType = "worship_type"
+        case week
+        case bibleReferences = "bible_references"
     }
 
     // 기본 초기화 (PushNotificationService에서 사용)
-    init(id: String, title: String, content: String, date: String, category: String?, dayOfWeek: String?, createdAt: FirestoreTimeStamp?, updatedAt: FirestoreTimeStamp?, videoUrl: String? = nil) {
+    init(id: String, title: String, content: String, date: String, category: String?, dayOfWeek: String?, createdAt: FirestoreTimeStamp?, updatedAt: FirestoreTimeStamp?, videoUrl: String? = nil, worshipType: String? = nil, week: String? = nil, bibleReferences: String? = nil) {
         self.id = id
         self.title = title
         self.content = content
@@ -41,6 +49,9 @@ struct Sermon: Codable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.videoUrl = videoUrl
+        self.worshipType = worshipType
+        self.week = week
+        self.bibleReferences = bibleReferences
     }
 
     // ISO 문자열을 Firestore 타임스탬프로 변환하는 커스텀 디코딩
@@ -54,6 +65,9 @@ struct Sermon: Codable {
         category = try container.decodeIfPresent(String.self, forKey: .category)
         dayOfWeek = try container.decodeIfPresent(String.self, forKey: .dayOfWeek)
         videoUrl = try container.decodeIfPresent(String.self, forKey: .videoUrl)
+        worshipType = try container.decodeIfPresent(String.self, forKey: .worshipType)
+        week = try container.decodeIfPresent(String.self, forKey: .week)
+        bibleReferences = try container.decodeIfPresent(String.self, forKey: .bibleReferences)
 
         // createdAt 처리: ISO 문자열 또는 Firestore 타임스탬프
         if let createdAtString = try? container.decode(String.self, forKey: .createdAt) {
