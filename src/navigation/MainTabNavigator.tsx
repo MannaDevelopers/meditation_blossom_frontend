@@ -1,7 +1,10 @@
-import React, {useMemo, useState} from 'react';
+import React, {useMemo} from 'react';
 import {createMaterialTopTabNavigator} from '@react-navigation/material-top-tabs';
 import type {MaterialTopTabBarProps} from '@react-navigation/material-top-tabs';
-import {useNavigation} from '@react-navigation/native';
+import {
+  getFocusedRouteNameFromRoute,
+  useNavigation,
+} from '@react-navigation/native';
 import {
   NativeStackNavigationProp,
   NativeStackScreenProps,
@@ -159,10 +162,12 @@ const MainTabNavigator = ({
   const initialTabName = route.params?.initialTabName ?? '주일 말씀';
 
   // 편집 화면 진입 버튼(SharedHeader)이 "지금 보고 있던 탭"을 EditScreen의 초기 소스 필로
-  // 넘기기 위해 활성 탭을 추적한다([ISSUE-236]). SharedHeader는 Tab.Navigator 밖의 형제
-  // 컴포넌트라 탭 state를 직접 구독할 수 없어, Tab.Navigator의 screenListeners로 상태 변화를
-  // 끌어올린다.
-  const [activeSource, setActiveSource] = useState<WidgetSource>('sermon');
+  // 넘긴다. SharedHeader는 Tab.Navigator 밖이라 탭 route를 직접 받을 수 없어,
+  // 이 화면(MainTabs) route에 붙은 하위 탭 state에서 포커스된 탭을 꺼낸다. 탭 안에서 아직
+  // 이동이 없으면 undefined라 초기 탭으로 간주한다.
+  const focusedTabName = getFocusedRouteNameFromRoute(route) ?? initialTabName;
+  const activeSource: WidgetSource =
+    focusedTabName === '매일 만나' ? 'qt' : 'sermon';
   const {colors} = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -180,10 +185,12 @@ const MainTabNavigator = ({
           state: e => {
             const {index, routes} = (
               e.data as {
-                state: {index: number; routes: {name: keyof MainTabParamList}[]};
+                state: {
+                  index: number;
+                  routes: {name: keyof MainTabParamList}[];
+                };
               }
             ).state;
-            setActiveSource(index === 0 ? 'sermon' : 'qt');
             LocalStorageService.set<StorageData['DEFAULT_MAIN_TAB']>(
               LOCAL_STORAGE_KEYS.DEFAULT_MAIN_TAB,
               {name: routes[index].name},
