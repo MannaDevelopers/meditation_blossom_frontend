@@ -2,8 +2,13 @@ import { Sermon } from "./Sermon";
 import { QT } from "./QT";
 import { WidgetImageTransform } from "./WidgetDesign";
 
+export type MainTabParamList = {
+  '주일 말씀': undefined;
+  '매일 만나': undefined;
+};
+
 export type RootStackParamList = {
-  MainTabs: undefined;
+  MainTabs: { initialTabName?: keyof MainTabParamList } | undefined;
   EditScreen: { sermon?: Sermon; qt?: QT; initialSource?: 'sermon' | 'qt' };
   SettingsScreen: undefined;
   ImageCropScreen: {

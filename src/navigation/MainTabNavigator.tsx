@@ -1,30 +1,40 @@
-import React, { useMemo, useState } from 'react';
-import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
-import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet, TouchableOpacity, Text, View, Image, Dimensions } from 'react-native';
+import React, {useMemo, useState} from 'react';
+import {createMaterialTopTabNavigator} from '@react-navigation/material-top-tabs';
+import type {MaterialTopTabBarProps} from '@react-navigation/material-top-tabs';
+import {useNavigation} from '@react-navigation/native';
+import {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from '@react-navigation/native-stack';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  View,
+  Image,
+  Dimensions,
+} from 'react-native';
 // JsPager는 metro.config.js의 resolveRequest를 통해 주입된다.
 // iOS에서 react-native-tab-view/Pager.ios → src/navigation/JsPager.tsx 로 리다이렉트되어
 // RNCViewPager 네이티브 모듈 없이 탭 전환이 동작한다.
 import SvgIcon from '../components/SvgIcon';
 import HomeScreen from '../screens/HomeScreen';
 import DailyMannaScreen from '../screens/DailyMannaScreen';
-import { RootStackParamList } from '../types/navigation';
-import { logAnalytics } from '../utils/analytics';
-import { fetchLatestSermonFromAsyncStorage } from '../services/sermonService';
-import { fetchLatestQtFromAsyncStorage } from '../services/qtService';
+import {MainTabParamList, RootStackParamList} from '../types/navigation';
+import {logAnalytics} from '../utils/analytics';
+import {fetchLatestSermonFromAsyncStorage} from '../services/sermonService';
+import {fetchLatestQtFromAsyncStorage} from '../services/qtService';
+import {
+  LOCAL_STORAGE_KEYS,
+  LocalStorageService,
+  StorageData,
+} from '../services/localStorageService';
 import logger from '../utils/logger';
-import { useAppTheme } from '../hooks/useAppTheme';
-import { ThemeColors } from '../theme/colors';
+import {useAppTheme} from '../hooks/useAppTheme';
+import {ThemeColors} from '../theme/colors';
 
 type WidgetSource = 'sermon' | 'qt';
-
-export type MainTabParamList = {
-  '주일 말씀': undefined;
-  '매일 만나': undefined;
-};
 
 const Tab = createMaterialTopTabNavigator<MainTabParamList>();
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -38,7 +48,8 @@ const SharedHeader = ({
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
 }) => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   // 위젯 디자인 편집([#169], [ISSUE-236]) 진입 버튼 — 어느 탭에서 눌러도 두 콘텐츠(주일
   // 말씀/QT)를 모두 EditScreen에 전달해 소스 필 전환 시 별도 로딩 없이 바로 편집할 수 있게
@@ -74,19 +85,27 @@ const SharedHeader = ({
         <TouchableOpacity
           onPress={openEditScreen}
           style={styles.editButton}
-          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-        >
-          <SvgIcon name="EditPalette" size={24} fill={colors.textPrimary} pointerEvents="none" />
+          hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}>
+          <SvgIcon
+            name="EditPalette"
+            size={24}
+            fill={colors.textPrimary}
+            pointerEvents="none"
+          />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => navigation.navigate('SettingsScreen')}
           style={styles.settingsButton}
-          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-        >
+          hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}>
           {/* iOS에서 react-native-svg가 자체 터치 responder가 되어 아이콘을 직접 누르면
               터치를 삼키는 문제가 있어, pointerEvents="none"으로 부모 TouchableOpacity에 통과시킨다.
               (YouTube 버튼과 동일한 ISSUE-138 패턴) */}
-          <SvgIcon name="SettingButton" size={24} fill={colors.textPrimary} pointerEvents="none" />
+          <SvgIcon
+            name="SettingButton"
+            size={24}
+            fill={colors.textPrimary}
+            pointerEvents="none"
+          />
         </TouchableOpacity>
       </View>
     </View>
@@ -97,7 +116,7 @@ const CustomTabBar = ({
   state,
   navigation,
   styles,
-}: MaterialTopTabBarProps & { styles: ReturnType<typeof createStyles> }) => {
+}: MaterialTopTabBarProps & {styles: ReturnType<typeof createStyles>}) => {
   return (
     <View>
       <View style={styles.tabBarContainer}>
@@ -111,16 +130,18 @@ const CustomTabBar = ({
             });
             if (!isFocused && !event.defaultPrevented) {
               navigation.navigate(route.name);
-              logAnalytics.tabSwitch(index === 0 ? 'sunday_sermon' : 'daily_qt');
+              logAnalytics.tabSwitch(
+                index === 0 ? 'sunday_sermon' : 'daily_qt',
+              );
             }
           };
           return (
             <TouchableOpacity
               key={route.key}
               onPress={onPress}
-              style={[styles.tabButton, isFocused && styles.tabButtonActive]}
-            >
-              <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>
+              style={[styles.tabButton, isFocused && styles.tabButtonActive]}>
+              <Text
+                style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>
                 {route.name}
               </Text>
             </TouchableOpacity>
@@ -132,28 +153,46 @@ const CustomTabBar = ({
   );
 };
 
-const MainTabNavigator = () => {
+const MainTabNavigator = ({
+  route,
+}: NativeStackScreenProps<RootStackParamList, 'MainTabs'>) => {
+  const initialTabName = route.params?.initialTabName ?? '주일 말씀';
+
   // 편집 화면 진입 버튼(SharedHeader)이 "지금 보고 있던 탭"을 EditScreen의 초기 소스 필로
   // 넘기기 위해 활성 탭을 추적한다([ISSUE-236]). SharedHeader는 Tab.Navigator 밖의 형제
   // 컴포넌트라 탭 state를 직접 구독할 수 없어, Tab.Navigator의 screenListeners로 상태 변화를
   // 끌어올린다.
   const [activeSource, setActiveSource] = useState<WidgetSource>('sermon');
-  const { colors } = useAppTheme();
+  const {colors} = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <SharedHeader activeSource={activeSource} colors={colors} styles={styles} />
+      <SharedHeader
+        activeSource={activeSource}
+        colors={colors}
+        styles={styles}
+      />
       <Tab.Navigator
-        tabBar={(props) => <CustomTabBar {...props} styles={styles} />}
-        initialLayout={{ width: SCREEN_WIDTH }}
+        tabBar={props => <CustomTabBar {...props} styles={styles} />}
+        initialLayout={{width: SCREEN_WIDTH}}
         screenListeners={{
-          state: (e) => {
-            const index = (e.data as { state: { index: number } }).state.index;
+          state: e => {
+            const {index, routes} = (
+              e.data as {
+                state: {index: number; routes: {name: keyof MainTabParamList}[]};
+              }
+            ).state;
             setActiveSource(index === 0 ? 'sermon' : 'qt');
+            LocalStorageService.set<StorageData['DEFAULT_MAIN_TAB']>(
+              LOCAL_STORAGE_KEYS.DEFAULT_MAIN_TAB,
+              {name: routes[index].name},
+            ).catch(err =>
+              logger.error('MainTabNavigator: 마지막 탭 저장 실패', err),
+            );
           },
         }}
-      >
+        initialRouteName={initialTabName}>
         <Tab.Screen name="주일 말씀" component={HomeScreen} />
         <Tab.Screen name="매일 만나" component={DailyMannaScreen} />
       </Tab.Navigator>
@@ -243,7 +282,7 @@ const createStyles = (colors: ThemeColors) =>
       height: 1,
       backgroundColor: colors.divider,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
+      shadowOffset: {width: 0, height: 2},
       shadowOpacity: 0.08,
       shadowRadius: 4,
       elevation: 2,
