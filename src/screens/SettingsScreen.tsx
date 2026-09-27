@@ -23,12 +23,13 @@ import {
 import DeviceInfo from 'react-native-device-info';
 import Svg, { Path } from 'react-native-svg';
 import SvgIcon from '../components/SvgIcon';
-import { RootStackParamList } from '../types/navigation';
+import { MainTabParamList, RootStackParamList } from '../types/navigation';
 import { compareSermon, FCM_SERMON_KEY, Sermon, WorshipType, WorshipSetting, WORSHIP_SETTINGS, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
 import { FCM_QT_KEY } from '../types/QT';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
 import { fetchLegacySermonFromCache, fetchLatestSermonFromServer, fetchLatestWeeklySermonsFromServer, pushSermonToWidget, saveLegacySermonToCache, saveSermonToAsyncStorage, syncSelectedSermonToWidget, saveWeeklySermonsToAsyncStorage } from '../services/sermonService';
 import { fetchLatestQtFromServer, pushQtToWidget } from '../services/qtService';
+import { LOCAL_STORAGE_KEYS, LocalStorageService, StorageData } from '../services/localStorageService';
 import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
 import { useAppTheme } from '../hooks/useAppTheme';
@@ -37,6 +38,15 @@ import { toIsoWeek } from '../utils/isoWeek';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SettingsScreen'>;
 
+type MainTabName = keyof MainTabParamList;
+
+// 앱 아이콘으로 실행했을 때 처음 보여줄 탭([#305]). 위젯 딥링크는 이 설정과 무관하게
+// 위젯이 가리키는 탭으로 연다. 저장값은 App.tsx가 읽어 다음 실행부터 적용된다.
+const DEFAULT_TAB_OPTIONS: { name: MainTabName; label: string }[] = [
+  { name: '주일 말씀', label: '주일 말씀(기본)' },
+  { name: '매일 만나', label: '매일 만나' },
+];
+
 const SettingsScreen = ({ navigation }: Props) => {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -44,6 +54,7 @@ const SettingsScreen = ({ navigation }: Props) => {
   const [tapCount, setTapCount] = useState(0);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [youtubeLinkEnabled, setYoutubeLinkEnabled] = useState(false);
+  const [defaultTab, setDefaultTab] = useState<MainTabName>('주일 말씀');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedWorship, setSelectedWorship] = useState<WorshipSetting>(DEFAULT_WORSHIP_TYPE);
 
@@ -114,6 +125,20 @@ const SettingsScreen = ({ navigation }: Props) => {
     } catch (error) {
       logger.error('YouTube 링크 설정 저장 실패:', error);
       setYoutubeLinkEnabled(!value);
+    }
+  };
+
+  const setDefaultTabOption = async (name: MainTabName) => {
+    const previous = defaultTab;
+    setDefaultTab(name);
+    try {
+      await LocalStorageService.set<StorageData['DEFAULT_MAIN_TAB']>(
+        LOCAL_STORAGE_KEYS.DEFAULT_MAIN_TAB,
+        { name },
+      );
+    } catch (error) {
+      logger.error('기본 화면 설정 저장 실패:', error);
+      setDefaultTab(previous);
     }
   };
 
@@ -274,6 +299,23 @@ const SettingsScreen = ({ navigation }: Props) => {
   }, []);
 
   useEffect(() => {
+    const loadDefaultTabSetting = async () => {
+      try {
+        const saved = await LocalStorageService.get<StorageData['DEFAULT_MAIN_TAB']>(
+          LOCAL_STORAGE_KEYS.DEFAULT_MAIN_TAB,
+        );
+        const option = DEFAULT_TAB_OPTIONS.find(o => o.name === saved?.name);
+        if (option) {
+          setDefaultTab(option.name);
+        }
+      } catch (error) {
+        logger.error('기본 화면 설정 불러오기 실패:', error);
+      }
+    };
+    loadDefaultTabSetting();
+  }, []);
+
+  useEffect(() => {
     const loadWorshipSetting = async () => {
       try {
         const saved = await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY);
@@ -380,6 +422,34 @@ const SettingsScreen = ({ navigation }: Props) => {
                 {youtubeLinkEnabled && <View style={styles.radioInner} />}
               </View>
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 기본 화면 설정 섹션 */}
+        <Text style={styles.sectionLabel}>기본 화면 설정</Text>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionDescription}>앱을 열면 어떤 화면을 먼저 보여줄까요?</Text>
+          <View style={styles.optionRow}>
+            {DEFAULT_TAB_OPTIONS.map(option => {
+              const isSelected = defaultTab === option.name;
+              return (
+                <TouchableOpacity
+                  key={option.name}
+                  style={styles.optionItem}
+                  onPress={() => setDefaultTabOption(option.name)}
+                >
+                  <View style={styles.optionCard}>
+                    <Text style={styles.appPreviewText}>{option.name}</Text>
+                  </View>
+                  <Text style={[styles.optionLabel, isSelected && styles.optionLabelActive]}>
+                    {option.label}
+                  </Text>
+                  <View style={styles.radioButton}>
+                    {isSelected && <View style={styles.radioInner} />}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 

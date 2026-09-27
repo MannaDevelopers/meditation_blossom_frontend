@@ -175,7 +175,10 @@ const MainTabNavigator = ({
         )}
         tabBar={props => <CustomTabBar {...props} styles={styles} />}
         initialLayout={{width: SCREEN_WIDTH}}
-        initialRouteName={initialTabName}>
+        initialRouteName={initialTabName}
+        // (Android) 기본 탭이 아니면 뒤로가기로 기본 탭에 가고, 기본 탭에서는 앱을 종료한다([#305]).
+        // 기본값 'firstRoute'는 설정과 무관하게 항상 '주일 말씀'을 거친다.
+        backBehavior="initialRoute">
         <Tab.Screen name="주일 말씀" component={HomeScreen} />
         <Tab.Screen name="매일 만나" component={DailyMannaScreen} />
       </Tab.Navigator>
