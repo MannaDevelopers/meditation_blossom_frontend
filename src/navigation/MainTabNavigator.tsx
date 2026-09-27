@@ -25,11 +25,6 @@ import {MainTabParamList, RootStackParamList} from '../types/navigation';
 import {logAnalytics} from '../utils/analytics';
 import {fetchLatestSermonFromAsyncStorage} from '../services/sermonService';
 import {fetchLatestQtFromAsyncStorage} from '../services/qtService';
-import {
-  LOCAL_STORAGE_KEYS,
-  LocalStorageService,
-  StorageData,
-} from '../services/localStorageService';
 import logger from '../utils/logger';
 import {useAppTheme} from '../hooks/useAppTheme';
 import {ThemeColors} from '../theme/colors';
@@ -180,24 +175,6 @@ const MainTabNavigator = ({
         )}
         tabBar={props => <CustomTabBar {...props} styles={styles} />}
         initialLayout={{width: SCREEN_WIDTH}}
-        screenListeners={{
-          state: e => {
-            const {index, routes} = (
-              e.data as {
-                state: {
-                  index: number;
-                  routes: {name: keyof MainTabParamList}[];
-                };
-              }
-            ).state;
-            LocalStorageService.set<StorageData['DEFAULT_MAIN_TAB']>(
-              LOCAL_STORAGE_KEYS.DEFAULT_MAIN_TAB,
-              {name: routes[index].name},
-            ).catch(err =>
-              logger.error('MainTabNavigator: 마지막 탭 저장 실패', err),
-            );
-          },
-        }}
         initialRouteName={initialTabName}>
         <Tab.Screen name="주일 말씀" component={HomeScreen} />
         <Tab.Screen name="매일 만나" component={DailyMannaScreen} />
