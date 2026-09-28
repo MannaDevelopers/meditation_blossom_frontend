@@ -491,12 +491,24 @@ describe('mergeFreshWeeklyResults ([ISSUE-315] 서버 재조회 시 캐시 병�
   });
 
   it('week가 달라도 fresh가 다루지 않는 worship_type은 보존한다', () => {
-    // mergeWeeklySermonIntoCache(단일 이벤트 병합)와 달리, 이 함수는 "이 서버 응답이
-    // 갱신해준 예배시간만 최신화"가 목적이라 주가 달라도 보존한다.
     const existing = [makeSermon('SUN_1150', 'old-sun1150', '2020-W01')];
     const fresh = [makeSermon('SAT_1700', 'new-sat', '2026-W40')];
     const merged = mergeFreshWeeklyResults(existing, fresh);
     expect(merged).toEqual(expect.arrayContaining([existing[0], fresh[0]]));
+  });
+
+  it('[ISSUE-315] 같은 worship_type이라도 week가 다르면 지우지 않고 둘 다 남긴다', () => {
+    // fetchLatestWeeklySermonsFromServer는 예배 하나만 필요해도 항상 그 주 전체를 반환한다.
+    // 캐시에 다른 week의 같은 worship_type 항목(예: 격리 테스트용 미래 주 FCM 데이터)이
+    // 있으면, worship_type만 보고 교체하던 예전 로직은 그걸 무관한 다른 week의 서버
+    // 데이터로 지워버렸다(실사용자 리포트로 발견). week까지 같아야 교체한다.
+    const testDataDifferentWeek = makeSermon('SUN_1150', 'test-sun1150', '2099-W01');
+    const existing = [testDataDifferentWeek];
+    const realServerSun1150 = makeSermon('SUN_1150', 'real-sun1150', '2026-W40');
+    const fresh = [realServerSun1150, makeSermon('SAT_1700', 'real-sat', '2026-W40')];
+    const merged = mergeFreshWeeklyResults(existing, fresh);
+    expect(merged).toEqual(expect.arrayContaining([testDataDifferentWeek, realServerSun1150]));
+    expect(merged).toHaveLength(3);
   });
 
   it('existing이 비어있으면 fresh만 반환한다', () => {

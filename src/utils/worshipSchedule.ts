@@ -78,6 +78,18 @@ export function resolveNextWorshipDateTime(worshipType: WorshipType, now: Date =
 }
 
 /**
+ * weekly_sermons 캐시에 같은 worshipType이 여러 개(서로 다른 week) 있을 수 있다([ISSUE-315]) —
+ * 서버 재조회는 항상 그 주의 예배 전체를 한꺼번에 반환하므로, 캐시에만 있던(아직 서버에
+ * 반영 안 된) 다른 week의 항목과 뒤섞일 수 있다(mergeFreshWeeklyResults 참고). 이럴 때는
+ * week가 더 최신인(사전식 비교로 충분 — "YYYY-Www" 포맷) 쪽을 고른다.
+ */
+export function latestMatchingWeeklySermon(weeklySermons: Sermon[], worshipType: WorshipType): Sermon | null {
+  const matches = weeklySermons.filter(s => s.worship_type === worshipType);
+  if (matches.length === 0) return null;
+  return matches.reduce((latest, s) => ((s.week ?? '') > (latest.week ?? '') ? s : latest));
+}
+
+/**
  * weekly_sermons 캐시에서 사용자 설정에 맞는 문서를 찾아도, 그 예배 시각이 아직 안 됐으면
  * currentlyDisplayed(이미 화면/위젯에 보이던 콘텐츠)를 그대로 반환한다([ISSUE-315]).
  * FCM은 실제 예배 시각보다 훨씬 먼저(주보 등록 시점) 도착하므로, 시각이 되기 전에는
@@ -90,7 +102,7 @@ export function selectGatedWeeklySermon(
   currentlyDisplayed: Sermon | null,
   now: Date = new Date(),
 ): Sermon | null {
-  const candidate = weeklySermons.find(s => s.worship_type === worshipType) || null;
+  const candidate = latestMatchingWeeklySermon(weeklySermons, worshipType);
   if (!candidate) return currentlyDisplayed;
   // 화면/위젯에 이미 뭔가 보여주고 있었다면(일반적인 경우) 시각이 될 때까지 그걸 유지한다.
   // 아무것도 보여준 적이 없다면(최초 설치, 막 업데이트한 사용자가 예배시간을 처음 설정한 경우

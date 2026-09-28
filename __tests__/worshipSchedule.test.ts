@@ -1,10 +1,12 @@
 import {
   hasWorshipTimeArrived,
+  latestMatchingWeeklySermon,
   resolveIsoWeekMonday,
   resolveNextWorshipDateTime,
   resolveWorshipDateTime,
   WORSHIP_SCHEDULE,
 } from '../src/utils/worshipSchedule';
+import { Sermon } from '../src/types/Sermon';
 
 describe('resolveIsoWeekMonday', () => {
   it('resolves the well-known ISO week epoch anchor (1970-W01 -> 1969-12-29, Monday)', () => {
@@ -125,5 +127,37 @@ describe('resolveNextWorshipDateTime', () => {
     const next = resolveNextWorshipDateTime('SUN_1150', scheduled);
     // candidate > now 조건이므로 정확히 그 시각이면 "이미 지남"으로 보고 다음 주로 넘어간다.
     expect(next).toEqual(resolveWorshipDateTime('2026-W41', 'SUN_1150'));
+  });
+});
+
+describe('latestMatchingWeeklySermon ([ISSUE-315] 같은 worship_type의 week 중복 해소)', () => {
+  const ts = { seconds: 0, nanoseconds: 0 };
+  const makeSermon = (worship_type: Sermon['worship_type'], id: string, week: string): Sermon => ({
+    id, title: id, content: 'C', date: '2026-09-13', week, worship_type, created_at: ts, updated_at: ts,
+  });
+
+  it('일치하는 항목이 없으면 null', () => {
+    expect(latestMatchingWeeklySermon([], 'SUN_1150')).toBeNull();
+  });
+
+  it('일치하는 항목이 하나면 그걸 반환한다', () => {
+    const only = makeSermon('SUN_1150', 'only', '2026-W37');
+    expect(latestMatchingWeeklySermon([only], 'SUN_1150')).toEqual(only);
+  });
+
+  it('같은 worship_type이 여러 week로 있으면 가장 최신 week을 반환한다 — 배열 순서와 무관', () => {
+    // mergeFreshWeeklyResults가 격리 테스트 데이터(미래 week)와 실제 서버 데이터(현재 week)를
+    // 둘 다 보존하게 되면서, 이 함수가 그중 어느 쪽을 보여줄지 결정한다(실사용자 리포트로
+    // 발견한 시나리오 재현).
+    const older = makeSermon('SUN_1150', 'older', '2026-W37');
+    const newer = makeSermon('SUN_1150', 'newer', '2026-W40');
+    expect(latestMatchingWeeklySermon([older, newer], 'SUN_1150')).toEqual(newer);
+    expect(latestMatchingWeeklySermon([newer, older], 'SUN_1150')).toEqual(newer);
+  });
+
+  it('다른 worship_type은 무시한다', () => {
+    const sun = makeSermon('SUN_1150', 'sun', '2026-W40');
+    const sat = makeSermon('SAT_1700', 'sat', '2026-W41');
+    expect(latestMatchingWeeklySermon([sun, sat], 'SUN_1150')).toEqual(sun);
   });
 });

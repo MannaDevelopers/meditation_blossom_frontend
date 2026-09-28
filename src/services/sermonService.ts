@@ -187,16 +187,22 @@ export function mergeWeeklySermonIntoCache(existing: Sermon[], incoming: Sermon)
 
 /**
  * 서버에서 새로 받아온 주간 목록(fresh)을 기존 캐시(existing)에 병합한다([ISSUE-315]).
- * fresh가 다루는 worship_type만 교체하고, 그 외(예: 이 서버 조회가 아직 모르는 예배시간의
- * FCM 수신 콘텐츠)는 그대로 보존한다 — 통째로 덮어쓰면(existing을 fresh로 완전히 교체)
- * 서버가 아직 모르는 다른 예배시간의 FCM 수신 콘텐츠가 사라진다(실사용자 리포트로 발견:
- * 예배시간 설정을 바꿀 때마다 방금 FCM으로 받은 내용이 날아감). mergeWeeklySermonIntoCache와
- * 달리 week가 달라도 worship_type이 fresh에 없으면 보존한다 — 이 병합은 "이 서버 응답이
- * 갱신해준 예배시간만 최신화"가 목적이라, 주가 바뀌었는지 판단하는 것과는 무관하다.
+ * (week, worship_type) 쌍이 정확히 겹치는 항목만 fresh로 교체하고, 그 외는 그대로
+ * 보존한다 — 통째로 덮어쓰면(existing을 fresh로 완전히 교체) 서버가 아직 모르는 다른
+ * 예배시간의 FCM 수신 콘텐츠가 사라진다(실사용자 리포트로 발견: 예배시간 설정을 바꿀
+ * 때마다 방금 FCM으로 받은 내용이 날아감).
+ *
+ * worship_type만 보고 교체하면 안 되는 이유: fetchLatestWeeklySermonsFromServer는 예배
+ * 하나만 필요해도 항상 그 주의 4개 예배 전체를 반환한다. 캐시에 다른 week의 같은
+ * worship_type 항목(예: 격리 테스트로 미리 넣어둔 미래 주 데이터)이 있으면, worship_type만
+ * 보고 교체하는 병합은 그 항목을 실제로는 무관한 다른 week의 서버 데이터로 지워버린다
+ * (실사용자 리포트로 재발견). 그래서 같은 worship_type이 여러 week로 캐시에 남을 수 있음을
+ * 허용하고, 실제 화면에 무엇을 보여줄지는 selectGatedWeeklySermon(latestMatchingWeeklySermon)
+ * 이 "더 최신 week" 규칙으로 결정한다.
  */
 export function mergeFreshWeeklyResults(existing: Sermon[], fresh: Sermon[]): Sermon[] {
-  const freshTypes = new Set(fresh.map(s => s.worship_type));
-  const preserved = existing.filter(s => !freshTypes.has(s.worship_type));
+  const freshKeys = new Set(fresh.map(s => `${s.week}::${s.worship_type}`));
+  const preserved = existing.filter(s => !freshKeys.has(`${s.week}::${s.worship_type}`));
   return [...preserved, ...fresh];
 }
 
