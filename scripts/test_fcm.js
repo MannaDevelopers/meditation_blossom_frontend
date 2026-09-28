@@ -514,6 +514,95 @@ async function sendVideoUrlUpdateScenario(token, topic = 'sermons_v2_events') {
   });
 }
 
+// [ISSUE-315] 예배시간 게이팅 QA: 다음 주(항상 미래) 예배 4개를 등록하고, 아직 예배 시각이
+// 안 된 특정 예배시간으로 FCM을 보낸다. 특정 예배시간(전체 아님)으로 설정된 기기가 이 FCM을
+// 받아도 화면/위젯이 바뀌지 않아야 한다(주보는 미리 올라오지만 예배 시각까지는 반영 보류).
+// "다음 주"를 쓰는 이유: 실행 시점이 언제든 항상 미래 시각이라 게이팅 여부가 실행 시각에
+// 좌우되지 않는다(이번 주를 쓰면 스크립트를 늦게 실행할수록 이미 지난 예배가 섞일 수 있음).
+async function sendWeeklySermonsBeforeWorshipTimeScenario(token, topic = 'sermons_v2_events') {
+  const db = admin.firestore();
+
+  const today = new Date();
+  const diffToSunday = 7 - today.getDay();
+  const thisSunday = new Date(today);
+  thisSunday.setDate(today.getDate() + (diffToSunday === 7 ? 0 : diffToSunday));
+  const sunday = new Date(thisSunday);
+  sunday.setDate(thisSunday.getDate() + 7); // 다음 주 — 항상 미래
+  const saturday = new Date(sunday);
+  saturday.setDate(sunday.getDate() - 1);
+  const sundayStr = sunday.toISOString().split('T')[0];
+  const saturdayStr = saturday.toISOString().split('T')[0];
+  const weekStr = toIsoWeek(sunday);
+
+  console.log(`\n📅 다음 주 묶음 키(week): ${weekStr} (예배 시각 전 상태를 재현하기 위해 항상 미래 주를 사용)`);
+
+  const worshipOptions = [
+    { type: 'SAT_1700', date: saturdayStr, dayLabel: '다음 주 토요일 오후 5시 예배', videoUrl: 'https://www.youtube.com/watch?v=mock-future-sat' },
+    { type: 'SUN_0950', date: sundayStr, dayLabel: '다음 주 주일 9시 50분 예배', videoUrl: 'https://www.youtube.com/watch?v=mock-future-sun' },
+    { type: 'SUN_1150', date: sundayStr, dayLabel: '다음 주 주일 11시 50분 예배', videoUrl: 'https://www.youtube.com/watch?v=mock-future-sun' },
+    { type: 'SUN_1430', date: sundayStr, dayLabel: '다음 주 주일 2시 30분 예배', videoUrl: 'https://www.youtube.com/watch?v=mock-future-sun' },
+  ];
+
+  const bibleReferences = [{ book: '요한복음', chapter: 3, verse_start: 16, verse_end: 16 }];
+  const createdDocs = [];
+
+  for (const opt of worshipOptions) {
+    const docId = `${weekStr}_${opt.type}`;
+    const sourceId = `mock-${docId}`;
+    const docData = {
+      week: weekStr,
+      worship_type: opt.type,
+      date: opt.date,
+      title: `${opt.dayLabel} 생명의 말씀 / 모의 설교자`,
+      bible_references: bibleReferences,
+      source_id: sourceId,
+      raw_hash: `mock-hash-${docId}`,
+      video_url: opt.videoUrl,
+      created_at: admin.firestore.FieldValue.serverTimestamp(),
+      updated_at: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    console.log(`  🔥 sermons-v2 '${docId}' 문서 등록 중...`);
+    await db.collection('sermons-v2').doc(docId).set(docData, { merge: true });
+    console.log(`  ✅ '${docId}' 등록 완료!`);
+    createdDocs.push({ id: docId, ...docData, sourceId });
+  }
+
+  const representative = createdDocs.find(d => d.worship_type === 'SUN_1150');
+  const payload = {
+    week: weekStr,
+    worship_type: representative.worship_type,
+    date: representative.date,
+    title: representative.title,
+    bible_references: JSON.stringify(bibleReferences),
+    source_id: representative.sourceId,
+    video_url: representative.video_url,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    operation: 'CREATED',
+    topic: topic,
+  };
+
+  console.log(`\n⚠️  확인 방법: 기기의 예배시간 설정이 '주일 11시 50분(SUN_1150)'이 아니면 애초에`);
+  console.log(`   반영 대상이 아닙니다 — 설정을 SUN_1150으로 맞춰두고 실행하세요.`);
+  console.log(`   FCM 수신 후에도 화면/위젯이 이전 콘텐츠 그대로면 정상(게이팅 동작).`);
+  console.log(`   실시간으로 경계를 넘기는 동작까지 보려면 기기 시스템 시계를 예배 시각`);
+  console.log(`   (${weekStr} 기준 주일 11시 50분) 직전으로 맞춰두고 이 스크립트를 실행한 뒤,`);
+  console.log(`   시계를 그 시각 이후로 넘겨보세요(에뮬레이터/시뮬레이터 권장).`);
+
+  const dataFields = toStr(payload);
+
+  console.log(`  📤 FCM 푸시 알림(${topic}) 전송 중...`);
+  return admin.messaging().send({
+    ...(token ? { token } : { topic: topic }),
+    android: { priority: 'high', data: dataFields },
+    apns: {
+      headers: { 'apns-push-type': 'background', 'apns-priority': '5' },
+      payload: { aps: { 'content-available': 1 }, ...dataFields },
+    },
+  });
+}
+
 // ── 메뉴 정의 ────────────────────────────────────────────────
 const METHODS = [
   { label: 'sendSermonEvent  — 실제 서버 방식 (권장)', fn: sendSermonEvent },
@@ -524,6 +613,7 @@ const METHODS = [
   { label: 'sendWeeklySermonsScenario — sermons-v2 4개 예배 일괄 등록 후 FCM 발송', fn: sendWeeklySermonsScenario },
   { label: 'sendWeeklySermonsNoVideoScenario — video_url 없이 4개 예배 등록 (유튜브 버튼 비활성 테스트)', fn: sendWeeklySermonsNoVideoScenario },
   { label: 'sendVideoUrlUpdateScenario — 최신 주 SAT_1700에 video_url 지연 업데이트 (단일 문서 patch 테스트)', fn: sendVideoUrlUpdateScenario },
+  { label: 'sendWeeklySermonsBeforeWorshipTimeScenario — [ISSUE-315] 다음 주 예배 FCM 선반영 안 되는지 확인', fn: sendWeeklySermonsBeforeWorshipTimeScenario },
 ];
 
 const TOPICS = [
@@ -659,6 +749,8 @@ if (!command) {
     weeklyNoVideo: sendWeeklySermonsNoVideoScenario,
     sendVideoUrlUpdateScenario: sendVideoUrlUpdateScenario,
     videoUrlUpdate: sendVideoUrlUpdateScenario,
+    sendWeeklySermonsBeforeWorshipTimeScenario: sendWeeklySermonsBeforeWorshipTimeScenario,
+    beforeWorshipTime: sendWeeklySermonsBeforeWorshipTimeScenario,
   };
 
   const fn = fnMap[command];
