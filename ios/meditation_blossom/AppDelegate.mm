@@ -615,7 +615,10 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
       [WorshipSermonSync appendPendingWeeklySermon:jsonString week:week worshipType:worshipType];
 
       NSString *setting = [WorshipSermonSync currentSetting];
-      if ([WorshipSermonSync shouldApplyWeeklyEventWithWorshipType:worshipType stored:setting]) {
+      // [ISSUE-315] week/now를 명시적으로 넘겨야 한다 — Swift 쪽 기본값(week=nil, now=Date())은
+      // ObjC에서 보이는 selector에 반영되지 않아 이 인자들 없이는 컴파일이 안 된다. week 없이
+      // 부르면 시각 게이팅 없이 즉시 반영되던 예전 동작으로 돌아가버리므로 반드시 넘겨야 한다.
+      if ([WorshipSermonSync shouldApplyWeeklyEventWithWorshipType:worshipType stored:setting week:week now:[NSDate date]]) {
         [sharedDefaults setObject:jsonString forKey:@"fcm_sermon"];
         [sharedDefaults setObject:jsonString forKey:@"displaySermon"];
         [sharedDefaults synchronize];
