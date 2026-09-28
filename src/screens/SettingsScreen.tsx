@@ -42,9 +42,9 @@ type MainTabName = keyof MainTabParamList;
 
 // 앱 아이콘으로 실행했을 때 처음 보여줄 탭([#305]). 위젯 딥링크는 이 설정과 무관하게
 // 위젯이 가리키는 탭으로 연다. 저장값은 App.tsx가 읽어 다음 실행부터 적용된다.
-const DEFAULT_TAB_OPTIONS: { name: MainTabName; label: string }[] = [
-  { name: '주일 말씀', label: '주일 말씀(기본)' },
-  { name: '매일 만나', label: '매일 만나' },
+const DEFAULT_TAB_OPTIONS: { name: MainTabName }[] = [
+  { name: '주일 말씀' },
+  { name: '매일 만나' },
 ];
 
 const SettingsScreen = ({ navigation }: Props) => {
@@ -128,14 +128,19 @@ const SettingsScreen = ({ navigation }: Props) => {
     }
   };
 
+  // App.tsx가 initialTabName을 앱 시작 시 한 번만 읽어 탭 네비게이터에 넘기므로([#305]),
+  // 여기서 값을 바꿔도 지금 켜져 있는 세션에는 반영되지 않는다. 사용자가 이를 알기 어려워
+  // "왜 안 바뀌지"로 오인할 수 있어([#316]) 재시작이 필요하다는 안내를 보여준다.
   const setDefaultTabOption = async (name: MainTabName) => {
     const previous = defaultTab;
+    if (previous === name) return;
     setDefaultTab(name);
     try {
       await LocalStorageService.set<StorageData['DEFAULT_MAIN_TAB']>(
         LOCAL_STORAGE_KEYS.DEFAULT_MAIN_TAB,
         { name },
       );
+      Alert.alert('안내', '변경한 기본 화면은 앱을 완전히 종료한 후 다시 실행하면 적용됩니다.');
     } catch (error) {
       logger.error('기본 화면 설정 저장 실패:', error);
       setDefaultTab(previous);
@@ -429,20 +434,22 @@ const SettingsScreen = ({ navigation }: Props) => {
         <Text style={styles.sectionLabel}>기본 화면 설정</Text>
         <View style={styles.sectionCard}>
           <Text style={styles.sectionDescription}>앱을 열면 어떤 화면을 먼저 보여줄까요?</Text>
-          <View style={styles.optionRow}>
+          <View style={styles.worshipGrid}>
             {DEFAULT_TAB_OPTIONS.map(option => {
               const isSelected = defaultTab === option.name;
               return (
                 <TouchableOpacity
                   key={option.name}
-                  style={styles.optionItem}
+                  style={[styles.worshipCard, isSelected && styles.worshipCardActive]}
                   onPress={() => setDefaultTabOption(option.name)}
                 >
-                  <View style={styles.optionCard}>
-                    <Text style={styles.appPreviewText}>{option.name}</Text>
-                  </View>
-                  <Text style={[styles.optionLabel, isSelected && styles.optionLabelActive]}>
-                    {option.label}
+                  <Text
+                    style={[
+                      styles.worshipCardText,
+                      isSelected && styles.worshipCardTextActive,
+                    ]}
+                  >
+                    {option.name}
                   </Text>
                   <View style={styles.radioButton}>
                     {isSelected && <View style={styles.radioInner} />}

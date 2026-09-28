@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SettingsScreen from '../src/screens/SettingsScreen';
@@ -167,6 +168,49 @@ describe('SettingsScreen', () => {
       expect(pushSermonToWidget).not.toHaveBeenCalledWith(
         expect.objectContaining({ id: 'w38_sun_0950' }),
       );
+    });
+  });
+
+  describe('기본 화면 설정', () => {
+    it('다른 화면을 선택하면 저장 후 재시작 안내 문구를 보여준다 ([#316])', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+      (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+      const { getByText } = render(<SettingsScreen navigation={mockNavigation} route={{} as any} />);
+      await waitFor(() => expect(getByText('기본 화면 설정')).toBeTruthy());
+
+      fireEvent.press(getByText('매일 만나'));
+
+      await waitFor(() => {
+        expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+          'default_main_tab',
+          JSON.stringify({ name: '매일 만나' }),
+        );
+        expect(alertSpy).toHaveBeenCalledWith(
+          '안내',
+          expect.stringContaining('종료한 후 다시 실행'),
+        );
+      });
+    });
+
+    // 이미 선택된 화면을 다시 눌러도 저장/안내가 반복되면 안 된다 — 매번 재시작 안내가
+    // 뜨면 이미 반영된 설정인데도 사용자가 계속 재시작해야 하는 것으로 오해할 수 있다.
+    it('이미 선택된 화면을 다시 누르면 아무 것도 하지 않는다', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+      (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+      const { getByText } = render(<SettingsScreen navigation={mockNavigation} route={{} as any} />);
+      await waitFor(() => expect(getByText('기본 화면 설정')).toBeTruthy());
+
+      fireEvent.press(getByText('주일 말씀'));
+
+      expect(AsyncStorage.setItem).not.toHaveBeenCalledWith(
+        'default_main_tab',
+        expect.anything(),
+      );
+      expect(alertSpy).not.toHaveBeenCalled();
     });
   });
 
