@@ -22,6 +22,9 @@ jest.mock('../src/services/sermonService', () => ({
   saveWeeklySermonsToAsyncStorage: jest.fn(),
   fetchLatestWeeklySermonsFromServer: jest.fn(),
   pushSermonToWidget: jest.fn(),
+  // 순수 함수라 실제 구현을 그대로 쓴다 — mock으로 뭉개면(undefined) loadLocalData의
+  // 서버 보충 조회 분기가 TypeError로 조용히 실패해(catch에서 삼켜짐) 다른 동작처럼 보인다.
+  mergeFreshWeeklyResults: jest.requireActual('../src/services/sermonService').mergeFreshWeeklyResults,
 }));
 
 jest.mock('../src/utils/logger', () => ({

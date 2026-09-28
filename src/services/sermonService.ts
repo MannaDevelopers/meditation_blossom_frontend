@@ -185,6 +185,21 @@ export function mergeWeeklySermonIntoCache(existing: Sermon[], incoming: Sermon)
   return [...sameWeekOthers, incoming];
 }
 
+/**
+ * 서버에서 새로 받아온 주간 목록(fresh)을 기존 캐시(existing)에 병합한다([ISSUE-315]).
+ * fresh가 다루는 worship_type만 교체하고, 그 외(예: 이 서버 조회가 아직 모르는 예배시간의
+ * FCM 수신 콘텐츠)는 그대로 보존한다 — 통째로 덮어쓰면(existing을 fresh로 완전히 교체)
+ * 서버가 아직 모르는 다른 예배시간의 FCM 수신 콘텐츠가 사라진다(실사용자 리포트로 발견:
+ * 예배시간 설정을 바꿀 때마다 방금 FCM으로 받은 내용이 날아감). mergeWeeklySermonIntoCache와
+ * 달리 week가 달라도 worship_type이 fresh에 없으면 보존한다 — 이 병합은 "이 서버 응답이
+ * 갱신해준 예배시간만 최신화"가 목적이라, 주가 바뀌었는지 판단하는 것과는 무관하다.
+ */
+export function mergeFreshWeeklyResults(existing: Sermon[], fresh: Sermon[]): Sermon[] {
+  const freshTypes = new Set(fresh.map(s => s.worship_type));
+  const preserved = existing.filter(s => !freshTypes.has(s.worship_type));
+  return [...preserved, ...fresh];
+}
+
 // sermons-v2 UPDATED/CREATED FCM payload 하나로 weekly_sermons 캐시의 해당 문서 하나만
 // 갱신한다([#280]). week/worship_type이 없으면(레거시 이벤트 등) 패치할 수 없으므로 null 반환 —
 // 호출자는 이 경우 fetchLatestWeeklySermonsFromServer()로 폴백해야 한다.
@@ -253,17 +268,20 @@ export async function sermonFromLegacyEvent(raw: SermonRaw): Promise<Sermon> {
 // 캐시가 비어있지 않아도 "이번에 고른 예배시간과 일치하는 문서가 캐시에 아예 없는"
 // 경우에도 서버에서 다시 가져와야 한다([ISSUE-315], loadLocalData의 needsWeeklyRefill과
 // 동일한 이유로 통일) — 그렇지 않으면 캐시에 다른 예배시간 문서만 있을 때 "일치하는 게
-// 없으니 기존 화면 유지"가 실제로는 그 다른 예배시간의 콘텐츠를 그대로 물려받는 꼴이 돼서,
-// 설정을 이리저리 바꾸기만 해도 서로 다른 예배시간끼리 콘텐츠가 섞여 보이는 사고가 났다
-// (실사용자 리포트로 발견 — 백엔드가 4개 예배를 항상 한꺼번에 캐시해주는 정상 운영에서는
-// 잘 안 나지만, 주보가 부분적으로만 올라온 짧은 시간대나 테스트 상황에서 재현됨).
+// 없으니 기존 화면 유지"가 실제로는 그 다른 예배시간의 콘텐츠를 그대로 물려받는 꼴이 된다
+// (실사용자 리포트로 발견).
+//
+// 이때 서버 응답으로 캐시를 통째로 덮어쓰면 안 된다 — 서버가 아직 모르는(또는 이 테스트
+// 환경처럼 애초에 Firestore에 등록도 안 한) 다른 예배시간의 FCM 수신 콘텐츠가 통째로
+// 날아가버린다(실사용자 리포트로 발견: 설정을 바꿀 때마다 방금 FCM으로 받은 내용이 사라짐).
+// mergeFreshWeeklyResults로 "이번에 새로 받아온 예배시간"만 교체하고 나머지는 그대로 둔다.
 export async function syncSelectedSermonToWidget(worshipType: WorshipType): Promise<void> {
   let weekly = await fetchLatestWeeklySermonsFromAsyncStorage();
   if (weekly.length === 0 || !weekly.some(s => s.worship_type === worshipType)) {
     try {
       const fresh = await fetchLatestWeeklySermonsFromServer();
       if (fresh.length > 0) {
-        weekly = fresh;
+        weekly = mergeFreshWeeklyResults(weekly, fresh);
         await saveWeeklySermonsToAsyncStorage(weekly);
       }
     } catch (e) {

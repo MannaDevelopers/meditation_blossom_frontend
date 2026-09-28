@@ -5,6 +5,7 @@ import { compareSermon, Sermon, WorshipSetting, USER_WORSHIP_SETTING_KEY, DEFAUL
 import {
   fetchLatestSermonFromAsyncStorage,
   fetchLatestSermonFromServer,
+  mergeFreshWeeklyResults,
   saveSermonToAsyncStorage,
   subscribeToLatestSermon,
   fetchLatestWeeklySermonsFromAsyncStorage,
@@ -42,8 +43,10 @@ export function useSermonData(): UseSermonDataReturn {
       const worshipSetting = (await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipSetting || DEFAULT_WORSHIP_TYPE;
       let selected: Sermon | null = null;
       let candidateMissing = false;
+      let localWeeklySermons: Sermon[] = [];
       if (worshipSetting !== 'ALL') {
         const weeklySermons = (await fetchLatestWeeklySermonsFromAsyncStorage()) || [];
+        localWeeklySermons = weeklySermons;
         const previouslyDisplayed = await fetchLatestSermonFromAsyncStorage();
         candidateMissing = !weeklySermons.some(s => s.worship_type === worshipSetting);
         // 캐시에 일치하는 예배가 있어도, 그 예배 시각이 아직 안 됐으면 previouslyDisplayed(이미
@@ -77,7 +80,12 @@ export function useSermonData(): UseSermonDataReturn {
         try {
           const freshWeekly = worshipSetting !== 'ALL' ? await fetchLatestWeeklySermonsFromServer() : [];
           if (freshWeekly && freshWeekly.length > 0) {
-            await saveWeeklySermonsToAsyncStorage(freshWeekly);
+            // 서버 응답으로 캐시를 통째로 덮어쓰지 않는다([ISSUE-315]) — 서버가 아직 모르는
+            // (또는 아직 Firestore에 반영 안 된) 다른 예배시간의 FCM 수신 콘텐츠가 사라진다
+            // (실사용자 리포트로 발견). mergeFreshWeeklyResults로 이번에 받아온 예배시간만
+            // 교체하고 나머지는 보존한다.
+            const mergedWeekly = mergeFreshWeeklyResults(localWeeklySermons, freshWeekly);
+            await saveWeeklySermonsToAsyncStorage(mergedWeekly);
             // 일치하는 문서가 없을 때 freshWeekly[0]을 그냥 보여주던 예전 폴백은 제거했다
             // ([ISSUE-315]) — 그 항목이 다른 예배시간의 아직 안 된 콘텐츠일 수 있어, 일치하지
             // 않는 것만으로 게이팅을 우회해 미도착 콘텐츠가 새치기되는 사고가 났다(실사용자

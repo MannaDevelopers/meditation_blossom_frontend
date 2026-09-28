@@ -3,6 +3,7 @@ import {
   fetchLatestSermonFromAsyncStorage,
   fetchLegacySermonFromCache,
   isSermonDataStale,
+  mergeFreshWeeklyResults,
   mergeWeeklySermonIntoCache,
   saveLegacySermonToCache,
   saveSermonToAsyncStorage,
@@ -346,6 +347,38 @@ describe('weekly sermons caching and syncing', () => {
     expect(saved.id).toBe('sun1150'); // 하지만 SUN_1150 콘텐츠를 그대로 유지(새치기 아님)
   });
 
+  it('[ISSUE-315] 다른 예배시간으로 전환하며 서버 재조회를 해도, 로컬에만 있던(FCM으로 받은) 다른 예배시간 콘텐츠를 지우지 않는다', async () => {
+    // 캐시엔 FCM으로만 받은 SUN_1150(Firestore에는 없음)이 있는 상태에서 SAT_1700으로
+    // 전환. 서버 응답을 캐시에 그대로 덮어쓰면(교체) SUN_1150이 사라진다 — 실사용자 리포트로
+    // 발견: 예배시간을 바꿀 때마다 방금 FCM으로 받은 내용이 날아감.
+    const bridge = require('../src/types/WidgetUpdateModule').default;
+    const firestoreMock = require('@react-native-firebase/firestore');
+    const fcmOnlySun1150: Sermon = {
+      id: 'fcm-sun1150', title: 'FCM으로만 받은 SUN_1150', content: 'C', date: '2026-09-13',
+      week: '2026-W37', worship_type: 'SUN_1150', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+    };
+    const realSatDocs = [
+      { id: 'w37_sat', data: () => ({ title: '진짜 토요 예배', date: '2026-09-12', week: '2026-W37', worship_type: 'SAT_1700', content: 'C' }) },
+    ];
+    firestoreMock.getDocsFromServer.mockResolvedValue({ empty: false, docs: realSatDocs });
+
+    (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+      if (key === 'weekly_sermons') return Promise.resolve(JSON.stringify([fcmOnlySun1150]));
+      return Promise.resolve(null);
+    });
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    bridge.onSermonUpdated.mockClear();
+
+    await syncSelectedSermonToWidget('SAT_1700');
+
+    const savedWeeklyCall = (AsyncStorage.setItem as jest.Mock).mock.calls.find(([key]) => key === 'weekly_sermons');
+    expect(savedWeeklyCall).toBeDefined();
+    const savedWeekly = JSON.parse(savedWeeklyCall![1]);
+    const types = savedWeekly.map((s: Sermon) => s.worship_type);
+    expect(types).toContain('SAT_1700');
+    expect(types).toContain('SUN_1150'); // FCM으로만 받은 것도 그대로 남아있어야 한다
+  });
+
   it('로컬 weekly_sermons 캐시가 비어있으면 서버에서 조회해 채우고 동기화한다 (앱을 막 업데이트한 사용자가 예배 시간을 바꿨을 때)', async () => {
     const bridge = require('../src/types/WidgetUpdateModule').default;
     const firestoreMock = require('@react-native-firebase/firestore');
@@ -433,6 +466,42 @@ describe('selectGatedWeeklySermon ([ISSUE-315] 예배시간 게이팅)', () => {
 
   it('후보도 없고 기존 콘텐츠도 없으면 null', () => {
     expect(selectGatedWeeklySermon([], 'SUN_1150', null, beforeArrival)).toBeNull();
+  });
+});
+
+describe('mergeFreshWeeklyResults ([ISSUE-315] 서버 재조회 시 캐시 병합)', () => {
+  const ts = { seconds: 0, nanoseconds: 0 };
+  const makeSermon = (worship_type: WorshipType, id: string, week = '2026-W37'): Sermon => ({
+    id, title: id, content: 'C', date: '2026-09-13', week, worship_type, created_at: ts, updated_at: ts,
+  });
+
+  it('fresh가 다루는 worship_type만 교체하고, 나머지 기존 항목은 보존한다', () => {
+    const existing = [makeSermon('SUN_1150', 'old-sun1150')];
+    const fresh = [makeSermon('SAT_1700', 'new-sat')];
+    const merged = mergeFreshWeeklyResults(existing, fresh);
+    expect(merged).toHaveLength(2);
+    expect(merged).toEqual(expect.arrayContaining([existing[0], fresh[0]]));
+  });
+
+  it('fresh에 같은 worship_type이 있으면 기존 것을 교체한다(중복 없음)', () => {
+    const existing = [makeSermon('SUN_1150', 'old-sun1150')];
+    const fresh = [makeSermon('SUN_1150', 'new-sun1150')];
+    const merged = mergeFreshWeeklyResults(existing, fresh);
+    expect(merged).toEqual([fresh[0]]);
+  });
+
+  it('week가 달라도 fresh가 다루지 않는 worship_type은 보존한다', () => {
+    // mergeWeeklySermonIntoCache(단일 이벤트 병합)와 달리, 이 함수는 "이 서버 응답이
+    // 갱신해준 예배시간만 최신화"가 목적이라 주가 달라도 보존한다.
+    const existing = [makeSermon('SUN_1150', 'old-sun1150', '2020-W01')];
+    const fresh = [makeSermon('SAT_1700', 'new-sat', '2026-W40')];
+    const merged = mergeFreshWeeklyResults(existing, fresh);
+    expect(merged).toEqual(expect.arrayContaining([existing[0], fresh[0]]));
+  });
+
+  it('existing이 비어있으면 fresh만 반환한다', () => {
+    const fresh = [makeSermon('SAT_1700', 'new-sat')];
+    expect(mergeFreshWeeklyResults([], fresh)).toEqual(fresh);
   });
 });
 
