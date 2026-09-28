@@ -78,12 +78,13 @@ export function useSermonData(): UseSermonDataReturn {
           const freshWeekly = worshipSetting !== 'ALL' ? await fetchLatestWeeklySermonsFromServer() : [];
           if (freshWeekly && freshWeekly.length > 0) {
             await saveWeeklySermonsToAsyncStorage(freshWeekly);
-            // 일치하는 문서가 없을 때의 기존 폴백(freshWeekly[0])은 그대로 두고, 일치하는 문서를
-            // 찾은 경우에만 예배 시각 게이팅을 거친다([ISSUE-315]). selected는 이 블록에 들어오기
-            // 위한 조건(위 if)에서 이미 non-null임이 보장되므로 게이팅 결과도 항상 non-null이지만,
-            // TS 타입상 남는 null 가능성은 방어적으로 freshWeekly[0]로 폴백한다.
-            const hasExactMatch = freshWeekly.some(s => s.worship_type === worshipSetting);
-            const freshSelected = worshipSetting !== 'ALL' && hasExactMatch
+            // 일치하는 문서가 없을 때 freshWeekly[0]을 그냥 보여주던 예전 폴백은 제거했다
+            // ([ISSUE-315]) — 그 항목이 다른 예배시간의 아직 안 된 콘텐츠일 수 있어, 일치하지
+            // 않는 것만으로 게이팅을 우회해 미도착 콘텐츠가 새치기되는 사고가 났다(실사용자
+            // 리포트). selected는 이 블록에 들어오기 위한 조건(위 if)에서 이미 non-null임이
+            // 보장되므로 selectGatedWeeklySermon도 항상 non-null을 반환하지만, TS 타입상 남는
+            // null 가능성은 방어적으로 freshWeekly[0]로 폴백한다.
+            const freshSelected = worshipSetting !== 'ALL'
               ? selectGatedWeeklySermon(freshWeekly, worshipSetting, selected, await getEffectiveNow()) ?? freshWeekly[0]
               : freshWeekly[0];
             const next = reconcileFreshDoc(freshSelected, selected, compareSermon);
@@ -131,11 +132,12 @@ export function useSermonData(): UseSermonDataReturn {
       logger.log('[SermonData] fetchFromServer: result count=' + weeklyResults.length);
       if (weeklyResults.length > 0) {
         await saveWeeklySermonsToAsyncStorage(weeklyResults);
-        // 일치하는 문서가 없을 때의 기존 폴백(weeklyResults[0])은 그대로 두고, 일치하는 문서를
-        // 찾은 경우에만 예배 시각 게이팅을 거친다 — 수동 새로고침이라고 해서 게이팅을 건너뛰면
-        // 안 된다([ISSUE-315]).
-        const hasExactMatch = weeklyResults.some(s => s.worship_type === worshipSetting);
-        const matched = worshipSetting !== 'ALL' && hasExactMatch
+        // 일치하는 문서가 없을 때 weeklyResults[0]을 그냥 보여주던 예전 폴백은 제거했다
+        // ([ISSUE-315]) — 다른 예배시간의 아직 안 된 콘텐츠가 새치기될 수 있어서다(실사용자
+        // 리포트: 설정을 이리저리 바꾸는 것만으로 게이팅이 우회됨). 일치하는 문서가 없으면
+        // sermonRef.current(이미 보여주던 콘텐츠, 없으면 null)를 그대로 쓴다 — 수동
+        // 새로고침이라고 해서 게이팅을 건너뛰면 안 된다.
+        const matched = worshipSetting !== 'ALL'
           ? selectGatedWeeklySermon(weeklyResults, worshipSetting, sermonRef.current, await getEffectiveNow()) ?? weeklyResults[0]
           : weeklyResults[0];
 
@@ -173,10 +175,9 @@ export function useSermonData(): UseSermonDataReturn {
             const weeklySermons = worshipSetting !== 'ALL' ? await fetchLatestWeeklySermonsFromServer() : [];
             if (weeklySermons.length > 0) {
               await saveWeeklySermonsToAsyncStorage(weeklySermons);
-              // 일치하는 문서가 없을 때의 기존 폴백(weeklySermons[0])은 그대로 두고, 일치하는
-              // 문서를 찾은 경우에만 예배 시각 게이팅을 거친다([ISSUE-315]).
-              const hasExactMatch = weeklySermons.some(s => s.worship_type === worshipSetting);
-              const matched = worshipSetting !== 'ALL' && hasExactMatch
+              // 일치하는 문서가 없을 때 weeklySermons[0]을 그냥 보여주던 예전 폴백은 제거했다
+              // ([ISSUE-315], 위 fetchFromServer와 동일한 이유).
+              const matched = worshipSetting !== 'ALL'
                 ? selectGatedWeeklySermon(weeklySermons, worshipSetting, sermonRef.current, await getEffectiveNow()) ?? weeklySermons[0]
                 : weeklySermons[0];
               await saveSermonToAsyncStorage(matched);

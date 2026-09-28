@@ -263,12 +263,13 @@ export async function syncSelectedSermonToWidget(worshipType: WorshipType): Prom
   }
   if (weekly.length === 0) return;
 
-  // 캐시에 이 예배시간과 정확히 일치하는 문서가 없는 경우(데이터 품질 이슈)의 기존 폴백은
-  // 유지하되, 일치하는 문서를 찾은 경우엔 예배 시각 게이팅을 거친다([ISSUE-315]).
-  const hasExactMatch = weekly.some(s => s.worship_type === worshipType);
-  const gated = hasExactMatch
-    ? selectGatedWeeklySermon(weekly, worshipType, await fetchLatestSermonFromAsyncStorage(), await getEffectiveNow())
-    : weekly[0];
+  // 일치하는 예배가 없을 때 "그냥 캐시의 첫 항목이라도" 보여주던 예전 폴백(weekly[0])을
+  // 제거했다([ISSUE-315]) — 시각 게이팅이 들어간 뒤로는 그 weekly[0]이 다른 예배시간의
+  // 아직 안 된 항목일 수 있어, 설정을 바꾸는 것만으로 게이팅을 우회해 미도착 콘텐츠가
+  // 새치기되는 사고가 났다(실사용자 리포트로 발견). 일치하는 문서가 없으면 항상
+  // currentlyDisplayed(이미 보여주던 콘텐츠)를 유지한다 — selectGatedWeeklySermon의
+  // 기본 동작과 동일하게 통일.
+  const gated = selectGatedWeeklySermon(weekly, worshipType, await fetchLatestSermonFromAsyncStorage(), await getEffectiveNow());
   if (!gated) return;
 
   await saveSermonToAsyncStorage(gated);

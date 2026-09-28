@@ -253,6 +253,38 @@ describe('weekly sermons caching and syncing', () => {
     expect(bridge.onSermonUpdated).toHaveBeenCalledWith(JSON.stringify(sundaySermon));
   });
 
+  it('[ISSUE-315] 일치하는 예배가 캐시에 없으면 다른 예배시간의 미도착 콘텐츠를 새치기하지 않고 기존 콘텐츠를 유지한다 (실사용자 리포트)', async () => {
+    // 캐시엔 SUN_1150(아직 시각이 안 됨) 하나뿐인데, 설정을 SUN_0950으로 바꾼 상황을
+    // 재현한다. 예전 폴백(weekly[0])이 있으면 SUN_0950 요청인데도 SUN_1150의 미도착
+    // 콘텐츠가 그대로 fcm_sermon에 저장돼버렸다.
+    const bridge = require('../src/types/WidgetUpdateModule').default;
+    const notYetArrived: Sermon = {
+      id: 'sun1150', title: 'SUN_1150 미도착', content: 'C', date: '2026-10-11',
+      week: '2099-W01', worship_type: 'SUN_1150', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+    };
+    const previouslyDisplayed: Sermon = {
+      id: 'old', title: '이전에 보여주던 설교', content: 'C', date: '2026-09-13',
+      week: '2026-W37', worship_type: 'SUN_0950', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+    };
+    (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+      if (key === 'weekly_sermons') return Promise.resolve(JSON.stringify([notYetArrived]));
+      if (key === 'fcm_sermon') return Promise.resolve(JSON.stringify(previouslyDisplayed));
+      return Promise.resolve(null);
+    });
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    bridge.onSermonUpdated.mockClear();
+
+    await syncSelectedSermonToWidget('SUN_0950');
+
+    // fetchLatestSermonFromAsyncStorage가 fcmDataToSermon으로 정규화(day_of_week 기본값
+    // 추가 등)하므로 원본 JSON과 바이트 단위로는 다를 수 있다 — 핵심 필드만 확인한다.
+    expect(bridge.onSermonUpdated).toHaveBeenCalledTimes(1);
+    const saved = JSON.parse(bridge.onSermonUpdated.mock.calls[0][0]);
+    expect(saved.id).toBe(previouslyDisplayed.id);
+    expect(saved.worship_type).toBe('SUN_0950');
+    expect(saved.worship_type).not.toBe('SUN_1150');
+  });
+
   it('로컬 weekly_sermons 캐시가 비어있으면 서버에서 조회해 채우고 동기화한다 (앱을 막 업데이트한 사용자가 예배 시간을 바꿨을 때)', async () => {
     const bridge = require('../src/types/WidgetUpdateModule').default;
     const firestoreMock = require('@react-native-firebase/firestore');

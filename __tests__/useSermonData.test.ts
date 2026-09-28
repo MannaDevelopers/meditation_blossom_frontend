@@ -436,6 +436,41 @@ describe('useSermonData', () => {
       expect(mockSaveWeeklyToAsyncStorage).toHaveBeenCalledWith(mockWeeklyList);
       expect(result.current.sermon).toEqual(mockWeeklyList[0]); // matching Thursday
     });
+
+    it('[ISSUE-315] 서버 응답에 설정과 일치하는 예배가 없으면 다른 예배시간의 콘텐츠를 새치기하지 않고 기존 콘텐츠를 유지한다 (실사용자 리포트)', async () => {
+      // 설정은 SAT_1700(이 describe의 beforeEach). 먼저 이미 도달한 SAT_1700 콘텐츠를 로컬
+      // 캐시에서 로드해 "지금 화면에 표시 중"인 상태를 만든다(video_url/content가 이미 있어
+      // loadLocalData의 서버 강제 보충 분기를 타지 않게 함).
+      const alreadyDisplayed = {
+        id: 'sat-old', title: '이전에 보여주던 토요 예배', content: '내용', date: '2026-09-06',
+        week: '2026-W36', worship_type: 'SAT_1700' as any, video_url: 'https://youtu.be/old',
+        created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+      };
+      mockFetchWeeklyFromAsyncStorage.mockResolvedValue([alreadyDisplayed]);
+      mockFetchFromAsyncStorage.mockResolvedValue(alreadyDisplayed);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => {
+        await result.current.loadLocalData();
+      });
+      expect(result.current.sermon).toEqual(alreadyDisplayed);
+
+      // 이제 서버 응답엔 SAT_1700이 없고 SUN_0950만 있다 — 예전 폴백(weeklyResults[0])이
+      // 있으면 무관한 SUN_0950 콘텐츠로 화면이 바뀌어버렸다.
+      const noMatchList = [mockWeeklyList[1]]; // SUN_0950만 있음, SAT_1700 없음
+      mockFetchWeeklyFromServer.mockResolvedValue(noMatchList);
+      mockSaveWeeklyToAsyncStorage.mockResolvedValue(undefined);
+      mockSaveSermonToAsyncStorage.mockResolvedValue(undefined);
+      mockPushSermonToWidget.mockResolvedValue(undefined);
+
+      await act(async () => {
+        await result.current.fetchFromServer();
+      });
+
+      expect(mockSaveWeeklyToAsyncStorage).toHaveBeenCalledWith(noMatchList);
+      expect(result.current.sermon).toEqual(alreadyDisplayed);
+      expect(result.current.sermon?.worship_type).not.toBe('SUN_0950');
+    });
   });
 
   describe('전체(ALL) 설정 — 레거시 경로 ([#278])', () => {
