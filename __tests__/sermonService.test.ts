@@ -3,6 +3,7 @@ import {
   fetchLatestSermonFromAsyncStorage,
   fetchLegacySermonFromCache,
   isSermonDataStale,
+  mergeFreshWeeklyResults,
   mergeWeeklySermonIntoCache,
   saveLegacySermonToCache,
   saveSermonToAsyncStorage,
@@ -14,6 +15,7 @@ import {
   upsertWeeklySermonFromEvent,
 } from '../src/services/sermonService';
 import { LEGACY_SERMON_CACHE_KEY, Sermon, SermonRaw, WorshipType } from '../src/types/Sermon';
+import { resolveWorshipDateTime, selectGatedWeeklySermon } from '../src/utils/worshipSchedule';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(),
@@ -252,6 +254,131 @@ describe('weekly sermons caching and syncing', () => {
     expect(bridge.onSermonUpdated).toHaveBeenCalledWith(JSON.stringify(sundaySermon));
   });
 
+  it('[ISSUE-315] 일치하는 예배가 캐시에 없으면 다른 예배시간의 미도착 콘텐츠를 새치기하지 않고 기존 콘텐츠를 유지한다 (실사용자 리포트)', async () => {
+    // 캐시엔 SUN_1150(아직 시각이 안 됨) 하나뿐인데, 설정을 SUN_0950으로 바꾼 상황을
+    // 재현한다. 예전 폴백(weekly[0])이 있으면 SUN_0950 요청인데도 SUN_1150의 미도착
+    // 콘텐츠가 그대로 fcm_sermon에 저장돼버렸다.
+    const bridge = require('../src/types/WidgetUpdateModule').default;
+    const notYetArrived: Sermon = {
+      id: 'sun1150', title: 'SUN_1150 미도착', content: 'C', date: '2026-10-11',
+      week: '2099-W01', worship_type: 'SUN_1150', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+    };
+    const previouslyDisplayed: Sermon = {
+      id: 'old', title: '이전에 보여주던 설교', content: 'C', date: '2026-09-13',
+      week: '2026-W37', worship_type: 'SUN_0950', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+    };
+    (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+      if (key === 'weekly_sermons') return Promise.resolve(JSON.stringify([notYetArrived]));
+      if (key === 'fcm_sermon') return Promise.resolve(JSON.stringify(previouslyDisplayed));
+      return Promise.resolve(null);
+    });
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    bridge.onSermonUpdated.mockClear();
+
+    await syncSelectedSermonToWidget('SUN_0950');
+
+    // fetchLatestSermonFromAsyncStorage가 fcmDataToSermon으로 정규화(day_of_week 기본값
+    // 추가 등)하므로 원본 JSON과 바이트 단위로는 다를 수 있다 — 핵심 필드만 확인한다.
+    expect(bridge.onSermonUpdated).toHaveBeenCalledTimes(1);
+    const saved = JSON.parse(bridge.onSermonUpdated.mock.calls[0][0]);
+    expect(saved.id).toBe(previouslyDisplayed.id);
+    expect(saved.worship_type).toBe('SUN_0950');
+    expect(saved.worship_type).not.toBe('SUN_1150');
+  });
+
+  it('[ISSUE-315] 캐시에 일치하는 예배가 없으면 (비어있지 않아도) 서버에서 그 예배시간의 진짜 데이터를 다시 가져온다', async () => {
+    // 캐시엔 SUN_1150(이미 도달, 실제로 화면에 떠 있음)만 있는 상태에서 SAT_1700으로
+    // 바꾼 상황. 캐시가 "비어있지 않다"는 이유로 서버 재조회를 안 하면, SAT_1700 요청인데도
+    // 직전에 보이던 SUN_1150 콘텐츠를 그대로 물려받아버린다(실사용자 리포트로 발견 —
+    // 예배시간을 이리저리 바꾸는 것만으로 서로 다른 예배 콘텐츠가 섞여 보임).
+    const bridge = require('../src/types/WidgetUpdateModule').default;
+    const firestoreMock = require('@react-native-firebase/firestore');
+    const arrivedSun1150: Sermon = {
+      id: 'sun1150', title: 'SUN_1150 화면에 떠 있음', content: 'C', date: '2026-09-13',
+      week: '2026-W37', worship_type: 'SUN_1150', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+    };
+    // week는 실행 시점의 실제 현재 시각에 상관없이 항상 "이미 지난 주"여야 한다
+    // (getEffectiveNow가 실제 시각을 쓰므로) — 2026-W37은 다른 테스트에서도 이미
+    // 지난 주로 취급된다.
+    const realSatDocs = [
+      { id: 'w37_sat', data: () => ({ title: '진짜 토요 예배', date: '2026-09-12', week: '2026-W37', worship_type: 'SAT_1700', content: 'C' }) },
+    ];
+    firestoreMock.getDocsFromServer.mockResolvedValue({ empty: false, docs: realSatDocs });
+
+    (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+      if (key === 'weekly_sermons') return Promise.resolve(JSON.stringify([arrivedSun1150]));
+      if (key === 'fcm_sermon') return Promise.resolve(JSON.stringify(arrivedSun1150));
+      return Promise.resolve(null);
+    });
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    bridge.onSermonUpdated.mockClear();
+
+    await syncSelectedSermonToWidget('SAT_1700');
+
+    expect(firestoreMock.getDocsFromServer).toHaveBeenCalled();
+    expect(bridge.onSermonUpdated).toHaveBeenCalledTimes(1);
+    const saved = JSON.parse(bridge.onSermonUpdated.mock.calls[0][0]);
+    expect(saved.worship_type).toBe('SAT_1700');
+    expect(saved.title).toBe('진짜 토요 예배');
+  });
+
+  it('[ISSUE-315] 캐시에 일치하는 예배가 없고 서버 재조회도 실패하면 기존 콘텐츠를 유지한다(오프라인)', async () => {
+    const bridge = require('../src/types/WidgetUpdateModule').default;
+    const firestoreMock = require('@react-native-firebase/firestore');
+    firestoreMock.getDocsFromServer.mockRejectedValue(new Error('network error'));
+
+    const arrivedSun1150: Sermon = {
+      id: 'sun1150', title: 'SUN_1150 화면에 떠 있음', content: 'C', date: '2026-09-13',
+      week: '2026-W37', worship_type: 'SUN_1150', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+    };
+    (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+      if (key === 'weekly_sermons') return Promise.resolve(JSON.stringify([arrivedSun1150]));
+      if (key === 'fcm_sermon') return Promise.resolve(JSON.stringify(arrivedSun1150));
+      return Promise.resolve(null);
+    });
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    bridge.onSermonUpdated.mockClear();
+
+    await syncSelectedSermonToWidget('SAT_1700');
+
+    expect(bridge.onSermonUpdated).toHaveBeenCalledTimes(1);
+    const saved = JSON.parse(bridge.onSermonUpdated.mock.calls[0][0]);
+    expect(saved.worship_type).not.toBe('SAT_1700'); // 진짜 SAT_1700 데이터를 못 구함
+    expect(saved.id).toBe('sun1150'); // 하지만 SUN_1150 콘텐츠를 그대로 유지(새치기 아님)
+  });
+
+  it('[ISSUE-315] 다른 예배시간으로 전환하며 서버 재조회를 해도, 로컬에만 있던(FCM으로 받은) 다른 예배시간 콘텐츠를 지우지 않는다', async () => {
+    // 캐시엔 FCM으로만 받은 SUN_1150(Firestore에는 없음)이 있는 상태에서 SAT_1700으로
+    // 전환. 서버 응답을 캐시에 그대로 덮어쓰면(교체) SUN_1150이 사라진다 — 실사용자 리포트로
+    // 발견: 예배시간을 바꿀 때마다 방금 FCM으로 받은 내용이 날아감.
+    const bridge = require('../src/types/WidgetUpdateModule').default;
+    const firestoreMock = require('@react-native-firebase/firestore');
+    const fcmOnlySun1150: Sermon = {
+      id: 'fcm-sun1150', title: 'FCM으로만 받은 SUN_1150', content: 'C', date: '2026-09-13',
+      week: '2026-W37', worship_type: 'SUN_1150', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+    };
+    const realSatDocs = [
+      { id: 'w37_sat', data: () => ({ title: '진짜 토요 예배', date: '2026-09-12', week: '2026-W37', worship_type: 'SAT_1700', content: 'C' }) },
+    ];
+    firestoreMock.getDocsFromServer.mockResolvedValue({ empty: false, docs: realSatDocs });
+
+    (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+      if (key === 'weekly_sermons') return Promise.resolve(JSON.stringify([fcmOnlySun1150]));
+      return Promise.resolve(null);
+    });
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    bridge.onSermonUpdated.mockClear();
+
+    await syncSelectedSermonToWidget('SAT_1700');
+
+    const savedWeeklyCall = (AsyncStorage.setItem as jest.Mock).mock.calls.find(([key]) => key === 'weekly_sermons');
+    expect(savedWeeklyCall).toBeDefined();
+    const savedWeekly = JSON.parse(savedWeeklyCall![1]);
+    const types = savedWeekly.map((s: Sermon) => s.worship_type);
+    expect(types).toContain('SAT_1700');
+    expect(types).toContain('SUN_1150'); // FCM으로만 받은 것도 그대로 남아있어야 한다
+  });
+
   it('로컬 weekly_sermons 캐시가 비어있으면 서버에서 조회해 채우고 동기화한다 (앱을 막 업데이트한 사용자가 예배 시간을 바꿨을 때)', async () => {
     const bridge = require('../src/types/WidgetUpdateModule').default;
     const firestoreMock = require('@react-native-firebase/firestore');
@@ -291,6 +418,102 @@ describe('weekly sermons caching and syncing', () => {
 
     await expect(syncSelectedSermonToWidget('SUN_0950')).resolves.toBeUndefined();
     expect(bridge.onSermonUpdated).not.toHaveBeenCalled();
+  });
+});
+
+describe('selectGatedWeeklySermon ([ISSUE-315] 예배시간 게이팅)', () => {
+  const ts = { seconds: 0, nanoseconds: 0 };
+  // week/worship_type과 무관하게, 명시적으로 넘기는 now 기준으로만 판단하도록 테스트한다
+  // (실행 시점의 실제 현재 시각에 의존하면 나중에 테스트가 깨진다).
+  const week = '2026-W37';
+  const scheduled = resolveWorshipDateTime(week, 'SUN_1150')!;
+  const beforeArrival = new Date(scheduled.getTime() - 1);
+  const afterArrival = new Date(scheduled.getTime() + 1);
+
+  const makeSermon = (worship_type: WorshipType, id: string): Sermon => ({
+    id,
+    title: id,
+    content: 'C',
+    date: '2026-09-13',
+    week,
+    worship_type,
+    created_at: ts,
+    updated_at: ts,
+  });
+
+  it('시각이 이미 지난 후보를 찾으면 후보를 반환한다', () => {
+    const weekly = [makeSermon('SUN_1150', 'candidate')];
+    const previous = makeSermon('SUN_1150', 'old');
+    expect(selectGatedWeeklySermon(weekly, 'SUN_1150', previous, afterArrival)).toEqual(weekly[0]);
+  });
+
+  it('시각이 아직 안 된 후보면 기존에 보여주던 콘텐츠를 그대로 유지한다', () => {
+    const weekly = [makeSermon('SUN_1150', 'candidate')];
+    const previous = makeSermon('SUN_1150', 'old');
+    expect(selectGatedWeeklySermon(weekly, 'SUN_1150', previous, beforeArrival)).toEqual(previous);
+  });
+
+  it('일치하는 후보가 캐시에 없으면 기존 콘텐츠를 유지한다', () => {
+    const weekly = [makeSermon('SAT_1700', 'other')];
+    const previous = makeSermon('SUN_1150', 'old');
+    expect(selectGatedWeeklySermon(weekly, 'SUN_1150', previous, afterArrival)).toEqual(previous);
+  });
+
+  it('기존에 보여준 콘텐츠가 전혀 없으면(최초 설치 등) 시각이 안 됐어도 후보를 보여준다', () => {
+    const weekly = [makeSermon('SUN_1150', 'candidate')];
+    expect(selectGatedWeeklySermon(weekly, 'SUN_1150', null, beforeArrival)).toEqual(weekly[0]);
+  });
+
+  it('후보도 없고 기존 콘텐츠도 없으면 null', () => {
+    expect(selectGatedWeeklySermon([], 'SUN_1150', null, beforeArrival)).toBeNull();
+  });
+});
+
+describe('mergeFreshWeeklyResults ([ISSUE-315] 서버 재조회 시 캐시 병합)', () => {
+  const ts = { seconds: 0, nanoseconds: 0 };
+  const makeSermon = (worship_type: WorshipType, id: string, week = '2026-W37'): Sermon => ({
+    id, title: id, content: 'C', date: '2026-09-13', week, worship_type, created_at: ts, updated_at: ts,
+  });
+
+  it('fresh가 다루는 worship_type만 교체하고, 나머지 기존 항목은 보존한다', () => {
+    const existing = [makeSermon('SUN_1150', 'old-sun1150')];
+    const fresh = [makeSermon('SAT_1700', 'new-sat')];
+    const merged = mergeFreshWeeklyResults(existing, fresh);
+    expect(merged).toHaveLength(2);
+    expect(merged).toEqual(expect.arrayContaining([existing[0], fresh[0]]));
+  });
+
+  it('fresh에 같은 worship_type이 있으면 기존 것을 교체한다(중복 없음)', () => {
+    const existing = [makeSermon('SUN_1150', 'old-sun1150')];
+    const fresh = [makeSermon('SUN_1150', 'new-sun1150')];
+    const merged = mergeFreshWeeklyResults(existing, fresh);
+    expect(merged).toEqual([fresh[0]]);
+  });
+
+  it('week가 달라도 fresh가 다루지 않는 worship_type은 보존한다', () => {
+    const existing = [makeSermon('SUN_1150', 'old-sun1150', '2020-W01')];
+    const fresh = [makeSermon('SAT_1700', 'new-sat', '2026-W40')];
+    const merged = mergeFreshWeeklyResults(existing, fresh);
+    expect(merged).toEqual(expect.arrayContaining([existing[0], fresh[0]]));
+  });
+
+  it('[ISSUE-315] 같은 worship_type이라도 week가 다르면 지우지 않고 둘 다 남긴다', () => {
+    // fetchLatestWeeklySermonsFromServer는 예배 하나만 필요해도 항상 그 주 전체를 반환한다.
+    // 캐시에 다른 week의 같은 worship_type 항목(예: 격리 테스트용 미래 주 FCM 데이터)이
+    // 있으면, worship_type만 보고 교체하던 예전 로직은 그걸 무관한 다른 week의 서버
+    // 데이터로 지워버렸다(실사용자 리포트로 발견). week까지 같아야 교체한다.
+    const testDataDifferentWeek = makeSermon('SUN_1150', 'test-sun1150', '2099-W01');
+    const existing = [testDataDifferentWeek];
+    const realServerSun1150 = makeSermon('SUN_1150', 'real-sun1150', '2026-W40');
+    const fresh = [realServerSun1150, makeSermon('SAT_1700', 'real-sat', '2026-W40')];
+    const merged = mergeFreshWeeklyResults(existing, fresh);
+    expect(merged).toEqual(expect.arrayContaining([testDataDifferentWeek, realServerSun1150]));
+    expect(merged).toHaveLength(3);
+  });
+
+  it('existing이 비어있으면 fresh만 반환한다', () => {
+    const fresh = [makeSermon('SAT_1700', 'new-sat')];
+    expect(mergeFreshWeeklyResults([], fresh)).toEqual(fresh);
   });
 });
 

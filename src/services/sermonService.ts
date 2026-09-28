@@ -23,6 +23,8 @@ import {
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
 import logger from '../utils/logger';
 import { normalizeJsonString } from '../utils/normalize';
+import { getEffectiveNow } from '../utils/devWorshipTimeOverride';
+import { selectGatedWeeklySermon } from '../utils/worshipSchedule';
 
 export async function fetchLatestSermonFromAsyncStorage(): Promise<Sermon | null> {
   try {
@@ -183,6 +185,27 @@ export function mergeWeeklySermonIntoCache(existing: Sermon[], incoming: Sermon)
   return [...sameWeekOthers, incoming];
 }
 
+/**
+ * 서버에서 새로 받아온 주간 목록(fresh)을 기존 캐시(existing)에 병합한다([ISSUE-315]).
+ * (week, worship_type) 쌍이 정확히 겹치는 항목만 fresh로 교체하고, 그 외는 그대로
+ * 보존한다 — 통째로 덮어쓰면(existing을 fresh로 완전히 교체) 서버가 아직 모르는 다른
+ * 예배시간의 FCM 수신 콘텐츠가 사라진다(실사용자 리포트로 발견: 예배시간 설정을 바꿀
+ * 때마다 방금 FCM으로 받은 내용이 날아감).
+ *
+ * worship_type만 보고 교체하면 안 되는 이유: fetchLatestWeeklySermonsFromServer는 예배
+ * 하나만 필요해도 항상 그 주의 4개 예배 전체를 반환한다. 캐시에 다른 week의 같은
+ * worship_type 항목(예: 격리 테스트로 미리 넣어둔 미래 주 데이터)이 있으면, worship_type만
+ * 보고 교체하는 병합은 그 항목을 실제로는 무관한 다른 week의 서버 데이터로 지워버린다
+ * (실사용자 리포트로 재발견). 그래서 같은 worship_type이 여러 week로 캐시에 남을 수 있음을
+ * 허용하고, 실제 화면에 무엇을 보여줄지는 selectGatedWeeklySermon(latestMatchingWeeklySermon)
+ * 이 "더 최신 week" 규칙으로 결정한다.
+ */
+export function mergeFreshWeeklyResults(existing: Sermon[], fresh: Sermon[]): Sermon[] {
+  const freshKeys = new Set(fresh.map(s => `${s.week}::${s.worship_type}`));
+  const preserved = existing.filter(s => !freshKeys.has(`${s.week}::${s.worship_type}`));
+  return [...preserved, ...fresh];
+}
+
 // sermons-v2 UPDATED/CREATED FCM payload 하나로 weekly_sermons 캐시의 해당 문서 하나만
 // 갱신한다([#280]). week/worship_type이 없으면(레거시 이벤트 등) 패치할 수 없으므로 null 반환 —
 // 호출자는 이 경우 fetchLatestWeeklySermonsFromServer()로 폴백해야 한다.
@@ -247,23 +270,39 @@ export async function sermonFromLegacyEvent(raw: SermonRaw): Promise<Sermon> {
 // weekly_sermons 캐시가 아직 한 번도 채워진 적 없는 경우)를 위해, 로컬 캐시가
 // 비어 있으면 서버에서 직접 가져온다. 이게 없으면 "설정만 바꾸고 데이터 새로고침을
 // 따로 눌러야 반영되는" 문제가 생긴다(실사용자 리포트로 발견).
+//
+// 캐시가 비어있지 않아도 "이번에 고른 예배시간과 일치하는 문서가 캐시에 아예 없는"
+// 경우에도 서버에서 다시 가져와야 한다([ISSUE-315], loadLocalData의 needsWeeklyRefill과
+// 동일한 이유로 통일) — 그렇지 않으면 캐시에 다른 예배시간 문서만 있을 때 "일치하는 게
+// 없으니 기존 화면 유지"가 실제로는 그 다른 예배시간의 콘텐츠를 그대로 물려받는 꼴이 된다
+// (실사용자 리포트로 발견).
+//
+// 이때 서버 응답으로 캐시를 통째로 덮어쓰면 안 된다 — 서버가 아직 모르는(또는 이 테스트
+// 환경처럼 애초에 Firestore에 등록도 안 한) 다른 예배시간의 FCM 수신 콘텐츠가 통째로
+// 날아가버린다(실사용자 리포트로 발견: 설정을 바꿀 때마다 방금 FCM으로 받은 내용이 사라짐).
+// mergeFreshWeeklyResults로 "이번에 새로 받아온 예배시간"만 교체하고 나머지는 그대로 둔다.
 export async function syncSelectedSermonToWidget(worshipType: WorshipType): Promise<void> {
   let weekly = await fetchLatestWeeklySermonsFromAsyncStorage();
-  if (weekly.length === 0) {
+  if (weekly.length === 0 || !weekly.some(s => s.worship_type === worshipType)) {
     try {
-      weekly = await fetchLatestWeeklySermonsFromServer();
-      if (weekly.length > 0) {
+      const fresh = await fetchLatestWeeklySermonsFromServer();
+      if (fresh.length > 0) {
+        weekly = mergeFreshWeeklyResults(weekly, fresh);
         await saveWeeklySermonsToAsyncStorage(weekly);
       }
     } catch (e) {
-      logger.warn('syncSelectedSermonToWidget: 로컬 캐시가 비어 서버 폴백 조회 시도했으나 실패 (오프라인?)', e);
+      logger.warn('syncSelectedSermonToWidget: 로컬 캐시에 일치하는 예배가 없어 서버 폴백 조회 시도했으나 실패 (오프라인?)', e);
     }
   }
   if (weekly.length === 0) return;
 
-  const matched = weekly.find(s => s.worship_type === worshipType) || weekly[0];
-  await saveSermonToAsyncStorage(matched);
-  await pushSermonToWidget(matched);
+  // 그래도 일치하는 예배가 없으면(서버에도 없는 경우) currentlyDisplayed(이미 보여주던
+  // 콘텐츠)를 유지한다 — selectGatedWeeklySermon의 기본 동작과 동일.
+  const gated = selectGatedWeeklySermon(weekly, worshipType, await fetchLatestSermonFromAsyncStorage(), await getEffectiveNow());
+  if (!gated) return;
+
+  await saveSermonToAsyncStorage(gated);
+  await pushSermonToWidget(gated);
 }
 
 // sermons-v2: 주말 4개 예배 문서가 공통 'week'(ISO 8601 week_number, 예: "2026-W37")를 공유한다.

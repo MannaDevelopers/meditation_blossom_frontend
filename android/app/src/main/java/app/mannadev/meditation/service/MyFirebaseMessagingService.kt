@@ -220,6 +220,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             WeeklySermons.shouldApplyToWidget(
                 storedSetting = asyncStorage.get(WorshipSetting.ASYNC_STORAGE_KEY),
                 worshipType = event.worshipType,
+                week = event.week,
             )
         }
         Timber.d("sermons-v2 ${event.week}/${event.worshipType} cached, applyToWidget=$shouldApply")

@@ -16,7 +16,9 @@ import {
   upsertWeeklySermonFromEvent,
 } from '../services/sermonService';
 import { SermonRaw, WorshipSetting, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
+import { getEffectiveNow } from '../utils/devWorshipTimeOverride';
 import logger from '../utils/logger';
+import { hasWorshipTimeArrived } from '../utils/worshipSchedule';
 
 // 네이티브(Android NativeEventModule / iOS MyEventModule)는 sermons-v2와 레거시
 // sermon_events(_v2) 모두 원본 FCM data를 params로 실어 보낸다. 정말 payload가 없는
@@ -86,8 +88,15 @@ export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
           }
         }
       } else if (isWeeklyEvent) {
-        // sermons-v2 단일 문서 이벤트: 전체 재조회 없이 위에서 patch한 결과만 반영([#280])
-        if (patched && patched.worship_type === worshipSetting) {
+        // sermons-v2 단일 문서 이벤트: 전체 재조회 없이 위에서 patch한 결과만 반영([#280]).
+        // 단, 설정과 일치해도 그 예배 시각이 아직 안 됐으면 화면/위젯은 건드리지 않는다 —
+        // FCM은 주보 등록 시점에 미리 도착하므로, weekly 캐시엔 이미 patch됐지만(위에서 처리)
+        // 실제 예배가 시작되기 전까지는 반영을 보류해야 한다([ISSUE-315]).
+        if (
+          patched &&
+          patched.worship_type === worshipSetting &&
+          hasWorshipTimeArrived(patched.week, patched.worship_type, await getEffectiveNow())
+        ) {
           await saveSermonToAsyncStorage(patched);
           await pushSermonToWidget(patched);
         }

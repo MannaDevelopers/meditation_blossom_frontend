@@ -182,4 +182,86 @@ class WeeklySermonsTest {
         assertTrue(WeeklySermons.shouldApplyToWidget("", WorshipSetting.DEFAULT_WORSHIP_TYPE))
         assertFalse(WeeklySermons.shouldApplyToWidget(null, "SUN_1150"))
     }
+
+    // --- shouldApplyToWidget 예배시간 게이팅 ([ISSUE-315]) ---
+
+    @Test
+    fun `shouldApplyToWidget without week defaults to immediate apply (backward compatible)`() {
+        assertTrue(WeeklySermons.shouldApplyToWidget("SUN_1150", "SUN_1150"))
+    }
+
+    @Test
+    fun `shouldApplyToWidget is false when matched but worship time has not arrived yet`() {
+        val week = "2026-W37"
+        val scheduled = WorshipSchedule.resolveWorshipDateTime(week, "SUN_1150")!!
+        assertFalse(
+            WeeklySermons.shouldApplyToWidget(
+                storedSetting = "SUN_1150",
+                worshipType = "SUN_1150",
+                week = week,
+                now = scheduled.minusSeconds(1),
+            ),
+        )
+    }
+
+    @Test
+    fun `shouldApplyToWidget is true when matched and worship time has arrived`() {
+        val week = "2026-W37"
+        val scheduled = WorshipSchedule.resolveWorshipDateTime(week, "SUN_1150")!!
+        assertTrue(
+            WeeklySermons.shouldApplyToWidget(
+                storedSetting = "SUN_1150",
+                worshipType = "SUN_1150",
+                week = week,
+                now = scheduled,
+            ),
+        )
+    }
+
+    // --- findArrivedEntry / cacheEntryToSermonDto ([ISSUE-315] 위젯 주기 갱신 캐치업) ---
+
+    @Test
+    fun `findArrivedEntry returns null for empty or missing cache`() {
+        for (raw in listOf(null, "", "[]", "not json")) {
+            assertNull(WeeklySermons.findArrivedEntry(raw, "SUN_1150"))
+        }
+    }
+
+    @Test
+    fun `findArrivedEntry returns null when no entry matches worship_type`() {
+        val cache = "[${cached("2026-W37", "SAT_1700", "토요")}]"
+        assertNull(WeeklySermons.findArrivedEntry(cache, "SUN_1150"))
+    }
+
+    @Test
+    fun `findArrivedEntry returns null when matched entry has not arrived yet`() {
+        val week = "2026-W37"
+        val scheduled = WorshipSchedule.resolveWorshipDateTime(week, "SUN_1150")!!
+        val cache = "[${cached(week, "SUN_1150", "옛 11시50분")}]"
+
+        assertNull(WeeklySermons.findArrivedEntry(cache, "SUN_1150", scheduled.minusSeconds(1)))
+    }
+
+    @Test
+    fun `findArrivedEntry returns the matched entry once its worship time has arrived`() {
+        val week = "2026-W37"
+        val scheduled = WorshipSchedule.resolveWorshipDateTime(week, "SUN_1150")!!
+        val cache = "[${cached("2026-W37", "SAT_1700", "토요")},${cached(week, "SUN_1150", "11시50분")}]"
+
+        val entry = WeeklySermons.findArrivedEntry(cache, "SUN_1150", scheduled)
+
+        assertEquals("11시50분", entry?.str("title"))
+    }
+
+    @Test
+    fun `cacheEntryToSermonDto maps fields and treats missing video_url as null`() {
+        val entry = parseArray("[${cached("2026-W37", "SUN_1150", "11시50분")}]").first()
+        val dto = WeeklySermons.cacheEntryToSermonDto(entry)
+
+        assertEquals("d", dto.date)
+        assertEquals("11시50분", dto.title)
+        assertEquals("c", dto.content)
+        assertEquals("", dto.dayOfWeek)
+        assertNull(dto.videoUrl)
+    }
 }

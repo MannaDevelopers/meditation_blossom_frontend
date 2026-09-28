@@ -219,28 +219,83 @@ struct Provider: TimelineProvider {
   }
 
   func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> ()) {
-    let entry = createSermonEntry()
-    let nextUpdateDate = Date().addingTimeInterval(24 * 60 * 60)
-    let timeline = Timeline(entries: [entry], policy: .after(nextUpdateDate))
-    completion(timeline)
+    guard let sharedDefaults = UserDefaults(suiteName: WidgetConstants.appGroupId) else {
+      NSLog("Widget: Failed to access App Group UserDefaults")
+      completion(Timeline(entries: [emptyEntry], policy: .after(Date().addingTimeInterval(24 * 60 * 60))))
+      return
+    }
+
+    let setting = WorshipSermonSync.currentSetting()
+    guard let setting, !WorshipSermonSync.isAllOrUnknownSetting(setting) else {
+      // '전체'거나 설정을 아직 모르면 기존 동작 그대로 — displaySermon/fcm_sermon 슬롯 하나만 본다.
+      let entry = createSermonEntry(sharedDefaults: sharedDefaults)
+      let nextUpdateDate = Date().addingTimeInterval(24 * 60 * 60)
+      completion(Timeline(entries: [entry], policy: .after(nextUpdateDate)))
+      return
+    }
+
+    // 특정 예배시간 설정([ISSUE-315]): NSE가 대기열(weeklySermonsPendingKey)에 쌓아둔, 이
+    // 설정과 일치하는 sermons-v2 항목을 확인한다. FCM은 예배 시각보다 먼저 도착하므로,
+    // NSE는 시각이 안 되면 displaySermon에 반영하지 않고 대기열에만 남겨둔다(WorshipSermonSync
+    // Task 8). 그 항목의 시각이:
+    //  - 이미 지났는데 아직 반영 안 됐다면(앱이 그 사이 한 번도 안 열림) 지금 바로 그 내용을 보여준다.
+    //  - 아직 안 됐다면, WidgetKit이 그 정확한 시각에 자동으로 전환하도록 미래 엔트리로 예약한다
+    //    (별도의 알람/스케줄러 없이 WidgetKit의 Timeline 기능을 그대로 활용).
+    let now = Date()
+    var pendingSermon: Sermon? = nil
+    var pendingDate: Date? = nil
+    if let pendingDict = WorshipSermonSync.matchingPendingEntry(worshipType: setting),
+       let decoded = Self.decodeSermon(from: pendingDict),
+       let week = decoded.week,
+       let scheduled = WorshipSermonSync.resolveWorshipDateTime(week: week, worshipType: setting) {
+      pendingSermon = decoded
+      pendingDate = scheduled
+    }
+
+    var entries: [SimpleEntry]
+    var nextUpdateDate: Date
+
+    if let pendingSermon, let pendingDate, pendingDate <= now {
+      // 이미 지난 시각인데 아직 displaySermon에 반영 안 된 경우 — 지금 이 항목을 보여준다.
+      entries = [createSermonEntry(date: now, sermon: pendingSermon, sharedDefaults: sharedDefaults)]
+      nextUpdateDate = now.addingTimeInterval(24 * 60 * 60)
+    } else {
+      entries = [createSermonEntry(date: now, sharedDefaults: sharedDefaults)]
+      nextUpdateDate = now.addingTimeInterval(24 * 60 * 60)
+      if let pendingSermon, let pendingDate {
+        // 아직 안 된 시각 — 그 시각에 맞춰 자동 전환될 엔트리를 예약한다.
+        entries.append(createSermonEntry(date: pendingDate, sermon: pendingSermon, sharedDefaults: sharedDefaults))
+        nextUpdateDate = pendingDate.addingTimeInterval(1)
+      }
+    }
+
+    completion(Timeline(entries: entries, policy: .after(nextUpdateDate)))
   }
 
-  private func createSermonEntry() -> SimpleEntry {
-    guard let sharedDefaults = UserDefaults(suiteName: WidgetConstants.appGroupId) else {
+  private static func decodeSermon(from dict: [String: Any]) -> Sermon? {
+    guard let data = try? JSONSerialization.data(withJSONObject: dict) else { return nil }
+    return try? JSONDecoder().decode(Sermon.self, from: data)
+  }
+
+  private func createSermonEntry(date: Date = Date(), sermon injectedSermon: Sermon? = nil, sharedDefaults: UserDefaults? = nil) -> SimpleEntry {
+    guard let sharedDefaults = sharedDefaults ?? UserDefaults(suiteName: WidgetConstants.appGroupId) else {
       NSLog("Widget: Failed to access App Group UserDefaults")
       return emptyEntry
     }
 
-    // displaySermon을 먼저 확인, 없으면 fcm_sermon 확인
-    var sermon: Sermon? = sharedDefaults.getObjectFromString(forKey: WidgetConstants.displaySermonKey, castTo: Sermon.self)
-
+    var sermon: Sermon? = injectedSermon
     if sermon == nil {
-      sermon = sharedDefaults.getObjectFromString(forKey: WidgetConstants.fcmSermonKey, castTo: Sermon.self)
+      // displaySermon을 먼저 확인, 없으면 fcm_sermon 확인
+      sermon = sharedDefaults.getObjectFromString(forKey: WidgetConstants.displaySermonKey, castTo: Sermon.self)
 
-      if sermon != nil, let jsonString = sharedDefaults.string(forKey: WidgetConstants.fcmSermonKey) {
-        // fcm_sermon을 displaySermon에도 복사 (일관성 유지)
-        sharedDefaults.set(jsonString, forKey: WidgetConstants.displaySermonKey)
-        sharedDefaults.synchronize()
+      if sermon == nil {
+        sermon = sharedDefaults.getObjectFromString(forKey: WidgetConstants.fcmSermonKey, castTo: Sermon.self)
+
+        if sermon != nil, let jsonString = sharedDefaults.string(forKey: WidgetConstants.fcmSermonKey) {
+          // fcm_sermon을 displaySermon에도 복사 (일관성 유지)
+          sharedDefaults.set(jsonString, forKey: WidgetConstants.displaySermonKey)
+          sharedDefaults.synchronize()
+        }
       }
     }
 
@@ -317,7 +372,7 @@ struct Provider: TimelineProvider {
     let youtubeLinkEnabled = sharedDefaults.bool(forKey: WidgetConstants.youtubeLinkEnabledKey)
     let design = sharedDefaults.getObjectFromString(forKey: WidgetConstants.widgetDesignKey, castTo: WidgetDesign.self) ?? defaultWidgetDesign
 
-    return SimpleEntry(date: Date(), title: sermon.title, quote: quote, verse: verse, videoUrl: sermon.videoUrl, youtubeLinkEnabled: youtubeLinkEnabled, design: design)
+    return SimpleEntry(date: date, title: sermon.title, quote: quote, verse: verse, videoUrl: sermon.videoUrl, youtubeLinkEnabled: youtubeLinkEnabled, design: design)
   }
 }
 

@@ -14,6 +14,7 @@
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		1C3EE8771088DB7C1EB864B8 /* Pods_MeditationBlossomWidgetExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A9635F5505F850465FED39C /* Pods_MeditationBlossomWidgetExtension.framework */; };
 		1C6FE0579BEFAABAE18FAF5C /* WorshipSermonSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3E1F34ED105C7A49E9C64D0 /* WorshipSermonSync.swift */; };
+		1FB7AEFE2EA116587276B242 /* WorshipSermonSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3E1F34ED105C7A49E9C64D0 /* WorshipSermonSync.swift */; };
 		35449F6D2E5EF66F005824B9 /* PushNotificationService.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 35449F662E5EF66F005824B9 /* PushNotificationService.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		354EC78E2E13D06F00E2A018 /* WidgetUpdateModule.mm in Sources */ = {isa = PBXBuildFile; fileRef = 354EC78C2E13D06F00E2A018 /* WidgetUpdateModule.mm */; };
 		354EC78F2E13D06F00E2A018 /* WidgetUpdateModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 354EC78D2E13D06F00E2A018 /* WidgetUpdateModule.swift */; };
@@ -806,6 +807,7 @@
 				3595A30F2DEBF76F006716D8 /* MeditationBlossomWidgetBundle.swift in Sources */,
 				3595A3112DEBF76F006716D8 /* MeditationBlossomWidgetLiveActivity.swift in Sources */,
 				35B6CFCF2E01AC0E004A13DD /* Sermon.swift in Sources */,
+				1FB7AEFE2EA116587276B242 /* WorshipSermonSync.swift in Sources */,
 				35570001BBBB0001BBBBBBBB /* QT.swift in Sources */,
 				35570003BBBB0001BBBBBBBB /* DailyMannaWidget.swift in Sources */,
 				35580001CAFE0001CAFECAFE /* YoutubeMarkerView.swift in Sources */,

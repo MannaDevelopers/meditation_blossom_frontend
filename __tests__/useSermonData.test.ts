@@ -3,6 +3,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSermonData } from '../src/hooks/useSermonData';
 import * as sermonService from '../src/services/sermonService';
 
+// 파일 로드 시점(어떤 테스트도 jest.setSystemTime을 호출하기 전)에 실제 현재 시각을 캡처해둔다.
+// 이 값을 캡처한 뒤 jest.setSystemTime으로 시각을 조작하면, 테스트 안에서 새로 만드는
+// `new Date()`는 실제 시각이 아니라 조작된 가짜 시각을 반환하므로 복원용으로 쓸 수 없다.
+const REAL_NOW = new Date();
+
 jest.mock('@react-native-firebase/analytics', () => ({
   getAnalytics: jest.fn(),
   logEvent: jest.fn().mockResolvedValue(undefined),
@@ -17,6 +22,9 @@ jest.mock('../src/services/sermonService', () => ({
   saveWeeklySermonsToAsyncStorage: jest.fn(),
   fetchLatestWeeklySermonsFromServer: jest.fn(),
   pushSermonToWidget: jest.fn(),
+  // 순수 함수라 실제 구현을 그대로 쓴다 — mock으로 뭉개면(undefined) loadLocalData의
+  // 서버 보충 조회 분기가 TypeError로 조용히 실패해(catch에서 삼켜짐) 다른 동작처럼 보인다.
+  mergeFreshWeeklyResults: jest.requireActual('../src/services/sermonService').mergeFreshWeeklyResults,
 }));
 
 jest.mock('../src/utils/logger', () => ({
@@ -301,6 +309,75 @@ describe('useSermonData', () => {
       });
     });
 
+    // 아래 두 테스트는 "지금"을 명시적으로 고정해야 예배 시각 경계를 안정적으로 재현할 수
+    // 있다(실제 실행 시각에 의존하면 나중에 테스트가 깨진다). 다른 테스트에 영향을 주지 않도록
+    // 매번 실제 현재 시각으로 복원한다.
+    afterEach(() => {
+      jest.setSystemTime(REAL_NOW);
+    });
+
+    it('포그라운드 경계 감시: 예배 시각을 넘기면 새 FCM 없이도 자동으로 화면/위젯을 갱신한다 ([ISSUE-315])', async () => {
+      // SAT_1700(2026-W37) = 2026-09-12 17:00. 경계 1분 전에서 시작한다.
+      jest.setSystemTime(new Date(2026, 8, 12, 16, 59, 0));
+      const olderSermonV2 = {
+        id: 'old', title: '이전 예배', content: '내용', date: '2026-09-06', week: '2026-W36',
+        worship_type: 'SAT_1700' as any, created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+      };
+      const arrivedSermon = {
+        id: 'new', title: '이번 주 예배', content: '내용', date: '2026-09-12', week: '2026-W37',
+        worship_type: 'SAT_1700' as any, created_at: { seconds: 1, nanoseconds: 0 }, updated_at: { seconds: 1, nanoseconds: 0 },
+      };
+      mockFetchFromAsyncStorage.mockResolvedValue(olderSermonV2);
+      mockFetchWeeklyFromAsyncStorage.mockResolvedValue([arrivedSermon]);
+      mockSaveSermonToAsyncStorage.mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => { await result.current.loadLocalData(); });
+      // 아직 16:59이므로 예배 시각 전 — 이전 콘텐츠를 유지해야 한다.
+      expect(result.current.sermon).toEqual(olderSermonV2);
+
+      await act(async () => {
+        // 16:59 -> 17:00, 경계를 정확히 넘긴다.
+        jest.advanceTimersByTime(60000);
+        // setInterval 콜백 내부의 비동기 작업(AsyncStorage/캐시 조회)이 마이크로태스크로
+        // 대기 중이므로 한 틱 더 흘려보낸다.
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(mockSaveSermonToAsyncStorage).toHaveBeenCalledWith(arrivedSermon);
+      expect(mockPushSermonToWidget).toHaveBeenCalledWith(arrivedSermon);
+      expect(result.current.sermon).toEqual(arrivedSermon);
+    });
+
+    it('포그라운드 경계 감시: 아직 예배 시각이 안 됐으면 기존 콘텐츠를 유지한다', async () => {
+      // SAT_1700(2026-W37) = 2026-09-12 17:00. 1시간 전에서 시작해 1분만 흘려보낸다(여전히 전).
+      jest.setSystemTime(new Date(2026, 8, 12, 16, 0, 0));
+      const olderSermonV2 = {
+        id: 'old', title: '이전 예배', content: '내용', date: '2026-09-06', week: '2026-W36',
+        worship_type: 'SAT_1700' as any, created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+      };
+      const notYetArrivedSermon = {
+        id: 'future', title: '이번 주 예배', content: '내용', date: '2026-09-12', week: '2026-W37',
+        worship_type: 'SAT_1700' as any, created_at: { seconds: 1, nanoseconds: 0 }, updated_at: { seconds: 1, nanoseconds: 0 },
+      };
+      mockFetchFromAsyncStorage.mockResolvedValue(olderSermonV2);
+      mockFetchWeeklyFromAsyncStorage.mockResolvedValue([notYetArrivedSermon]);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => { await result.current.loadLocalData(); });
+
+      await act(async () => {
+        jest.advanceTimersByTime(60000);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(mockSaveSermonToAsyncStorage).not.toHaveBeenCalled();
+      expect(mockPushSermonToWidget).not.toHaveBeenCalled();
+      expect(result.current.sermon).toEqual(olderSermonV2);
+    });
+
     it('loads selected worship sermon from weekly list cache', async () => {
       mockFetchWeeklyFromAsyncStorage.mockResolvedValue(mockWeeklyList);
 
@@ -361,6 +438,41 @@ describe('useSermonData', () => {
       expect(mockFetchWeeklyFromServer).toHaveBeenCalled();
       expect(mockSaveWeeklyToAsyncStorage).toHaveBeenCalledWith(mockWeeklyList);
       expect(result.current.sermon).toEqual(mockWeeklyList[0]); // matching Thursday
+    });
+
+    it('[ISSUE-315] 서버 응답에 설정과 일치하는 예배가 없으면 다른 예배시간의 콘텐츠를 새치기하지 않고 기존 콘텐츠를 유지한다 (실사용자 리포트)', async () => {
+      // 설정은 SAT_1700(이 describe의 beforeEach). 먼저 이미 도달한 SAT_1700 콘텐츠를 로컬
+      // 캐시에서 로드해 "지금 화면에 표시 중"인 상태를 만든다(video_url/content가 이미 있어
+      // loadLocalData의 서버 강제 보충 분기를 타지 않게 함).
+      const alreadyDisplayed = {
+        id: 'sat-old', title: '이전에 보여주던 토요 예배', content: '내용', date: '2026-09-06',
+        week: '2026-W36', worship_type: 'SAT_1700' as any, video_url: 'https://youtu.be/old',
+        created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+      };
+      mockFetchWeeklyFromAsyncStorage.mockResolvedValue([alreadyDisplayed]);
+      mockFetchFromAsyncStorage.mockResolvedValue(alreadyDisplayed);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => {
+        await result.current.loadLocalData();
+      });
+      expect(result.current.sermon).toEqual(alreadyDisplayed);
+
+      // 이제 서버 응답엔 SAT_1700이 없고 SUN_0950만 있다 — 예전 폴백(weeklyResults[0])이
+      // 있으면 무관한 SUN_0950 콘텐츠로 화면이 바뀌어버렸다.
+      const noMatchList = [mockWeeklyList[1]]; // SUN_0950만 있음, SAT_1700 없음
+      mockFetchWeeklyFromServer.mockResolvedValue(noMatchList);
+      mockSaveWeeklyToAsyncStorage.mockResolvedValue(undefined);
+      mockSaveSermonToAsyncStorage.mockResolvedValue(undefined);
+      mockPushSermonToWidget.mockResolvedValue(undefined);
+
+      await act(async () => {
+        await result.current.fetchFromServer();
+      });
+
+      expect(mockSaveWeeklyToAsyncStorage).toHaveBeenCalledWith(noMatchList);
+      expect(result.current.sermon).toEqual(alreadyDisplayed);
+      expect(result.current.sermon?.worship_type).not.toBe('SUN_0950');
     });
   });
 
