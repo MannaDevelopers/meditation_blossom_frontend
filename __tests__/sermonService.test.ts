@@ -285,6 +285,67 @@ describe('weekly sermons caching and syncing', () => {
     expect(saved.worship_type).not.toBe('SUN_1150');
   });
 
+  it('[ISSUE-315] 캐시에 일치하는 예배가 없으면 (비어있지 않아도) 서버에서 그 예배시간의 진짜 데이터를 다시 가져온다', async () => {
+    // 캐시엔 SUN_1150(이미 도달, 실제로 화면에 떠 있음)만 있는 상태에서 SAT_1700으로
+    // 바꾼 상황. 캐시가 "비어있지 않다"는 이유로 서버 재조회를 안 하면, SAT_1700 요청인데도
+    // 직전에 보이던 SUN_1150 콘텐츠를 그대로 물려받아버린다(실사용자 리포트로 발견 —
+    // 예배시간을 이리저리 바꾸는 것만으로 서로 다른 예배 콘텐츠가 섞여 보임).
+    const bridge = require('../src/types/WidgetUpdateModule').default;
+    const firestoreMock = require('@react-native-firebase/firestore');
+    const arrivedSun1150: Sermon = {
+      id: 'sun1150', title: 'SUN_1150 화면에 떠 있음', content: 'C', date: '2026-09-13',
+      week: '2026-W37', worship_type: 'SUN_1150', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+    };
+    // week는 실행 시점의 실제 현재 시각에 상관없이 항상 "이미 지난 주"여야 한다
+    // (getEffectiveNow가 실제 시각을 쓰므로) — 2026-W37은 다른 테스트에서도 이미
+    // 지난 주로 취급된다.
+    const realSatDocs = [
+      { id: 'w37_sat', data: () => ({ title: '진짜 토요 예배', date: '2026-09-12', week: '2026-W37', worship_type: 'SAT_1700', content: 'C' }) },
+    ];
+    firestoreMock.getDocsFromServer.mockResolvedValue({ empty: false, docs: realSatDocs });
+
+    (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+      if (key === 'weekly_sermons') return Promise.resolve(JSON.stringify([arrivedSun1150]));
+      if (key === 'fcm_sermon') return Promise.resolve(JSON.stringify(arrivedSun1150));
+      return Promise.resolve(null);
+    });
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    bridge.onSermonUpdated.mockClear();
+
+    await syncSelectedSermonToWidget('SAT_1700');
+
+    expect(firestoreMock.getDocsFromServer).toHaveBeenCalled();
+    expect(bridge.onSermonUpdated).toHaveBeenCalledTimes(1);
+    const saved = JSON.parse(bridge.onSermonUpdated.mock.calls[0][0]);
+    expect(saved.worship_type).toBe('SAT_1700');
+    expect(saved.title).toBe('진짜 토요 예배');
+  });
+
+  it('[ISSUE-315] 캐시에 일치하는 예배가 없고 서버 재조회도 실패하면 기존 콘텐츠를 유지한다(오프라인)', async () => {
+    const bridge = require('../src/types/WidgetUpdateModule').default;
+    const firestoreMock = require('@react-native-firebase/firestore');
+    firestoreMock.getDocsFromServer.mockRejectedValue(new Error('network error'));
+
+    const arrivedSun1150: Sermon = {
+      id: 'sun1150', title: 'SUN_1150 화면에 떠 있음', content: 'C', date: '2026-09-13',
+      week: '2026-W37', worship_type: 'SUN_1150', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+    };
+    (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+      if (key === 'weekly_sermons') return Promise.resolve(JSON.stringify([arrivedSun1150]));
+      if (key === 'fcm_sermon') return Promise.resolve(JSON.stringify(arrivedSun1150));
+      return Promise.resolve(null);
+    });
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    bridge.onSermonUpdated.mockClear();
+
+    await syncSelectedSermonToWidget('SAT_1700');
+
+    expect(bridge.onSermonUpdated).toHaveBeenCalledTimes(1);
+    const saved = JSON.parse(bridge.onSermonUpdated.mock.calls[0][0]);
+    expect(saved.worship_type).not.toBe('SAT_1700'); // 진짜 SAT_1700 데이터를 못 구함
+    expect(saved.id).toBe('sun1150'); // 하지만 SUN_1150 콘텐츠를 그대로 유지(새치기 아님)
+  });
+
   it('로컬 weekly_sermons 캐시가 비어있으면 서버에서 조회해 채우고 동기화한다 (앱을 막 업데이트한 사용자가 예배 시간을 바꿨을 때)', async () => {
     const bridge = require('../src/types/WidgetUpdateModule').default;
     const firestoreMock = require('@react-native-firebase/firestore');

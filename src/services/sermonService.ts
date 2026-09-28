@@ -249,26 +249,31 @@ export async function sermonFromLegacyEvent(raw: SermonRaw): Promise<Sermon> {
 // weekly_sermons 캐시가 아직 한 번도 채워진 적 없는 경우)를 위해, 로컬 캐시가
 // 비어 있으면 서버에서 직접 가져온다. 이게 없으면 "설정만 바꾸고 데이터 새로고침을
 // 따로 눌러야 반영되는" 문제가 생긴다(실사용자 리포트로 발견).
+//
+// 캐시가 비어있지 않아도 "이번에 고른 예배시간과 일치하는 문서가 캐시에 아예 없는"
+// 경우에도 서버에서 다시 가져와야 한다([ISSUE-315], loadLocalData의 needsWeeklyRefill과
+// 동일한 이유로 통일) — 그렇지 않으면 캐시에 다른 예배시간 문서만 있을 때 "일치하는 게
+// 없으니 기존 화면 유지"가 실제로는 그 다른 예배시간의 콘텐츠를 그대로 물려받는 꼴이 돼서,
+// 설정을 이리저리 바꾸기만 해도 서로 다른 예배시간끼리 콘텐츠가 섞여 보이는 사고가 났다
+// (실사용자 리포트로 발견 — 백엔드가 4개 예배를 항상 한꺼번에 캐시해주는 정상 운영에서는
+// 잘 안 나지만, 주보가 부분적으로만 올라온 짧은 시간대나 테스트 상황에서 재현됨).
 export async function syncSelectedSermonToWidget(worshipType: WorshipType): Promise<void> {
   let weekly = await fetchLatestWeeklySermonsFromAsyncStorage();
-  if (weekly.length === 0) {
+  if (weekly.length === 0 || !weekly.some(s => s.worship_type === worshipType)) {
     try {
-      weekly = await fetchLatestWeeklySermonsFromServer();
-      if (weekly.length > 0) {
+      const fresh = await fetchLatestWeeklySermonsFromServer();
+      if (fresh.length > 0) {
+        weekly = fresh;
         await saveWeeklySermonsToAsyncStorage(weekly);
       }
     } catch (e) {
-      logger.warn('syncSelectedSermonToWidget: 로컬 캐시가 비어 서버 폴백 조회 시도했으나 실패 (오프라인?)', e);
+      logger.warn('syncSelectedSermonToWidget: 로컬 캐시에 일치하는 예배가 없어 서버 폴백 조회 시도했으나 실패 (오프라인?)', e);
     }
   }
   if (weekly.length === 0) return;
 
-  // 일치하는 예배가 없을 때 "그냥 캐시의 첫 항목이라도" 보여주던 예전 폴백(weekly[0])을
-  // 제거했다([ISSUE-315]) — 시각 게이팅이 들어간 뒤로는 그 weekly[0]이 다른 예배시간의
-  // 아직 안 된 항목일 수 있어, 설정을 바꾸는 것만으로 게이팅을 우회해 미도착 콘텐츠가
-  // 새치기되는 사고가 났다(실사용자 리포트로 발견). 일치하는 문서가 없으면 항상
-  // currentlyDisplayed(이미 보여주던 콘텐츠)를 유지한다 — selectGatedWeeklySermon의
-  // 기본 동작과 동일하게 통일.
+  // 그래도 일치하는 예배가 없으면(서버에도 없는 경우) currentlyDisplayed(이미 보여주던
+  // 콘텐츠)를 유지한다 — selectGatedWeeklySermon의 기본 동작과 동일.
   const gated = selectGatedWeeklySermon(weekly, worshipType, await fetchLatestSermonFromAsyncStorage(), await getEffectiveNow());
   if (!gated) return;
 
