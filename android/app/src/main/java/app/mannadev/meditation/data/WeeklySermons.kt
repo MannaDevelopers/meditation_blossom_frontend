@@ -126,11 +126,51 @@ object WeeklySermons {
     /**
      * 현재 예배시간 설정([storedSetting], AsyncStorage 원시값)에서 이 이벤트가 위젯/화면에 반영돼야 하는지.
      * '전체'면 sermons-v2는 반영하지 않고([#303]), 설정이 없으면 JS와 동일하게 기본 예배로 본다([WorshipSetting.resolve]).
+     * 설정과 일치해도 그 예배 시각이 아직 안 됐으면 반영하지 않는다([ISSUE-315], [WorshipSchedule]) —
+     * FCM은 주보 등록 시점에 미리 도착하므로, 실제 예배가 시작되기 전까지는 위젯에 반영하면 안 된다.
+     * [week]을 넘기지 않으면(기존 호출부 호환) 시각 판별 불가로 간주해 항상 즉시 반영한다.
      */
-    fun shouldApplyToWidget(storedSetting: String?, worshipType: String): Boolean {
+    fun shouldApplyToWidget(
+        storedSetting: String?,
+        worshipType: String,
+        week: String? = null,
+        now: java.time.Instant = java.time.Instant.now(),
+    ): Boolean {
         val setting = WorshipSetting.resolve(storedSetting)
-        return setting != WorshipSetting.ALL && setting == worshipType
+        return setting != WorshipSetting.ALL && setting == worshipType &&
+            WorshipSchedule.hasWorshipTimeArrived(week, worshipType, now)
     }
+
+    /**
+     * `weekly_sermons` 캐시(JSON 배열 문자열)에서 [worshipType]과 일치하고 예배 시각이 이미
+     * 지난 항목을 찾는다([ISSUE-315]). FCM 수신 시점엔 시각이 안 돼서 위젯에 반영되지 못하고
+     * 캐시에만 남아 있던 이벤트를, 위젯이 주기적으로(30분 간격) 다시 그려질 때 이 함수로 재확인해
+     * 뒤늦게라도 반영한다. 일치하는 항목이 없거나 시각이 아직 안 됐으면 null.
+     */
+    fun findArrivedEntry(
+        weeklySermonsJson: String?,
+        worshipType: String,
+        now: Instant = Instant.now(),
+    ): JsonObject? {
+        val entries = weeklySermonsJson
+            ?.let { runCatching { json.parseToJsonElement(it) as? JsonArray }.getOrNull() }
+            ?: return null
+        val entry = entries
+            .filterIsInstance<JsonObject>()
+            .firstOrNull { it.stringField(KEY_WORSHIP_TYPE) == worshipType }
+            ?: return null
+        val week = entry.stringField(KEY_WEEK) ?: return null
+        return if (WorshipSchedule.hasWorshipTimeArrived(week, worshipType, now)) entry else null
+    }
+
+    /** [findArrivedEntry]가 찾은 캐시 항목(JS `Sermon` 모양)을 위젯 저장 계층의 [SermonDto]로 변환한다. */
+    fun cacheEntryToSermonDto(entry: JsonObject): SermonDto = SermonDto(
+        date = entry.stringField(KEY_DATE).orEmpty(),
+        title = entry.stringField(KEY_TITLE).orEmpty(),
+        content = entry.stringField(KEY_CONTENT).orEmpty(),
+        dayOfWeek = entry.stringField(KEY_DAY_OF_WEEK).orEmpty(),
+        videoUrl = entry.stringField(KEY_VIDEO_URL)?.takeIf { it.isNotBlank() },
+    )
 
     private fun JsonObject.stringField(key: String): String? =
         (this[key] as? JsonPrimitive)?.contentOrNull
