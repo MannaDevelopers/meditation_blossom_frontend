@@ -1,6 +1,7 @@
 package app.mannadev.meditation.di
 
 import android.content.Context
+import app.mannadev.meditation.data.AsyncStorage
 import app.mannadev.meditation.data.WidgetPrefsDataSource
 import app.mannadev.meditation.domain.repository.QtRepository
 import app.mannadev.meditation.domain.repository.SermonRepository
@@ -18,6 +19,7 @@ interface WidgetDependencies {
     fun qtRepository(): QtRepository
     fun widgetUpdateNotifier(): WidgetUpdateNotifier
     fun getWidgetPrefs(): WidgetPrefsDataSource
+    fun asyncStorage(): AsyncStorage
     @SermonDesign fun sermonWidgetDesignRepository(): WidgetDesignRepository
     @QtDesign fun qtWidgetDesignRepository(): WidgetDesignRepository
 }
