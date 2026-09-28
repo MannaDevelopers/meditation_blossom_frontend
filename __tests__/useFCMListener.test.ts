@@ -175,6 +175,24 @@ describe('useFCMListener', () => {
     expect(sermonService.pushSermonToWidget).toHaveBeenCalledWith(patched);
   });
 
+  // [ISSUE-315] FCM은 주보 등록 시점에 미리 도착하므로, 설정과 일치해도 그 예배 시각이
+  // 아직 안 됐으면 화면/위젯을 건드리면 안 된다(weekly 캐시 patch는 이미 위에서 처리됨).
+  it('설정과 일치해도 예배 시각이 아직 안 됐으면 화면/위젯을 건드리지 않는다', async () => {
+    const onUpdateMock = jest.fn();
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue('SAT_1700');
+    // 아주 먼 미래 주 — 이 테스트가 유효한 한 항상 "아직 안 된 예배"로 남는다.
+    const patched = { id: '2099-W01_SAT_1700', worship_type: 'SAT_1700', week: '2099-W01', video_url: 'https://youtu.be/new' };
+    (sermonService.upsertWeeklySermonFromEvent as jest.Mock).mockResolvedValue(patched);
+
+    renderHook(() => useFCMListener(onUpdateMock));
+    await capturedCallback({ week: '2099-W01', worship_type: 'SAT_1700', title: 'T', operation: 'UPDATED' });
+
+    expect(sermonService.upsertWeeklySermonFromEvent).toHaveBeenCalled();
+    expect(sermonService.saveSermonToAsyncStorage).not.toHaveBeenCalled();
+    expect(sermonService.pushSermonToWidget).not.toHaveBeenCalled();
+    expect(onUpdateMock).toHaveBeenCalled();
+  });
+
   it('patch된 문서가 현재 선택된 예배와 다르면 위젯을 갱신하지 않는다', async () => {
     const onUpdateMock = jest.fn();
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue('SUN_0950');
