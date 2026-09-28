@@ -520,22 +520,18 @@ async function sendVideoUrlUpdateScenario(token, topic = 'sermons_v2_events') {
 // 다시 조회하지 않으므로, 문서를 등록하지 않아도 게이팅 동작을 그대로 확인할 수 있다
 // (테스트 데이터를 실제 프로젝트에 문서로 남기고 싶지 않다는 요청 — sendWeeklySermonsScenario류와
 // 달리 이 시나리오는 Firestore를 전혀 건드리지 않는다).
-// "다음 주"를 쓰는 이유: 실행 시점이 언제든 항상 미래 시각이라 게이팅 여부가 실행 시각에
-// 좌우되지 않는다(이번 주를 쓰면 스크립트를 늦게 실행할수록 이미 지난 예배가 섞일 수 있음).
-async function sendWeeklySermonsBeforeWorshipTimeScenario(token, topic = 'sermons_v2_events') {
-  const today = new Date();
-  const diffToSunday = 7 - today.getDay();
-  const thisSunday = new Date(today);
-  thisSunday.setDate(today.getDate() + (diffToSunday === 7 ? 0 : diffToSunday));
-  const sunday = new Date(thisSunday);
-  sunday.setDate(thisSunday.getDate() + 7); // 다음 주 — 항상 미래
-  const saturday = new Date(sunday);
-  saturday.setDate(sunday.getDate() - 1);
-  const weekStr = toIsoWeek(sunday);
+// JS getDay() 요일 번호(일=0...토=6) 기준. src/utils/worshipSchedule.ts와 시각은 동일해야 한다.
+const WORSHIP_SCHEDULE_FOR_QA = {
+  SAT_1700: { weekday: 6, hour: 17, minute: 0 },
+  SUN_0950: { weekday: 0, hour: 9, minute: 50 },
+  SUN_1150: { weekday: 0, hour: 11, minute: 50 },
+  SUN_1430: { weekday: 0, hour: 14, minute: 30 },
+};
 
+async function sendWeeklySermonsBeforeWorshipTimeScenario(token, topic = 'sermons_v2_events') {
   // title/worship_type/bible_references/video_url 등은 fcm_test_data.json의 sermons_v2_events
   // 항목을 그대로 재사용한다(JS 수정 없이 값 편집 가능 — 기존 관례와 동일). week/date는
-  // 그 항목의 플레이스홀더 문자열을 무시하고 항상 "다음 주"로 덮어쓴다.
+  // 그 항목의 플레이스홀더 문자열을 무시하고 아래에서 계산한 값으로 덮어쓴다.
   let base = {};
   if (fs.existsSync(DATA_FILE)) {
     try {
@@ -545,11 +541,29 @@ async function sendWeeklySermonsBeforeWorshipTimeScenario(token, topic = 'sermon
     }
   }
   const worshipType = base.worship_type || 'SUN_1150';
-  const date = worshipType === 'SAT_1700'
-    ? saturday.toISOString().split('T')[0]
-    : sunday.toISOString().split('T')[0];
+  const schedule = WORSHIP_SCHEDULE_FOR_QA[worshipType] || WORSHIP_SCHEDULE_FOR_QA.SUN_1150;
 
-  console.log(`\n📅 다음 주 묶음 키(week): ${weekStr} (예배 시각 전 상태를 재현하기 위해 항상 미래 주를 사용)`);
+  // "항상 다음 주로 건너뛴다"가 아니라 "가장 가까운 미래의 그 예배시간"을 계산한다 —
+  // 무조건 한 주를 더 건너뛰면 스크립트를 실행한 요일에 따라 테스터가 기대한 날짜(예:
+  // "이번 주 일요일")보다 실제로는 한 주 더 미래인 날짜가 찍혀, 기기 시계를 그 날짜로
+  // 맞춰도 반영이 안 되는 걸 버그로 착각하게 된다(실사용자 리포트로 발견).
+  const now = new Date();
+  const diffDays = ((schedule.weekday - now.getDay()) + 7) % 7;
+  const scheduled = new Date(now);
+  scheduled.setDate(now.getDate() + diffDays);
+  scheduled.setHours(schedule.hour, schedule.minute, 0, 0);
+  if (scheduled <= now) {
+    scheduled.setDate(scheduled.getDate() + 7); // 오늘이면서 이미 지난 시각 — 다음 주로
+  }
+
+  // scheduled가 가리키는 주의 일요일(ISO week 계산용) — SAT_1700이면 scheduled 다음 날.
+  const sunday = schedule.weekday === 6 ? new Date(scheduled.getTime() + 24 * 60 * 60 * 1000) : scheduled;
+  const weekStr = toIsoWeek(sunday);
+  const date = scheduled.toISOString().split('T')[0];
+  const scheduledLabel = scheduled.toLocaleString('ko-KR', { dateStyle: 'full', timeStyle: 'short' });
+
+  console.log(`\n📅 이 FCM이 가리키는 예배 시각(스크립트 실행 위치의 로컬 타임존 기준): ${scheduledLabel}`);
+  console.log(`   week=${weekStr}, worship_type=${worshipType}`);
   console.log(`ℹ️  Firestore에는 아무 것도 쓰지 않습니다 — FCM data payload만 전송합니다.`);
 
   const n = bumpCounter();
@@ -570,9 +584,11 @@ async function sendWeeklySermonsBeforeWorshipTimeScenario(token, topic = 'sermon
   console.log(`   아닙니다 — fcm_test_data.json의 sermons_v2_events.worship_type과 같은 값으로`);
   console.log(`   기기 설정을 맞춰두고 실행하세요.`);
   console.log(`   FCM 수신 후에도 화면/위젯이 이전 콘텐츠 그대로면 정상(게이팅 동작).`);
-  console.log(`   실시간으로 경계를 넘기는 동작까지 보려면 기기 시스템 시계를 예배 시각`);
-  console.log(`   (${weekStr} 기준 ${worshipType}) 직전으로 맞춰두고 이 스크립트를 실행한 뒤,`);
-  console.log(`   시계를 그 시각 이후로 넘겨보세요(에뮬레이터/시뮬레이터 권장).`);
+  console.log(`   실시간으로 경계를 넘기는 동작까지 보려면 기기 시스템 시계를 위 예배 시각`);
+  console.log(`   (${scheduledLabel}) 직전으로 맞춰두고 이 스크립트를 실행한 뒤, 시계를 그`);
+  console.log(`   시각 이후로 넘겨보세요. 기기와 이 스크립트를 실행하는 위치의 타임존이 같아야`);
+  console.log(`   합니다(에뮬레이터/시뮬레이터 권장 — 실기기는 며칠씩 시계를 조작하면 인증서`);
+  console.log(`   관련 문제가 생길 수 있으니 몇 분 단위로만 조정하세요).`);
 
   const dataFields = toStr(payload);
 
