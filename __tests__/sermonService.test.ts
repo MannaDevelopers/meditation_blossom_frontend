@@ -14,6 +14,7 @@ import {
   upsertWeeklySermonFromEvent,
 } from '../src/services/sermonService';
 import { LEGACY_SERMON_CACHE_KEY, Sermon, SermonRaw, WorshipType } from '../src/types/Sermon';
+import { resolveWorshipDateTime, selectGatedWeeklySermon } from '../src/utils/worshipSchedule';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(),
@@ -291,6 +292,54 @@ describe('weekly sermons caching and syncing', () => {
 
     await expect(syncSelectedSermonToWidget('SUN_0950')).resolves.toBeUndefined();
     expect(bridge.onSermonUpdated).not.toHaveBeenCalled();
+  });
+});
+
+describe('selectGatedWeeklySermon ([ISSUE-315] 예배시간 게이팅)', () => {
+  const ts = { seconds: 0, nanoseconds: 0 };
+  // week/worship_type과 무관하게, 명시적으로 넘기는 now 기준으로만 판단하도록 테스트한다
+  // (실행 시점의 실제 현재 시각에 의존하면 나중에 테스트가 깨진다).
+  const week = '2026-W37';
+  const scheduled = resolveWorshipDateTime(week, 'SUN_1150')!;
+  const beforeArrival = new Date(scheduled.getTime() - 1);
+  const afterArrival = new Date(scheduled.getTime() + 1);
+
+  const makeSermon = (worship_type: WorshipType, id: string): Sermon => ({
+    id,
+    title: id,
+    content: 'C',
+    date: '2026-09-13',
+    week,
+    worship_type,
+    created_at: ts,
+    updated_at: ts,
+  });
+
+  it('시각이 이미 지난 후보를 찾으면 후보를 반환한다', () => {
+    const weekly = [makeSermon('SUN_1150', 'candidate')];
+    const previous = makeSermon('SUN_1150', 'old');
+    expect(selectGatedWeeklySermon(weekly, 'SUN_1150', previous, afterArrival)).toEqual(weekly[0]);
+  });
+
+  it('시각이 아직 안 된 후보면 기존에 보여주던 콘텐츠를 그대로 유지한다', () => {
+    const weekly = [makeSermon('SUN_1150', 'candidate')];
+    const previous = makeSermon('SUN_1150', 'old');
+    expect(selectGatedWeeklySermon(weekly, 'SUN_1150', previous, beforeArrival)).toEqual(previous);
+  });
+
+  it('일치하는 후보가 캐시에 없으면 기존 콘텐츠를 유지한다', () => {
+    const weekly = [makeSermon('SAT_1700', 'other')];
+    const previous = makeSermon('SUN_1150', 'old');
+    expect(selectGatedWeeklySermon(weekly, 'SUN_1150', previous, afterArrival)).toEqual(previous);
+  });
+
+  it('기존에 보여준 콘텐츠가 전혀 없으면(최초 설치 등) 시각이 안 됐어도 후보를 보여준다', () => {
+    const weekly = [makeSermon('SUN_1150', 'candidate')];
+    expect(selectGatedWeeklySermon(weekly, 'SUN_1150', null, beforeArrival)).toEqual(weekly[0]);
+  });
+
+  it('후보도 없고 기존 콘텐츠도 없으면 null', () => {
+    expect(selectGatedWeeklySermon([], 'SUN_1150', null, beforeArrival)).toBeNull();
   });
 });
 

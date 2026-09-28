@@ -23,6 +23,7 @@ import {
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
 import logger from '../utils/logger';
 import { normalizeJsonString } from '../utils/normalize';
+import { selectGatedWeeklySermon } from '../utils/worshipSchedule';
 
 export async function fetchLatestSermonFromAsyncStorage(): Promise<Sermon | null> {
   try {
@@ -261,9 +262,16 @@ export async function syncSelectedSermonToWidget(worshipType: WorshipType): Prom
   }
   if (weekly.length === 0) return;
 
-  const matched = weekly.find(s => s.worship_type === worshipType) || weekly[0];
-  await saveSermonToAsyncStorage(matched);
-  await pushSermonToWidget(matched);
+  // 캐시에 이 예배시간과 정확히 일치하는 문서가 없는 경우(데이터 품질 이슈)의 기존 폴백은
+  // 유지하되, 일치하는 문서를 찾은 경우엔 예배 시각 게이팅을 거친다([ISSUE-315]).
+  const hasExactMatch = weekly.some(s => s.worship_type === worshipType);
+  const gated = hasExactMatch
+    ? selectGatedWeeklySermon(weekly, worshipType, await fetchLatestSermonFromAsyncStorage())
+    : weekly[0];
+  if (!gated) return;
+
+  await saveSermonToAsyncStorage(gated);
+  await pushSermonToWidget(gated);
 }
 
 // sermons-v2: 주말 4개 예배 문서가 공통 'week'(ISO 8601 week_number, 예: "2026-W37")를 공유한다.
