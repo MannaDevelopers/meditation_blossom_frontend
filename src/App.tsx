@@ -1,8 +1,14 @@
-import React, { useEffect, useMemo } from 'react';
-import { ActivityIndicator, StyleSheet, View, SafeAreaView, StatusBar } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import React, {useEffect, useMemo, useState} from 'react';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  View,
+  SafeAreaView,
+  StatusBar,
+} from 'react-native';
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import logger from './utils/logger';
-import { logAnalytics } from './utils/analytics';
+import {logAnalytics} from './utils/analytics';
 import WidgetUpdateModule from './types/WidgetUpdateModule';
 import MainTabNavigator from './navigation/MainTabNavigator';
 import EditScreen from './screens/EditScreen';
@@ -16,12 +22,16 @@ import {
   NavigationContainer,
   Theme,
 } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { RootStackParamList } from './types/navigation';
-import { useForceUpdate } from './hooks/useForceUpdate';
-import { useAppTheme } from './hooks/useAppTheme';
-import { ThemeColors } from './theme/colors';
-
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import {RootStackParamList} from './types/navigation';
+import {useForceUpdate} from './hooks/useForceUpdate';
+import {useAppTheme} from './hooks/useAppTheme';
+import {ThemeColors} from './theme/colors';
+import {
+  LOCAL_STORAGE_KEYS,
+  LocalStorageService,
+  StorageData,
+} from './services/localStorageService';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -36,7 +46,7 @@ const linking: LinkingOptions<RootStackParamList> = {
     const tab = path.match(/[?&]tab=([^&]*)/)?.[1];
     const tabName = (tab && TAB_DEEP_LINK_MAP[tab]) ?? '주일 말씀';
     return {
-      routes: [{ name: 'MainTabs', state: { routes: [{ name: tabName }] } }],
+      routes: [{name: 'MainTabs', state: {routes: [{name: tabName}]}}],
     };
   },
 };
@@ -59,76 +69,113 @@ function buildNavigationTheme(base: Theme, colors: ThemeColors): Theme {
   };
 }
 
-const RootStack = ({ navigationTheme }: { navigationTheme: Theme }) => {
+const RootStack = ({
+  navigationTheme,
+  initialTabName,
+}: {
+  navigationTheme: Theme;
+  initialTabName: '주일 말씀' | '매일 만나';
+}) => {
   return (
     <NavigationContainer
       linking={linking}
       theme={navigationTheme}
-      onReady={() => logger.log('NavigationContainer ready')}
-    >
+      onReady={() => logger.log('NavigationContainer ready')}>
       <Stack.Navigator>
         <Stack.Screen
           name="MainTabs"
           component={MainTabNavigator}
-          options={{ headerShown: false }}
+          options={{headerShown: false}}
+          initialParams={{initialTabName}}
         />
         <Stack.Screen
           name="EditScreen"
           component={EditScreen}
-          options={{ headerShown: false }}
+          options={{headerShown: false}}
         />
         <Stack.Screen
           name="ImageCropScreen"
           component={ImageCropScreen}
-          options={{ headerShown: false, presentation: 'fullScreenModal' }}
+          options={{headerShown: false, presentation: 'fullScreenModal'}}
         />
         <Stack.Screen
-        name="SettingsScreen"
-        component={SettingsScreen}
-        options={{ headerShown: false }}
+          name="SettingsScreen"
+          component={SettingsScreen}
+          options={{headerShown: false}}
         />
       </Stack.Navigator>
     </NavigationContainer>
-  )
-}
+  );
+};
 
 function App(): React.JSX.Element {
-  const { isChecking, needsUpdate, config, showFallbackModal, startUpdate } =
-    useForceUpdate();
-  const { colors, isDark } = useAppTheme();
+  const {
+    isChecking: isCheckingForceUpdate,
+    needsUpdate,
+    config,
+    showFallbackModal,
+    startUpdate,
+  } = useForceUpdate();
+  const {colors, isDark} = useAppTheme();
   const navigationTheme = useMemo(
     () => buildNavigationTheme(isDark ? DarkTheme : DefaultTheme, colors),
     [isDark, colors],
   );
+
+  const [initialTabName, setInitialTabName] = useState<
+    '주일 말씀' | '매일 만나' | null
+  >(null);
+
+  useEffect(() => {
+    LocalStorageService.get<StorageData['DEFAULT_MAIN_TAB']>(
+      LOCAL_STORAGE_KEYS.DEFAULT_MAIN_TAB,
+    )
+      .then(it => {
+        const stored =
+          it?.name && ['주일 말씀', '매일 만나'].includes(it.name)
+            ? it.name
+            : '주일 말씀';
+        setInitialTabName(stored);
+      })
+      .catch(() => setInitialTabName('주일 말씀'));
+  }, []);
 
   useEffect(() => {
     WidgetUpdateModule?.getYoutubeLinkEnabled?.()
       .then((enabled: boolean) => {
         logAnalytics.setWidgetLinkTarget(enabled ? 'youtube_link' : 'main_app');
       })
-      .catch((e: unknown) => logger.warn('App: widget link target 읽기 실패', e));
+      .catch((e: unknown) =>
+        logger.warn('App: widget link target 읽기 실패', e),
+      );
   }, []);
 
-  if (isChecking) {
+  if (isCheckingForceUpdate || !initialTabName) {
     return (
-      <View style={[styles.loading, { backgroundColor: colors.surface }]}>
+      <View style={[styles.loading, {backgroundColor: colors.surface}]}>
         <ActivityIndicator size="large" />
       </View>
     );
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }}>
-        <StatusBar barStyle={colors.statusBarStyle} backgroundColor={colors.surface} />
-        <RootStack navigationTheme={navigationTheme} />
-          {needsUpdate && showFallbackModal && config && (
-            <ForceUpdateModal
-              visible
-              message={config.force_update_message}
-              onPressUpdate={startUpdate}
-            />
-          )}
+    <GestureHandlerRootView style={{flex: 1}}>
+      <SafeAreaView style={{flex: 1, backgroundColor: colors.surface}}>
+        <StatusBar
+          barStyle={colors.statusBarStyle}
+          backgroundColor={colors.surface}
+        />
+        <RootStack
+          navigationTheme={navigationTheme}
+          initialTabName={initialTabName}
+        />
+        {needsUpdate && showFallbackModal && config && (
+          <ForceUpdateModal
+            visible
+            message={config.force_update_message}
+            onPressUpdate={startUpdate}
+          />
+        )}
       </SafeAreaView>
     </GestureHandlerRootView>
   );
