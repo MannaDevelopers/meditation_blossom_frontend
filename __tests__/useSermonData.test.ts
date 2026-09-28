@@ -3,6 +3,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSermonData } from '../src/hooks/useSermonData';
 import * as sermonService from '../src/services/sermonService';
 
+// 파일 로드 시점(어떤 테스트도 jest.setSystemTime을 호출하기 전)에 실제 현재 시각을 캡처해둔다.
+// 이 값을 캡처한 뒤 jest.setSystemTime으로 시각을 조작하면, 테스트 안에서 새로 만드는
+// `new Date()`는 실제 시각이 아니라 조작된 가짜 시각을 반환하므로 복원용으로 쓸 수 없다.
+const REAL_NOW = new Date();
+
 jest.mock('@react-native-firebase/analytics', () => ({
   getAnalytics: jest.fn(),
   logEvent: jest.fn().mockResolvedValue(undefined),
@@ -299,6 +304,75 @@ describe('useSermonData', () => {
         if (key === 'user_worship_setting') return Promise.resolve('SAT_1700');
         return Promise.resolve(null);
       });
+    });
+
+    // 아래 두 테스트는 "지금"을 명시적으로 고정해야 예배 시각 경계를 안정적으로 재현할 수
+    // 있다(실제 실행 시각에 의존하면 나중에 테스트가 깨진다). 다른 테스트에 영향을 주지 않도록
+    // 매번 실제 현재 시각으로 복원한다.
+    afterEach(() => {
+      jest.setSystemTime(REAL_NOW);
+    });
+
+    it('포그라운드 경계 감시: 예배 시각을 넘기면 새 FCM 없이도 자동으로 화면/위젯을 갱신한다 ([ISSUE-315])', async () => {
+      // SAT_1700(2026-W37) = 2026-09-12 17:00. 경계 1분 전에서 시작한다.
+      jest.setSystemTime(new Date(2026, 8, 12, 16, 59, 0));
+      const olderSermonV2 = {
+        id: 'old', title: '이전 예배', content: '내용', date: '2026-09-06', week: '2026-W36',
+        worship_type: 'SAT_1700' as any, created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+      };
+      const arrivedSermon = {
+        id: 'new', title: '이번 주 예배', content: '내용', date: '2026-09-12', week: '2026-W37',
+        worship_type: 'SAT_1700' as any, created_at: { seconds: 1, nanoseconds: 0 }, updated_at: { seconds: 1, nanoseconds: 0 },
+      };
+      mockFetchFromAsyncStorage.mockResolvedValue(olderSermonV2);
+      mockFetchWeeklyFromAsyncStorage.mockResolvedValue([arrivedSermon]);
+      mockSaveSermonToAsyncStorage.mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => { await result.current.loadLocalData(); });
+      // 아직 16:59이므로 예배 시각 전 — 이전 콘텐츠를 유지해야 한다.
+      expect(result.current.sermon).toEqual(olderSermonV2);
+
+      await act(async () => {
+        // 16:59 -> 17:00, 경계를 정확히 넘긴다.
+        jest.advanceTimersByTime(60000);
+        // setInterval 콜백 내부의 비동기 작업(AsyncStorage/캐시 조회)이 마이크로태스크로
+        // 대기 중이므로 한 틱 더 흘려보낸다.
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(mockSaveSermonToAsyncStorage).toHaveBeenCalledWith(arrivedSermon);
+      expect(mockPushSermonToWidget).toHaveBeenCalledWith(arrivedSermon);
+      expect(result.current.sermon).toEqual(arrivedSermon);
+    });
+
+    it('포그라운드 경계 감시: 아직 예배 시각이 안 됐으면 기존 콘텐츠를 유지한다', async () => {
+      // SAT_1700(2026-W37) = 2026-09-12 17:00. 1시간 전에서 시작해 1분만 흘려보낸다(여전히 전).
+      jest.setSystemTime(new Date(2026, 8, 12, 16, 0, 0));
+      const olderSermonV2 = {
+        id: 'old', title: '이전 예배', content: '내용', date: '2026-09-06', week: '2026-W36',
+        worship_type: 'SAT_1700' as any, created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 },
+      };
+      const notYetArrivedSermon = {
+        id: 'future', title: '이번 주 예배', content: '내용', date: '2026-09-12', week: '2026-W37',
+        worship_type: 'SAT_1700' as any, created_at: { seconds: 1, nanoseconds: 0 }, updated_at: { seconds: 1, nanoseconds: 0 },
+      };
+      mockFetchFromAsyncStorage.mockResolvedValue(olderSermonV2);
+      mockFetchWeeklyFromAsyncStorage.mockResolvedValue([notYetArrivedSermon]);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => { await result.current.loadLocalData(); });
+
+      await act(async () => {
+        jest.advanceTimersByTime(60000);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(mockSaveSermonToAsyncStorage).not.toHaveBeenCalled();
+      expect(mockPushSermonToWidget).not.toHaveBeenCalled();
+      expect(result.current.sermon).toEqual(olderSermonV2);
     });
 
     it('loads selected worship sermon from weekly list cache', async () => {

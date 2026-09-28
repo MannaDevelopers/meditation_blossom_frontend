@@ -8,6 +8,12 @@ export const BRIDGE_INIT_DELAY_MS = 100;
 export const STALE_DATA_THRESHOLD_DAYS = 7;
 /** UserDefaults / App Group key for the currently displayed sermon */
 export const APP_GROUP_DISPLAY_SERMON_KEY = 'displaySermon';
+/**
+ * 특정 예배시간 설정 시, 앱이 포그라운드에 켜져 있는 동안 예배 시각 경계를 넘겼는지
+ * 재확인하는 주기(ms)([ISSUE-315]). FCM은 예배 시각보다 훨씬 먼저 도착하므로, 이미 캐시된
+ * weekly_sermons를 다시 훑어 "지금 보여줘야 할 예배"가 바뀌었으면 화면/위젯을 갱신한다.
+ */
+export const WORSHIP_BOUNDARY_CHECK_INTERVAL_MS = 60000;
 // 위젯 디자인은 네이티브(Android SharedPreferences/WidgetDesignRepository)에만 저장되고 RN
 // 쪽에는 캐시가 없어서, 저장 후 편집 화면을 나갔다가 다시 들어오면 항상 기본값부터 시작했다.
 // Sermon 콘텐츠가 이미 쓰는 AsyncStorage 캐시 패턴(FCM_SERMON_KEY)과 동일하게, EditScreen이

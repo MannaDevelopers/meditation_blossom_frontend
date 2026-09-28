@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { WORSHIP_BOUNDARY_CHECK_INTERVAL_MS } from '../constants';
 import { compareSermon, Sermon, WorshipSetting, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
 import {
   fetchLatestSermonFromAsyncStorage,
@@ -14,6 +15,7 @@ import {
 import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
 import { reconcileFreshDoc } from '../utils/reconcileFreshDoc';
+import { selectGatedWeeklySermon } from '../utils/worshipSchedule';
 
 export interface UseSermonDataReturn {
   sermon: Sermon | null;
@@ -38,15 +40,19 @@ export function useSermonData(): UseSermonDataReturn {
     try {
       const worshipSetting = (await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipSetting || DEFAULT_WORSHIP_TYPE;
       let selected: Sermon | null = null;
-      let matchedFromWeeklyCache = false;
+      let candidateMissing = false;
       if (worshipSetting !== 'ALL') {
         const weeklySermons = (await fetchLatestWeeklySermonsFromAsyncStorage()) || [];
-        selected = weeklySermons.find(s => s.worship_type === worshipSetting) || null;
-        matchedFromWeeklyCache = selected !== null;
+        const previouslyDisplayed = await fetchLatestSermonFromAsyncStorage();
+        candidateMissing = !weeklySermons.some(s => s.worship_type === worshipSetting);
+        // 캐시에 일치하는 예배가 있어도, 그 예배 시각이 아직 안 됐으면 previouslyDisplayed(이미
+        // 보여주던 콘텐츠)를 그대로 쓴다 — 앱을 열 때마다 시각과 무관하게 캐시를 바로 반영하던
+        // 것이 이 버그의 핵심 원인이었다([ISSUE-315]).
+        selected = selectGatedWeeklySermon(weeklySermons, worshipSetting, previouslyDisplayed);
       }
 
       if (!selected) {
-        // '전체' 설정이거나(레거시 경로, [#278]) 주간 캐시에 아직 데이터가 없으면 레거시 단일 문서로 폴백
+        // '전체' 설정이거나(레거시 경로, [#278]) 아무 후보도 없으면 레거시 단일 문서로 폴백
         selected = await fetchLatestSermonFromAsyncStorage();
       }
 
@@ -55,12 +61,13 @@ export function useSermonData(): UseSermonDataReturn {
       setSermon(selected);
       setError(null);
 
-      // 특정 예배가 선택돼 있는데 weekly 캐시에서 못 찾아 레거시로 폴백한 경우(앱을 막
-      // sermons-v2 버전으로 업데이트해서 아직 주간 데이터를 한 번도 받은 적 없는 사용자 등),
-      // 화면에 보이는 레거시 데이터는 video_url/content가 이미 다 차 있어도 실제로는
-      // 선택한 예배와 무관한(전체) 콘텐츠일 수 있다. 이 경우 필드 유무와 무관하게
-      // 강제로 서버에서 주간 데이터를 가져와야 한다(실사용자 리포트로 발견).
-      const needsWeeklyRefill = worshipSetting !== 'ALL' && !matchedFromWeeklyCache;
+      // 특정 예배가 선택돼 있는데 weekly 캐시에 그 예배시간과 일치하는 문서가 전혀 없는 경우
+      // (앱을 막 sermons-v2 버전으로 업데이트해서 아직 주간 데이터를 한 번도 받은 적 없는 사용자
+      // 등, 시각 미도달로 게이팅된 것과는 다른 상황), 화면에 보이는 레거시 데이터는
+      // video_url/content가 이미 다 차 있어도 실제로는 선택한 예배와 무관한(전체) 콘텐츠일 수
+      // 있다. 이 경우 필드 유무와 무관하게 강제로 서버에서 주간 데이터를 가져와야 한다
+      // (실사용자 리포트로 발견).
+      const needsWeeklyRefill = worshipSetting !== 'ALL' && candidateMissing;
 
       // 로컬 데이터에 video_url/content가 비어 있거나(기존 사유) 위 마이그레이션 케이스면
       // Firestore에서 강제 조회해 보충한다.
@@ -70,7 +77,14 @@ export function useSermonData(): UseSermonDataReturn {
           const freshWeekly = worshipSetting !== 'ALL' ? await fetchLatestWeeklySermonsFromServer() : [];
           if (freshWeekly && freshWeekly.length > 0) {
             await saveWeeklySermonsToAsyncStorage(freshWeekly);
-            const freshSelected = freshWeekly.find(s => s.worship_type === worshipSetting) || freshWeekly[0];
+            // 일치하는 문서가 없을 때의 기존 폴백(freshWeekly[0])은 그대로 두고, 일치하는 문서를
+            // 찾은 경우에만 예배 시각 게이팅을 거친다([ISSUE-315]). selected는 이 블록에 들어오기
+            // 위한 조건(위 if)에서 이미 non-null임이 보장되므로 게이팅 결과도 항상 non-null이지만,
+            // TS 타입상 남는 null 가능성은 방어적으로 freshWeekly[0]로 폴백한다.
+            const hasExactMatch = freshWeekly.some(s => s.worship_type === worshipSetting);
+            const freshSelected = worshipSetting !== 'ALL' && hasExactMatch
+              ? selectGatedWeeklySermon(freshWeekly, worshipSetting, selected) ?? freshWeekly[0]
+              : freshWeekly[0];
             const next = reconcileFreshDoc(freshSelected, selected, compareSermon);
             if (next) {
               logger.log(needsWeeklyRefill
@@ -116,7 +130,13 @@ export function useSermonData(): UseSermonDataReturn {
       logger.log('[SermonData] fetchFromServer: result count=' + weeklyResults.length);
       if (weeklyResults.length > 0) {
         await saveWeeklySermonsToAsyncStorage(weeklyResults);
-        const matched = weeklyResults.find(s => s.worship_type === worshipSetting) || weeklyResults[0];
+        // 일치하는 문서가 없을 때의 기존 폴백(weeklyResults[0])은 그대로 두고, 일치하는 문서를
+        // 찾은 경우에만 예배 시각 게이팅을 거친다 — 수동 새로고침이라고 해서 게이팅을 건너뛰면
+        // 안 된다([ISSUE-315]).
+        const hasExactMatch = weeklyResults.some(s => s.worship_type === worshipSetting);
+        const matched = worshipSetting !== 'ALL' && hasExactMatch
+          ? selectGatedWeeklySermon(weeklyResults, worshipSetting, sermonRef.current) ?? weeklyResults[0]
+          : weeklyResults[0];
 
         await saveSermonToAsyncStorage(matched);
         await pushSermonToWidget(matched);
@@ -152,7 +172,12 @@ export function useSermonData(): UseSermonDataReturn {
             const weeklySermons = worshipSetting !== 'ALL' ? await fetchLatestWeeklySermonsFromServer() : [];
             if (weeklySermons.length > 0) {
               await saveWeeklySermonsToAsyncStorage(weeklySermons);
-              const matched = weeklySermons.find(s => s.worship_type === worshipSetting) || weeklySermons[0];
+              // 일치하는 문서가 없을 때의 기존 폴백(weeklySermons[0])은 그대로 두고, 일치하는
+              // 문서를 찾은 경우에만 예배 시각 게이팅을 거친다([ISSUE-315]).
+              const hasExactMatch = weeklySermons.some(s => s.worship_type === worshipSetting);
+              const matched = worshipSetting !== 'ALL' && hasExactMatch
+                ? selectGatedWeeklySermon(weeklySermons, worshipSetting, sermonRef.current) ?? weeklySermons[0]
+                : weeklySermons[0];
               await saveSermonToAsyncStorage(matched);
               await pushSermonToWidget(matched);
               setSermon(matched);
@@ -172,6 +197,29 @@ export function useSermonData(): UseSermonDataReturn {
       },
       (e) => logger.error('Firestore subscription error:', e),
     );
+  }, []);
+
+  // 특정 예배시간 설정 중, 앱을 켜둔 채로 예배 시각 경계를 넘기면 새 FCM 없이도 자동으로
+  // 반영되도록 주기적으로 재확인한다([ISSUE-315]). 이미 캐시된 weekly_sermons만 다시 보므로
+  // 네트워크 호출은 없다.
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const worshipSetting = (await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipSetting || DEFAULT_WORSHIP_TYPE;
+        if (worshipSetting === 'ALL') return;
+        const weekly = await fetchLatestWeeklySermonsFromAsyncStorage();
+        const gated = selectGatedWeeklySermon(weekly, worshipSetting, sermonRef.current);
+        if (gated && compareSermon(gated, sermonRef.current) > 0) {
+          logger.log('[SermonData] 예배시간 경계 도달 감지 → 화면/위젯 갱신');
+          await saveSermonToAsyncStorage(gated);
+          await pushSermonToWidget(gated);
+          setSermon(gated);
+        }
+      } catch (e) {
+        logger.warn('useSermonData: 예배시간 경계 재확인 실패', e);
+      }
+    }, WORSHIP_BOUNDARY_CHECK_INTERVAL_MS);
+    return () => clearInterval(interval);
   }, []);
 
   const onRefresh = useCallback(async () => {
