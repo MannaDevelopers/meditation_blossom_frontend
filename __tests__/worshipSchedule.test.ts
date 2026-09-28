@@ -1,6 +1,7 @@
 import {
   hasWorshipTimeArrived,
   resolveIsoWeekMonday,
+  resolveNextWorshipDateTime,
   resolveWorshipDateTime,
   WORSHIP_SCHEDULE,
 } from '../src/utils/worshipSchedule';
@@ -99,5 +100,30 @@ describe('hasWorshipTimeArrived', () => {
     expect(hasWorshipTimeArrived(undefined, 'SUN_0950')).toBe(true);
     expect(hasWorshipTimeArrived('2026-W37', undefined)).toBe(true);
     expect(hasWorshipTimeArrived('not-a-week', 'SUN_0950')).toBe(true);
+  });
+});
+
+describe('resolveNextWorshipDateTime', () => {
+  it('returns this week\'s time when it has not arrived yet', () => {
+    // 2026-09-28(월) 09:00 -> 이번 주(2026-W40) SUN_1150은 아직 미래(10/4 11:50)
+    const now = new Date(2026, 8, 28, 9, 0, 0);
+    const next = resolveNextWorshipDateTime('SUN_1150', now);
+    expect(next).toEqual(resolveWorshipDateTime('2026-W40', 'SUN_1150'));
+    expect(next.getTime()).toBeGreaterThan(now.getTime());
+  });
+
+  it('rolls over to next week when this week\'s time has already passed', () => {
+    // 2026-10-04(일) 12:00 -> 이번 주 SUN_1150(11:50)은 이미 지남 -> 다음 주(2026-W41)
+    const now = new Date(2026, 9, 4, 12, 0, 0);
+    const next = resolveNextWorshipDateTime('SUN_1150', now);
+    expect(next).toEqual(resolveWorshipDateTime('2026-W41', 'SUN_1150'));
+    expect(next.getTime()).toBeGreaterThan(now.getTime());
+  });
+
+  it('returns exactly now\'s week when called right at the boundary is treated as passed', () => {
+    const scheduled = resolveWorshipDateTime('2026-W40', 'SUN_1150')!;
+    const next = resolveNextWorshipDateTime('SUN_1150', scheduled);
+    // candidate > now 조건이므로 정확히 그 시각이면 "이미 지남"으로 보고 다음 주로 넘어간다.
+    expect(next).toEqual(resolveWorshipDateTime('2026-W41', 'SUN_1150'));
   });
 });

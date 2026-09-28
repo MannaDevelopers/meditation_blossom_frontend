@@ -30,10 +30,12 @@ import WidgetUpdateModule from '../types/WidgetUpdateModule';
 import { fetchLegacySermonFromCache, fetchLatestSermonFromServer, fetchLatestWeeklySermonsFromServer, pushSermonToWidget, saveLegacySermonToCache, saveSermonToAsyncStorage, syncSelectedSermonToWidget, saveWeeklySermonsToAsyncStorage } from '../services/sermonService';
 import { fetchLatestQtFromServer, pushQtToWidget } from '../services/qtService';
 import { logAnalytics } from '../utils/analytics';
+import { getDevWorshipTimeOverride, setDevWorshipTimeOverride } from '../utils/devWorshipTimeOverride';
 import logger from '../utils/logger';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { ThemeColors } from '../theme/colors';
 import { toIsoWeek } from '../utils/isoWeek';
+import { resolveNextWorshipDateTime } from '../utils/worshipSchedule';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SettingsScreen'>;
 
@@ -46,6 +48,7 @@ const SettingsScreen = ({ navigation }: Props) => {
   const [youtubeLinkEnabled, setYoutubeLinkEnabled] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedWorship, setSelectedWorship] = useState<WorshipSetting>(DEFAULT_WORSHIP_TYPE);
+  const [devTimeOverride, setDevTimeOverrideState] = useState<Date | null>(null);
 
   // Firestore를 항상 신뢰하고 새로 조회하면, useFCMListener가 방금 FCM payload로 legacy
   // 전용 캐시에 반영해둔 내용이 있어도(예: 테스트 도구처럼 FCM만 보내고 Firestore는 아직
@@ -259,6 +262,42 @@ const SettingsScreen = ({ navigation }: Props) => {
     }
   };
 
+  // __DEV__ 전용 QA 도구([ISSUE-315]): 기기 시계를 직접 안 건드리고도 예배시간 게이팅
+  // 경계(hasWorshipTimeArrived)를 자유롭게 시뮬레이션한다. setDevWorshipTimeOverride/
+  // getDevWorshipTimeOverride는 __DEV__가 아니면 내부적으로 항상 no-op/null이므로,
+  // 프로덕션 빌드에서 실수로 눌려도 실제 동작에는 영향이 없다.
+  const formatDevTime = (date: Date) =>
+    date.toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' });
+
+  const setDevTimeToBeforeNextWorship = async () => {
+    if (selectedWorship === 'ALL') {
+      Alert.alert('안내', '먼저 위에서 특정 예배시간을 선택하세요. ("전체"는 시각 게이팅 대상이 아닙니다)');
+      return;
+    }
+    const next = resolveNextWorshipDateTime(selectedWorship);
+    const target = new Date(next.getTime() - 60000); // 1분 전
+    await setDevWorshipTimeOverride(target);
+    setDevTimeOverrideState(target);
+    Alert.alert(
+      '가상 시각 설정됨',
+      `${formatDevTime(target)}\n(다음 ${selectedWorship} 예배 1분 전)\n\n` +
+        '이 상태로 FCM을 보내면 게이팅으로 화면/위젯이 안 바뀌어야 합니다. ' +
+        '"가상 시각 +2분" 버튼으로 경계를 넘겨보세요.',
+    );
+  };
+
+  const advanceDevTime = async (minutes: number) => {
+    const base = devTimeOverride ?? new Date();
+    const next = new Date(base.getTime() + minutes * 60000);
+    await setDevWorshipTimeOverride(next);
+    setDevTimeOverrideState(next);
+  };
+
+  const clearDevTimeOverride = async () => {
+    await setDevWorshipTimeOverride(null);
+    setDevTimeOverrideState(null);
+  };
+
   useEffect(() => {
     const loadYoutubeLinkSetting = async () => {
       try {
@@ -271,6 +310,11 @@ const SettingsScreen = ({ navigation }: Props) => {
       }
     };
     loadYoutubeLinkSetting();
+  }, []);
+
+  useEffect(() => {
+    if (!__DEV__) return;
+    getDevWorshipTimeOverride().then(setDevTimeOverrideState);
   }, []);
 
   useEffect(() => {
@@ -456,6 +500,27 @@ const SettingsScreen = ({ navigation }: Props) => {
                   <Text style={styles.fcmLoadingText}>토큰 로딩 중...</Text>
                 )}
               </TouchableOpacity>
+
+              {/* [ISSUE-315] __DEV__ 전용 — 프로덕션 빌드에서는 기능이 no-op이라 혼란을
+                  막기 위해 UI 자체도 렌더링하지 않는다. */}
+              {__DEV__ && (
+                <>
+                  <View style={styles.fcmButton}>
+                    <Text style={styles.devButtonText}>
+                      가상 시각(예배시간 게이팅 QA): {devTimeOverride ? formatDevTime(devTimeOverride) : '사용 안 함(실제 시각)'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={setDevTimeToBeforeNextWorship} style={styles.devButton}>
+                    <Text style={styles.devButtonText}>가상 시각 → 다음 예배 1분 전</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => advanceDevTime(2)} style={styles.devButton}>
+                    <Text style={styles.devButtonText}>가상 시각 +2분 (경계 넘기기)</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={clearDevTimeOverride} style={styles.devButton}>
+                    <Text style={styles.devButtonText}>가상 시각 해제(실제 시각으로 복귀)</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </>
           )}
         </View>

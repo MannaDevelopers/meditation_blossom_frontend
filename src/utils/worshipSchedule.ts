@@ -1,4 +1,5 @@
 import { Sermon, WorshipType } from '../types/Sermon';
+import { toIsoWeek } from './isoWeek';
 
 // 각 예배의 요일(ISO weekday: 월=1 ... 일=7)/시각. src/types/Sermon.ts의 WORSHIP_TYPES 라벨과 1:1 대응.
 // Android WorshipSchedule.kt / iOS WorshipSermonSync.swift와 반드시 동일하게 유지해야 한다([ISSUE-315]).
@@ -58,6 +59,22 @@ export function hasWorshipTimeArrived(
   const scheduled = resolveWorshipDateTime(week, worshipType);
   if (!scheduled) return true;
   return now.getTime() >= scheduled.getTime();
+}
+
+/**
+ * 지금(now) 기준으로 worshipType의 가장 가까운 미래 예배 시각을 반환한다([ISSUE-315]).
+ * QA 도구(히든 개발자 메뉴의 가상 시각 오버라이드)가 "다음 예배 1분 전" 같은 값을
+ * 계산할 때 쓴다. 이미 지난 시각이면 다음 주로 넘어간다.
+ */
+export function resolveNextWorshipDateTime(worshipType: WorshipType, now: Date = new Date()): Date {
+  const currentWeek = toIsoWeek(now);
+  const candidate = resolveWorshipDateTime(currentWeek, worshipType);
+  if (candidate && candidate > now) return candidate;
+
+  const nextWeekAnchor = new Date(now);
+  nextWeekAnchor.setDate(now.getDate() + 7);
+  const nextWeek = toIsoWeek(nextWeekAnchor);
+  return resolveWorshipDateTime(nextWeek, worshipType) ?? nextWeekAnchor;
 }
 
 /**

@@ -14,6 +14,13 @@ export const APP_GROUP_DISPLAY_SERMON_KEY = 'displaySermon';
  * weekly_sermons를 다시 훑어 "지금 보여줘야 할 예배"가 바뀌었으면 화면/위젯을 갱신한다.
  */
 export const WORSHIP_BOUNDARY_CHECK_INTERVAL_MS = 60000;
+/**
+ * __DEV__ 전용 QA 도구(히든 개발자 메뉴)가 쓰는 가상 시각 오버라이드 저장 키([ISSUE-315]).
+ * ISO 문자열을 저장하며, 있으면 hasWorshipTimeArrived 판별 시 실제 현재 시각 대신 이 값을
+ * 쓴다. 기기 시계를 건드리지 않고도 예배시간 경계를 시뮬레이션할 수 있게 하기 위함.
+ * 프로덕션 빌드에서는 절대 읽지 않는다(getEffectiveNow가 __DEV__ 체크).
+ */
+export const DEV_WORSHIP_TIME_OVERRIDE_KEY = 'dev_worship_time_override';
 // 위젯 디자인은 네이티브(Android SharedPreferences/WidgetDesignRepository)에만 저장되고 RN
 // 쪽에는 캐시가 없어서, 저장 후 편집 화면을 나갔다가 다시 들어오면 항상 기본값부터 시작했다.
 // Sermon 콘텐츠가 이미 쓰는 AsyncStorage 캐시 패턴(FCM_SERMON_KEY)과 동일하게, EditScreen이

@@ -23,6 +23,7 @@ import {
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
 import logger from '../utils/logger';
 import { normalizeJsonString } from '../utils/normalize';
+import { getEffectiveNow } from '../utils/devWorshipTimeOverride';
 import { selectGatedWeeklySermon } from '../utils/worshipSchedule';
 
 export async function fetchLatestSermonFromAsyncStorage(): Promise<Sermon | null> {
@@ -266,7 +267,7 @@ export async function syncSelectedSermonToWidget(worshipType: WorshipType): Prom
   // 유지하되, 일치하는 문서를 찾은 경우엔 예배 시각 게이팅을 거친다([ISSUE-315]).
   const hasExactMatch = weekly.some(s => s.worship_type === worshipType);
   const gated = hasExactMatch
-    ? selectGatedWeeklySermon(weekly, worshipType, await fetchLatestSermonFromAsyncStorage())
+    ? selectGatedWeeklySermon(weekly, worshipType, await fetchLatestSermonFromAsyncStorage(), await getEffectiveNow())
     : weekly[0];
   if (!gated) return;
 

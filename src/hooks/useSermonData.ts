@@ -13,6 +13,7 @@ import {
   pushSermonToWidget,
 } from '../services/sermonService';
 import { logAnalytics } from '../utils/analytics';
+import { getEffectiveNow } from '../utils/devWorshipTimeOverride';
 import logger from '../utils/logger';
 import { reconcileFreshDoc } from '../utils/reconcileFreshDoc';
 import { selectGatedWeeklySermon } from '../utils/worshipSchedule';
@@ -48,7 +49,7 @@ export function useSermonData(): UseSermonDataReturn {
         // 캐시에 일치하는 예배가 있어도, 그 예배 시각이 아직 안 됐으면 previouslyDisplayed(이미
         // 보여주던 콘텐츠)를 그대로 쓴다 — 앱을 열 때마다 시각과 무관하게 캐시를 바로 반영하던
         // 것이 이 버그의 핵심 원인이었다([ISSUE-315]).
-        selected = selectGatedWeeklySermon(weeklySermons, worshipSetting, previouslyDisplayed);
+        selected = selectGatedWeeklySermon(weeklySermons, worshipSetting, previouslyDisplayed, await getEffectiveNow());
       }
 
       if (!selected) {
@@ -83,7 +84,7 @@ export function useSermonData(): UseSermonDataReturn {
             // TS 타입상 남는 null 가능성은 방어적으로 freshWeekly[0]로 폴백한다.
             const hasExactMatch = freshWeekly.some(s => s.worship_type === worshipSetting);
             const freshSelected = worshipSetting !== 'ALL' && hasExactMatch
-              ? selectGatedWeeklySermon(freshWeekly, worshipSetting, selected) ?? freshWeekly[0]
+              ? selectGatedWeeklySermon(freshWeekly, worshipSetting, selected, await getEffectiveNow()) ?? freshWeekly[0]
               : freshWeekly[0];
             const next = reconcileFreshDoc(freshSelected, selected, compareSermon);
             if (next) {
@@ -135,7 +136,7 @@ export function useSermonData(): UseSermonDataReturn {
         // 안 된다([ISSUE-315]).
         const hasExactMatch = weeklyResults.some(s => s.worship_type === worshipSetting);
         const matched = worshipSetting !== 'ALL' && hasExactMatch
-          ? selectGatedWeeklySermon(weeklyResults, worshipSetting, sermonRef.current) ?? weeklyResults[0]
+          ? selectGatedWeeklySermon(weeklyResults, worshipSetting, sermonRef.current, await getEffectiveNow()) ?? weeklyResults[0]
           : weeklyResults[0];
 
         await saveSermonToAsyncStorage(matched);
@@ -176,7 +177,7 @@ export function useSermonData(): UseSermonDataReturn {
               // 문서를 찾은 경우에만 예배 시각 게이팅을 거친다([ISSUE-315]).
               const hasExactMatch = weeklySermons.some(s => s.worship_type === worshipSetting);
               const matched = worshipSetting !== 'ALL' && hasExactMatch
-                ? selectGatedWeeklySermon(weeklySermons, worshipSetting, sermonRef.current) ?? weeklySermons[0]
+                ? selectGatedWeeklySermon(weeklySermons, worshipSetting, sermonRef.current, await getEffectiveNow()) ?? weeklySermons[0]
                 : weeklySermons[0];
               await saveSermonToAsyncStorage(matched);
               await pushSermonToWidget(matched);
@@ -208,7 +209,7 @@ export function useSermonData(): UseSermonDataReturn {
         const worshipSetting = (await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipSetting || DEFAULT_WORSHIP_TYPE;
         if (worshipSetting === 'ALL') return;
         const weekly = await fetchLatestWeeklySermonsFromAsyncStorage();
-        const gated = selectGatedWeeklySermon(weekly, worshipSetting, sermonRef.current);
+        const gated = selectGatedWeeklySermon(weekly, worshipSetting, sermonRef.current, await getEffectiveNow());
         if (gated && compareSermon(gated, sermonRef.current) > 0) {
           logger.log('[SermonData] 예배시간 경계 도달 감지 → 화면/위젯 갱신');
           await saveSermonToAsyncStorage(gated);

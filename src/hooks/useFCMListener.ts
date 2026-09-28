@@ -16,6 +16,7 @@ import {
   upsertWeeklySermonFromEvent,
 } from '../services/sermonService';
 import { SermonRaw, WorshipSetting, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
+import { getEffectiveNow } from '../utils/devWorshipTimeOverride';
 import logger from '../utils/logger';
 import { hasWorshipTimeArrived } from '../utils/worshipSchedule';
 
@@ -94,7 +95,7 @@ export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
         if (
           patched &&
           patched.worship_type === worshipSetting &&
-          hasWorshipTimeArrived(patched.week, patched.worship_type)
+          hasWorshipTimeArrived(patched.week, patched.worship_type, await getEffectiveNow())
         ) {
           await saveSermonToAsyncStorage(patched);
           await pushSermonToWidget(patched);
