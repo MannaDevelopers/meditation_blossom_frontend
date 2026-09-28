@@ -184,7 +184,7 @@ class NotificationService: UNNotificationServiceExtension {
         WorshipSermonSync.appendPendingWeeklySermon(jsonString, week: week, worshipType: worshipType)
 
         let setting = WorshipSermonSync.currentSetting()
-        guard WorshipSermonSync.shouldApplyWeeklyEvent(worshipType: worshipType, stored: setting) else {
+        guard WorshipSermonSync.shouldApplyWeeklyEvent(worshipType: worshipType, stored: setting, week: week) else {
             NSLog("NotificationService: weekly sermon queued only (worship_type=%@, setting=%@)", worshipType, setting ?? "unknown")
             return
         }
