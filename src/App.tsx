@@ -150,6 +150,10 @@ function App(): React.JSX.Element {
       );
   }, []);
 
+  useEffect(() => {
+    logAnalytics.setDeviceTheme(isDark ? 'dark' : 'light');
+  }, [isDark]);
+
   if (isCheckingForceUpdate || !initialTabName) {
     return (
       <View style={[styles.loading, {backgroundColor: colors.surface}]}>

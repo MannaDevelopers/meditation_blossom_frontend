@@ -30,6 +30,7 @@ import {
 } from '../constants';
 import { isPresetColor } from '../utils/widgetDesignColor';
 import { formatQtDateLabel } from '../utils/textFormatting';
+import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
 
@@ -642,6 +643,7 @@ const EditScreen = ({ navigation, route }: Props) => {
     (['sermon', 'qt'] as const).forEach(source => {
       if (JSON.stringify(draftDesigns[source]) === JSON.stringify(savedDesigns[source])) return;
       const design = draftDesigns[source];
+      logAnalytics.widgetDesignSave(source);
       setSavedDesigns(prev => ({ ...prev, [source]: design }));
       // 네이티브가 돌려준 영구 경로 디자인을 캐싱한다 — draft(피커의 임시 경로)를 그대로 캐싱하면
       // 재진입 시 그 임시 파일이 이미 정리돼 미리보기가 깨지거나 재저장이 실패할 수 있다([#251]).

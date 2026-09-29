@@ -31,6 +31,7 @@ import {
 } from '../services/meditationNoteService';
 import { formatMeditationNoteForCopy, hasCopyableNote } from '../utils/meditationNote';
 import { decideNoteGuardAction, NoteIdentity } from '../utils/meditationNoteGuard';
+import { logAnalytics } from '../utils/analytics';
 import logger from '../utils/logger';
 
 /** 입력 중 매 글자마다 AsyncStorage를 때리지 않도록 묶어서 저장하는 간격 */
@@ -78,6 +79,8 @@ const MeditationNoteSheet = ({ source, title, identity }: Props) => {
 
   // 로드가 늦게 도착하는 사이 사용자가 이미 타이핑을 시작했으면 덮어쓰지 않는다.
   const hasTypedRef = useRef(false);
+  // 묵상 작성 시작 이벤트를 세션당 1회만 남긴다.
+  const hasLoggedWriteRef = useRef(false);
   useEffect(() => {
     let cancelled = false;
     loadMeditationNote(source).then(saved => {
@@ -167,6 +170,10 @@ const MeditationNoteSheet = ({ source, title, identity }: Props) => {
 
   const handleChangeText = (text: string) => {
     hasTypedRef.current = true;
+    if (!hasLoggedWriteRef.current && text.trim()) {
+      hasLoggedWriteRef.current = true;
+      logAnalytics.meditationNoteStarted(source);
+    }
     setNote(text);
     latestNote.current = text;
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -291,6 +298,7 @@ const MeditationNoteSheet = ({ source, title, identity }: Props) => {
   // 여부를 알 수 없으므로 완료 문구도 두지 않는다 — 시트가 뜨는 것 자체가 피드백이다.
   const handleShare = () => {
     if (!hasCopyableNote(note)) return;
+    logAnalytics.meditationShare(source);
     flushSave();
     Share.share(
       { message: formatMeditationNoteForCopy(title, note) },

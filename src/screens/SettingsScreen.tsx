@@ -85,6 +85,8 @@ const SettingsScreen = ({ navigation }: Props) => {
 
   const handleWorshipChange = async (type: WorshipSetting) => {
     setSelectedWorship(type);
+    logAnalytics.worshipSettingChange(type);
+    logAnalytics.setWorshipSetting(type);
     try {
       await AsyncStorage.setItem(USER_WORSHIP_SETTING_KEY, type);
       // iOS: NotificationService(Extension)는 RN AsyncStorage를 못 읽으므로 App Group에도
@@ -138,6 +140,7 @@ const SettingsScreen = ({ navigation }: Props) => {
     const previous = defaultTab;
     if (previous === name) return;
     setDefaultTab(name);
+    logAnalytics.defaultScreenChange(name === '주일 말씀' ? 'sunday_sermon' : 'daily_qt');
     try {
       await LocalStorageService.set<StorageData['DEFAULT_MAIN_TAB']>(
         LOCAL_STORAGE_KEYS.DEFAULT_MAIN_TAB,
