@@ -65,6 +65,7 @@ const HomeScreen = () => {
   const copyPassage = useCallback(
     (index: number) => {
       Clipboard.setString(buildPassageCopyText(passages[index]));
+      logAnalytics.contentCopy('home', 'passage');
       showToast('구절을 복사했어요');
     },
     [passages, showToast],
@@ -74,6 +75,7 @@ const HomeScreen = () => {
     if (passages.length === 0) return;
     // 표시용 줄바꿈이 없는 원문 제목을 넘긴다([#166])
     Clipboard.setString(buildFullCopyText({ title: sermon?.title, passages }));
+    logAnalytics.contentCopy('home', 'all');
     showToast('말씀 전체를 복사했어요');
   }, [passages, sermon?.title, showToast]);
 

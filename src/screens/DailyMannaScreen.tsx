@@ -102,6 +102,7 @@ const DailyMannaScreen = () => {
   const copyPassage = useCallback(
     (index: number) => {
       Clipboard.setString(buildPassageCopyText(passages[index]));
+      logAnalytics.contentCopy('daily_manna', 'passage');
       showToast('구절을 복사했어요');
     },
     [passages, showToast],
@@ -113,12 +114,14 @@ const DailyMannaScreen = () => {
     Clipboard.setString(
       buildFullCopyText({ title: qt?.title, passages, questions: meditationQuestions }),
     );
+    logAnalytics.contentCopy('daily_manna', 'all');
     showToast('말씀 전체를 복사했어요');
   }, [passages, qt?.title, meditationQuestions, showToast]);
 
   const copyQuestions = useCallback(() => {
     if (meditationQuestions.length === 0) return;
     Clipboard.setString(buildQuestionsCopyText(meditationQuestions));
+    logAnalytics.contentCopy('daily_manna', 'questions');
     showToast('묵상 질문을 모두 복사했어요');
   }, [meditationQuestions, showToast]);
 
