@@ -34,6 +34,12 @@ type WidgetSource = 'sermon' | 'qt';
 const Tab = createMaterialTopTabNavigator<MainTabParamList>();
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
+// 두 버튼이 맞붙어 있어, 서로 마주보는 쪽(편집=right, 설정=left)에 hitSlop을 주면 영역이 겹치고
+// 나중에 그려지는 설정 버튼이 편집 아이콘 우측 절반의 터치를 가로채 설정 화면이 열린다([ISSUE-322]).
+// 마주보는 쪽은 0으로 두어 두 터치 영역이 겹치지 않게 한다.
+const EDIT_HIT_SLOP = {top: 20, bottom: 20, left: 20, right: 0};
+const SETTINGS_HIT_SLOP = {top: 20, bottom: 20, left: 0, right: 20};
+
 const SharedHeader = ({
   activeSource,
   colors,
@@ -80,7 +86,7 @@ const SharedHeader = ({
         <TouchableOpacity
           onPress={openEditScreen}
           style={styles.editButton}
-          hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}>
+          hitSlop={EDIT_HIT_SLOP}>
           <SvgIcon
             name="EditPalette"
             size={24}
@@ -91,7 +97,7 @@ const SharedHeader = ({
         <TouchableOpacity
           onPress={() => navigation.navigate('SettingsScreen')}
           style={styles.settingsButton}
-          hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}>
+          hitSlop={SETTINGS_HIT_SLOP}>
           {/* iOS에서 react-native-svg가 자체 터치 responder가 되어 아이콘을 직접 누르면
               터치를 삼키는 문제가 있어, pointerEvents="none"으로 부모 TouchableOpacity에 통과시킨다.
               (YouTube 버튼과 동일한 ISSUE-138 패턴) */}
@@ -217,8 +223,8 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
     },
     editButton: {
-      // 아이콘 주변에 실제 터치 가능한 패딩을 더해 탭 영역을 넓힌다.
-      padding: 7,
+      // 아이콘(24px) 주변에 실제 터치 가능한 패딩을 더해 탭 영역을 넓힌다(설정 버튼과 동일).
+      padding: 10,
     },
     settingsButton: {
       // 아이콘(24px) 주변에 실제 터치 가능한 패딩을 더해 탭 영역을 넓힌다.
