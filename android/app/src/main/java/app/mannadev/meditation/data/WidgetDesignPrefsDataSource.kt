@@ -165,7 +165,10 @@ class WidgetDesignPrefsDataSource(
      * 실패하는 경우가 있었다). content://(직접 MediaStore URI 등)는 기존대로 ContentResolver를 쓴다.
      */
     private fun openUriInputStream(uri: Uri) =
-        if (uri.scheme == "file" && uri.path != null) {
+        if ((uri.scheme == "file" || uri.scheme == null) && uri.path != null) {
+            // scheme이 없는 순수 절대 경로(저장 후 재진입한 편집 화면이 들고 있는 영구 경로,
+            // 예: /data/user/0/.../widget_design_background_*.jpg)도 파일로 읽는다 — 그렇지 않으면
+            // ContentResolver로 넘어가 "No content provider"로 저장이 실패한다.
             File(uri.path!!).inputStream()
         } else {
             context.contentResolver.openInputStream(uri)
