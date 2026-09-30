@@ -152,8 +152,9 @@ const ColorSwatch = styled.TouchableOpacity<{ color: string; selected: boolean }
   background-color: ${({ color }) => color};
   justify-content: center;
   align-items: center;
-  border-color: white;
-  border-width: ${({ selected }) => (selected ? '2px' : '0')};
+  /* 검은 배경에서 검정 등 어두운 색이 묻혀 '없는 것'처럼 보이지 않도록 미선택에도 얇은 반투명 테두리를 둔다. 선택은 불투명 흰색 2px + 확대 + ✓로 구분된다. */
+  border-color: ${({ selected }) => (selected ? 'white' : 'rgba(255, 255, 255, 0.35)')};
+  border-width: ${({ selected }) => (selected ? '2px' : '1px')};
 `;
 
 const CustomColorSwatch = styled.TouchableOpacity<{ selected: boolean; color?: string }>`
