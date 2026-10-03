@@ -17,7 +17,7 @@ import { logAnalytics } from '../utils/analytics';
 import { getEffectiveNow } from '../utils/devWorshipTimeOverride';
 import logger from '../utils/logger';
 import { reconcileFreshDoc } from '../utils/reconcileFreshDoc';
-import { selectGatedWeeklySermon } from '../utils/worshipSchedule';
+import { hasArrivedWeeklySermon, selectGatedWeeklySermon } from '../utils/worshipSchedule';
 
 export interface UseSermonDataReturn {
   sermon: Sermon | null;
@@ -48,11 +48,13 @@ export function useSermonData(): UseSermonDataReturn {
         const weeklySermons = (await fetchLatestWeeklySermonsFromAsyncStorage()) || [];
         localWeeklySermons = weeklySermons;
         const previouslyDisplayed = await fetchLatestSermonFromAsyncStorage();
-        candidateMissing = !weeklySermons.some(s => s.worship_type === worshipSetting);
-        // 캐시에 일치하는 예배가 있어도, 그 예배 시각이 아직 안 됐으면 previouslyDisplayed(이미
-        // 보여주던 콘텐츠)를 그대로 쓴다 — 앱을 열 때마다 시각과 무관하게 캐시를 바로 반영하던
-        // 것이 이 버그의 핵심 원인이었다([ISSUE-315]).
-        selected = selectGatedWeeklySermon(weeklySermons, worshipSetting, previouslyDisplayed, await getEffectiveNow());
+        const now = await getEffectiveNow();
+        // 시각이 이미 지난 일치 항목이 캐시에 없으면(예: 이번 주 FCM만 받아둔 상태) 이 예배시간에서
+        // 지금 보여줄 말씀을 캐시로는 알 수 없다 → 아래에서 서버로 지난주까지 보충한다([ISSUE-329]).
+        candidateMissing = !hasArrivedWeeklySermon(weeklySermons, worshipSetting, now);
+        // 같은 예배시간 항목 중 시각이 이미 지난 가장 최신 주 항목을 쓴다. 앱을 열 때마다 시각과
+        // 무관하게 캐시를 바로 반영하던 것이 이 버그의 핵심 원인이었다([ISSUE-315]).
+        selected = selectGatedWeeklySermon(weeklySermons, worshipSetting, previouslyDisplayed, now);
       }
 
       if (!selected) {
@@ -93,9 +95,17 @@ export function useSermonData(): UseSermonDataReturn {
             // 보장되므로 selectGatedWeeklySermon도 항상 non-null을 반환하지만, TS 타입상 남는
             // null 가능성은 방어적으로 freshWeekly[0]로 폴백한다.
             const freshSelected = worshipSetting !== 'ALL'
-              ? selectGatedWeeklySermon(freshWeekly, worshipSetting, selected, await getEffectiveNow()) ?? freshWeekly[0]
+              ? selectGatedWeeklySermon(mergedWeekly, worshipSetting, selected, await getEffectiveNow()) ?? freshWeekly[0]
               : freshWeekly[0];
-            const next = reconcileFreshDoc(freshSelected, selected, compareSermon);
+            // 지난주 말씀이 새로 골라진 경우 date가 selected(예: 옵션 전환 직전에 보던 다른
+            // 예배의 이번 주 말씀)보다 오래돼 reconcileFreshDoc의 "더 최신만 교체" 규칙에 걸려
+            // 버려진다([ISSUE-329]). 이 예배시간의 올바른 항목이 달라졌다면 date와 무관하게 교체한다.
+            const isDifferentWeeklyEntry =
+              freshSelected.worship_type === worshipSetting &&
+              (selected.worship_type !== worshipSetting || selected.week !== freshSelected.week);
+            const next = isDifferentWeeklyEntry
+              ? freshSelected
+              : reconcileFreshDoc(freshSelected, selected, compareSermon);
             if (next) {
               logger.log(needsWeeklyRefill
                 ? '[loadLocalData] 선택된 예배의 weekly 캐시 미스(마이그레이션) → 서버에서 교체함'
@@ -139,14 +149,17 @@ export function useSermonData(): UseSermonDataReturn {
       const weeklyResults = worshipSetting !== 'ALL' ? (await fetchLatestWeeklySermonsFromServer()) || [] : [];
       logger.log('[SermonData] fetchFromServer: result count=' + weeklyResults.length);
       if (weeklyResults.length > 0) {
-        await saveWeeklySermonsToAsyncStorage(weeklyResults);
+        // 캐시를 통째로 덮어쓰지 않고 병합한다([ISSUE-329]) — 서버가 최근 주만 돌려주므로 덮어쓰면
+        // FCM으로만 받아둔 항목이 사라진다.
+        const mergedWeekly = mergeFreshWeeklyResults(await fetchLatestWeeklySermonsFromAsyncStorage(), weeklyResults);
+        await saveWeeklySermonsToAsyncStorage(mergedWeekly);
         // 일치하는 문서가 없을 때 weeklyResults[0]을 그냥 보여주던 예전 폴백은 제거했다
         // ([ISSUE-315]) — 다른 예배시간의 아직 안 된 콘텐츠가 새치기될 수 있어서다(실사용자
         // 리포트: 설정을 이리저리 바꾸는 것만으로 게이팅이 우회됨). 일치하는 문서가 없으면
         // sermonRef.current(이미 보여주던 콘텐츠, 없으면 null)를 그대로 쓴다 — 수동
         // 새로고침이라고 해서 게이팅을 건너뛰면 안 된다.
         const matched = worshipSetting !== 'ALL'
-          ? selectGatedWeeklySermon(weeklyResults, worshipSetting, sermonRef.current, await getEffectiveNow()) ?? weeklyResults[0]
+          ? selectGatedWeeklySermon(mergedWeekly, worshipSetting, sermonRef.current, await getEffectiveNow()) ?? weeklyResults[0]
           : weeklyResults[0];
 
         await saveSermonToAsyncStorage(matched);
@@ -182,11 +195,12 @@ export function useSermonData(): UseSermonDataReturn {
             const worshipSetting = (await AsyncStorage.getItem(USER_WORSHIP_SETTING_KEY)) as WorshipSetting || DEFAULT_WORSHIP_TYPE;
             const weeklySermons = worshipSetting !== 'ALL' ? await fetchLatestWeeklySermonsFromServer() : [];
             if (weeklySermons.length > 0) {
-              await saveWeeklySermonsToAsyncStorage(weeklySermons);
+              const mergedWeekly = mergeFreshWeeklyResults(await fetchLatestWeeklySermonsFromAsyncStorage(), weeklySermons);
+              await saveWeeklySermonsToAsyncStorage(mergedWeekly);
               // 일치하는 문서가 없을 때 weeklySermons[0]을 그냥 보여주던 예전 폴백은 제거했다
               // ([ISSUE-315], 위 fetchFromServer와 동일한 이유).
               const matched = worshipSetting !== 'ALL'
-                ? selectGatedWeeklySermon(weeklySermons, worshipSetting, sermonRef.current, await getEffectiveNow()) ?? weeklySermons[0]
+                ? selectGatedWeeklySermon(mergedWeekly, worshipSetting, sermonRef.current, await getEffectiveNow()) ?? weeklySermons[0]
                 : weeklySermons[0];
               await saveSermonToAsyncStorage(matched);
               await pushSermonToWidget(matched);

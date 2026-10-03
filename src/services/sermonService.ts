@@ -24,7 +24,7 @@ import WidgetUpdateModule from '../types/WidgetUpdateModule';
 import logger from '../utils/logger';
 import { normalizeJsonString } from '../utils/normalize';
 import { getEffectiveNow } from '../utils/devWorshipTimeOverride';
-import { selectGatedWeeklySermon } from '../utils/worshipSchedule';
+import { hasArrivedWeeklySermon, pruneWeeklySermons, selectGatedWeeklySermon } from '../utils/worshipSchedule';
 
 export async function fetchLatestSermonFromAsyncStorage(): Promise<Sermon | null> {
   try {
@@ -174,15 +174,11 @@ export async function saveWeeklySermonsToAsyncStorage(sermons: Sermon[]): Promis
 }
 
 // iOS 전용: NotificationService(Extension)가 앱 종료 상태에서 App Group에 쌓아둔 sermons-v2
-// 항목을 앱 실행 시 weekly_sermons 캐시로 병합한다([#306], useAppGroupSync). 네이티브가 이미
-// upsertWeeklySermonFromEvent와 동일한 규칙(같은 week의 다른 worship_type은 보존, 같은
-// worship_type은 교체, 다른 week는 버림)으로 대기열을 정리해뒀으므로, 여기서는 그 결과를
-// 기존 캐시에 순서대로 반복 적용하기만 하면 된다.
+// 항목을 앱 실행 시 weekly_sermons 캐시로 병합한다([#306], useAppGroupSync). 네이티브 대기열도
+// upsertWeeklySermonFromEvent와 동일한 규칙((week, worship_type) 같으면 교체, 나머지 보존,
+// 최근 주만 유지)으로 정리해뒀으므로, 여기서는 그 결과를 기존 캐시에 순서대로 반복 적용한다.
 export function mergeWeeklySermonIntoCache(existing: Sermon[], incoming: Sermon): Sermon[] {
-  const sameWeekOthers = existing.filter(
-    s => s.week === incoming.week && s.worship_type !== incoming.worship_type,
-  );
-  return [...sameWeekOthers, incoming];
+  return mergeFreshWeeklyResults(existing, [incoming]);
 }
 
 /**
@@ -203,14 +199,15 @@ export function mergeWeeklySermonIntoCache(existing: Sermon[], incoming: Sermon)
 export function mergeFreshWeeklyResults(existing: Sermon[], fresh: Sermon[]): Sermon[] {
   const freshKeys = new Set(fresh.map(s => `${s.week}::${s.worship_type}`));
   const preserved = existing.filter(s => !freshKeys.has(`${s.week}::${s.worship_type}`));
-  return [...preserved, ...fresh];
+  // 지난주 항목을 보관해야 "아직 이번 주 예배 시각 전"일 때 지난주 말씀을 계속 보여줄 수 있다
+  // ([ISSUE-329]). 대신 무한히 쌓이지 않도록 최근 주만 남긴다.
+  return pruneWeeklySermons([...preserved, ...fresh]);
 }
 
 // sermons-v2 UPDATED/CREATED FCM payload 하나로 weekly_sermons 캐시의 해당 문서 하나만
 // 갱신한다([#280]). week/worship_type이 없으면(레거시 이벤트 등) 패치할 수 없으므로 null 반환 —
 // 호출자는 이 경우 fetchLatestWeeklySermonsFromServer()로 폴백해야 한다.
-// 캐시가 다른(이전) 주간 데이터만 갖고 있으면, 그 주 데이터는 버리고 이 문서 하나로 새 주를 시작한다
-// (주가 바뀌는 시점에 오래된 예배 데이터가 새 주 데이터와 섞이는 것을 방지).
+// 같은 (week, worship_type) 항목만 교체하고, 다른 예배/다른 주 항목은 최근 주 범위 안에서 보존한다.
 export async function upsertWeeklySermonFromEvent(raw: SermonRaw): Promise<Sermon | null> {
   if (!raw.week || !raw.worship_type) return null;
 
@@ -230,12 +227,10 @@ export async function upsertWeeklySermonFromEvent(raw: SermonRaw): Promise<Sermo
     incoming.id = `${raw.week}_${raw.worship_type}`;
   }
 
+  // 다른 주 항목을 버리지 않는다([ISSUE-329]) — 이번 주 FCM 하나가 왔다고 지난주 항목을 지우면
+  // 아직 이번 주 예배 시각 전인 다른 예배시간 옵션에서 "지난주 말씀"을 보여줄 수 없다.
   const weekly = await fetchLatestWeeklySermonsFromAsyncStorage();
-  const sameWeekOthers = weekly.filter(
-    s => s.week === incoming.week && s.worship_type !== incoming.worship_type,
-  );
-  const next = [...sameWeekOthers, incoming];
-  await saveWeeklySermonsToAsyncStorage(next);
+  await saveWeeklySermonsToAsyncStorage(mergeWeeklySermonIntoCache(weekly, incoming));
   return incoming;
 }
 
@@ -281,15 +276,27 @@ export async function sermonFromLegacyEvent(raw: SermonRaw): Promise<Sermon> {
 // 환경처럼 애초에 Firestore에 등록도 안 한) 다른 예배시간의 FCM 수신 콘텐츠가 통째로
 // 날아가버린다(실사용자 리포트로 발견: 설정을 바꿀 때마다 방금 FCM으로 받은 내용이 사라짐).
 // mergeFreshWeeklyResults로 "이번에 새로 받아온 예배시간"만 교체하고 나머지는 그대로 둔다.
+/**
+ * 서버에서 최근 주 목록을 받아 weekly_sermons 캐시에 병합 저장하고, 병합된 캐시를 반환한다
+ * ([ISSUE-329]). 서버가 비어 있으면 캐시를 건드리지 않고 기존 캐시를 그대로 반환한다.
+ */
+export async function refreshWeeklyCacheFromServer(): Promise<Sermon[]> {
+  const existing = await fetchLatestWeeklySermonsFromAsyncStorage();
+  const fresh = await fetchLatestWeeklySermonsFromServer();
+  if (fresh.length === 0) return existing;
+  const merged = mergeFreshWeeklyResults(existing, fresh);
+  await saveWeeklySermonsToAsyncStorage(merged);
+  return merged;
+}
+
 export async function syncSelectedSermonToWidget(worshipType: WorshipType): Promise<void> {
   let weekly = await fetchLatestWeeklySermonsFromAsyncStorage();
-  if (weekly.length === 0 || !weekly.some(s => s.worship_type === worshipType)) {
+  const now = await getEffectiveNow();
+  // 캐시에 "시각이 이미 지난" 일치 항목이 없으면(예: 이번 주 FCM만 받아둔 상태) 지금 보여줄 말씀을
+  // 캐시로는 알 수 없다 — 서버에서 지난주까지 가져와 채운다([ISSUE-329]).
+  if (!hasArrivedWeeklySermon(weekly, worshipType, now)) {
     try {
-      const fresh = await fetchLatestWeeklySermonsFromServer();
-      if (fresh.length > 0) {
-        weekly = mergeFreshWeeklyResults(weekly, fresh);
-        await saveWeeklySermonsToAsyncStorage(weekly);
-      }
+      weekly = await refreshWeeklyCacheFromServer();
     } catch (e) {
       logger.warn('syncSelectedSermonToWidget: 로컬 캐시에 일치하는 예배가 없어 서버 폴백 조회 시도했으나 실패 (오프라인?)', e);
     }
@@ -298,7 +305,7 @@ export async function syncSelectedSermonToWidget(worshipType: WorshipType): Prom
 
   // 그래도 일치하는 예배가 없으면(서버에도 없는 경우) currentlyDisplayed(이미 보여주던
   // 콘텐츠)를 유지한다 — selectGatedWeeklySermon의 기본 동작과 동일.
-  const gated = selectGatedWeeklySermon(weekly, worshipType, await fetchLatestSermonFromAsyncStorage(), await getEffectiveNow());
+  const gated = selectGatedWeeklySermon(weekly, worshipType, await fetchLatestSermonFromAsyncStorage(), now);
   if (!gated) return;
 
   await saveSermonToAsyncStorage(gated);
@@ -307,12 +314,19 @@ export async function syncSelectedSermonToWidget(worshipType: WorshipType): Prom
 
 // sermons-v2: 주말 4개 예배 문서가 공통 'week'(ISO 8601 week_number, 예: "2026-W37")를 공유한다.
 // 토요/주일 예배는 실제 date가 다르므로 date가 아닌 week로 같은 주 문서를 묶는다.
+//
+// 최근 [WEEKLY_SERVER_FETCH_WEEKS]개 주를 반환한다([ISSUE-329]). 최신 주 한 주만 가져오면 주보가
+// 일찍 올라온 상태(수요일 등)에서 "아직 예배 시각이 안 된 이번 주" 대신 보여줄 "지난주 말씀"을
+// 서버에서 가져올 방법이 없다. 호출자는 반환값을 캐시에 병합(mergeFreshWeeklyResults)하고
+// selectGatedWeeklySermon으로 지금 보여줄 항목을 골라야 한다.
+export const WEEKLY_SERVER_FETCH_WEEKS = 2;
+
 export async function fetchLatestWeeklySermonsFromServer(): Promise<Sermon[]> {
   const db = getFirestore();
   const q = query(
     collection(db, 'sermons-v2'),
     orderBy('week', 'desc'),
-    limit(8)
+    limit(WEEKLY_SERVER_FETCH_WEEKS * 6)
   );
   const snapshot = await getDocsFromServer(q);
   if (snapshot.empty) return [];
@@ -328,6 +342,11 @@ export async function fetchLatestWeeklySermonsFromServer(): Promise<Sermon[]> {
   }
 
   if (allSermons.length === 0) return [];
-  const latestWeek = allSermons[0].week;
-  return allSermons.filter(s => s.week === latestWeek);
+  // week desc로 정렬돼 있으므로 처음 등장하는 N개 week를 최근 주로 본다.
+  const recentWeeks = new Set<string | undefined>();
+  for (const s of allSermons) {
+    if (recentWeeks.size >= WEEKLY_SERVER_FETCH_WEEKS && !recentWeeks.has(s.week)) break;
+    recentWeeks.add(s.week);
+  }
+  return allSermons.filter(s => recentWeeks.has(s.week));
 }

@@ -6,10 +6,9 @@ import {
   readAppGroupData,
   syncAppGroupToAsyncStorage,
   fetchLatestSermonFromServer,
-  fetchLatestWeeklySermonsFromServer,
+  refreshWeeklyCacheFromServer,
   saveLegacySermonToCache,
   saveSermonToAsyncStorage,
-  saveWeeklySermonsToAsyncStorage,
   sermonFromLegacyEvent,
   syncSelectedSermonToWidget,
   pushSermonToWidget,
@@ -106,9 +105,9 @@ export function useFCMListener(onUpdate: () => void | Promise<unknown>): void {
         await saveLegacySermonToCache(legacyFromPayload);
       } else {
         // 정말 payload가 없는 wake-up(레거시 토픽 등) → 폴백으로 전체 재조회
-        const weekly = await fetchLatestWeeklySermonsFromServer();
-        if (weekly && weekly.length > 0) {
-          await saveWeeklySermonsToAsyncStorage(weekly);
+        // 서버 결과를 캐시에 통째로 덮어쓰지 않고 병합한다([ISSUE-329]).
+        const weekly = await refreshWeeklyCacheFromServer();
+        if (weekly.length > 0) {
           await syncSelectedSermonToWidget(worshipSetting);
         }
       }

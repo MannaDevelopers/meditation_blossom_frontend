@@ -470,9 +470,107 @@ describe('useSermonData', () => {
         await result.current.fetchFromServer();
       });
 
-      expect(mockSaveWeeklyToAsyncStorage).toHaveBeenCalledWith(noMatchList);
+      // 캐시에 있던 항목은 보존하고 서버 결과를 병합해 저장한다([ISSUE-329]).
+      expect(mockSaveWeeklyToAsyncStorage).toHaveBeenCalledWith(
+        expect.arrayContaining([alreadyDisplayed, ...noMatchList]),
+      );
       expect(result.current.sermon).toEqual(alreadyDisplayed);
       expect(result.current.sermon?.worship_type).not.toBe('SUN_0950');
+    });
+  });
+
+  // [ISSUE-329] 토요일 저녁(주일 예배 전) 실기기 리포트: 옵션을 옮겨 다니거나 "데이터 새로고침"을
+  // 눌러도 아직 시각이 안 된 주일 예배는 지난주 말씀이 계속 보여야 한다.
+  describe('[ISSUE-329] 예배 시각 전에는 지난주 말씀 유지', () => {
+    const ts = { seconds: 0, nanoseconds: 0 };
+    const make = (id: string, week: string, worship_type: string, date: string) => ({
+      id, title: id, content: 'C', date, week, worship_type: worship_type as any,
+      video_url: 'https://youtu.be/x', created_at: ts, updated_at: ts,
+    });
+    // 2026-10-03(토) 20:00 — 토요 17:00 예배는 지났고 주일 예배는 아직 안 됨. 이번 주 = 2026-W40.
+    const SATURDAY_EVENING = new Date(2026, 9, 3, 20, 0, 0);
+    const lastWeekSun = make('w39-sun0950', '2026-W39', 'SUN_0950', '2026-09-27');
+    const thisWeekSat = make('w40-sat', '2026-W40', 'SAT_1700', '2026-10-03');
+    const thisWeekSun = make('w40-sun0950', '2026-W40', 'SUN_0950', '2026-10-04');
+    const lastWeekSat = make('w39-sat', '2026-W39', 'SAT_1700', '2026-09-26');
+
+    beforeEach(() => {
+      jest.setSystemTime(SATURDAY_EVENING);
+      (AsyncStorage.getItem as jest.Mock).mockImplementation((key) => {
+        if (key === 'user_worship_setting') return Promise.resolve('SUN_0950');
+        return Promise.resolve(null);
+      });
+      mockSaveWeeklyToAsyncStorage.mockResolvedValue(undefined);
+      mockSaveSermonToAsyncStorage.mockResolvedValue(undefined);
+      mockPushSermonToWidget.mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+      jest.setSystemTime(REAL_NOW);
+    });
+
+    it('옵션 전환 직후: 직전에 보던 다른 예배(토요 이번 주) 대신 이 예배의 지난주 말씀을 보여준다 (증상 1)', async () => {
+      // 캐시에 지난주 주일 말씀이 보관돼 있고, 슬롯(fcm_sermon)엔 직전 옵션(토요)의 이번 주 말씀이 남아 있다.
+      mockFetchWeeklyFromAsyncStorage.mockResolvedValue([lastWeekSun, thisWeekSat, thisWeekSun]);
+      mockFetchFromAsyncStorage.mockResolvedValue(thisWeekSat);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => { await result.current.loadLocalData(); });
+
+      expect(result.current.sermon).toEqual(lastWeekSun);
+    });
+
+    it('캐시에 지난주 항목이 없으면 서버에서 지난주까지 가져와 이 예배의 지난주 말씀으로 교체한다 (증상 1)', async () => {
+      // 이번 주 FCM만 받아둔 캐시 + 직전 옵션(토요) 슬롯. date가 더 오래된 지난주 항목이라도 교체돼야 한다.
+      mockFetchWeeklyFromAsyncStorage.mockResolvedValue([thisWeekSat, thisWeekSun]);
+      mockFetchFromAsyncStorage.mockResolvedValue(thisWeekSat);
+      mockFetchWeeklyFromServer.mockResolvedValue([thisWeekSat, thisWeekSun, lastWeekSat, lastWeekSun]);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => { await result.current.loadLocalData(); });
+
+      expect(mockFetchWeeklyFromServer).toHaveBeenCalled();
+      expect(mockSaveSermonToAsyncStorage).toHaveBeenCalledWith(lastWeekSun);
+      expect(result.current.sermon).toEqual(lastWeekSun);
+    });
+
+    it('서버 새로고침: 서버에 이번 주 주일 말씀이 올라가 있어도 시각 전이면 지난주 말씀을 보여준다 (증상 2)', async () => {
+      mockFetchWeeklyFromAsyncStorage.mockResolvedValue([]);
+      mockFetchWeeklyFromServer.mockResolvedValue([thisWeekSat, thisWeekSun, lastWeekSat, lastWeekSun]);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => { await result.current.fetchFromServer(); });
+
+      expect(result.current.sermon).toEqual(lastWeekSun);
+      expect(mockPushSermonToWidget).toHaveBeenCalledWith(lastWeekSun);
+      // 이번 주 항목도 캐시엔 저장해둔다 — 시각이 되면 바로 넘어가야 하므로.
+      expect(mockSaveWeeklyToAsyncStorage).toHaveBeenCalledWith(
+        expect.arrayContaining([thisWeekSun, lastWeekSun]),
+      );
+    });
+
+    it('서버 새로고침 후 예배 시각을 넘기면 서버를 다시 부르지 않고 이번 주 말씀으로 넘어간다 (증상 2)', async () => {
+      // 토요일 20:00 → 주일 09:49
+      jest.setSystemTime(new Date(2026, 9, 4, 9, 49, 0));
+      const merged = [thisWeekSat, thisWeekSun, lastWeekSat, lastWeekSun];
+      mockFetchWeeklyFromAsyncStorage.mockResolvedValue(merged);
+      mockFetchFromAsyncStorage.mockResolvedValue(lastWeekSun);
+
+      const { result } = renderHook(() => useSermonData());
+      await act(async () => { await result.current.loadLocalData(); });
+      expect(result.current.sermon).toEqual(lastWeekSun);
+
+      jest.setSystemTime(new Date(2026, 9, 4, 9, 51, 0));
+      mockFetchFromAsyncStorage.mockResolvedValue(lastWeekSun);
+      await act(async () => {
+        jest.advanceTimersByTime(60000);
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(result.current.sermon).toEqual(thisWeekSun);
+      expect(mockPushSermonToWidget).toHaveBeenCalledWith(thisWeekSun);
     });
   });
 

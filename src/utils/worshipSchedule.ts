@@ -78,23 +78,47 @@ export function resolveNextWorshipDateTime(worshipType: WorshipType, now: Date =
 }
 
 /**
- * weekly_sermons 캐시에 같은 worshipType이 여러 개(서로 다른 week) 있을 수 있다([ISSUE-315]) —
- * 서버 재조회는 항상 그 주의 예배 전체를 한꺼번에 반환하므로, 캐시에만 있던(아직 서버에
- * 반영 안 된) 다른 week의 항목과 뒤섞일 수 있다(mergeFreshWeeklyResults 참고). 이럴 때는
- * week가 더 최신인(사전식 비교로 충분 — "YYYY-Www" 포맷) 쪽을 고른다.
+ * weekly_sermons 캐시에 같은 worshipType이 여러 개(서로 다른 week) 있을 수 있다([ISSUE-315],
+ * [ISSUE-329]) — 지난주 말씀을 다음 예배 시각까지 보여주려고 일부러 여러 주를 보관한다.
+ * week가 더 최신인(사전식 비교로 충분 — "YYYY-Www" 포맷) 쪽을 앞에 둔 목록을 반환한다.
  */
+function matchingWeeklySermonsNewestFirst(weeklySermons: Sermon[], worshipType: WorshipType): Sermon[] {
+  return weeklySermons
+    .filter(s => s.worship_type === worshipType)
+    .sort((a, b) => {
+      const aw = a.week ?? '';
+      const bw = b.week ?? '';
+      return aw === bw ? 0 : bw > aw ? 1 : -1;
+    });
+}
+
+/** 같은 worshipType 중 week가 가장 최신인 항목(시각 도달 여부와 무관). 없으면 null. */
 export function latestMatchingWeeklySermon(weeklySermons: Sermon[], worshipType: WorshipType): Sermon | null {
-  const matches = weeklySermons.filter(s => s.worship_type === worshipType);
-  if (matches.length === 0) return null;
-  return matches.reduce((latest, s) => ((s.week ?? '') > (latest.week ?? '') ? s : latest));
+  return matchingWeeklySermonsNewestFirst(weeklySermons, worshipType)[0] ?? null;
 }
 
 /**
- * weekly_sermons 캐시에서 사용자 설정에 맞는 문서를 찾아도, 그 예배 시각이 아직 안 됐으면
- * currentlyDisplayed(이미 화면/위젯에 보이던 콘텐츠)를 그대로 반환한다([ISSUE-315]).
- * FCM은 실제 예배 시각보다 훨씬 먼저(주보 등록 시점) 도착하므로, 시각이 되기 전에는
- * 절대 새 콘텐츠를 노출하지 않아야 한다. '전체' 설정은 이 함수의 대상이 아니다
- * (호출자가 레거시 sermon_events(_v2) 경로로 별도 처리한다).
+ * 캐시에 worshipType과 일치하면서 예배 시각이 이미 지난 항목이 하나라도 있는지([ISSUE-329]).
+ * 없으면 "이 예배시간에서 지금 보여줄 말씀"을 캐시만으로는 알 수 없으므로 서버에서 지난주까지
+ * 다시 가져와야 한다(syncSelectedSermonToWidget / loadLocalData의 서버 보충 판단 기준).
+ */
+export function hasArrivedWeeklySermon(weeklySermons: Sermon[], worshipType: WorshipType, now: Date = new Date()): boolean {
+  return weeklySermons.some(s => s.worship_type === worshipType && hasWorshipTimeArrived(s.week, s.worship_type, now));
+}
+
+/**
+ * weekly_sermons 캐시에서 사용자 설정(worshipType)에 맞는, "지금 화면/위젯에 보여야 할" 문서를 고른다.
+ *
+ * 같은 예배시간 항목 중 **예배 시각이 이미 지난 가장 최신 주** 항목이 정답이다
+ * ([ISSUE-315], [ISSUE-329]). FCM/서버 문서는 예배 시각보다 훨씬 먼저(주보 등록 시점)
+ * 도착하므로, 아직 시각이 안 된 이번 주 항목은 건너뛰고 지난주 항목을 보여주다가 시각이
+ * 되는 순간 이번 주 항목으로 넘어간다.
+ *
+ * `currentlyDisplayed`(단일 슬롯)는 이 예배시간의 지난 콘텐츠를 모를 때만 쓰는 최후 폴백이다 —
+ * 예배시간 옵션을 바꾸기 직전에 보던 *다른 예배시간*의 콘텐츠일 수 있으므로, 시각이 지난
+ * 캐시 항목이 있으면 그쪽이 항상 우선한다(실사용자 리포트: 옵션 전환 시 이전 옵션 콘텐츠를
+ * 물려받음). 폴백까지 없으면(최초 설치 등) 완전히 빈 화면보다는 조금 이르더라도 가장 최신
+ * 후보를 보여준다(의도적 예외). '전체' 설정은 이 함수의 대상이 아니다(레거시 경로).
  */
 export function selectGatedWeeklySermon(
   weeklySermons: Sermon[],
@@ -102,13 +126,26 @@ export function selectGatedWeeklySermon(
   currentlyDisplayed: Sermon | null,
   now: Date = new Date(),
 ): Sermon | null {
-  const candidate = latestMatchingWeeklySermon(weeklySermons, worshipType);
-  if (!candidate) return currentlyDisplayed;
-  // 화면/위젯에 이미 뭔가 보여주고 있었다면(일반적인 경우) 시각이 될 때까지 그걸 유지한다.
-  // 아무것도 보여준 적이 없다면(최초 설치, 막 업데이트한 사용자가 예배시간을 처음 설정한 경우
-  // 등) 완전히 빈 화면보다는 조금 이르더라도 후보를 보여주는 쪽을 택한다(의도적 예외).
-  if (currentlyDisplayed && !hasWorshipTimeArrived(candidate.week, candidate.worship_type, now)) {
-    return currentlyDisplayed;
-  }
-  return candidate;
+  const matches = matchingWeeklySermonsNewestFirst(weeklySermons, worshipType);
+  const arrived = matches.find(s => hasWorshipTimeArrived(s.week, s.worship_type, now));
+  if (arrived) return arrived;
+  return currentlyDisplayed ?? matches[0] ?? null;
+}
+
+// weekly_sermons 캐시에 보관할 최근 주 수. 이번 주(미도달) + 지난주(현재 표시) + 여유 1주.
+export const WEEKLY_CACHE_MAX_WEEKS = 3;
+
+/**
+ * 캐시가 무한히 커지지 않도록 가장 최근 [WEEKLY_CACHE_MAX_WEEKS]개 주의 항목만 남긴다([ISSUE-329]).
+ * week가 없는 항목은 주 단위로 정리할 수 없으므로 그대로 둔다(병합 키가 worship_type 하나로
+ * 수렴해 무한히 늘지 않는다).
+ */
+export function pruneWeeklySermons(sermons: Sermon[], maxWeeks: number = WEEKLY_CACHE_MAX_WEEKS): Sermon[] {
+  const keepWeeks = new Set(
+    Array.from(new Set(sermons.map(s => s.week).filter((w): w is string => Boolean(w))))
+      .sort()
+      .reverse()
+      .slice(0, maxWeeks),
+  );
+  return sermons.filter(s => !s.week || keepWeeks.has(s.week));
 }

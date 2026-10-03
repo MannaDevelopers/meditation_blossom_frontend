@@ -146,14 +146,42 @@ class WeeklySermonsTest {
     }
 
     @Test
-    fun `merge drops all entries from a different week`() {
-        val existing = "[${cached("2026-W38", "SAT_1700", "지난주 토요")}," +
-            "${cached("2026-W38", "SUN_0950", "지난주 9시50분")}]"
+    fun `merge keeps entries from a different week so last week content survives`() {
+        val lastSat = cached("2026-W38", "SAT_1700", "지난주 토요")
+        val lastSun = cached("2026-W38", "SUN_0950", "지난주 9시50분")
+        val existing = "[$lastSat,$lastSun]"
         val event = parse(payload(week = "2026-W39"))!!
 
         val merged = parseArray(WeeklySermons.merge(existing, event))
 
-        assertEquals(listOf(event.cacheEntry), merged)
+        assertEquals(3, merged.size)
+        assertEquals(Json.parseToJsonElement(lastSat), merged[0])
+        assertEquals(Json.parseToJsonElement(lastSun), merged[1])
+        assertEquals(event.cacheEntry, merged[2])
+    }
+
+    @Test
+    fun `merge replaces only the same week and worship_type, not same worship_type of another week`() {
+        val lastWeek = cached("2026-W38", "SUN_1150", "지난주 11시50분")
+        val thisWeekOld = cached("2026-W39", "SUN_1150", "옛 11시50분")
+        val event = parse(payload(week = "2026-W39"))!!
+
+        val merged = parseArray(WeeklySermons.merge("[$lastWeek,$thisWeekOld]", event))
+
+        assertEquals(2, merged.size)
+        assertEquals("지난주 11시50분", merged[0].str("title"))
+        assertEquals("설교 제목", merged[1].str("title"))
+    }
+
+    @Test
+    fun `merge keeps only the most recent weeks`() {
+        val existing = "[${cached("2026-W35", "SUN_0950", "w35")},${cached("2026-W36", "SUN_0950", "w36")}," +
+            "${cached("2026-W37", "SUN_0950", "w37")}]"
+        val event = parse(payload(week = "2026-W38"))!!
+
+        val merged = parseArray(WeeklySermons.merge(existing, event))
+
+        assertEquals(listOf("2026-W36", "2026-W37", "2026-W38"), merged.map { it.str("week") })
     }
 
     @Test
@@ -251,6 +279,19 @@ class WeeklySermonsTest {
         val entry = WeeklySermons.findArrivedEntry(cache, "SUN_1150", scheduled)
 
         assertEquals("11시50분", entry?.str("title"))
+    }
+
+    @Test
+    fun `findArrivedEntry returns last week entry while this week entry has not arrived yet`() {
+        val thisWeek = "2026-W37"
+        val scheduled = WorshipSchedule.resolveWorshipDateTime(thisWeek, "SUN_1150")!!
+        val cache = "[${cached(thisWeek, "SUN_1150", "이번주")},${cached("2026-W36", "SUN_1150", "지난주")}]"
+
+        val before = WeeklySermons.findArrivedEntry(cache, "SUN_1150", scheduled.minusSeconds(1))
+        val after = WeeklySermons.findArrivedEntry(cache, "SUN_1150", scheduled)
+
+        assertEquals("지난주", before?.str("title"))
+        assertEquals("이번주", after?.str("title"))
     }
 
     @Test

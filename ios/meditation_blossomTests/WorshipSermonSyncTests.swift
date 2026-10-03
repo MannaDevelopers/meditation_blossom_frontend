@@ -133,4 +133,50 @@ final class WorshipSermonSyncTests: XCTestCase {
       )
     )
   }
+
+  // MARK: - 대기열 병합 ([ISSUE-329] 지난주 항목 보존)
+
+  private func entry(_ week: String, _ worshipType: String, _ title: String) -> [String: Any] {
+    ["id": "\(week)_\(worshipType)", "title": title, "week": week, "worship_type": worshipType]
+  }
+
+  func testMergePendingEntriesKeepsPreviousWeekEntries() {
+    let existing = [entry("2026-W36", "SUN_0950", "지난주")]
+    let incoming = entry("2026-W37", "SAT_1700", "이번주 토요")
+
+    let merged = WorshipSermonSync.mergePendingEntries(
+      existing, incoming: incoming, week: "2026-W37", worshipType: "SAT_1700"
+    )
+
+    XCTAssertEqual(merged.count, 2)
+    XCTAssertEqual(merged.first?["title"] as? String, "지난주")
+    XCTAssertEqual(merged.last?["title"] as? String, "이번주 토요")
+  }
+
+  func testMergePendingEntriesReplacesOnlySameWeekAndWorshipType() {
+    let existing = [
+      entry("2026-W36", "SUN_0950", "지난주 9시50분"),
+      entry("2026-W37", "SUN_0950", "옛 이번주 9시50분"),
+    ]
+    let incoming = entry("2026-W37", "SUN_0950", "새 이번주 9시50분")
+
+    let merged = WorshipSermonSync.mergePendingEntries(
+      existing, incoming: incoming, week: "2026-W37", worshipType: "SUN_0950"
+    )
+
+    XCTAssertEqual(merged.map { $0["title"] as? String }, ["지난주 9시50분", "새 이번주 9시50분"])
+  }
+
+  func testMergePendingEntriesKeepsOnlyMostRecentWeeks() {
+    let existing = ["2026-W34", "2026-W35", "2026-W36"].map { entry($0, "SUN_0950", $0) }
+    let incoming = entry("2026-W37", "SUN_0950", "w37")
+
+    let merged = WorshipSermonSync.mergePendingEntries(
+      existing, incoming: incoming, week: "2026-W37", worshipType: "SUN_0950"
+    )
+
+    XCTAssertEqual(
+      merged.compactMap { $0["week"] as? String }.sorted(), ["2026-W35", "2026-W36", "2026-W37"]
+    )
+  }
 }

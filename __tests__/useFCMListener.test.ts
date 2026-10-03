@@ -19,7 +19,7 @@ jest.mock('../src/services/sermonService', () => ({
   readAppGroupData: jest.fn(),
   syncAppGroupToAsyncStorage: jest.fn(),
   fetchLatestSermonFromServer: jest.fn(),
-  fetchLatestWeeklySermonsFromServer: jest.fn(),
+  refreshWeeklyCacheFromServer: jest.fn(),
   saveLegacySermonToCache: jest.fn(),
   saveSermonToAsyncStorage: jest.fn(),
   saveWeeklySermonsToAsyncStorage: jest.fn(),
@@ -49,8 +49,7 @@ describe('useFCMListener', () => {
     const onUpdateMock = jest.fn();
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue('SAT_1700');
     const mockWeeklyList = [{ id: '1', date: '2026-09-12', week: '2026-W37', worship_type: 'SAT_1700' }];
-    (sermonService.fetchLatestWeeklySermonsFromServer as jest.Mock).mockResolvedValue(mockWeeklyList);
-    (sermonService.saveWeeklySermonsToAsyncStorage as jest.Mock).mockResolvedValue(undefined);
+    (sermonService.refreshWeeklyCacheFromServer as jest.Mock).mockResolvedValue(mockWeeklyList);
     (sermonService.syncSelectedSermonToWidget as jest.Mock).mockResolvedValue(undefined);
 
     renderHook(() => useFCMListener(onUpdateMock));
@@ -60,8 +59,7 @@ describe('useFCMListener', () => {
     // Simulate event trigger
     await capturedCallback();
 
-    expect(sermonService.fetchLatestWeeklySermonsFromServer).toHaveBeenCalled();
-    expect(sermonService.saveWeeklySermonsToAsyncStorage).toHaveBeenCalledWith(mockWeeklyList);
+    expect(sermonService.refreshWeeklyCacheFromServer).toHaveBeenCalled();
     expect(sermonService.syncSelectedSermonToWidget).toHaveBeenCalledWith('SAT_1700');
     expect(onUpdateMock).toHaveBeenCalled();
   });
@@ -154,7 +152,7 @@ describe('useFCMListener', () => {
     });
 
     expect(sermonService.sermonFromLegacyEvent).toHaveBeenCalled();
-    expect(sermonService.fetchLatestWeeklySermonsFromServer).not.toHaveBeenCalled();
+    expect(sermonService.refreshWeeklyCacheFromServer).not.toHaveBeenCalled();
     expect(sermonService.saveLegacySermonToCache).toHaveBeenCalledWith(converted);
     expect(sermonService.saveSermonToAsyncStorage).not.toHaveBeenCalled();
     expect(sermonService.pushSermonToWidget).not.toHaveBeenCalled();
@@ -170,7 +168,7 @@ describe('useFCMListener', () => {
     await capturedCallback({ week: '2026-W38', worship_type: 'SAT_1700', title: 'T', operation: 'UPDATED' });
 
     expect(sermonService.upsertWeeklySermonFromEvent).toHaveBeenCalled();
-    expect(sermonService.fetchLatestWeeklySermonsFromServer).not.toHaveBeenCalled();
+    expect(sermonService.refreshWeeklyCacheFromServer).not.toHaveBeenCalled();
     expect(sermonService.saveSermonToAsyncStorage).toHaveBeenCalledWith(patched);
     expect(sermonService.pushSermonToWidget).toHaveBeenCalledWith(patched);
   });

@@ -73,20 +73,44 @@ final class WorshipSermonSync: NSObject {
 
     // MARK: - Pending weekly queue
 
+    /// 대기열/캐시에 보관할 최근 주 수. JS `WEEKLY_CACHE_MAX_WEEKS`, Android `WeeklySermons.MAX_CACHED_WEEKS`와 같아야 한다.
+    static let maxCachedWeeks = 3
+
     /// sermonJSON(JS `Sermon` 모양의 JSON 문자열)을 대기열에 병합해 저장한다. JS
-    /// `upsertWeeklySermonFromEvent`/Android `WeeklySermons.merge`와 동일한 규칙: 같은 week의
-    /// 다른 worship_type 항목은 보존하고, 같은 worship_type 항목은 교체하며, 다른 week 항목은
-    /// 모두 버린다(주가 바뀌는 시점에 이전 주 예배와 섞이지 않도록).
+    /// `upsertWeeklySermonFromEvent`/Android `WeeklySermons.merge`와 동일한 규칙([ISSUE-329]):
+    /// (week, worship_type)이 같은 항목만 교체하고 다른 예배/다른 주 항목은 보존하며, 가장 최근
+    /// `maxCachedWeeks`개 주만 남긴다 — 이번 주 FCM이 왔다고 지난주 항목을 지우면, 아직 이번 주
+    /// 예배 시각 전인 설정에서 "지난주 말씀"을 보여줄 수 없다.
     @objc static func appendPendingWeeklySermon(_ sermonJSON: String, week: String, worshipType: String) {
         guard let defaults = appGroupDefaults(),
               let data = sermonJSON.data(using: .utf8),
               let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return
         }
-        let sameWeekOthers = pendingEntries(defaults: defaults).filter { entry in
-            (entry["week"] as? String) == week && (entry["worship_type"] as? String) != worshipType
+        let merged = mergePendingEntries(
+            pendingEntries(defaults: defaults), incoming: parsed, week: week, worshipType: worshipType
+        )
+        persistPending(merged, defaults: defaults)
+    }
+
+    /// 대기열 병합 규칙의 순수 구현(테스트용으로 UserDefaults와 분리).
+    static func mergePendingEntries(
+        _ existing: [[String: Any]], incoming: [String: Any], week: String, worshipType: String
+    ) -> [[String: Any]] {
+        let preserved = existing.filter { entry in
+            !((entry["week"] as? String) == week && (entry["worship_type"] as? String) == worshipType)
         }
-        persistPending(sameWeekOthers + [parsed], defaults: defaults)
+        return pruneToRecentWeeks(preserved + [incoming])
+    }
+
+    /// 가장 최근 `maxCachedWeeks`개 주의 항목만 남긴다. week가 없는 항목은 그대로 둔다.
+    static func pruneToRecentWeeks(_ entries: [[String: Any]]) -> [[String: Any]] {
+        let weeks = Set(entries.compactMap { $0["week"] as? String }.filter { !$0.isEmpty })
+        let keepWeeks = Set(weeks.sorted(by: >).prefix(maxCachedWeeks))
+        return entries.filter { entry in
+            guard let week = entry["week"] as? String, !week.isEmpty else { return true }
+            return keepWeeks.contains(week)
+        }
     }
 
     private static func pendingEntries(defaults: UserDefaults) -> [[String: Any]] {
@@ -105,13 +129,17 @@ final class WorshipSermonSync: NSObject {
         defaults.synchronize()
     }
 
-    /// 대기열([weeklySermonsPendingKey])에서 [worshipType]과 일치하는 항목을 찾는다. 위젯
-    /// Extension(`MeditationBlossomWidget.swift`)이 App Group에서 직접 읽어 Timeline을
-    /// 구성하는 데 쓴다([ISSUE-315]) — 앱이 실행되기 전이라 JS `weekly_sermons` 캐시가 아직
-    /// 이 항목을 병합해가지 않은 상태에서도(앱이 오래 안 열린 경우) 위젯이 스스로 반영할 수 있다.
-    @objc static func matchingPendingEntry(worshipType: String) -> [String: Any]? {
-        guard let defaults = appGroupDefaults() else { return nil }
-        return pendingEntries(defaults: defaults).first { ($0["worship_type"] as? String) == worshipType }
+    /// 대기열([weeklySermonsPendingKey])에서 [worshipType]과 일치하는 항목을 week 오름차순(오래된
+    /// 주 → 최신 주)으로 반환한다. 위젯 Extension(`MeditationBlossomWidget.swift`)이 App Group에서
+    /// 직접 읽어 Timeline을 구성하는 데 쓴다([ISSUE-315], [ISSUE-329]) — 앱이 실행되기 전이라 JS
+    /// `weekly_sermons` 캐시가 아직 이 항목들을 병합해가지 않은 상태에서도 위젯이 스스로 반영할
+    /// 수 있다. 여러 주가 섞여 있을 수 있어 호출자가 "이미 지난 가장 최신 주"와 "곧 도래할 주"를
+    /// 구분해 고른다.
+    @objc static func matchingPendingEntries(worshipType: String) -> [[String: Any]] {
+        guard let defaults = appGroupDefaults() else { return [] }
+        return pendingEntries(defaults: defaults)
+            .filter { ($0["worship_type"] as? String) == worshipType }
+            .sorted { (($0["week"] as? String) ?? "") < (($1["week"] as? String) ?? "") }
     }
 
     // MARK: - Worship schedule ([ISSUE-315])

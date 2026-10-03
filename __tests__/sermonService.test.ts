@@ -15,7 +15,7 @@ import {
   upsertWeeklySermonFromEvent,
 } from '../src/services/sermonService';
 import { LEGACY_SERMON_CACHE_KEY, Sermon, SermonRaw, WorshipType } from '../src/types/Sermon';
-import { resolveWorshipDateTime, selectGatedWeeklySermon } from '../src/utils/worshipSchedule';
+import { hasArrivedWeeklySermon, resolveWorshipDateTime, selectGatedWeeklySermon } from '../src/utils/worshipSchedule';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(),
@@ -469,6 +469,38 @@ describe('selectGatedWeeklySermon ([ISSUE-315] 예배시간 게이팅)', () => {
   });
 });
 
+describe('selectGatedWeeklySermon — 지난주 말씀 유지 ([ISSUE-329])', () => {
+  const ts = { seconds: 0, nanoseconds: 0 };
+  const make = (id: string, week: string, worship_type: WorshipType): Sermon => ({
+    id, title: id, content: 'C', date: '2026-01-01', week, worship_type, created_at: ts, updated_at: ts,
+  });
+  // 2026-10-03(토) 20:00 — 2026-W40. 토요 17:00은 지났고 주일 예배는 아직.
+  const saturdayEvening = new Date(2026, 9, 3, 20, 0, 0);
+  const lastWeekSun = make('w39-sun', '2026-W39', 'SUN_0950');
+  const thisWeekSun = make('w40-sun', '2026-W40', 'SUN_0950');
+  const thisWeekSat = make('w40-sat', '2026-W40', 'SAT_1700');
+
+  it('이번 주 예배 시각 전이면, 직전에 보던 다른 예배 콘텐츠가 아니라 이 예배의 지난주 말씀을 고른다', () => {
+    const result = selectGatedWeeklySermon([lastWeekSun, thisWeekSun, thisWeekSat], 'SUN_0950', thisWeekSat, saturdayEvening);
+    expect(result).toEqual(lastWeekSun);
+  });
+
+  it('이번 주 예배 시각이 지났으면 이번 주 말씀을 고른다', () => {
+    const sundayNoon = new Date(2026, 9, 4, 12, 0, 0);
+    expect(selectGatedWeeklySermon([lastWeekSun, thisWeekSun], 'SUN_0950', lastWeekSun, sundayNoon)).toEqual(thisWeekSun);
+  });
+
+  it('시각이 지난 항목이 캐시에 없고 보여주던 콘텐츠가 있으면 그걸 유지한다(최후 폴백)', () => {
+    expect(selectGatedWeeklySermon([thisWeekSun], 'SUN_0950', thisWeekSat, saturdayEvening)).toEqual(thisWeekSat);
+  });
+
+  it('hasArrivedWeeklySermon: 시각이 지난 일치 항목이 있을 때만 true', () => {
+    expect(hasArrivedWeeklySermon([thisWeekSun], 'SUN_0950', saturdayEvening)).toBe(false);
+    expect(hasArrivedWeeklySermon([lastWeekSun, thisWeekSun], 'SUN_0950', saturdayEvening)).toBe(true);
+    expect(hasArrivedWeeklySermon([thisWeekSat], 'SUN_0950', saturdayEvening)).toBe(false);
+  });
+});
+
 describe('mergeFreshWeeklyResults ([ISSUE-315] 서버 재조회 시 캐시 병합)', () => {
   const ts = { seconds: 0, nanoseconds: 0 };
   const makeSermon = (worship_type: WorshipType, id: string, week = '2026-W37'): Sermon => ({
@@ -538,7 +570,7 @@ describe('mergeWeeklySermonIntoCache ([#306] iOS 대기열 병합)', () => {
     expect(result.find(s => s.worship_type === 'SUN_0950')?.title).toBe('new');
   });
 
-  it('다른 week 항목은 모두 버린다', () => {
+  it('[ISSUE-329] 다른 week 항목(지난주)은 보존한다 — 이번 주 FCM이 와도 지난주 말씀을 지우지 않는다', () => {
     const existing: Sermon[] = [
       sermon({ id: 'old-week', week: '2026-W36', worship_type: 'SUN_0950' }),
     ];
@@ -546,7 +578,33 @@ describe('mergeWeeklySermonIntoCache ([#306] iOS 대기열 병합)', () => {
 
     const result = mergeWeeklySermonIntoCache(existing, incoming);
 
-    expect(result).toEqual([incoming]);
+    expect(result).toEqual(expect.arrayContaining([existing[0], incoming]));
+    expect(result).toHaveLength(2);
+  });
+
+  it('[ISSUE-329] 같은 (week, worship_type)만 교체하고 다른 week의 같은 worship_type은 남긴다', () => {
+    const existing: Sermon[] = [
+      sermon({ id: 'w36', week: '2026-W36', worship_type: 'SUN_0950' }),
+      sermon({ id: 'w37-old', week: '2026-W37', worship_type: 'SUN_0950', title: 'old' }),
+    ];
+    const incoming = sermon({ id: 'w37-new', week: '2026-W37', worship_type: 'SUN_0950', title: 'new' });
+
+    const result = mergeWeeklySermonIntoCache(existing, incoming);
+
+    expect(result).toHaveLength(2);
+    expect(result.find(s => s.week === '2026-W36')?.id).toBe('w36');
+    expect(result.find(s => s.week === '2026-W37')?.title).toBe('new');
+  });
+
+  it('[ISSUE-329] 가장 최근 3개 주만 유지하고 더 오래된 주는 정리한다', () => {
+    const existing: Sermon[] = ['2026-W34', '2026-W35', '2026-W36'].map(week =>
+      sermon({ id: week, week, worship_type: 'SUN_0950' }),
+    );
+    const incoming = sermon({ id: 'w37', week: '2026-W37', worship_type: 'SUN_0950' });
+
+    const result = mergeWeeklySermonIntoCache(existing, incoming);
+
+    expect(result.map(s => s.week).sort()).toEqual(['2026-W35', '2026-W36', '2026-W37']);
   });
 
   it('빈 캐시에 처음 병합하면 새 항목 하나만 남는다', () => {
@@ -608,7 +666,7 @@ describe('upsertWeeklySermonFromEvent ([#280])', () => {
     expect(sun?.title).toBe('sun'); // 다른 예배는 그대로
   });
 
-  it('discards stale entries from a previous week when a new week arrives', async () => {
+  it('[ISSUE-329] keeps the previous week entries when a new week arrives (지난주 말씀 보관)', async () => {
     const existing: Sermon[] = [
       { id: 'w37_sat', title: 'old week', content: 'C', date: '2026-09-05', week: '2026-W37', worship_type: 'SAT_1700', created_at: { seconds: 0, nanoseconds: 0 }, updated_at: { seconds: 0, nanoseconds: 0 } },
     ];
@@ -622,8 +680,7 @@ describe('upsertWeeklySermonFromEvent ([#280])', () => {
     await upsertWeeklySermonFromEvent(raw);
 
     const saved: Sermon[] = JSON.parse((AsyncStorage.setItem as jest.Mock).mock.calls[0][1]);
-    expect(saved).toHaveLength(1);
-    expect(saved[0].week).toBe('2026-W38');
+    expect(saved.map(s => s.week).sort()).toEqual(['2026-W37', '2026-W38']);
   });
 
   it('resolves content from bible_references when content is missing', async () => {
