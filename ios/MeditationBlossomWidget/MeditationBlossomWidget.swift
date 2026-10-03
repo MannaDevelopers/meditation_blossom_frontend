@@ -234,39 +234,37 @@ struct Provider: TimelineProvider {
       return
     }
 
-    // 특정 예배시간 설정([ISSUE-315]): NSE가 대기열(weeklySermonsPendingKey)에 쌓아둔, 이
-    // 설정과 일치하는 sermons-v2 항목을 확인한다. FCM은 예배 시각보다 먼저 도착하므로,
-    // NSE는 시각이 안 되면 displaySermon에 반영하지 않고 대기열에만 남겨둔다(WorshipSermonSync
-    // Task 8). 그 항목의 시각이:
-    //  - 이미 지났는데 아직 반영 안 됐다면(앱이 그 사이 한 번도 안 열림) 지금 바로 그 내용을 보여준다.
-    //  - 아직 안 됐다면, WidgetKit이 그 정확한 시각에 자동으로 전환하도록 미래 엔트리로 예약한다
-    //    (별도의 알람/스케줄러 없이 WidgetKit의 Timeline 기능을 그대로 활용).
+    // 특정 예배시간 설정([ISSUE-315], [ISSUE-329]): NSE가 대기열(weeklySermonsPendingKey)에 쌓아둔,
+    // 이 설정과 일치하는 sermons-v2 항목들을 확인한다. FCM은 예배 시각보다 먼저 도착하므로, NSE는
+    // 시각이 안 되면 displaySermon에 반영하지 않고 대기열에만 남겨둔다(WorshipSermonSync). 대기열엔
+    // 여러 주 항목이 섞여 있을 수 있어:
+    //  - 시각이 이미 지난 항목 중 가장 최신 주 항목은 지금 바로 보여준다(앱이 그 사이 한 번도 안 열린 경우).
+    //  - 아직 안 된 항목 중 가장 가까운 주 항목은, WidgetKit이 그 정확한 시각에 자동으로 전환하도록
+    //    미래 엔트리로 예약한다(별도의 알람/스케줄러 없이 WidgetKit의 Timeline 기능을 그대로 활용).
     let now = Date()
-    var pendingSermon: Sermon? = nil
-    var pendingDate: Date? = nil
-    if let pendingDict = WorshipSermonSync.matchingPendingEntry(worshipType: setting),
-       let decoded = Self.decodeSermon(from: pendingDict),
-       let week = decoded.week,
-       let scheduled = WorshipSermonSync.resolveWorshipDateTime(week: week, worshipType: setting) {
-      pendingSermon = decoded
-      pendingDate = scheduled
+    var arrivedSermon: Sermon? = nil
+    var upcomingSermon: Sermon? = nil
+    var upcomingDate: Date? = nil
+    for pendingDict in WorshipSermonSync.matchingPendingEntries(worshipType: setting) { // week 오름차순
+      guard let decoded = Self.decodeSermon(from: pendingDict),
+            let week = decoded.week,
+            let scheduled = WorshipSermonSync.resolveWorshipDateTime(week: week, worshipType: setting) else {
+        continue
+      }
+      if scheduled <= now {
+        arrivedSermon = decoded // 오름차순이므로 마지막 값이 가장 최신 주
+      } else if upcomingDate == nil {
+        upcomingSermon = decoded
+        upcomingDate = scheduled
+      }
     }
 
-    var entries: [SimpleEntry]
-    var nextUpdateDate: Date
-
-    if let pendingSermon, let pendingDate, pendingDate <= now {
-      // 이미 지난 시각인데 아직 displaySermon에 반영 안 된 경우 — 지금 이 항목을 보여준다.
-      entries = [createSermonEntry(date: now, sermon: pendingSermon, sharedDefaults: sharedDefaults)]
-      nextUpdateDate = now.addingTimeInterval(24 * 60 * 60)
-    } else {
-      entries = [createSermonEntry(date: now, sharedDefaults: sharedDefaults)]
-      nextUpdateDate = now.addingTimeInterval(24 * 60 * 60)
-      if let pendingSermon, let pendingDate {
-        // 아직 안 된 시각 — 그 시각에 맞춰 자동 전환될 엔트리를 예약한다.
-        entries.append(createSermonEntry(date: pendingDate, sermon: pendingSermon, sharedDefaults: sharedDefaults))
-        nextUpdateDate = pendingDate.addingTimeInterval(1)
-      }
+    var entries: [SimpleEntry] = [createSermonEntry(date: now, sermon: arrivedSermon, sharedDefaults: sharedDefaults)]
+    var nextUpdateDate = now.addingTimeInterval(24 * 60 * 60)
+    if let upcomingSermon, let upcomingDate {
+      // 아직 안 된 시각 — 그 시각에 맞춰 자동 전환될 엔트리를 예약한다.
+      entries.append(createSermonEntry(date: upcomingDate, sermon: upcomingSermon, sharedDefaults: sharedDefaults))
+      nextUpdateDate = upcomingDate.addingTimeInterval(1)
     }
 
     completion(Timeline(entries: entries, policy: .after(nextUpdateDate)))

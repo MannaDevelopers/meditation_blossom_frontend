@@ -27,16 +27,16 @@ import { MainTabParamList, RootStackParamList } from '../types/navigation';
 import { compareSermon, FCM_SERMON_KEY, Sermon, WorshipType, WorshipSetting, WORSHIP_SETTINGS, USER_WORSHIP_SETTING_KEY, DEFAULT_WORSHIP_TYPE } from '../types/Sermon';
 import { FCM_QT_KEY } from '../types/QT';
 import WidgetUpdateModule from '../types/WidgetUpdateModule';
-import { fetchLegacySermonFromCache, fetchLatestSermonFromServer, fetchLatestWeeklySermonsFromServer, pushSermonToWidget, saveLegacySermonToCache, saveSermonToAsyncStorage, syncSelectedSermonToWidget, saveWeeklySermonsToAsyncStorage } from '../services/sermonService';
+import { fetchLegacySermonFromCache, fetchLatestSermonFromAsyncStorage, fetchLatestSermonFromServer, fetchLatestWeeklySermonsFromAsyncStorage, fetchLatestWeeklySermonsFromServer, mergeFreshWeeklyResults, pushSermonToWidget, saveLegacySermonToCache, saveSermonToAsyncStorage, syncSelectedSermonToWidget, saveWeeklySermonsToAsyncStorage } from '../services/sermonService';
 import { fetchLatestQtFromServer, pushQtToWidget } from '../services/qtService';
 import { LOCAL_STORAGE_KEYS, LocalStorageService, StorageData } from '../services/localStorageService';
 import { logAnalytics } from '../utils/analytics';
-import { getDevWorshipTimeOverride, setDevWorshipTimeOverride } from '../utils/devWorshipTimeOverride';
+import { getDevWorshipTimeOverride, getEffectiveNow, setDevWorshipTimeOverride } from '../utils/devWorshipTimeOverride';
 import logger from '../utils/logger';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { ThemeColors } from '../theme/colors';
 import { toIsoWeek } from '../utils/isoWeek';
-import { resolveNextWorshipDateTime } from '../utils/worshipSchedule';
+import { resolveNextWorshipDateTime, selectGatedWeeklySermon } from '../utils/worshipSchedule';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SettingsScreen'>;
 
@@ -182,9 +182,23 @@ const SettingsScreen = ({ navigation }: Props) => {
     }
 
     if (weekly.length > 0) {
-      await saveWeeklySermonsToAsyncStorage(weekly);
+      // 서버는 최근 2주를 돌려준다. 캐시에 통째로 덮어쓰지 않고 병합해 FCM으로만 받아둔 항목을 보존한다
+      // ([ISSUE-329]).
+      const merged = mergeFreshWeeklyResults(await fetchLatestWeeklySermonsFromAsyncStorage(), weekly);
+      await saveWeeklySermonsToAsyncStorage(merged);
       if (worshipSetting !== 'ALL') {
-        return weekly.find(s => s.worship_type === worshipSetting) || weekly[0];
+        // "새로고침"이라고 서버 최신 문서를 그대로 보여주면 안 된다 — 이 예배시간의 예배 시각이
+        // 아직 안 됐다면 지난주 말씀을 보여주고, 시각이 되면 이번 주 말씀으로 넘어가야 한다
+        // ([ISSUE-315], [ISSUE-329]). 게이팅을 거치지 않던 `weekly.find(...) || weekly[0]`가
+        // 주일 9:50 전에 이번 주 말씀을 노출하던 원인이다.
+        return (
+          selectGatedWeeklySermon(
+            merged,
+            worshipSetting,
+            await fetchLatestSermonFromAsyncStorage(),
+            await getEffectiveNow(),
+          ) ?? legacy
+        );
       }
     }
     return legacy;

@@ -105,9 +105,11 @@ object WeeklySermons {
 
     /**
      * 기존 `weekly_sermons` JSON 배열에 [event]를 병합한 새 JSON 배열 문자열을 반환한다.
-     * JS `upsertWeeklySermonFromEvent`와 동일한 규칙:
-     * - 같은 week의 다른 worship_type 항목은 보존하고, 같은 worship_type 항목은 교체한다.
-     * - 다른 week 항목은 모두 버린다(주가 바뀌는 시점에 이전 주 예배와 섞이지 않도록).
+     * JS `upsertWeeklySermonFromEvent`/`mergeWeeklySermonIntoCache`와 동일한 규칙([ISSUE-329]):
+     * - (week, worship_type)이 같은 항목만 교체한다. 다른 예배/다른 주 항목은 보존한다 —
+     *   이번 주 FCM이 왔다고 지난주 항목을 지우면, 아직 이번 주 예배 시각 전인 다른 예배시간
+     *   설정에서 "지난주 말씀"을 보여줄 수 없다.
+     * - 무한히 쌓이지 않도록 가장 최근 [MAX_CACHED_WEEKS]개 주만 남긴다.
      * 기존 값이 없거나 깨진 JSON이면 빈 캐시로 간주한다(JS는 깨진 캐시를 삭제 후 빈 배열로 취급).
      * 보존되는 항목은 JS가 쓴 JSON을 그대로 옮겨 필드 손실이 없게 한다.
      */
@@ -115,12 +117,29 @@ object WeeklySermons {
         val existing = existingJson
             ?.let { runCatching { json.parseToJsonElement(it) as? JsonArray }.getOrNull() }
             .orEmpty()
-        val sameWeekOthers = existing.filter { element ->
+        val preserved = existing.filter { element ->
             val obj = element as? JsonObject ?: return@filter false
-            obj.stringField(KEY_WEEK) == event.week &&
-                obj.stringField(KEY_WORSHIP_TYPE) != event.worshipType
+            !(obj.stringField(KEY_WEEK) == event.week &&
+                obj.stringField(KEY_WORSHIP_TYPE) == event.worshipType)
         }
-        return JsonArray(sameWeekOthers + event.cacheEntry).toString()
+        return JsonArray(pruneToRecentWeeks(preserved + event.cacheEntry)).toString()
+    }
+
+    /** weekly_sermons 캐시에 보관할 최근 주 수. JS `WEEKLY_CACHE_MAX_WEEKS`와 같아야 한다. */
+    const val MAX_CACHED_WEEKS = 3
+
+    /** 가장 최근 [MAX_CACHED_WEEKS]개 주의 항목만 남긴다. week가 없는 항목은 그대로 둔다(JS `pruneWeeklySermons`). */
+    private fun pruneToRecentWeeks(entries: List<JsonElement>): List<JsonElement> {
+        val keepWeeks = entries
+            .mapNotNull { (it as? JsonObject)?.stringField(KEY_WEEK)?.takeIf { w -> w.isNotEmpty() } }
+            .distinct()
+            .sortedDescending()
+            .take(MAX_CACHED_WEEKS)
+            .toSet()
+        return entries.filter { element ->
+            val week = (element as? JsonObject)?.stringField(KEY_WEEK)?.takeIf { it.isNotEmpty() }
+            week == null || week in keepWeeks
+        }
     }
 
     /**
@@ -143,9 +162,11 @@ object WeeklySermons {
 
     /**
      * `weekly_sermons` 캐시(JSON 배열 문자열)에서 [worshipType]과 일치하고 예배 시각이 이미
-     * 지난 항목을 찾는다([ISSUE-315]). FCM 수신 시점엔 시각이 안 돼서 위젯에 반영되지 못하고
-     * 캐시에만 남아 있던 이벤트를, 위젯이 주기적으로(30분 간격) 다시 그려질 때 이 함수로 재확인해
-     * 뒤늦게라도 반영한다. 일치하는 항목이 없거나 시각이 아직 안 됐으면 null.
+     * 지난 항목 중 **week가 가장 최신인 것**을 찾는다([ISSUE-315], [ISSUE-329]). 이번 주 항목이
+     * 아직 시각 전이면 지난주 항목이 반환된다 — JS `selectGatedWeeklySermon`과 같은 규칙이다.
+     * FCM 수신 시점엔 시각이 안 돼서 위젯에 반영되지 못하고 캐시에만 남아 있던 이벤트를, 위젯이
+     * 주기적으로(30분 간격) 다시 그려질 때 이 함수로 재확인해 뒤늦게라도 반영한다.
+     * 일치하는 항목이 없거나 전부 시각 전이면 null.
      */
     fun findArrivedEntry(
         weeklySermonsJson: String?,
@@ -155,12 +176,13 @@ object WeeklySermons {
         val entries = weeklySermonsJson
             ?.let { runCatching { json.parseToJsonElement(it) as? JsonArray }.getOrNull() }
             ?: return null
-        val entry = entries
+        return entries
             .filterIsInstance<JsonObject>()
-            .firstOrNull { it.stringField(KEY_WORSHIP_TYPE) == worshipType }
-            ?: return null
-        val week = entry.stringField(KEY_WEEK) ?: return null
-        return if (WorshipSchedule.hasWorshipTimeArrived(week, worshipType, now)) entry else null
+            .filter { it.stringField(KEY_WORSHIP_TYPE) == worshipType }
+            .mapNotNull { entry -> entry.stringField(KEY_WEEK)?.let { week -> week to entry } }
+            .sortedByDescending { (week, _) -> week }
+            .firstOrNull { (week, _) -> WorshipSchedule.hasWorshipTimeArrived(week, worshipType, now) }
+            ?.second
     }
 
     /** [findArrivedEntry]가 찾은 캐시 항목(JS `Sermon` 모양)을 위젯 저장 계층의 [SermonDto]로 변환한다. */
