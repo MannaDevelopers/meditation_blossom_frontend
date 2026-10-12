@@ -4,6 +4,7 @@ import android.app.Application
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.rnmodule.MyReactPackage
 import app.mannadev.meditation.widget.enqueueWidgetPeriodicSync
+import app.mannadev.meditation.widget.registerWidgetRefreshReceiver
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -53,6 +54,9 @@ class MainApplication : Application(), ReactApplication {
 
         // 위젯 FCM push 누락 대비 1일 1회 안전망 동기화 등록 (멱등)
         enqueueWidgetPeriodicSync(this)
+
+        // 폴드 펼침/화면 켜짐/잠금 해제 시 위젯 즉시 갱신 ([ISSUE-331])
+        registerWidgetRefreshReceiver(this)
 
         // 기존 토픽 구독 해제 (중복 알림 방지)
         FirebaseMessaging.getInstance()
