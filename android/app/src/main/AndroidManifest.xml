@@ -95,6 +95,16 @@
                 android:resource="@xml/verse_widget_qt_large_info" />
         </receiver>
 
+        <receiver
+            android:name=".widget.WidgetRefreshReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".service.MyFirebaseMessagingService"
             android:exported="false">
