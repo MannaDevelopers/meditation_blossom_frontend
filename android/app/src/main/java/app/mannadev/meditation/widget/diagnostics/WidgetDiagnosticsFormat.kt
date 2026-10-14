@@ -59,6 +59,20 @@ internal object WidgetDiagnosticsFormat {
         nowMillis - time <= windowMillis && event !in excludedEvents
     }
 
+    /**
+     * 줄을 기록 시각순으로 안정 정렬한다. 시각을 파싱할 수 없는 줄은 바로 앞 줄의 시각을 물려받아 그 뒤에 남는다.
+     */
+    fun sortByTime(lines: List<String>): List<String> {
+        var lastTime = Long.MIN_VALUE
+        return lines.map { line ->
+            lastTime = parseTime(line) ?: lastTime
+            lastTime to line
+        }.sortedBy { it.first }.map { it.second }
+    }
+
+    private fun parseTime(line: String): Long? =
+        runCatching { OffsetDateTime.parse(line.substringBefore(' ')).toInstant().toEpochMilli() }.getOrNull()
+
     /** Crashlytics 로그(세션당 최근 64KB)에 맞추기 위해 가장 최근 줄부터 maxChars 안에 드는 만큼 고른다. */
     fun tailWithinChars(lines: List<String>, maxChars: Int): List<String> {
         var total = 0

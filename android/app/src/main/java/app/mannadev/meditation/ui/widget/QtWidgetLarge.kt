@@ -72,7 +72,7 @@ class QtWidgetLarge : GlanceAppWidget(
                 WidgetDiagnostics.recordRender(
                     context, "QtWidgetLarge", appWidgetId,
                     WidgetDiagnosticsFormat.summarizeState(state) { it.date },
-                    isLoaded = state !is WidgetContentState.Loading,
+                    hasData = state is WidgetContentState.Data,
                 )
             }
             QtWidgetLargeContent(uiModel, clickAction, youtubeLinkEnabled, design)

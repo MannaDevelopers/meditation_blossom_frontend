@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Alert,
   Image,
@@ -61,6 +61,8 @@ const SettingsScreen = ({ navigation }: Props) => {
   const [selectedWorship, setSelectedWorship] = useState<WorshipSetting>(DEFAULT_WORSHIP_TYPE);
   const [devTimeOverride, setDevTimeOverrideState] = useState<Date | null>(null);
   const [isSendingDiagnostics, setIsSendingDiagnostics] = useState(false);
+  // 연타 시 리렌더 전에 들어온 두 번째 탭도 막도록 state가 아닌 ref로 가드한다(state는 버튼 표시용).
+  const sendingDiagnosticsRef = useRef(false);
 
   // Firestore를 항상 신뢰하고 새로 조회하면, useFCMListener가 방금 FCM payload로 legacy
   // 전용 캐시에 반영해둔 내용이 있어도(예: 테스트 도구처럼 FCM만 보내고 Firestore는 아직
@@ -430,9 +432,10 @@ const SettingsScreen = ({ navigation }: Props) => {
   };
 
   const sendWidgetDiagnostics = async () => {
-    if (isSendingDiagnostics) {
+    if (sendingDiagnosticsRef.current) {
       return;
     }
+    sendingDiagnosticsRef.current = true;
     setIsSendingDiagnostics(true);
     try {
       const sent = await WidgetUpdateModule?.reportWidgetDiagnostics();
@@ -455,6 +458,7 @@ const SettingsScreen = ({ navigation }: Props) => {
       }
       Alert.alert('오류', '위젯 진단 리포트 전송에 실패했습니다.');
     } finally {
+      sendingDiagnosticsRef.current = false;
       setIsSendingDiagnostics(false);
     }
   };

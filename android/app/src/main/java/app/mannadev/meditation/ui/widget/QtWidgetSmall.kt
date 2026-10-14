@@ -74,7 +74,7 @@ class QtWidgetSmall : GlanceAppWidget(
                 WidgetDiagnostics.recordRender(
                     context, "QtWidgetSmall", appWidgetId,
                     WidgetDiagnosticsFormat.summarizeState(state) { it.date },
-                    isLoaded = state !is WidgetContentState.Loading,
+                    hasData = state is WidgetContentState.Data,
                 )
             }
             QtWidgetSmallContent(uiModel, clickAction, youtubeLinkEnabled, design)

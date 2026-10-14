@@ -45,6 +45,25 @@ class WidgetDiagnosticsFormatTest {
     }
 
     @Test
+    fun `sortByTime orders lines by timestamp and keeps unparsable lines after their predecessor`() {
+        val lines = listOf(
+            "2026-10-14T19:00:02.000+09:00 RENDER id=3",
+            "2026-10-14T19:00:01.000+09:00 JS_PUSH type=qt",
+            "garbage line",
+            "2026-10-14T10:00:00.500Z OPTIONS_CHANGED id=3", // = 19:00:00.500+09:00
+        )
+        assertEquals(
+            listOf(
+                "2026-10-14T10:00:00.500Z OPTIONS_CHANGED id=3",
+                "2026-10-14T19:00:01.000+09:00 JS_PUSH type=qt",
+                "garbage line",
+                "2026-10-14T19:00:02.000+09:00 RENDER id=3",
+            ),
+            WidgetDiagnosticsFormat.sortByTime(lines),
+        )
+    }
+
+    @Test
     fun `trim target leaves headroom below the trim threshold`() {
         assertTrue(WidgetDiagnosticsFormat.TRIM_TARGET_BYTES * 4 <= WidgetDiagnosticsFormat.TRIM_THRESHOLD_BYTES * 3)
     }

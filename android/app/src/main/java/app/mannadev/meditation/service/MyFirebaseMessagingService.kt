@@ -22,10 +22,12 @@ import app.mannadev.meditation.domain.repository.SermonRepository
 import app.mannadev.meditation.dto.QtDto
 import app.mannadev.meditation.dto.SermonDto
 import app.mannadev.meditation.model.BibleReferenceResolver
+import app.mannadev.meditation.model.VerseParseException
 import app.mannadev.meditation.widget.diagnostics.WidgetDiagnostics
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
@@ -242,7 +244,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             // JS와 동일하게 해석 실패(빈 bible_references = "말씀 없는 날" 등)는 이벤트를 버리지 않고 빈 본문으로 둔다.
             runCatching { bibleReferenceResolver.resolveBibleReferencesJson(bibleRefsJson) }
                 .onFailure { e ->
-                    bibleRefsFailed = true
+                    // 빈 참조 목록("말씀 없는 날")은 정상 케이스라 degraded로 치지 않는다.
+                    if (e !is VerseParseException.EmptyReferencesException) bibleRefsFailed = true
                     Timber.w(e, "sermons-v2: failed to resolve bible_references")
                     CrashlyticsHelper.recordException(e, "sermons-v2: failed to resolve bible_references")
                 }
@@ -265,11 +268,22 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         if (!shouldApply) return "skipped:worship_type_mismatch"
 
         sermonRepository.save(event.dto)
-        AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.FCM_TOPIC)
-        // JS의 saveSermonToAsyncStorage(patched)와 동일 — 앱 실행 시 '지금 화면' 슬롯도 최신이 되도록.
-        asyncStorage.set(key = ASYNC_STORAGE_FCM_SERMON, value = event.cacheEntry.toString())
-        // 본문 해석에 실패해 빈 본문으로 반영한 경우를 구분한다.
-        return if (bibleRefsFailed) "applied,degraded:bible_references" else "applied"
+        // 여기부터는 위젯이 이미 갱신된 뒤다 — 이후 실패가 outcome을 failed로 뒤집지 않게 따로 기록한다.
+        val postSaveError = runCatching {
+            AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.FCM_TOPIC)
+            // JS의 saveSermonToAsyncStorage(patched)와 동일 — 앱 실행 시 '지금 화면' 슬롯도 최신이 되도록.
+            asyncStorage.set(key = ASYNC_STORAGE_FCM_SERMON, value = event.cacheEntry.toString())
+        }.exceptionOrNull()
+        if (postSaveError is CancellationException) throw postSaveError
+        postSaveError?.let { e ->
+            CrashlyticsHelper.recordException(e, "Failed to update fcm_sermon after sermons-v2 widget save")
+        }
+        return buildString {
+            append("applied")
+            // 본문 해석에 실패해 빈 본문으로 반영한 경우를 구분한다.
+            if (bibleRefsFailed) append(",degraded:bible_references")
+            postSaveError?.let { append(",failed:fcm_sermon_cache:${it.javaClass.simpleName}") }
+        }
     }
 
     /** @return FCM_HANDLED outcome — [onMessageReceived] 참고. */

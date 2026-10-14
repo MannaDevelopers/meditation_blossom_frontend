@@ -77,7 +77,7 @@ class VerseWidgetSmall : GlanceAppWidget(
                     WidgetDiagnosticsFormat.summarizeState(state) {
                         WidgetDiagnosticsFormat.summarizeSermon(it.title, it.bookName, it.verses)
                     },
-                    isLoaded = state !is WidgetContentState.Loading,
+                    hasData = state is WidgetContentState.Data,
                 )
             }
             VerseWidgetSmallContent(sermon, clickAction, youtubeLinkEnabled, design)

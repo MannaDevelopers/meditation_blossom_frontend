@@ -15,7 +15,9 @@ import app.mannadev.meditation.specs.NativeWidgetUpdateModuleSpec
 import app.mannadev.meditation.widget.diagnostics.WidgetDiagnostics
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -324,7 +326,8 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
             promise.reject("WIDGET_DIAGNOSTICS_IN_FLIGHT", "위젯 진단 리포트를 이미 전송 중입니다.")
             return
         }
-        moduleScope.launch(Dispatchers.IO) {
+        // ATOMIC: 모듈이 이미 정리돼 scope가 취소됐어도 본문을 실행해 promise와 in-flight 플래그를 반드시 정리한다.
+        moduleScope.launch(Dispatchers.IO, start = CoroutineStart.ATOMIC) {
             try {
                 val report = runCatching { WidgetDiagnostics.sendReport(reactApplicationContext) }
                     .getOrElse { e ->
@@ -341,6 +344,11 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
                 }.onSuccess {
                     promise.resolve(true)
                 }.onFailure { e ->
+                    // 모듈 정리(JS 리로드 등)로 취소된 것은 클립보드 실패가 아니다 — non-fatal 없이 정리만 한다.
+                    if (e is CancellationException) {
+                        promise.reject("WIDGET_DIAGNOSTICS_CANCELLED", "모듈이 정리되어 클립보드 복사를 건너뛰었습니다.", e)
+                        throw e
+                    }
                     CrashlyticsHelper.recordException(e, "Error copying widget diagnostics report to clipboard", tag = TAG)
                     promise.reject("WIDGET_DIAGNOSTICS_CLIPBOARD_ERROR", "Crashlytics 전송은 완료, 클립보드 복사 실패: ${e.message}", e)
                 }
