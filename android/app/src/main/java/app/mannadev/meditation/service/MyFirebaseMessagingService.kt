@@ -142,16 +142,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         // '지금 화면' 슬롯을 덮어쓰면 안 된다([#307]) — JS(useFCMListener)와 동일하게 '전체'일 때만 반영하고,
         // 그 외엔 legacy 전용 캐시만 갱신해 나중에 '전체'로 전환하면 바로 보이게 한다.
         // 앱이 완전히 종료된 상태에선 JS가 없어 이 판단을 네이티브가 직접 해야 한다.
+        var settingReadError: Throwable? = null
         val isAllSetting = runCatching {
             withContext(Dispatchers.IO) {
                 WorshipSetting.isAll(asyncStorage.get(WorshipSetting.ASYNC_STORAGE_KEY))
             }
         }.onFailure { e ->
             CrashlyticsHelper.recordException(e, "Failed to read worship setting for sermon v2")
+            settingReadError = e
         }.getOrDefault(false)
         Timber.d("sermon v2 isAllSetting=$isAllSetting")
 
-        var outcome = "skipped:not_all_setting"
+        // 설정 읽기 실패로 '전체'가 아니라고 간주한 경우는 정상 skip과 구분한다.
+        var outcome = settingReadError?.let { "failed:read_setting:${it.javaClass.simpleName}" }
+            ?: "skipped:not_all_setting"
         if (isAllSetting) {
             outcome = runCatching {
                 withContext(NonCancellable) {
@@ -233,10 +237,12 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private suspend fun applySermonsV2Event(data: Map<String, String>): String {
+        var bibleRefsFailed = false
         val event = WeeklySermons.parseEvent(data) { bibleRefsJson ->
             // JS와 동일하게 해석 실패(빈 bible_references = "말씀 없는 날" 등)는 이벤트를 버리지 않고 빈 본문으로 둔다.
             runCatching { bibleReferenceResolver.resolveBibleReferencesJson(bibleRefsJson) }
                 .onFailure { e ->
+                    bibleRefsFailed = true
                     Timber.w(e, "sermons-v2: failed to resolve bible_references")
                     CrashlyticsHelper.recordException(e, "sermons-v2: failed to resolve bible_references")
                 }
@@ -262,7 +268,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.FCM_TOPIC)
         // JS의 saveSermonToAsyncStorage(patched)와 동일 — 앱 실행 시 '지금 화면' 슬롯도 최신이 되도록.
         asyncStorage.set(key = ASYNC_STORAGE_FCM_SERMON, value = event.cacheEntry.toString())
-        return "applied"
+        // 본문 해석에 실패해 빈 본문으로 반영한 경우를 구분한다.
+        return if (bibleRefsFailed) "applied,degraded:bible_references" else "applied"
     }
 
     /** @return FCM_HANDLED outcome — [onMessageReceived] 참고. */
