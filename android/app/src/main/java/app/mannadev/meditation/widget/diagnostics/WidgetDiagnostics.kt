@@ -24,6 +24,7 @@ import app.mannadev.meditation.widget.QtWidgetSmallReceiver
 import app.mannadev.meditation.widget.VerseWidgetLargeReceiver
 import app.mannadev.meditation.widget.VerseWidgetSmallReceiver
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import kotlinx.coroutines.CancellationException
 import timber.log.Timber
 import java.io.File
 import java.time.ZoneId
@@ -177,17 +178,27 @@ class WidgetDiagnosticsReport(message: String) : Exception(message)
  * 두 목록이 다르면 Glance 쪽에서 특정 위젯 인스턴스가 갱신 대상에서 빠진 것이다.
  */
 suspend fun GlanceAppWidget.updateAllLogged(context: Context, reason: String) {
-    val glanceManager = GlanceAppWidgetManager(context)
-    val glanceIds = runCatching {
-        glanceManager.getGlanceIds(javaClass).map { glanceManager.getAppWidgetId(it) }
-    }.getOrElse { e -> listOf("error:${e.javaClass.simpleName}") }
-    val systemIds = WidgetDiagnostics.receiverFor(this)?.let { receiver ->
-        AppWidgetManager.getInstance(context).getAppWidgetIds(ComponentName(context, receiver)).toList()
+    try {
+        val glanceManager = GlanceAppWidgetManager(context)
+        val glanceIds = try {
+            glanceManager.getGlanceIds(javaClass).map { glanceManager.getAppWidgetId(it) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            listOf("error:${e.javaClass.simpleName}")
+        }
+        val systemIds = WidgetDiagnostics.receiverFor(this)?.let { receiver ->
+            AppWidgetManager.getInstance(context).getAppWidgetIds(ComponentName(context, receiver)).toList()
+        }
+        WidgetDiagnostics.record(
+            context, "UPDATE_ALL",
+            "widget" to javaClass.simpleName, "reason" to reason,
+            "glanceIds" to glanceIds, "systemIds" to systemIds, "display" to WidgetDiagnostics.displaySummary(context),
+        )
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Throwable) {
+        CrashlyticsHelper.recordException(e, "WidgetDiagnostics: failed to log UPDATE_ALL for ${javaClass.simpleName}", tag = "WidgetDiag")
     }
-    WidgetDiagnostics.record(
-        context, "UPDATE_ALL",
-        "widget" to javaClass.simpleName, "reason" to reason,
-        "glanceIds" to glanceIds, "systemIds" to systemIds, "display" to WidgetDiagnostics.displaySummary(context),
-    )
     updateAll(context)
 }

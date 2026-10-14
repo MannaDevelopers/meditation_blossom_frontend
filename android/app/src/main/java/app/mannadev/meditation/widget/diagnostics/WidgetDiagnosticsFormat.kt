@@ -11,8 +11,8 @@ import java.time.format.DateTimeFormatter
  * 한 이벤트 = 한 줄 = "<ISO 시각> <EVENT> key=value ...".
  */
 internal object WidgetDiagnosticsFormat {
-    /** 파일이 TRIM_THRESHOLD_BYTES를 넘으면 최근 MAX_LOG_LINES줄만 남긴다(대략 수일치). */
-    const val MAX_LOG_LINES = 8000
+    /** 파일이 TRIM_THRESHOLD_BYTES를 넘으면 최근 MAX_LOG_LINES줄만 남긴다. 남는 크기가 임계값보다 충분히 작아(히스테리시스) trim이 드물게 실행된다. */
+    const val MAX_LOG_LINES = 4000
     const val TRIM_THRESHOLD_BYTES = 1_500_000L
 
     /** 리포트에는 최근 72시간, 30분 주기로 반복되는 잡음 이벤트를 뺀 줄만 싣는다. */
