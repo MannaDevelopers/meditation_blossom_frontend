@@ -10,6 +10,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.di.getWidgetDependencies
+import app.mannadev.meditation.widget.diagnostics.WidgetDiagnostics
 import java.util.concurrent.TimeUnit
 
 /**
@@ -26,6 +27,7 @@ class WidgetPeriodicSyncWorker(
     }
 
     override suspend fun doWork(): Result {
+        WidgetDiagnostics.record(applicationContext, "PERIODIC_SYNC_START", "attempt" to runAttemptCount)
         val dependencies = getWidgetDependencies(applicationContext)
         val result = runWidgetSync(
             syncSermon = { dependencies.sermonRepository().syncFromRemote() },

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Alert,
   Image,
@@ -60,6 +60,9 @@ const SettingsScreen = ({ navigation }: Props) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedWorship, setSelectedWorship] = useState<WorshipSetting>(DEFAULT_WORSHIP_TYPE);
   const [devTimeOverride, setDevTimeOverrideState] = useState<Date | null>(null);
+  const [isSendingDiagnostics, setIsSendingDiagnostics] = useState(false);
+  // 연타 시 리렌더 전에 들어온 두 번째 탭도 막도록 state가 아닌 ref로 가드한다(state는 버튼 표시용).
+  const sendingDiagnosticsRef = useRef(false);
 
   // Firestore를 항상 신뢰하고 새로 조회하면, useFCMListener가 방금 FCM payload로 legacy
   // 전용 캐시에 반영해둔 내용이 있어도(예: 테스트 도구처럼 FCM만 보내고 Firestore는 아직
@@ -428,6 +431,38 @@ const SettingsScreen = ({ navigation }: Props) => {
     }
   };
 
+  const sendWidgetDiagnostics = async () => {
+    if (sendingDiagnosticsRef.current) {
+      return;
+    }
+    sendingDiagnosticsRef.current = true;
+    setIsSendingDiagnostics(true);
+    try {
+      const sent = await WidgetUpdateModule?.reportWidgetDiagnostics();
+      if (!sent) {
+        Alert.alert('알림', '이 기기에서는 위젯 진단 리포트를 지원하지 않습니다.');
+        return;
+      }
+      // 클립보드 복사는 네이티브(Android)가 resolve 전에 끝낸다 — 큰 텍스트를 JS에서 다시 복사하지 않는다.
+      Alert.alert('완료', '위젯 진단 리포트를 전송하고 클립보드에 복사했습니다.');
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      // 이미 전송 중인 요청이 있으면 그 결과 알림이 뜨므로 조용히 무시한다.
+      if (code === 'WIDGET_DIAGNOSTICS_IN_FLIGHT') {
+        return;
+      }
+      logger.error('위젯 진단 리포트 전송 실패:', error);
+      if (code === 'WIDGET_DIAGNOSTICS_CLIPBOARD_ERROR') {
+        Alert.alert('알림', '위젯 진단 리포트는 전송했지만 클립보드 복사에 실패했습니다.');
+        return;
+      }
+      Alert.alert('오류', '위젯 진단 리포트 전송에 실패했습니다.');
+    } finally {
+      sendingDiagnosticsRef.current = false;
+      setIsSendingDiagnostics(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -593,6 +628,14 @@ const SettingsScreen = ({ navigation }: Props) => {
                 ) : (
                   <Text style={styles.fcmLoadingText}>토큰 로딩 중...</Text>
                 )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={sendWidgetDiagnostics}
+                disabled={isSendingDiagnostics}
+                style={styles.devButton}>
+                <Text style={styles.devButtonText}>
+                  {isSendingDiagnostics ? '위젯 진단 리포트 전송 중...' : '위젯 진단 리포트 전송'}
+                </Text>
               </TouchableOpacity>
 
               {/* [ISSUE-315] __DEV__ 전용 — 프로덕션 빌드에서는 기능이 no-op이라 혼란을

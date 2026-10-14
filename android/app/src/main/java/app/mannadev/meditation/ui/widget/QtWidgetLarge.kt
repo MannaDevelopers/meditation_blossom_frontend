@@ -3,6 +3,7 @@ package app.mannadev.meditation.ui.widget
 import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -42,6 +43,9 @@ import app.mannadev.meditation.dto.WidgetDesignDto
 import app.mannadev.meditation.ui.widget.qt.QtWidgetUiModel
 import app.mannadev.meditation.ui.widget.qt.prefixQuestions
 import app.mannadev.meditation.ui.widget.theme.Typography
+import app.mannadev.meditation.widget.diagnostics.WidgetDiagnostics
+import app.mannadev.meditation.widget.diagnostics.WidgetDiagnosticsFormat
+import app.mannadev.meditation.widget.state.WidgetContentState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
@@ -54,6 +58,8 @@ class QtWidgetLarge : GlanceAppWidget(
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val appWidgetId = WidgetDiagnostics.appWidgetIdOrUnknown(context, id)
+        WidgetDiagnostics.record(context, "PROVIDE_GLANCE", "widget" to "QtWidgetLarge", "id" to appWidgetId)
         val qtRepository = getWidgetDependencies(context).qtRepository()
         val youtubeLinkEnabled = getWidgetDependencies(context).getWidgetPrefs().isEnabled()
         val qtWidgetDesignRepository = getWidgetDependencies(context).qtWidgetDesignRepository()
@@ -62,6 +68,13 @@ class QtWidgetLarge : GlanceAppWidget(
             val design by qtWidgetDesignRepository.designState.collectAsState()
             val uiModel = state.toDisplayQtUiModel(hasAppEverLaunched(context))
             val clickAction = widgetClickAction(uiModel.videoUrl, Constants.DEEP_LINK_DAILY_MANNA)
+            SideEffect {
+                WidgetDiagnostics.recordRender(
+                    context, "QtWidgetLarge", appWidgetId,
+                    WidgetDiagnosticsFormat.summarizeState(state) { it.date },
+                    hasData = state is WidgetContentState.Data,
+                )
+            }
             QtWidgetLargeContent(uiModel, clickAction, youtubeLinkEnabled, design)
         }
     }
@@ -72,6 +85,11 @@ class QtWidgetLarge : GlanceAppWidget(
         appWidgetId: Int,
         throwable: Throwable,
     ) {
+        WidgetDiagnostics.recordWithSnapshot(
+            context, "render_error_$appWidgetId", "RENDER_ERROR",
+            "widget" to "QtWidgetLarge", "id" to appWidgetId,
+            "error" to throwable.javaClass.simpleName, "display" to WidgetDiagnostics.displaySummary(context),
+        )
         CrashlyticsHelper.recordException(throwable, "QtWidgetLarge: uncaught composition error")
         super.onCompositionError(context, glanceId, appWidgetId, throwable)
     }
