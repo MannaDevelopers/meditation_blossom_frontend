@@ -9,6 +9,7 @@ import app.mannadev.meditation.ui.widget.QtWidgetLarge
 import app.mannadev.meditation.ui.widget.QtWidgetSmall
 import app.mannadev.meditation.ui.widget.VerseWidgetLarge
 import app.mannadev.meditation.ui.widget.VerseWidgetSmall
+import app.mannadev.meditation.widget.diagnostics.WidgetDiagnostics
 import app.mannadev.meditation.widget.diagnostics.updateAllLogged
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -61,10 +62,12 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
 suspend fun refreshAllWidgets(context: Context, reason: String) {
     val shortReason = reason.removePrefix("android.intent.action.")
     runCatching {
-        VerseWidgetLarge().updateAllLogged(context, "refresh_$shortReason")
-        VerseWidgetSmall().updateAllLogged(context, "refresh_$shortReason")
-        QtWidgetLarge().updateAllLogged(context, "refresh_$shortReason")
-        QtWidgetSmall().updateAllLogged(context, "refresh_$shortReason")
+        // 같은 갱신 묶음의 display는 한 번만 조회한다.
+        val display = WidgetDiagnostics.displaySummary(context)
+        VerseWidgetLarge().updateAllLogged(context, "refresh_$shortReason", display)
+        VerseWidgetSmall().updateAllLogged(context, "refresh_$shortReason", display)
+        QtWidgetLarge().updateAllLogged(context, "refresh_$shortReason", display)
+        QtWidgetSmall().updateAllLogged(context, "refresh_$shortReason", display)
         AnalyticsHelper.logWidgetUpdated("refresh_$reason")
     }.onFailure { e ->
         CrashlyticsHelper.recordException(e, "WidgetRefreshReceiver: failed to refresh widgets ($reason)")

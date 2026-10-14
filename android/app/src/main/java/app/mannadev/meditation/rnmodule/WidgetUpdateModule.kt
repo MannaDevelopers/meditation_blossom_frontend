@@ -26,6 +26,7 @@ import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 
 @Keep
 class WidgetUpdateModule(reactContext: ReactApplicationContext) :
@@ -315,25 +316,36 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
         }
     }
 
+    // 연타로 리포트(+ Crashlytics non-fatal)가 여러 번 만들어지지 않게 한 번에 하나만 처리한다.
+    private val reportInFlight = AtomicBoolean(false)
+
     override fun reportWidgetDiagnostics(promise: Promise) {
+        if (!reportInFlight.compareAndSet(false, true)) {
+            promise.reject("WIDGET_DIAGNOSTICS_IN_FLIGHT", "위젯 진단 리포트를 이미 전송 중입니다.")
+            return
+        }
         moduleScope.launch(Dispatchers.IO) {
-            val report = runCatching { WidgetDiagnostics.sendReport(reactApplicationContext) }
-                .getOrElse { e ->
-                    CrashlyticsHelper.recordException(e, "Error sending widget diagnostics report", tag = TAG)
-                    promise.reject("WIDGET_DIAGNOSTICS_ERROR", e.message, e)
-                    return@launch
+            try {
+                val report = runCatching { WidgetDiagnostics.sendReport(reactApplicationContext) }
+                    .getOrElse { e ->
+                        CrashlyticsHelper.recordException(e, "Error sending widget diagnostics report", tag = TAG)
+                        promise.reject("WIDGET_DIAGNOSTICS_ERROR", e.message, e)
+                        return@launch
+                    }
+                // 큰 리포트를 JS 브리지로 넘기지 않는다 — 네이티브에서 클립보드에 복사하고 성공 여부만 돌려준다.
+                runCatching {
+                    withContext(Dispatchers.Main) {
+                        val clipboard = reactApplicationContext.getSystemService(ClipboardManager::class.java)
+                        clipboard.setPrimaryClip(ClipData.newPlainText("widget diagnostics", report))
+                    }
+                }.onSuccess {
+                    promise.resolve(true)
+                }.onFailure { e ->
+                    CrashlyticsHelper.recordException(e, "Error copying widget diagnostics report to clipboard", tag = TAG)
+                    promise.reject("WIDGET_DIAGNOSTICS_CLIPBOARD_ERROR", "Crashlytics 전송은 완료, 클립보드 복사 실패: ${e.message}", e)
                 }
-            // 큰 리포트를 JS 브리지로 넘겨 복사하는 대신 네이티브에서 바로 클립보드에 복사한다.
-            runCatching {
-                withContext(Dispatchers.Main) {
-                    val clipboard = reactApplicationContext.getSystemService(ClipboardManager::class.java)
-                    clipboard.setPrimaryClip(ClipData.newPlainText("widget diagnostics", report))
-                }
-            }.onSuccess {
-                promise.resolve(report)
-            }.onFailure { e ->
-                CrashlyticsHelper.recordException(e, "Error copying widget diagnostics report to clipboard", tag = TAG)
-                promise.reject("WIDGET_DIAGNOSTICS_CLIPBOARD_ERROR", "Crashlytics 전송은 완료, 클립보드 복사 실패: ${e.message}", e)
+            } finally {
+                reportInFlight.set(false)
             }
         }
     }

@@ -61,9 +61,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         // bible_references 등을 실어 JS가 Firestore 재조회 없이 payload로 바로 반영할 수 있게 한다.
         const val EXTRA_SERMON_EVENT_DATA = "sermon_event_data"
 
-        // 한 주에 예배별 sermons-v2가 연달아(최대 4건) 오면 각 이벤트가 연달아 수신되어 동시에 처리될 수 있으므로
-        // weekly_sermons를 read-modify-write 하므로, 직렬화하지 않으면 서로의 patch를 덮어써 잃는다.
-        // 서비스 인스턴스가 재생성돼도 공유되도록 companion에 둔다.
+        // 한 주에 예배별 sermons-v2가 연달아(최대 4건) 오면 각 이벤트가 weekly_sermons를 read-modify-write 한다.
+        // [ISSUE-334] 이후 onMessageReceived 안에서 동기 처리하므로, firebase-messaging의 단일 스레드 핸들러
+        // (FcmExecutors.newIntentHandleExecutor, 24.1.1 확인)가 메시지를 이미 직렬화한다. 이 mutex는 그 라이브러리
+        // 내부 동작에 기대지 않기 위한 방어선이다. 서비스 인스턴스가 재생성돼도 공유되도록 companion에 둔다.
         private val weeklySermonsMutex = Mutex()
     }
 
@@ -87,15 +88,16 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             "delayMs" to (startedAt - message.sentTime),
         )
 
-        // FCM_HANDLED는 결과와 함께 항상 남긴다(예외는 기존처럼 그대로 전파).
-        var outcome = "ok"
+        // FCM_HANDLED는 결과와 함께 항상 남긴다(예외는 기존처럼 그대로 전파). outcome은 위젯 반영 여부를 구분한다:
+        // applied(위젯 갱신) / skipped:<이유>(정상 흐름상 위젯 미반영) / failed:<단계>:<예외>(삼킨 실패).
+        var outcome = "unknown"
         try {
-            runBlocking {
+            outcome = runBlocking {
                 when {
                     topic in ALLOWED_SERMON_TOPICS -> consumeSermonEvent(message)
                     topic in ALLOWED_QT_TOPICS -> consumeQtEvent(message)
                     topic in ALLOWED_SERMONS_V2_TOPICS -> consumeSermonsV2Event(message)
-                    else -> Unit // silent drop (v1 and anything unknown)
+                    else -> "skipped:unhandled_topic" // silent drop (v1 and anything unknown)
                 }
             }
         } catch (e: Throwable) {
@@ -124,14 +126,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         return candidate
     }
 
-    private suspend fun consumeSermonEvent(message: RemoteMessage) {
-        if (message.data.isEmpty()) return
+    /** @return FCM_HANDLED outcome — [onMessageReceived] 참고. */
+    private suspend fun consumeSermonEvent(message: RemoteMessage): String {
+        if (message.data.isEmpty()) return "skipped:empty_data"
 
         val sermonDto = runCatching { messageToSermonV2(message.data) }
             .onFailure { e ->
                 CrashlyticsHelper.recordException(e, "Failed to parse sermon v2 data: ${message.data}")
             }
-            .getOrNull() ?: return
+            .getOrElse { e -> return "failed:parse:${e.javaClass.simpleName}" }
 
         Timber.d("Parsed sermon v2: ${sermonDto.title}")
 
@@ -148,15 +151,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }.getOrDefault(false)
         Timber.d("sermon v2 isAllSetting=$isAllSetting")
 
+        var outcome = "skipped:not_all_setting"
         if (isAllSetting) {
-            runCatching {
+            outcome = runCatching {
                 withContext(NonCancellable) {
                     sermonRepository.save(sermonDto)
                     AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.FCM_TOPIC)
                 }
-            }.onFailure { e ->
-                CrashlyticsHelper.recordException(e, "Failed to save sermon v2: $sermonDto")
-            }
+            }.fold(
+                onSuccess = { "applied" },
+                onFailure = { e ->
+                    CrashlyticsHelper.recordException(e, "Failed to save sermon v2: $sermonDto")
+                    "failed:save:${e.javaClass.simpleName}"
+                },
+            )
         }
 
         runCatching {
@@ -186,7 +194,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 .sendBroadcast(intent)
         }.onFailure { e ->
             CrashlyticsHelper.recordException(e, "Failed to update sermon AsyncStorage/broadcast")
+            outcome += ",failed:cache_broadcast:${e.javaClass.simpleName}"
         }
+        return outcome
     }
 
     /**
@@ -197,14 +207,19 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
      * 1. weekly_sermons(AsyncStorage) 캐시에 이 문서를 병합 — '전체'/불일치여도 항상(설정 변경 시 바로 쓰도록).
      * 2. 현재 예배시간 설정과 worship_type이 일치하면('전체' 제외) 위젯 + fcm_sermon 슬롯 즉시 갱신.
      * 이후 JS가 살아 있으면 브로드캐스트를 받아 같은 병합/반영을 한 번 더 하는데, 결과가 같아 무해하다.
+     *
+     * @return FCM_HANDLED outcome — [onMessageReceived] 참고.
      */
-    private suspend fun consumeSermonsV2Event(message: RemoteMessage) {
-        if (message.data.isNotEmpty()) {
+    private suspend fun consumeSermonsV2Event(message: RemoteMessage): String {
+        val outcome = if (message.data.isNotEmpty()) {
             runCatching {
                 withContext(NonCancellable + Dispatchers.IO) { applySermonsV2Event(message.data) }
-            }.onFailure { e ->
+            }.getOrElse { e ->
                 CrashlyticsHelper.recordException(e, "Failed to apply sermons-v2 event: ${message.data}")
+                "failed:apply:${e.javaClass.simpleName}"
             }
+        } else {
+            "skipped:empty_data"
         }
 
         val intent = Intent(ACTION_SERMON_UPDATE_EVENT)
@@ -214,9 +229,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         LocalBroadcastManager
             .getInstance(this@MyFirebaseMessagingService)
             .sendBroadcast(intent)
+        return outcome
     }
 
-    private suspend fun applySermonsV2Event(data: Map<String, String>) {
+    private suspend fun applySermonsV2Event(data: Map<String, String>): String {
         val event = WeeklySermons.parseEvent(data) { bibleRefsJson ->
             // JS와 동일하게 해석 실패(빈 bible_references = "말씀 없는 날" 등)는 이벤트를 버리지 않고 빈 본문으로 둔다.
             runCatching { bibleReferenceResolver.resolveBibleReferencesJson(bibleRefsJson) }
@@ -225,7 +241,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                     CrashlyticsHelper.recordException(e, "sermons-v2: failed to resolve bible_references")
                 }
                 .getOrDefault("")
-        } ?: return // week/worship_type 없음 → patch 불가, JS 폴백에 맡긴다
+        } ?: return "skipped:no_week_or_worship_type" // patch 불가, JS 폴백에 맡긴다
 
         val shouldApply = weeklySermonsMutex.withLock {
             val merged = WeeklySermons.merge(
@@ -240,32 +256,38 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             )
         }
         Timber.d("sermons-v2 ${event.week}/${event.worshipType} cached, applyToWidget=$shouldApply")
-        if (!shouldApply) return
+        if (!shouldApply) return "skipped:worship_type_mismatch"
 
         sermonRepository.save(event.dto)
         AnalyticsHelper.logUpdateSermonEvent(SermonEventSource.FCM_TOPIC)
         // JS의 saveSermonToAsyncStorage(patched)와 동일 — 앱 실행 시 '지금 화면' 슬롯도 최신이 되도록.
         asyncStorage.set(key = ASYNC_STORAGE_FCM_SERMON, value = event.cacheEntry.toString())
+        return "applied"
     }
 
-    private suspend fun consumeQtEvent(message: RemoteMessage) {
-        if (message.data.isEmpty()) return
+    /** @return FCM_HANDLED outcome — [onMessageReceived] 참고. */
+    private suspend fun consumeQtEvent(message: RemoteMessage): String {
+        if (message.data.isEmpty()) return "skipped:empty_data"
 
         val qtDto = runCatching { messageToQt(message.data) }
             .onFailure { e ->
                 CrashlyticsHelper.recordException(e, "Failed to parse qt data: ${message.data}")
             }
-            .getOrNull() ?: return
+            .getOrElse { e -> return "failed:parse:${e.javaClass.simpleName}" }
 
         Timber.d("Parsed qt: ${qtDto.title}")
 
-        runCatching {
+        var outcome = runCatching {
             withContext(NonCancellable) {
                 qtRepository.save(qtDto)
             }
-        }.onFailure { e ->
-            CrashlyticsHelper.recordException(e, "Failed to save qt: $qtDto")
-        }
+        }.fold(
+            onSuccess = { "applied" },
+            onFailure = { e ->
+                CrashlyticsHelper.recordException(e, "Failed to save qt: $qtDto")
+                "failed:save:${e.javaClass.simpleName}"
+            },
+        )
 
         runCatching {
             withContext(Dispatchers.IO) {
@@ -282,7 +304,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 .sendBroadcast(Intent(ACTION_QT_UPDATE_EVENT))
         }.onFailure { e ->
             CrashlyticsHelper.recordException(e, "Failed to update qt AsyncStorage/broadcast")
+            outcome += ",failed:cache_broadcast:${e.javaClass.simpleName}"
         }
+        return outcome
     }
 
     private fun messageToSermonV2(data: Map<String, String>): SermonDto {

@@ -29,9 +29,10 @@ export interface Spec extends TurboModule {
   getYoutubeLinkEnabled(): Promise<boolean>;
 
   // [ISSUE-334] 위젯 갱신 진단 리포트(링버퍼 + 환경)를 Crashlytics non-fatal로 전송하고, 같은 텍스트를
-  // 네이티브에서 클립보드에 복사한 뒤(Android) 반환한다. 복사만 실패하면 WIDGET_DIAGNOSTICS_CLIPBOARD_ERROR로
-  // reject한다(Crashlytics 전송은 완료된 상태). Android 전용. iOS는 빈 문자열을 resolve한다.
-  reportWidgetDiagnostics(): Promise<string>;
+  // 네이티브에서 클립보드에 복사한 뒤(Android) true를 resolve한다(큰 리포트는 브리지로 넘기지 않음). 복사만 실패하면
+  // WIDGET_DIAGNOSTICS_CLIPBOARD_ERROR, 이미 전송 중이면 WIDGET_DIAGNOSTICS_IN_FLIGHT로 reject한다.
+  // Android 전용. iOS는 false를 resolve한다.
+  reportWidgetDiagnostics(): Promise<boolean>;
 }
 
 export default TurboModuleRegistry.getEnforcing<Spec>('WidgetUpdateModule');

@@ -11,13 +11,19 @@ import java.time.format.DateTimeFormatter
  * 한 이벤트 = 한 줄 = "<ISO 시각> <EVENT> key=value ...".
  */
 internal object WidgetDiagnosticsFormat {
-    /** 파일이 TRIM_THRESHOLD_BYTES를 넘으면 최근 MAX_LOG_LINES줄만 남긴다. 남는 크기가 임계값보다 충분히 작아(히스테리시스) trim이 드물게 실행된다. */
-    const val MAX_LOG_LINES = 4000
+    /**
+     * 파일이 TRIM_THRESHOLD_BYTES를 넘으면 최근 TRIM_TARGET_BYTES 안에 드는 줄만 남긴다. 줄 수가 아니라 바이트로 잘라야
+     * 한글/옵션 덤프처럼 긴 줄이 많아도 trim 후 확실히 임계값 아래로 내려가(히스테리시스) trim이 드물게 실행된다.
+     */
     const val TRIM_THRESHOLD_BYTES = 1_500_000L
+    const val TRIM_TARGET_BYTES = 1_000_000L
 
     /** 리포트에는 최근 72시간, 30분 주기로 반복되는 잡음 이벤트를 뺀 줄만 싣는다. */
     const val REPORT_WINDOW_MILLIS = 72L * 60 * 60 * 1000
     val REPORT_EXCLUDED_EVENTS = setOf("ON_UPDATE", "PROVIDE_GLANCE")
+
+    /** 리포트에서 빠지는 이벤트는 파일에 남기지 않는다(Timber로만) — 링버퍼를 72시간 창의 핵심 이벤트에 쓴다. */
+    fun isPersisted(event: String): Boolean = event !in REPORT_EXCLUDED_EVENTS
 
     /** 클립보드/카카오톡 전달용 리포트 최대 길이. 넘으면 오래된 줄부터 잘라 환경/스냅샷(뒤쪽)을 보존한다. */
     const val REPORT_MAX_CHARS = 100_000
@@ -31,7 +37,14 @@ internal object WidgetDiagnosticsFormat {
         return line.replace('\n', ' ').replace('\r', ' ')
     }
 
-    fun keepLastLines(lines: List<String>, max: Int): List<String> = lines.takeLast(max)
+    /** 가장 최근 줄부터, 줄마다 개행 1바이트를 더한 UTF-8 크기 합이 maxBytes 안에 드는 만큼 남긴다. */
+    fun keepLastBytes(lines: List<String>, maxBytes: Long): List<String> {
+        var total = 0L
+        return lines.asReversed().takeWhile { line ->
+            total += line.toByteArray(Charsets.UTF_8).size + 1
+            total <= maxBytes
+        }.asReversed()
+    }
 
     fun selectReportLines(
         lines: List<String>,
@@ -99,6 +112,10 @@ internal object WidgetDiagnosticsFormat {
         is WidgetContentState.Data -> "Data(${describe(state.value)})"
         is WidgetContentState.Error -> "Error(${state.throwable.javaClass.simpleName})"
     }
+
+    /** Sermon 모델에는 날짜가 없어 제목만으로는 같은 시리즈 제목의 주간 변경을 못 가린다 — 본문 해시를 붙인다. */
+    fun summarizeSermon(title: String, bookName: String, verses: List<String>): String =
+        "$title / $bookName #${Integer.toHexString(verses.hashCode())}"
 
     fun summarizeOptions(options: Map<String, Any?>): String =
         options.toSortedMap().entries.joinToString(", ", prefix = "{", postfix = "}") { (k, v) -> "$k=$v" }

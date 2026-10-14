@@ -36,9 +36,33 @@ class WidgetDiagnosticsFormatTest {
     }
 
     @Test
-    fun `keepLastLines drops oldest lines beyond max`() {
-        assertEquals(listOf("e3", "e4", "e5"), WidgetDiagnosticsFormat.keepLastLines(listOf("e1", "e2", "e3", "e4", "e5"), 3))
-        assertEquals(listOf("e1"), WidgetDiagnosticsFormat.keepLastLines(listOf("e1"), 3))
+    fun `keepLastBytes keeps newest lines whose utf-8 size with newlines fits`() {
+        // "가나다"는 UTF-8로 9바이트 + 개행 1 = 10바이트. 줄 수가 아니라 바이트로 잘라야 한글 줄이 많아도 임계값 아래로 내려간다.
+        val lines = listOf("오래된줄", "가나다", "abc", "가나다")
+        assertEquals(listOf("abc", "가나다"), WidgetDiagnosticsFormat.keepLastBytes(lines, maxBytes = 14))
+        assertEquals(listOf("가나다", "abc", "가나다"), WidgetDiagnosticsFormat.keepLastBytes(lines, maxBytes = 24))
+        assertEquals(emptyList<String>(), WidgetDiagnosticsFormat.keepLastBytes(lines, maxBytes = 9))
+    }
+
+    @Test
+    fun `trim target leaves headroom below the trim threshold`() {
+        assertTrue(WidgetDiagnosticsFormat.TRIM_TARGET_BYTES * 4 <= WidgetDiagnosticsFormat.TRIM_THRESHOLD_BYTES * 3)
+    }
+
+    @Test
+    fun `persistable excludes events the report never shows`() {
+        assertFalse(WidgetDiagnosticsFormat.isPersisted("ON_UPDATE"))
+        assertFalse(WidgetDiagnosticsFormat.isPersisted("PROVIDE_GLANCE"))
+        assertTrue(WidgetDiagnosticsFormat.isPersisted("RENDER"))
+        assertTrue(WidgetDiagnosticsFormat.isPersisted("UPDATE_ALL"))
+    }
+
+    @Test
+    fun `summarizeSermon distinguishes same title with different content`() {
+        val a = WidgetDiagnosticsFormat.summarizeSermon(title = "시리즈 설교", bookName = "요한복음", verses = listOf("1절"))
+        val b = WidgetDiagnosticsFormat.summarizeSermon(title = "시리즈 설교", bookName = "요한복음", verses = listOf("2절"))
+        assertTrue(a.startsWith("시리즈 설교 / 요한복음 #"))
+        assertTrue(a != b)
     }
 
     @Test

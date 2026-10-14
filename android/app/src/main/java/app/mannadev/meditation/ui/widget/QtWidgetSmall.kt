@@ -17,7 +17,6 @@ import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.cornerRadius
@@ -48,6 +47,7 @@ import app.mannadev.meditation.ui.widget.qt.prefixQuestions
 import app.mannadev.meditation.ui.widget.theme.Typography
 import app.mannadev.meditation.widget.diagnostics.WidgetDiagnostics
 import app.mannadev.meditation.widget.diagnostics.WidgetDiagnosticsFormat
+import app.mannadev.meditation.widget.state.WidgetContentState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
@@ -60,7 +60,7 @@ class QtWidgetSmall : GlanceAppWidget(
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
+        val appWidgetId = WidgetDiagnostics.appWidgetIdOrUnknown(context, id)
         WidgetDiagnostics.record(context, "PROVIDE_GLANCE", "widget" to "QtWidgetSmall", "id" to appWidgetId)
         val qtRepository = getWidgetDependencies(context).qtRepository()
         val youtubeLinkEnabled = getWidgetDependencies(context).getWidgetPrefs().isEnabled()
@@ -74,6 +74,7 @@ class QtWidgetSmall : GlanceAppWidget(
                 WidgetDiagnostics.recordRender(
                     context, "QtWidgetSmall", appWidgetId,
                     WidgetDiagnosticsFormat.summarizeState(state) { it.date },
+                    isLoaded = state !is WidgetContentState.Loading,
                 )
             }
             QtWidgetSmallContent(uiModel, clickAction, youtubeLinkEnabled, design)

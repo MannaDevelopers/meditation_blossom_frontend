@@ -7,8 +7,10 @@ import android.content.Context
 import android.hardware.display.DisplayManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Looper
 import android.os.PowerManager
 import android.view.Display
+import androidx.glance.GlanceId
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.updateAll
@@ -28,12 +30,16 @@ import kotlinx.coroutines.CancellationException
 import timber.log.Timber
 import java.io.File
 import java.time.ZoneId
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * 위젯 갱신 경로 진단 로그([ISSUE-334]). 폴드 안쪽 화면 위젯만 이전 데이터로 남는 현상이 재발했을 때
  * "앱이 그 appWidgetId를 최신 데이터로 다시 그렸는가(RENDER) / 갱신 요청 대상에 그 ID가 있었는가
  * (UPDATE_ALL glanceIds vs systemIds) / 그때 화면이 접혀 있었는가(display)"를 사후에 확인한다.
  * 기록은 best-effort — 실패해도 호출부 동작(위젯 갱신/FCM 처리)에는 영향을 주지 않는다.
+ * 메인 스레드(리시버 콜백, RN 모듈)에서 호출되면 파일 I/O는 전용 단일 스레드로 넘긴다. 이미 백그라운드인
+ * 호출(FCM 핸들러, Glance 워커)은 그 자리에서 쓴다 — onMessageReceived 반환 직후 프로세스가 동결돼도 남도록.
  */
 object WidgetDiagnostics {
     private const val TAG = "WidgetDiag"
@@ -43,6 +49,10 @@ object WidgetDiagnostics {
 
     private val lock = Any()
     private val renderDedupe = RenderDedupe()
+    private val ioExecutor = Executors.newSingleThreadExecutor { r -> Thread(r, "WidgetDiagnostics-IO") }
+
+    /** 디스크가 가득 차는 등 실패가 지속되면 이벤트마다 non-fatal이 쌓이므로 프로세스당 한 번만 Crashlytics에 보낸다. */
+    private val failureReported = AtomicBoolean(false)
 
     /** Crashlytics 브레드크럼(세션당 64KB)은 핵심 이벤트만 — 나머지는 Timber + 파일로만 남긴다. */
     private val CRASHLYTICS_BREADCRUMB_EVENTS = setOf("FCM_RECEIVED", "FCM_HANDLED", "JS_PUSH", "RENDER_ERROR", "PERIODIC_SYNC_START")
@@ -56,31 +66,52 @@ object WidgetDiagnostics {
         runCatching {
             snapshotPrefs(context).edit().putString(snapshotKey, entry).apply()
         }.onFailure { e ->
-            CrashlyticsHelper.recordException(e, "WidgetDiagnostics: failed to save snapshot $snapshotKey", tag = TAG)
+            reportFailure(e, "WidgetDiagnostics: failed to save snapshot $snapshotKey")
         }
     }
 
     /**
      * `render_<id>`는 마지막 렌더(리포트를 보내려고 앱을 열 때의 렌더로 덮일 수 있음), `render_change_<id>`는
      * 그 ID의 데이터 요약이 마지막으로 바뀐 렌더다 — 리포트 흐름이 만든 렌더에 "언제 새 데이터로 바뀌었나"가 덮이지 않게 한다.
+     * 콜드 스타트마다 거치는 Loading 렌더(isLoaded=false)는 데이터 변경으로 치지 않는다 — Loading→같은 Data가
+     * "변경"으로 잡혀 리포트를 보내려고 앱을 열 때마다 render_change가 덮이는 것을 막는다.
      */
-    fun recordRender(context: Context, widget: String, appWidgetId: Int, summary: String) {
-        val display = displaySummary(context)
-        if (!renderDedupe.shouldRecord(appWidgetId, "$summary|$display", System.currentTimeMillis())) return
-        val entry = write(
-            context, "RENDER",
-            listOf("widget" to widget, "id" to appWidgetId, "data" to summary, "display" to display),
-        ) ?: return
+    fun recordRender(context: Context, widget: String, appWidgetId: Int, summary: String, isLoaded: Boolean) {
         runCatching {
+            val display = displaySummary(context)
+            if (!renderDedupe.shouldRecord(appWidgetId, "$summary|$display", System.currentTimeMillis())) return
+            val entry = write(
+                context, "RENDER",
+                listOf("widget" to widget, "id" to appWidgetId, "data" to summary, "display" to display),
+            ) ?: return
             val prefs = snapshotPrefs(context)
             val summaryKey = "render_summary_$appWidgetId"
             val editor = prefs.edit().putString("render_$appWidgetId", entry)
-            if (prefs.getString(summaryKey, null) != summary) {
+            if (isLoaded && prefs.getString(summaryKey, null) != summary) {
                 editor.putString(summaryKey, summary).putString("render_change_$appWidgetId", entry)
             }
             editor.apply()
         }.onFailure { e ->
-            CrashlyticsHelper.recordException(e, "WidgetDiagnostics: failed to save render snapshot $appWidgetId", tag = TAG)
+            reportFailure(e, "WidgetDiagnostics: failed to record render $appWidgetId")
+        }
+    }
+
+    /** Glance가 알 수 없는 GlanceId를 주면 예외가 나므로 진단용 ID 조회가 렌더를 막지 않게 -1로 대체한다. */
+    fun appWidgetIdOrUnknown(context: Context, id: GlanceId): Int =
+        runCatching { GlanceAppWidgetManager(context).getAppWidgetId(id) }
+            .getOrElse { e ->
+                reportFailure(e, "WidgetDiagnostics: failed to resolve appWidgetId")
+                -1
+            }
+
+    /** 진단 경로의 실패 보고. 실패가 지속돼도 Crashlytics non-fatal은 프로세스당 한 번만 남긴다. */
+    fun reportFailure(e: Throwable, message: String) {
+        runCatching {
+            if (failureReported.compareAndSet(false, true)) {
+                CrashlyticsHelper.recordException(e, message, tag = TAG)
+            } else {
+                Timber.tag(TAG).w(e, message)
+            }
         }
     }
 
@@ -102,6 +133,7 @@ object WidgetDiagnostics {
      * 환경/스냅샷 섹션이 뒤에 오도록 구성했으므로 꼬리를 남겨도 그 섹션은 살아남는다.
      */
     fun sendReport(context: Context): String {
+        check(Looper.myLooper() != Looper.getMainLooper()) { "sendReport must not run on the main thread" }
         val report = WidgetDiagnosticsFormat.tailWithinChars(buildReport(context).lines(), WidgetDiagnosticsFormat.REPORT_MAX_CHARS)
             .joinToString("\n")
         val crashlytics = FirebaseCrashlytics.getInstance()
@@ -116,24 +148,39 @@ object WidgetDiagnostics {
         val entry = WidgetDiagnosticsFormat.formatEntry(System.currentTimeMillis(), ZoneId.systemDefault(), event, fields)
         Timber.tag(TAG).d(entry)
         if (event in CRASHLYTICS_BREADCRUMB_EVENTS) FirebaseCrashlytics.getInstance().log(entry)
-        synchronized(lock) {
+        if (WidgetDiagnosticsFormat.isPersisted(event)) {
             val file = logFile(context)
-            file.appendText(entry + "\n")
-            if (file.length() > WidgetDiagnosticsFormat.TRIM_THRESHOLD_BYTES) {
-                val kept = WidgetDiagnosticsFormat.keepLastLines(file.readLines(), WidgetDiagnosticsFormat.MAX_LOG_LINES)
-                file.writeText(kept.joinToString("\n", postfix = "\n"))
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                ioExecutor.execute { appendToFile(file, entry, event) }
+            } else {
+                appendToFile(file, entry, event)
             }
         }
         entry
     }.getOrElse { e ->
-        CrashlyticsHelper.recordException(e, "WidgetDiagnostics: failed to record $event", tag = TAG)
+        reportFailure(e, "WidgetDiagnostics: failed to record $event")
         null
     }
 
-    private fun buildReport(context: Context): String {
-        val lines = synchronized(lock) {
-            logFile(context).takeIf { it.exists() }?.readLines().orEmpty()
+    private fun appendToFile(file: File, entry: String, event: String) {
+        runCatching {
+            synchronized(lock) {
+                file.appendText(entry + "\n")
+                if (file.length() > WidgetDiagnosticsFormat.TRIM_THRESHOLD_BYTES) {
+                    val kept = WidgetDiagnosticsFormat.keepLastBytes(file.readLines(), WidgetDiagnosticsFormat.TRIM_TARGET_BYTES)
+                    file.writeText(kept.joinToString("\n", postfix = "\n"))
+                }
+            }
+        }.onFailure { e ->
+            reportFailure(e, "WidgetDiagnostics: failed to write $event")
         }
+    }
+
+    private fun buildReport(context: Context): String {
+        // 메인 스레드에서 넘겨 둔 쓰기가 끝난 뒤 읽도록 같은 단일 스레드에서 읽는다(최신 줄 누락 방지).
+        val lines = ioExecutor.submit<List<String>> {
+            synchronized(lock) { logFile(context).takeIf { it.exists() }?.readLines().orEmpty() }
+        }.get()
         val selected = WidgetDiagnosticsFormat.selectReportLines(lines, System.currentTimeMillis())
         val compacted = WidgetDiagnosticsFormat.compactReportLines(selected)
         val snapshots = snapshotPrefs(context).all.toSortedMap().entries.joinToString("\n") { (k, v) -> "$k: $v" }
@@ -151,7 +198,9 @@ object WidgetDiagnostics {
             appendSection {
                 val deps = getWidgetDependencies(context)
                 "qt=${WidgetDiagnosticsFormat.summarizeState(deps.qtRepository().qtState.value) { it.date }}\n" +
-                    "sermon=${WidgetDiagnosticsFormat.summarizeState(deps.sermonRepository().sermonState.value) { it.title }}"
+                    "sermon=${WidgetDiagnosticsFormat.summarizeState(deps.sermonRepository().sermonState.value) {
+                        WidgetDiagnosticsFormat.summarizeSermon(it.title, it.bookName, it.verses)
+                    }}"
             }
             appendLine("=== placed widgets (id + options; sizes identify cover vs inner screen) ===")
             appendSection { placedWidgetsSummary(context) }
@@ -213,7 +262,11 @@ class WidgetDiagnosticsReport(message: String) : Exception(message)
  * `updateAll` 전에 "Glance가 아는 ID(glanceIds)"와 "시스템에 배치된 ID(systemIds)"를 함께 기록한다.
  * 두 목록이 다르면 Glance 쪽에서 특정 위젯 인스턴스가 갱신 대상에서 빠진 것이다.
  */
-suspend fun GlanceAppWidget.updateAllLogged(context: Context, reason: String) {
+suspend fun GlanceAppWidget.updateAllLogged(
+    context: Context,
+    reason: String,
+    display: String = WidgetDiagnostics.displaySummary(context),
+) {
     try {
         val glanceManager = GlanceAppWidgetManager(context)
         val glanceIds = try {
@@ -231,13 +284,13 @@ suspend fun GlanceAppWidget.updateAllLogged(context: Context, reason: String) {
             WidgetDiagnostics.record(
                 context, "UPDATE_ALL",
                 "widget" to javaClass.simpleName, "reason" to reason,
-                "glanceIds" to glanceIds, "systemIds" to systemIds, "display" to WidgetDiagnostics.displaySummary(context),
+                "glanceIds" to glanceIds, "systemIds" to systemIds, "display" to display,
             )
         }
     } catch (e: CancellationException) {
         throw e
     } catch (e: Throwable) {
-        CrashlyticsHelper.recordException(e, "WidgetDiagnostics: failed to log UPDATE_ALL for ${javaClass.simpleName}", tag = "WidgetDiag")
+        WidgetDiagnostics.reportFailure(e, "WidgetDiagnostics: failed to log UPDATE_ALL for ${javaClass.simpleName}")
     }
     updateAll(context)
 }

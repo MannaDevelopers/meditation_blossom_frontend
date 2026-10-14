@@ -17,7 +17,6 @@ import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.cornerRadius
@@ -47,6 +46,7 @@ import app.mannadev.meditation.model.Sermon
 import app.mannadev.meditation.ui.widget.theme.Typography
 import app.mannadev.meditation.widget.diagnostics.WidgetDiagnostics
 import app.mannadev.meditation.widget.diagnostics.WidgetDiagnosticsFormat
+import app.mannadev.meditation.widget.state.WidgetContentState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
@@ -61,7 +61,7 @@ class VerseWidgetSmall : GlanceAppWidget(
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
+        val appWidgetId = WidgetDiagnostics.appWidgetIdOrUnknown(context, id)
         WidgetDiagnostics.record(context, "PROVIDE_GLANCE", "widget" to "VerseWidgetSmall", "id" to appWidgetId)
         val sermonRepository = getWidgetDependencies(context).sermonRepository()
         val youtubeLinkEnabled = getWidgetDependencies(context).getWidgetPrefs().isEnabled()
@@ -74,7 +74,10 @@ class VerseWidgetSmall : GlanceAppWidget(
             SideEffect {
                 WidgetDiagnostics.recordRender(
                     context, "VerseWidgetSmall", appWidgetId,
-                    WidgetDiagnosticsFormat.summarizeState(state) { it.title },
+                    WidgetDiagnosticsFormat.summarizeState(state) {
+                        WidgetDiagnosticsFormat.summarizeSermon(it.title, it.bookName, it.verses)
+                    },
+                    isLoaded = state !is WidgetContentState.Loading,
                 )
             }
             VerseWidgetSmallContent(sermon, clickAction, youtubeLinkEnabled, design)
