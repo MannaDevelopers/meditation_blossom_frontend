@@ -10,6 +10,7 @@ import app.mannadev.meditation.dto.QtDto
 import app.mannadev.meditation.dto.SermonDto
 import app.mannadev.meditation.dto.WidgetDesignDto
 import app.mannadev.meditation.specs.NativeWidgetUpdateModuleSpec
+import app.mannadev.meditation.widget.diagnostics.WidgetDiagnostics
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -89,6 +90,7 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
                 log.d("Saving sermon to Widget Preference...")
                 val resolver = moduleDependencies.getBibleReferenceResolver()
                 val sermonDto = json.decodeFromString<SermonDto>(sermonData)
+                WidgetDiagnostics.record(reactApplicationContext, "JS_PUSH", "type" to "sermon", "date" to sermonDto.date)
                 log.d("SermonDto: $sermonDto")
                 val resolvedDto = runCatching { resolver.resolveDto(sermonDto) }
                     .onFailure { e ->
@@ -191,6 +193,7 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
             val saveResult = runCatching {
                 log.d("Saving QT to Widget Preference...")
                 val qtDto = json.decodeFromString<QtDto>(qtData)
+                WidgetDiagnostics.record(reactApplicationContext, "JS_PUSH", "type" to "qt", "date" to qtDto.date)
                 moduleDependencies.qtRepository().save(qtDto)
                 log.d("QT saved to prefs successfully")
             }.onFailure { e ->

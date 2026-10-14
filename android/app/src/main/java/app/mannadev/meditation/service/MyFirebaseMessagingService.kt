@@ -22,17 +22,15 @@ import app.mannadev.meditation.domain.repository.SermonRepository
 import app.mannadev.meditation.dto.QtDto
 import app.mannadev.meditation.dto.SermonDto
 import app.mannadev.meditation.model.BibleReferenceResolver
+import app.mannadev.meditation.widget.diagnostics.WidgetDiagnostics
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import timber.log.Timber
@@ -63,7 +61,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         // bible_references 등을 실어 JS가 Firestore 재조회 없이 payload로 바로 반영할 수 있게 한다.
         const val EXTRA_SERMON_EVENT_DATA = "sermon_event_data"
 
-        // 한 주에 예배별 sermons-v2가 연달아(최대 4건) 오면 각 이벤트가 serviceScope에서 병렬로
+        // 한 주에 예배별 sermons-v2가 연달아(최대 4건) 오면 각 이벤트가 연달아 수신되어 동시에 처리될 수 있으므로
         // weekly_sermons를 read-modify-write 하므로, 직렬화하지 않으면 서로의 patch를 덮어써 잃는다.
         // 서비스 인스턴스가 재생성돼도 공유되도록 companion에 둔다.
         private val weeklySermonsMutex = Mutex()
@@ -74,23 +72,32 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     @Inject lateinit var asyncStorage: AsyncStorage
     @Inject lateinit var bibleReferenceResolver: BibleReferenceResolver
 
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
-    override fun onDestroy() {
-        super.onDestroy()
-        serviceScope.cancel()
-    }
-
+    // [ISSUE-334] FCM은 onMessageReceived를 백그라운드 스레드에서 호출하고, 반환하면 서비스를 종료한다.
+    // 반환 후에 도는 비동기 작업은 취소·프로세스 동결에 노출되므로(Firebase 가이드) 여기서 끝까지 처리한다.
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
         val topic = resolveTopic(message) ?: return // silent drop
+        val startedAt = System.currentTimeMillis()
+        WidgetDiagnostics.recordWithSnapshot(
+            this, "fcm_$topic", "FCM_RECEIVED",
+            "topic" to topic,
+            "date" to message.data[KEY_DATE],
+            "priority" to message.priority,
+            "originalPriority" to message.originalPriority,
+            "delayMs" to (startedAt - message.sentTime),
+        )
 
-        when {
-            topic in ALLOWED_SERMON_TOPICS -> serviceScope.launch { consumeSermonEvent(message) }
-            topic in ALLOWED_QT_TOPICS -> serviceScope.launch { consumeQtEvent(message) }
-            topic in ALLOWED_SERMONS_V2_TOPICS -> serviceScope.launch { consumeSermonsV2Event(message) }
-            else -> Unit // silent drop (v1 and anything unknown)
+        runBlocking {
+            when {
+                topic in ALLOWED_SERMON_TOPICS -> consumeSermonEvent(message)
+                topic in ALLOWED_QT_TOPICS -> consumeQtEvent(message)
+                topic in ALLOWED_SERMONS_V2_TOPICS -> consumeSermonsV2Event(message)
+                else -> Unit // silent drop (v1 and anything unknown)
+            }
         }
+        WidgetDiagnostics.record(
+            this, "FCM_HANDLED", "topic" to topic, "elapsedMs" to (System.currentTimeMillis() - startedAt),
+        )
     }
 
     /** Extracts topic name from `from` ("/topics/NAME") or `data.topic`. Returns null if neither resolves,
