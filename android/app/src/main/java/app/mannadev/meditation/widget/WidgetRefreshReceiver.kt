@@ -3,13 +3,13 @@ package app.mannadev.meditation.widget
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import androidx.glance.appwidget.updateAll
 import app.mannadev.meditation.analytics.AnalyticsHelper
 import app.mannadev.meditation.analytics.CrashlyticsHelper
 import app.mannadev.meditation.ui.widget.QtWidgetLarge
 import app.mannadev.meditation.ui.widget.QtWidgetSmall
 import app.mannadev.meditation.ui.widget.VerseWidgetLarge
 import app.mannadev.meditation.ui.widget.VerseWidgetSmall
+import app.mannadev.meditation.widget.diagnostics.updateAllLogged
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -60,10 +60,10 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
 
 suspend fun refreshAllWidgets(context: Context, reason: String) {
     runCatching {
-        VerseWidgetLarge().updateAll(context)
-        VerseWidgetSmall().updateAll(context)
-        QtWidgetLarge().updateAll(context)
-        QtWidgetSmall().updateAll(context)
+        VerseWidgetLarge().updateAllLogged(context, "refresh_$reason")
+        VerseWidgetSmall().updateAllLogged(context, "refresh_$reason")
+        QtWidgetLarge().updateAllLogged(context, "refresh_$reason")
+        QtWidgetSmall().updateAllLogged(context, "refresh_$reason")
         AnalyticsHelper.logWidgetUpdated("refresh_$reason")
     }.onFailure { e ->
         CrashlyticsHelper.recordException(e, "WidgetRefreshReceiver: failed to refresh widgets ($reason)")
