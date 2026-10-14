@@ -90,4 +90,71 @@ class WidgetDiagnosticsFormatTest {
         assertTrue(dedupe.shouldRecord(12, "Data(2026-10-13)", nowMillis = 1_030)) // 데이터 변경
         assertTrue(dedupe.shouldRecord(12, "Data(2026-10-13)", nowMillis = 7_000)) // 창 경과 후 재렌더
     }
+    private val t = "2026-10-13T09:00:00.000+09:00"
+    private fun updateAll(reason: String, glance: String, system: String) =
+        "$t UPDATE_ALL widget=QtWidgetLarge reason=$reason glanceIds=$glance systemIds=$system display=d0(state=2,1856x2160) cfg=673x841dp"
+
+    @Test
+    fun `compactReportLines keeps non-UPDATE_ALL lines and adds no summary when nothing dropped`() {
+        val lines = listOf(
+            "$t FCM_RECEIVED topic=qt_events glanceIds=[] systemIds=[]",
+            "$t RENDER widget=QtWidgetLarge id=12 data=Data(2026-10-13)",
+            "garbage line",
+        )
+        assertEquals(lines, WidgetDiagnosticsFormat.compactReportLines(lines))
+    }
+
+    @Test
+    fun `compactReportLines drops UPDATE_ALL lines with both id lists empty or null`() {
+        val bothEmpty = updateAll("fcm_qt", "[]", "[]")
+        val emptyAndNull = updateAll("fcm_qt", "[]", "null")
+        val kept = updateAll("fcm_qt", "[12]", "[12]")
+        val result = WidgetDiagnosticsFormat.compactReportLines(listOf(bothEmpty, emptyAndNull, kept))
+        assertEquals(
+            listOf(
+                "(omitted 2 UPDATE_ALL lines without placed widgets, 0 refresh UPDATE_ALL lines with glanceIds==systemIds)",
+                kept,
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun `compactReportLines drops refresh UPDATE_ALL lines whose id lists are equal`() {
+        val refreshEqual = updateAll("refresh_SCREEN_ON", "[12, 34]", "[12, 34]")
+        val result = WidgetDiagnosticsFormat.compactReportLines(listOf(refreshEqual))
+        assertEquals(
+            listOf("(omitted 0 UPDATE_ALL lines without placed widgets, 1 refresh UPDATE_ALL lines with glanceIds==systemIds)"),
+            result,
+        )
+    }
+
+    @Test
+    fun `compactReportLines keeps refresh UPDATE_ALL lines whose id lists differ`() {
+        val refreshUnequal = updateAll("refresh_SCREEN_ON", "[12]", "[12, 34]")
+        assertEquals(listOf(refreshUnequal), WidgetDiagnosticsFormat.compactReportLines(listOf(refreshUnequal)))
+    }
+
+    @Test
+    fun `compactReportLines keeps non-refresh UPDATE_ALL lines with equal id lists`() {
+        val fcmEqual = updateAll("fcm_qt", "[12, 34]", "[12, 34]")
+        assertEquals(listOf(fcmEqual), WidgetDiagnosticsFormat.compactReportLines(listOf(fcmEqual)))
+    }
+
+    @Test
+    fun `compactReportLines summary counts both kinds and precedes remaining lines`() {
+        val fcm = "$t FCM_RECEIVED topic=qt_events"
+        val empty = updateAll("refresh_SCREEN_ON", "[]", "[]")
+        val refreshEqual = updateAll("refresh_USER_PRESENT", "[12]", "[12]")
+        val diff = updateAll("refresh_USER_PRESENT", "[]", "[12]")
+        val result = WidgetDiagnosticsFormat.compactReportLines(listOf(fcm, empty, refreshEqual, diff))
+        assertEquals(
+            listOf(
+                "(omitted 1 UPDATE_ALL lines without placed widgets, 1 refresh UPDATE_ALL lines with glanceIds==systemIds)",
+                fcm,
+                diff,
+            ),
+            result,
+        )
+    }
 }

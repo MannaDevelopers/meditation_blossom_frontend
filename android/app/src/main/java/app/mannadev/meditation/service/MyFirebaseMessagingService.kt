@@ -87,17 +87,26 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             "delayMs" to (startedAt - message.sentTime),
         )
 
-        runBlocking {
-            when {
-                topic in ALLOWED_SERMON_TOPICS -> consumeSermonEvent(message)
-                topic in ALLOWED_QT_TOPICS -> consumeQtEvent(message)
-                topic in ALLOWED_SERMONS_V2_TOPICS -> consumeSermonsV2Event(message)
-                else -> Unit // silent drop (v1 and anything unknown)
+        // FCM_HANDLED는 결과와 함께 항상 남긴다(예외는 기존처럼 그대로 전파).
+        var outcome = "ok"
+        try {
+            runBlocking {
+                when {
+                    topic in ALLOWED_SERMON_TOPICS -> consumeSermonEvent(message)
+                    topic in ALLOWED_QT_TOPICS -> consumeQtEvent(message)
+                    topic in ALLOWED_SERMONS_V2_TOPICS -> consumeSermonsV2Event(message)
+                    else -> Unit // silent drop (v1 and anything unknown)
+                }
             }
+        } catch (e: Throwable) {
+            outcome = "error:${e.javaClass.simpleName}"
+            throw e
+        } finally {
+            WidgetDiagnostics.record(
+                this, "FCM_HANDLED",
+                "topic" to topic, "elapsedMs" to (System.currentTimeMillis() - startedAt), "outcome" to outcome,
+            )
         }
-        WidgetDiagnostics.record(
-            this, "FCM_HANDLED", "topic" to topic, "elapsedMs" to (System.currentTimeMillis() - startedAt),
-        )
     }
 
     /** Extracts topic name from `from` ("/topics/NAME") or `data.topic`. Returns null if neither resolves,

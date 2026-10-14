@@ -59,11 +59,12 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
 }
 
 suspend fun refreshAllWidgets(context: Context, reason: String) {
+    val shortReason = reason.removePrefix("android.intent.action.")
     runCatching {
-        VerseWidgetLarge().updateAllLogged(context, "refresh_$reason")
-        VerseWidgetSmall().updateAllLogged(context, "refresh_$reason")
-        QtWidgetLarge().updateAllLogged(context, "refresh_$reason")
-        QtWidgetSmall().updateAllLogged(context, "refresh_$reason")
+        VerseWidgetLarge().updateAllLogged(context, "refresh_$shortReason")
+        VerseWidgetSmall().updateAllLogged(context, "refresh_$shortReason")
+        QtWidgetLarge().updateAllLogged(context, "refresh_$shortReason")
+        QtWidgetSmall().updateAllLogged(context, "refresh_$shortReason")
         AnalyticsHelper.logWidgetUpdated("refresh_$reason")
     }.onFailure { e ->
         CrashlyticsHelper.recordException(e, "WidgetRefreshReceiver: failed to refresh widgets ($reason)")

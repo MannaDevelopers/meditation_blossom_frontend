@@ -19,6 +19,9 @@ internal object WidgetDiagnosticsFormat {
     const val REPORT_WINDOW_MILLIS = 72L * 60 * 60 * 1000
     val REPORT_EXCLUDED_EVENTS = setOf("ON_UPDATE", "PROVIDE_GLANCE")
 
+    /** 클립보드/카카오톡 전달용 리포트 최대 길이. 넘으면 오래된 줄부터 잘라 환경/스냅샷(뒤쪽)을 보존한다. */
+    const val REPORT_MAX_CHARS = 100_000
+
     private val TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
 
     fun formatEntry(epochMillis: Long, zone: ZoneId, event: String, fields: List<Pair<String, Any?>>): String {
@@ -51,6 +54,44 @@ internal object WidgetDiagnosticsFormat {
             total - 1 <= maxChars
         }.asReversed()
     }
+
+    /**
+     * 리포트용으로 UPDATE_ALL 잡음을 줄인다: (1) glanceIds/systemIds가 둘 다 비었거나 null인 줄 제거,
+     * (2) reason이 "refresh_"로 시작하고 glanceIds와 systemIds가 같은 줄 제거. 제거한 줄 수는 맨 앞 한 줄로 요약한다.
+     * 그 외 줄(특히 glanceIds != systemIds인 UPDATE_ALL)은 그대로 둔다.
+     */
+    fun compactReportLines(lines: List<String>): List<String> {
+        var emptyCount = 0
+        var refreshCount = 0
+        val kept = lines.filter { line ->
+            if (line.split(' ', limit = 3).getOrNull(1) != "UPDATE_ALL") return@filter true
+            val glanceIds = GLANCE_IDS_REGEX.find(line)?.groupValues?.get(1)
+            val systemIds = SYSTEM_IDS_REGEX.find(line)?.groupValues?.get(1)
+            val reason = REASON_REGEX.find(line)?.groupValues?.get(1)
+            when {
+                isEmptyIdList(glanceIds) && isEmptyIdList(systemIds) -> {
+                    emptyCount++
+                    false
+                }
+                reason != null && reason.startsWith("refresh_") && glanceIds != null && glanceIds == systemIds -> {
+                    refreshCount++
+                    false
+                }
+                else -> true
+            }
+        }
+        if (emptyCount + refreshCount == 0) return kept
+        val summary = "(omitted $emptyCount UPDATE_ALL lines without placed widgets, " +
+            "$refreshCount refresh UPDATE_ALL lines with glanceIds==systemIds)"
+        return listOf(summary) + kept
+    }
+
+    private val GLANCE_IDS_REGEX = Regex("""glanceIds=(\[[^\]]*\]|null)""")
+    private val SYSTEM_IDS_REGEX = Regex("""systemIds=(\[[^\]]*\]|null)""")
+    private val REASON_REGEX = Regex("""reason=(\S+)""")
+
+    // 필드 자체가 없는(형식이 다른) 줄은 비었다고 보지 않는다 — 진단 데이터를 함부로 버리지 않기 위함.
+    private fun isEmptyIdList(value: String?): Boolean = value == "null" || value == "[]"
 
     fun <T> summarizeState(state: WidgetContentState<T>, describe: (T) -> String): String = when (state) {
         is WidgetContentState.Loading -> "Loading"

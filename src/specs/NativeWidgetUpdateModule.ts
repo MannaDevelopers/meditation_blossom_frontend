@@ -28,8 +28,9 @@ export interface Spec extends TurboModule {
   setYoutubeLinkEnabled(enabled: boolean): Promise<void>;
   getYoutubeLinkEnabled(): Promise<boolean>;
 
-  // [ISSUE-334] 위젯 갱신 진단 리포트(링버퍼 + 환경)를 Crashlytics non-fatal로 전송하고 텍스트를 반환한다.
-  // Android 전용. iOS는 빈 문자열을 resolve한다.
+  // [ISSUE-334] 위젯 갱신 진단 리포트(링버퍼 + 환경)를 Crashlytics non-fatal로 전송하고, 같은 텍스트를
+  // 네이티브에서 클립보드에 복사한 뒤(Android) 반환한다. 복사만 실패하면 WIDGET_DIAGNOSTICS_CLIPBOARD_ERROR로
+  // reject한다(Crashlytics 전송은 완료된 상태). Android 전용. iOS는 빈 문자열을 resolve한다.
   reportWidgetDiagnostics(): Promise<string>;
 }
 

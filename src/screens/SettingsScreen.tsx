@@ -435,10 +435,14 @@ const SettingsScreen = ({ navigation }: Props) => {
         Alert.alert('알림', '이 기기에서는 위젯 진단 리포트를 지원하지 않습니다.');
         return;
       }
-      Clipboard.setString(report);
+      // 클립보드 복사는 네이티브(Android)가 resolve 전에 끝낸다 — 큰 텍스트를 JS에서 다시 복사하지 않는다.
       Alert.alert('완료', '위젯 진단 리포트를 전송하고 클립보드에 복사했습니다.');
     } catch (error) {
       logger.error('위젯 진단 리포트 전송 실패:', error);
+      if ((error as { code?: string }).code === 'WIDGET_DIAGNOSTICS_CLIPBOARD_ERROR') {
+        Alert.alert('알림', '위젯 진단 리포트는 전송했지만 클립보드 복사에 실패했습니다.');
+        return;
+      }
       Alert.alert('오류', '위젯 진단 리포트 전송에 실패했습니다.');
     }
   };

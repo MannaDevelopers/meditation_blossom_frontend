@@ -44,6 +44,9 @@ object WidgetDiagnostics {
     private val lock = Any()
     private val renderDedupe = RenderDedupe()
 
+    /** Crashlytics 브레드크럼(세션당 64KB)은 핵심 이벤트만 — 나머지는 Timber + 파일로만 남긴다. */
+    private val CRASHLYTICS_BREADCRUMB_EVENTS = setOf("FCM_RECEIVED", "FCM_HANDLED", "JS_PUSH", "RENDER_ERROR", "PERIODIC_SYNC_START")
+
     fun record(context: Context, event: String, vararg fields: Pair<String, Any?>) {
         write(context, event, fields.toList())
     }
@@ -57,12 +60,28 @@ object WidgetDiagnostics {
         }
     }
 
+    /**
+     * `render_<id>`는 마지막 렌더(리포트를 보내려고 앱을 열 때의 렌더로 덮일 수 있음), `render_change_<id>`는
+     * 그 ID의 데이터 요약이 마지막으로 바뀐 렌더다 — 리포트 흐름이 만든 렌더에 "언제 새 데이터로 바뀌었나"가 덮이지 않게 한다.
+     */
     fun recordRender(context: Context, widget: String, appWidgetId: Int, summary: String) {
-        if (!renderDedupe.shouldRecord(appWidgetId, summary, System.currentTimeMillis())) return
-        recordWithSnapshot(
-            context, "render_$appWidgetId", "RENDER",
-            "widget" to widget, "id" to appWidgetId, "data" to summary, "display" to displaySummary(context),
-        )
+        val display = displaySummary(context)
+        if (!renderDedupe.shouldRecord(appWidgetId, "$summary|$display", System.currentTimeMillis())) return
+        val entry = write(
+            context, "RENDER",
+            listOf("widget" to widget, "id" to appWidgetId, "data" to summary, "display" to display),
+        ) ?: return
+        runCatching {
+            val prefs = snapshotPrefs(context)
+            val summaryKey = "render_summary_$appWidgetId"
+            val editor = prefs.edit().putString("render_$appWidgetId", entry)
+            if (prefs.getString(summaryKey, null) != summary) {
+                editor.putString(summaryKey, summary).putString("render_change_$appWidgetId", entry)
+            }
+            editor.apply()
+        }.onFailure { e ->
+            CrashlyticsHelper.recordException(e, "WidgetDiagnostics: failed to save render snapshot $appWidgetId", tag = TAG)
+        }
     }
 
     /** 예: "d0(state=2,1856x2160) cfg=673x841dp" — 크기로 폴드 접힘/펼침을 구분한다. */
@@ -74,12 +93,17 @@ object WidgetDiagnostics {
     }.getOrElse { e -> "unavailable(${e.javaClass.simpleName})" }
 
     @Suppress("DEPRECATION") // Bundle.get(String): 키별 타입을 모르는 옵션 번들을 그대로 덤프하기 위함
-    fun optionsSummary(options: Bundle): String =
+    fun optionsSummary(options: Bundle): String = runCatching {
         WidgetDiagnosticsFormat.summarizeOptions(options.keySet().associateWith { options.get(it) })
+    }.getOrElse { e -> "unavailable(${e.javaClass.simpleName})" }
 
-    /** 리포트를 Crashlytics non-fatal로 보내고 같은 텍스트를 반환한다(개발자 메뉴에서 클립보드 복사용). */
+    /**
+     * 리포트를 Crashlytics non-fatal로 보내고 REPORT_MAX_CHARS로 자른 텍스트를 반환한다(네이티브 모듈이 클립보드에 복사).
+     * 환경/스냅샷 섹션이 뒤에 오도록 구성했으므로 꼬리를 남겨도 그 섹션은 살아남는다.
+     */
     fun sendReport(context: Context): String {
-        val report = buildReport(context)
+        val report = WidgetDiagnosticsFormat.tailWithinChars(buildReport(context).lines(), WidgetDiagnosticsFormat.REPORT_MAX_CHARS)
+            .joinToString("\n")
         val crashlytics = FirebaseCrashlytics.getInstance()
         // Crashlytics 로그는 세션당 최근 64KB만 남는다 — 환경/스냅샷이 뒤에 오도록 리포트를 구성했으므로 꼬리를 보낸다.
         WidgetDiagnosticsFormat.tailWithinChars(report.lines(), CRASHLYTICS_LOG_BUDGET_CHARS)
@@ -91,7 +115,7 @@ object WidgetDiagnostics {
     private fun write(context: Context, event: String, fields: List<Pair<String, Any?>>): String? = runCatching {
         val entry = WidgetDiagnosticsFormat.formatEntry(System.currentTimeMillis(), ZoneId.systemDefault(), event, fields)
         Timber.tag(TAG).d(entry)
-        FirebaseCrashlytics.getInstance().log(entry)
+        if (event in CRASHLYTICS_BREADCRUMB_EVENTS) FirebaseCrashlytics.getInstance().log(entry)
         synchronized(lock) {
             val file = logFile(context)
             file.appendText(entry + "\n")
@@ -111,22 +135,34 @@ object WidgetDiagnostics {
             logFile(context).takeIf { it.exists() }?.readLines().orEmpty()
         }
         val selected = WidgetDiagnosticsFormat.selectReportLines(lines, System.currentTimeMillis())
+        val compacted = WidgetDiagnosticsFormat.compactReportLines(selected)
         val snapshots = snapshotPrefs(context).all.toSortedMap().entries.joinToString("\n") { (k, v) -> "$k: $v" }
-        val deps = getWidgetDependencies(context)
         return buildString {
             appendLine("=== widget diagnostics log (last 72h, oldest first, ${selected.size}/${lines.size} lines) ===")
-            selected.forEach { appendLine(it) }
-            appendLine("=== last render per widget id / last fcm per topic ===")
+            appendLine(
+                "note: RENDER = composition committed for that appWidgetId; " +
+                    "a following RENDER_ERROR for the same id means it was NOT published to the launcher.",
+            )
+            compacted.forEach { appendLine(it) }
+            appendLine("=== last render / last data change (render_change) per widget id / last fcm per topic ===")
             appendLine(snapshots)
+            // 섹션별로 격리 — 한 섹션이 실패해도 나머지 리포트는 보낸다.
             appendLine("=== current data ===")
-            appendLine("qt=${WidgetDiagnosticsFormat.summarizeState(deps.qtRepository().qtState.value) { it.date }}")
-            appendLine("sermon=${WidgetDiagnosticsFormat.summarizeState(deps.sermonRepository().sermonState.value) { it.title }}")
+            appendSection {
+                val deps = getWidgetDependencies(context)
+                "qt=${WidgetDiagnosticsFormat.summarizeState(deps.qtRepository().qtState.value) { it.date }}\n" +
+                    "sermon=${WidgetDiagnosticsFormat.summarizeState(deps.sermonRepository().sermonState.value) { it.title }}"
+            }
             appendLine("=== placed widgets (id + options; sizes identify cover vs inner screen) ===")
-            appendLine(placedWidgetsSummary(context))
+            appendSection { placedWidgetsSummary(context) }
             appendLine("=== environment ===")
             appendLine("app=${BuildConfig.VERSION_NAME}(${BuildConfig.VERSION_CODE}) device=${Build.MANUFACTURER} ${Build.MODEL} sdk=${Build.VERSION.SDK_INT}")
-            appendLine(environmentSummary(context))
+            appendSection { environmentSummary(context) }
         }
+    }
+
+    private inline fun StringBuilder.appendSection(block: () -> String) {
+        appendLine(runCatching(block).getOrElse { e -> "unavailable(${e.javaClass.simpleName})" })
     }
 
     private fun environmentSummary(context: Context): String {
@@ -190,11 +226,14 @@ suspend fun GlanceAppWidget.updateAllLogged(context: Context, reason: String) {
         val systemIds = WidgetDiagnostics.receiverFor(this)?.let { receiver ->
             AppWidgetManager.getInstance(context).getAppWidgetIds(ComponentName(context, receiver)).toList()
         }
-        WidgetDiagnostics.record(
-            context, "UPDATE_ALL",
-            "widget" to javaClass.simpleName, "reason" to reason,
-            "glanceIds" to glanceIds, "systemIds" to systemIds, "display" to WidgetDiagnostics.displaySummary(context),
-        )
+        // 배치된 위젯이 없는 종류의 UPDATE_ALL은 잡음이므로 기록하지 않는다(updateAll은 항상 호출).
+        if (glanceIds.isNotEmpty() || !systemIds.isNullOrEmpty()) {
+            WidgetDiagnostics.record(
+                context, "UPDATE_ALL",
+                "widget" to javaClass.simpleName, "reason" to reason,
+                "glanceIds" to glanceIds, "systemIds" to systemIds, "display" to WidgetDiagnostics.displaySummary(context),
+            )
+        }
     } catch (e: CancellationException) {
         throw e
     } catch (e: Throwable) {

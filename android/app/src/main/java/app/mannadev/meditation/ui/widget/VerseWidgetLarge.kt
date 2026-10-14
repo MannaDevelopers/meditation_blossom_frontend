@@ -85,6 +85,11 @@ class VerseWidgetLarge : GlanceAppWidget(
         appWidgetId: Int,
         throwable: Throwable,
     ) {
+        WidgetDiagnostics.recordWithSnapshot(
+            context, "render_error_$appWidgetId", "RENDER_ERROR",
+            "widget" to "VerseWidgetLarge", "id" to appWidgetId,
+            "error" to throwable.javaClass.simpleName, "display" to WidgetDiagnostics.displaySummary(context),
+        )
         CrashlyticsHelper.recordException(throwable, "VerseWidgetLarge: uncaught composition error")
         super.onCompositionError(context, glanceId, appWidgetId, throwable)
     }

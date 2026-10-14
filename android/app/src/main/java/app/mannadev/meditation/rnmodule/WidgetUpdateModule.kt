@@ -1,5 +1,7 @@
 package app.mannadev.meditation.rnmodule
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.net.Uri
 import androidx.annotation.Keep
 import app.mannadev.meditation.analytics.AnalyticsHelper
@@ -18,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 import java.io.File
@@ -314,12 +317,24 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
 
     override fun reportWidgetDiagnostics(promise: Promise) {
         moduleScope.launch(Dispatchers.IO) {
-            runCatching { WidgetDiagnostics.sendReport(reactApplicationContext) }
-                .onSuccess { promise.resolve(it) }
-                .onFailure { e ->
+            val report = runCatching { WidgetDiagnostics.sendReport(reactApplicationContext) }
+                .getOrElse { e ->
                     CrashlyticsHelper.recordException(e, "Error sending widget diagnostics report", tag = TAG)
                     promise.reject("WIDGET_DIAGNOSTICS_ERROR", e.message, e)
+                    return@launch
                 }
+            // 큰 리포트를 JS 브리지로 넘겨 복사하는 대신 네이티브에서 바로 클립보드에 복사한다.
+            runCatching {
+                withContext(Dispatchers.Main) {
+                    val clipboard = reactApplicationContext.getSystemService(ClipboardManager::class.java)
+                    clipboard.setPrimaryClip(ClipData.newPlainText("widget diagnostics", report))
+                }
+            }.onSuccess {
+                promise.resolve(report)
+            }.onFailure { e ->
+                CrashlyticsHelper.recordException(e, "Error copying widget diagnostics report to clipboard", tag = TAG)
+                promise.reject("WIDGET_DIAGNOSTICS_CLIPBOARD_ERROR", "Crashlytics 전송은 완료, 클립보드 복사 실패: ${e.message}", e)
+            }
         }
     }
 
