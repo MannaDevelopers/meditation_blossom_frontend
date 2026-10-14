@@ -312,4 +312,15 @@ class WidgetUpdateModule(reactContext: ReactApplicationContext) :
         }
     }
 
+    override fun reportWidgetDiagnostics(promise: Promise) {
+        moduleScope.launch(Dispatchers.IO) {
+            runCatching { WidgetDiagnostics.sendReport(reactApplicationContext) }
+                .onSuccess { promise.resolve(it) }
+                .onFailure { e ->
+                    CrashlyticsHelper.recordException(e, "Error sending widget diagnostics report", tag = TAG)
+                    promise.reject("WIDGET_DIAGNOSTICS_ERROR", e.message, e)
+                }
+        }
+    }
+
 }

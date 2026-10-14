@@ -428,6 +428,21 @@ const SettingsScreen = ({ navigation }: Props) => {
     }
   };
 
+  const sendWidgetDiagnostics = async () => {
+    try {
+      const report = await WidgetUpdateModule?.reportWidgetDiagnostics();
+      if (!report) {
+        Alert.alert('알림', '이 기기에서는 위젯 진단 리포트를 지원하지 않습니다.');
+        return;
+      }
+      Clipboard.setString(report);
+      Alert.alert('완료', '위젯 진단 리포트를 전송하고 클립보드에 복사했습니다.');
+    } catch (error) {
+      logger.error('위젯 진단 리포트 전송 실패:', error);
+      Alert.alert('오류', '위젯 진단 리포트 전송에 실패했습니다.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -593,6 +608,9 @@ const SettingsScreen = ({ navigation }: Props) => {
                 ) : (
                   <Text style={styles.fcmLoadingText}>토큰 로딩 중...</Text>
                 )}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={sendWidgetDiagnostics} style={styles.devButton}>
+                <Text style={styles.devButtonText}>위젯 진단 리포트 전송</Text>
               </TouchableOpacity>
 
               {/* [ISSUE-315] __DEV__ 전용 — 프로덕션 빌드에서는 기능이 no-op이라 혼란을

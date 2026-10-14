@@ -122,6 +122,13 @@ RCT_EXPORT_MODULE(WidgetUpdateModule)
   [_impl getYoutubeLinkEnabled:resolve rejecter:reject];
 }
 
+- (void)reportWidgetDiagnostics:(RCTPromiseResolveBlock)resolve
+                         reject:(RCTPromiseRejectBlock)reject
+{
+  // [ISSUE-334] Android 전용 진단. iOS는 미지원으로 빈 문자열을 반환한다.
+  resolve(@"");
+}
+
 @end
 
 NS_ASSUME_NONNULL_END

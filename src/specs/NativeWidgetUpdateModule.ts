@@ -27,6 +27,10 @@ export interface Spec extends TurboModule {
   setWorshipSetting(worshipSetting: string): Promise<void>;
   setYoutubeLinkEnabled(enabled: boolean): Promise<void>;
   getYoutubeLinkEnabled(): Promise<boolean>;
+
+  // [ISSUE-334] 위젯 갱신 진단 리포트(링버퍼 + 환경)를 Crashlytics non-fatal로 전송하고 텍스트를 반환한다.
+  // Android 전용. iOS는 빈 문자열을 resolve한다.
+  reportWidgetDiagnostics(): Promise<string>;
 }
 
 export default TurboModuleRegistry.getEnforcing<Spec>('WidgetUpdateModule');
