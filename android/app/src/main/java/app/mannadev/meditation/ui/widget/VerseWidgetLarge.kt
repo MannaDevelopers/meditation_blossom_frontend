@@ -3,6 +3,7 @@ package app.mannadev.meditation.ui.widget
 import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -15,6 +16,7 @@ import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.lazy.LazyColumn
@@ -41,6 +43,8 @@ import app.mannadev.meditation.di.getWidgetDependencies
 import app.mannadev.meditation.dto.WidgetDesignDto
 import app.mannadev.meditation.model.Sermon
 import app.mannadev.meditation.ui.widget.theme.Typography
+import app.mannadev.meditation.widget.diagnostics.WidgetDiagnostics
+import app.mannadev.meditation.widget.diagnostics.WidgetDiagnosticsFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
@@ -55,6 +59,8 @@ class VerseWidgetLarge : GlanceAppWidget(
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
+        WidgetDiagnostics.record(context, "PROVIDE_GLANCE", "widget" to "VerseWidgetLarge", "id" to appWidgetId)
         val sermonRepository = getWidgetDependencies(context).sermonRepository()
         val youtubeLinkEnabled = getWidgetDependencies(context).getWidgetPrefs().isEnabled()
         val widgetDesignRepository = getWidgetDependencies(context).sermonWidgetDesignRepository()
@@ -63,6 +69,12 @@ class VerseWidgetLarge : GlanceAppWidget(
             val design by widgetDesignRepository.designState.collectAsState()
             val sermon = state.toDisplaySermon(hasAppEverLaunched(context))
             val clickAction = widgetClickAction(sermon.videoUrl, Constants.DEEP_LINK_SUNDAY_SERMON)
+            SideEffect {
+                WidgetDiagnostics.recordRender(
+                    context, "VerseWidgetLarge", appWidgetId,
+                    WidgetDiagnosticsFormat.summarizeState(state) { it.title },
+                )
+            }
             VerseWidgetLargeContent(sermon, clickAction, youtubeLinkEnabled, design)
         }
     }

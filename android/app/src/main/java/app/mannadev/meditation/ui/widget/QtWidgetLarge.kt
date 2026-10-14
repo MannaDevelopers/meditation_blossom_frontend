@@ -3,6 +3,7 @@ package app.mannadev.meditation.ui.widget
 import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -15,6 +16,7 @@ import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.lazy.LazyColumn
@@ -42,6 +44,8 @@ import app.mannadev.meditation.dto.WidgetDesignDto
 import app.mannadev.meditation.ui.widget.qt.QtWidgetUiModel
 import app.mannadev.meditation.ui.widget.qt.prefixQuestions
 import app.mannadev.meditation.ui.widget.theme.Typography
+import app.mannadev.meditation.widget.diagnostics.WidgetDiagnostics
+import app.mannadev.meditation.widget.diagnostics.WidgetDiagnosticsFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
@@ -54,6 +58,8 @@ class QtWidgetLarge : GlanceAppWidget(
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
+        WidgetDiagnostics.record(context, "PROVIDE_GLANCE", "widget" to "QtWidgetLarge", "id" to appWidgetId)
         val qtRepository = getWidgetDependencies(context).qtRepository()
         val youtubeLinkEnabled = getWidgetDependencies(context).getWidgetPrefs().isEnabled()
         val qtWidgetDesignRepository = getWidgetDependencies(context).qtWidgetDesignRepository()
@@ -62,6 +68,12 @@ class QtWidgetLarge : GlanceAppWidget(
             val design by qtWidgetDesignRepository.designState.collectAsState()
             val uiModel = state.toDisplayQtUiModel(hasAppEverLaunched(context))
             val clickAction = widgetClickAction(uiModel.videoUrl, Constants.DEEP_LINK_DAILY_MANNA)
+            SideEffect {
+                WidgetDiagnostics.recordRender(
+                    context, "QtWidgetLarge", appWidgetId,
+                    WidgetDiagnosticsFormat.summarizeState(state) { it.date },
+                )
+            }
             QtWidgetLargeContent(uiModel, clickAction, youtubeLinkEnabled, design)
         }
     }
