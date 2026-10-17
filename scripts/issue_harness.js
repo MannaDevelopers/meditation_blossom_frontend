@@ -139,7 +139,7 @@ async function startIssue(issueNumber) {
 
   console.log(`\n🏁 Starting work on Issue [#${targetIssue.number}] ${targetIssue.title}`);
 
-  const worktreePath = path.join(__dirname, `../.worktrees/issue-${targetIssue.number}`);
+  const worktreePath = path.join(__dirname, `../.claude/worktrees/issue-${targetIssue.number}`);
   const branchName = `feature/issue-${targetIssue.number}`;
 
   console.log('📥 Fetching latest origin/main...');

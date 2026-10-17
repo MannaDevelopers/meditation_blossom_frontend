@@ -2,7 +2,7 @@
 
 ## 변수
 
-- `$WORKTREE_PATH` = `<repo-root>/.worktrees/issue-$ISSUE_NUMBER`
+- `$WORKTREE_PATH` = `<repo-root>/.claude/worktrees/issue-$ISSUE_NUMBER`
 - `$BRANCH_NAME` = `feature/issue-$ISSUE_NUMBER`
 
 ## 명령

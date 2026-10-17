@@ -93,3 +93,6 @@ android/.kotlin/sessions/
 # Git worktrees
 .worktrees/
 
+
+# git worktrees (Claude Code·Orca 기본 위치)
+.orca/worktrees/
