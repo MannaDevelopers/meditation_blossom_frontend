@@ -35,9 +35,11 @@ react {
 }
 
 /**
- * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
+ * Run R8 (난독화/축소/최적화) on Release builds.
+ * Play Console "DEX 코드 최적화" 기준(난독화 25% 이상) 충족을 위해 활성화 (ISSUE-337).
+ * keep 규칙은 proguard-rules.pro 참고.
  */
-val enableProguardInReleaseBuilds = false
+val enableProguardInReleaseBuilds = true
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
