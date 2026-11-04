@@ -1,4 +1,4 @@
-import { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
+import type { QueryDocumentSnapshot } from '@react-native-firebase/firestore';
 import { Platform } from 'react-native';
 import { convertStringToTimestamp, FirestoreTimestamp } from './Sermon';
 import WidgetUpdateModule from './WidgetUpdateModule';
@@ -80,7 +80,7 @@ export function fcmDataToQt(raw: QTRaw): QT {
 }
 
 export const firestoreDocToQt = async (
-  doc: FirebaseFirestoreTypes.QueryDocumentSnapshot,
+  doc: QueryDocumentSnapshot,
 ): Promise<QT> => {
   const data = doc.data();
   let content = data.content || '';

@@ -3,8 +3,13 @@ import { WorshipSetting } from '../types/Sermon';
 import logger from './logger';
 
 function logEvent(name: string, params?: Record<string, string>): void {
-  firebaseLogEvent(getAnalytics(), name, params ?? {})
-    .catch(e => logger.warn(`analytics.logEvent(${name}) failed`, e));
+  // RNFB v26부터 모듈형 logEvent는 동기(void)다. 이벤트 이름·파라미터 검증 오류는
+  // 동기 throw로 올라오므로 여기서 잡는다. (네이티브 전송 실패는 RNFB 내부에서 처리)
+  try {
+    firebaseLogEvent(getAnalytics(), name, params ?? {});
+  } catch (e) {
+    logger.warn(`analytics.logEvent(${name}) failed`, e);
+  }
 }
 
 export const logAnalytics = {

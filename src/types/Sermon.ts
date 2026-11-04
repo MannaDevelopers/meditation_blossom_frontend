@@ -1,4 +1,4 @@
-import { FirebaseFirestoreTypes } from "@react-native-firebase/firestore";
+import type { QueryDocumentSnapshot } from "@react-native-firebase/firestore";
 import { Platform } from 'react-native';
 import logger from "../utils/logger";
 import WidgetUpdateModule from './WidgetUpdateModule';
@@ -169,7 +169,7 @@ export function fcmDataToSermon(raw: SermonRaw): Sermon {
 }
 
 export const firestoreDocToSermon = async (
-  doc: FirebaseFirestoreTypes.QueryDocumentSnapshot,
+  doc: QueryDocumentSnapshot,
 ): Promise<Sermon> => {
   const firestoreData = doc.data();
 

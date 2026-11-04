@@ -24,7 +24,7 @@ yarn harness                 # 이슈 처리 자동화 하네스 실행 (queue|s
 
 - **로깅**: `console.log/error/warn` 직접 호출 금지 → `src/utils/logger.ts` 사용. logger는 `__DEV__`에서만 콘솔 출력, 프로덕션에서 `warn`/`error`는 Crashlytics에 전송
 - **에러 처리**: catch 블록에서 에러를 무시하지 않기. Crashlytics에 기록 (`logger.error`) 또는 상위로 전파
-- **타입**: `any` 사용 금지. FCM 데이터는 `SermonRaw`, Firestore 쿼리는 `FirebaseFirestoreTypes.Query` 사용
+- **타입**: `any` 사용 금지. FCM 데이터는 `SermonRaw`, Firestore 쿼리는 `@react-native-firebase/firestore`의 `Query` 타입 사용 (v24+에서 `FirebaseFirestoreTypes` 네임스페이스 제거)
 - **스타일**: `StyleSheet.create` 사용 (EditScreen만 `styled-components/native` 예외). 인라인 스타일 지양
 - **테스트**: 순수 함수 변경 시 `__tests__/` 에 단위 테스트 추가/수정. Jest preset은 `react-native`
 - **커밋 메시지**: `[ISSUE-숫자] type: 설명` (예: `[ISSUE-45] fix: 버그 설명`)
@@ -108,7 +108,7 @@ App Group ID: `group.mannachurch.meditationblossom` (앱 + Widget Extension + No
 - **언어**: TypeScript (RN), Kotlin (Android native), Swift (iOS native)
 - **SVG**: `react-native-svg-transformer`로 React 컴포넌트 import. 타입은 `declaration.d.ts`에 선언
 - **Navigation**: `@react-navigation/native-stack`, 타입 파라미터 `RootStackParamList`
-- **Firebase**: `@react-native-firebase/*` v22.2.1 (Firestore, Messaging, Crashlytics, In-App Messaging)
+- **Firebase**: `@react-native-firebase/*` v26.4.1 (Firestore, Messaging, Crashlytics, In-App Messaging)
 - **폰트**: Pretendard (다중 weight, `src/assets/fonts/`)
 - **브랜칭**: Trunk-based. `main` 단일 브랜치, `feature/issue-##` 단기 분기 → squash merge
 
