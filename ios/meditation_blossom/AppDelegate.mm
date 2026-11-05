@@ -1,31 +1,18 @@
 #import "AppDelegate.h"
 
-#import <React/RCTBundleURLProvider.h>
 #import <React/RCTBridge.h>
-#import <React/RCTRootView.h>
 #import <React/RCTLog.h>
-#import <React/RCTLinkingManager.h>
 #import <FirebaseCore/FirebaseCore.h>
 #import <FirebaseMessaging/FirebaseMessaging.h>
 #import <FirebaseInAppMessaging/FirebaseInAppMessaging.h>
 #import <FirebaseAnalytics/FirebaseAnalytics.h>
 #import <UserNotifications/UserNotifications.h>
 #import <WidgetKit/WidgetKit.h>
-#import <ifaddrs.h>
-#import <arpa/inet.h>
-#import <string.h>
 #import <React/RCTUtils.h>
-#import <ReactAppDependencyProvider/RCTAppDependencyProvider.h>
-
-// Hermes 엔진 확인을 위한 헤더
-#if __has_include(<hermes/hermes.h>)
-#import <hermes/hermes.h>
-#define HERMES_AVAILABLE 1
-#else
-#define HERMES_AVAILABLE 0
-#endif
 
 #import "SermonBuilder.h"
+// meditation_blossom-Swift.h에 SceneDelegate(부모: RCTDefaultReactNativeFactoryDelegate)가 노출되므로 먼저 선언을 가져온다([#342])
+#import <React_RCTAppDelegate/RCTDefaultReactNativeFactoryDelegate.h>
 #import "meditation_blossom-Swift.h"
 
 // RCTAsyncLocalStorage_V1 디렉토리 경로 (RN 0.78 파일 기반 AsyncStorage)
@@ -83,13 +70,7 @@ static NSString *MBAsyncStorageDirectory(void)
   
   // 3. Firebase 및 FCM 초기화
   [FIRApp configure];
-  self.moduleName = @"meditation_blossom";
-  self.initialProps = @{};
-  // New Architecture(Fabric)에서 react-native-screens/react-native-svg/safe-area-context 등
-  // 서드파티 컴포넌트를 Fabric 네이티브로 등록하기 위해 필요. 이게 없으면 RCTComponentViewFactory가
-  // thirdPartyFabricComponentsProvider를 못 찾아 전부 Legacy View Manager Interop(plain RCTView)로
-  // 빠지고, 그 결과 RCT_EXPORT_VIEW_PROPERTY로 등록된 prop이 setXxx: 리플렉션 디스패치되며 크래시난다.
-  self.dependencyProvider = [RCTAppDependencyProvider new];
+  // React Native 시작(moduleName, dependencyProvider, bundleURL)은 SceneDelegate.swift가 맡는다([#342]).
 
   [FIRInAppMessaging inAppMessaging].messageDisplaySuppressed = NO;
   [FIRInAppMessaging inAppMessaging].automaticDataCollectionEnabled = YES;
@@ -117,35 +98,41 @@ static NSString *MBAsyncStorageDirectory(void)
     [WorshipSermonSync mirrorSetting:worshipSetting];
   }
 
-  // 5. 부모 클래스 호출을 통해 React Native 내부 Core 초기화 시작
-  BOOL result = [super application:application didFinishLaunchingWithOptions:launchOptions];
-
   // React Native 로그 레벨 설정 (디버깅용)
   RCTSetLogThreshold(RCTLogLevelInfo);
-  
+
 #if DEBUG
   NSLog(@"📁 AsyncStorage path: %@", MBAsyncStorageDirectory());
 #endif
-  
-  return result;
+
+  return YES;
 }
 
-#pragma mark - Deep Link (URL Scheme)
+#pragma mark - UIScene
 
-// 위젯/외부에서 meditationblossom:// 딥링크로 앱을 열 때, URL을 React Native(Linking)로 전달.
-// 이 전달이 없으면 App.tsx의 linking(getStateFromPath)이 동작하지 않아 마지막 화면만 복귀됨.
-- (BOOL)application:(UIApplication *)application
-            openURL:(NSURL *)url
-            options:(NSDictionary<UIApplicationOpenURLOptionsKey, id> *)options {
-  // WidgetKit 제약: 위젯은 외부 URL(유튜브 등)을 직접 못 열고 항상 호스트 앱을 먼저 띄운다.
-  // 따라서 위젯이 https/http URL로 앱을 열면, 앱이 그 URL을 받아 직접 외부 브라우저로 넘긴다.
-  if ([url.scheme isEqualToString:@"http"] || [url.scheme isEqualToString:@"https"]) {
-    [application openURL:url options:@{} completionHandler:nil];
-    return YES;
+// [#342] 화면(window)과 URL(딥링크·위젯 탭) 처리는 Info.plist의 UIApplicationSceneManifest에
+// 등록한 SceneDelegate가 맡는다. (기존 application:openURL:options:는 Scene 기반 앱에서
+// 호출되지 않으므로 SceneDelegate의 scene:openURLContexts:로 옮겼다.)
+- (UISceneConfiguration *)application:(UIApplication *)application
+    configurationForConnectingSceneSession:(UISceneSession *)connectingSceneSession
+                                   options:(UISceneConnectionOptions *)options {
+  return [[UISceneConfiguration alloc] initWithName:@"Default Configuration"
+                                        sessionRole:connectingSceneSession.role];
+}
+
+// AppDelegate.h의 window 설명 참고. 다중 Scene을 지원하지 않으므로(UIApplicationSupportsMultipleScenes
+// = NO) 연결된 UIWindowScene의 delegate window를 그대로 돌려준다. Scene 연결 전이면 nil.
+- (UIWindow *)window {
+  for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+    if (![scene isKindOfClass:[UIWindowScene class]]) continue;
+    id<UISceneDelegate> sceneDelegate = scene.delegate;
+    if ([sceneDelegate conformsToProtocol:@protocol(UIWindowSceneDelegate)] &&
+        [sceneDelegate respondsToSelector:@selector(window)]) {
+      UIWindow *window = ((id<UIWindowSceneDelegate>)sceneDelegate).window;
+      if (window != nil) return window;
+    }
   }
-
-  // meditationblossom:// 딥링크는 React Native(Linking)로 전달.
-  return [RCTLinkingManager application:application openURL:url options:options];
+  return nil;
 }
 
 #pragma mark - React Native Notification Handlers
@@ -153,12 +140,11 @@ static NSString *MBAsyncStorageDirectory(void)
 // 6. 모든 네이티브 모듈이 준비되었을 때 실행되는 콜백
 - (void)handleJavaScriptDidLoad:(NSNotification *)notification {
   NSLog(@"✅ [Notification] JavaScript bundle loaded successfully!");
-  
-  RCTBridge *activeBridge = notification.object;
-  if (activeBridge && activeBridge.valid) {
-    NSLog(@"✅ Bridge is valid and ready. Checking widgets...");
-    [self checkWidgetKitPushDataAndReloadWidgets];
-  }
+
+  // [#342] RN 0.88(bridgeless)에서는 notification.object가 RCTBridge가 아니라 RCTInstance라서
+  // `.valid`(isValid)를 부르면 unrecognized selector로 앱이 종료된다. JS 로드 완료 알림 자체가
+  // 준비 신호이므로 브리지 유효성 검사 없이 위젯 갱신만 한다.
+  [self checkWidgetKitPushDataAndReloadWidgets];
 }
 
 // 객체 소멸 시 알림 리스너 해제
@@ -258,83 +244,6 @@ static NSString *MBAsyncStorageDirectory(void)
     return [NSString stringWithContentsOfFile:valuePath encoding:NSUTF8StringEncoding error:nil];
   }
   return nil;
-}
-
-#pragma mark - Bundle URL & Debugging (유지됨)
-
-- (NSURL *)sourceURLForBridge:(RCTBridge *)bridge
-{
-  NSURL *url = [self bundleURL];
-  NSLog(@"🌉 Bridge requesting bundle URL: %@", url);
-  return url;
-}
-
-- (NSURL *)bundleURL
-{
-#if DEBUG
-  NSString *bundleRoot = @"index";
-  NSUserDefaults *sharedDefaults = [[NSUserDefaults alloc] initWithSuiteName:@"group.mannachurch.meditationblossom"];
-  BOOL hasWidgetKitData = NO;
-  if (sharedDefaults) {
-    NSString *displaySermon = [sharedDefaults stringForKey:@"displaySermon"];
-    NSString *fcmSermon = [sharedDefaults stringForKey:@"fcm_sermon"];
-    hasWidgetKitData = (displaySermon != nil || fcmSermon != nil);
-  }
-  
-  if (hasWidgetKitData) {
-    NSLog(@"⚠️ WidgetKit push data detected - using local bundle to avoid Metro connection issues");
-    NSURL *localBundle = [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
-    if (localBundle) return localBundle;
-    NSLog(@"⚠️ Local bundle not found - falling back to Metro URL");
-  }
-  
-  NSURL *metroURL = [[RCTBundleURLProvider sharedSettings] jsBundleURLForBundleRoot:bundleRoot];
-  if (metroURL && [metroURL.scheme isEqualToString:@"http"]) {
-    return metroURL;
-  }
-  
-  NSString *jsLocation = @"172.30.1.25";
-  NSNumber *port = @8081;
-  NSString *urlString = [NSString stringWithFormat:@"http://%@:%@/%@.bundle?platform=ios&dev=true&minify=false",
-                         jsLocation, port, bundleRoot];
-  NSURL *directURL = [NSURL URLWithString:urlString];
-  
-  if (directURL == nil) {
-    NSLog(@"❌ All Metro bundle URL attempts failed! Using local bundle...");
-    return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
-  }
-  
-  return directURL;
-#else
-  return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
-#endif
-}
-
-- (NSArray<NSString *> *)getIPAddresses
-{
-  NSMutableArray *addresses = [NSMutableArray array];
-  struct ifaddrs *interfaces = NULL;
-  struct ifaddrs *temp_addr = NULL;
-  int success = 0;
-  
-  success = getifaddrs(&interfaces);
-  if (success == 0) {
-    temp_addr = interfaces;
-    while(temp_addr != NULL) {
-      if(temp_addr->ifa_addr->sa_family == AF_INET) {
-        NSString *interfaceName = [NSString stringWithUTF8String:temp_addr->ifa_name];
-        if ([interfaceName isEqualToString:@"en0"] || [interfaceName hasPrefix:@"en"]) {
-          NSString *address = [NSString stringWithUTF8String:inet_ntoa(((struct sockaddr_in *)temp_addr->ifa_addr)->sin_addr)];
-          if (![address isEqualToString:@"127.0.0.1"] && ![address hasPrefix:@"169.254"]) {
-            [addresses addObject:address];
-          }
-        }
-      }
-      temp_addr = temp_addr->ifa_next;
-    }
-  }
-  freeifaddrs(interfaces);
-  return addresses;
 }
 
 #pragma mark - Firebase Messaging

@@ -8,13 +8,8 @@ import app.mannadev.meditation.widget.registerWidgetRefreshReceiver
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
-import com.facebook.react.ReactNativeHost
-import com.facebook.react.ReactPackage
-import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
-import com.facebook.react.defaults.DefaultReactHost
-import com.facebook.react.defaults.DefaultReactNativeHost
-import com.facebook.react.soloader.OpenSourceMergedSoMapping
-import com.facebook.soloader.SoLoader
+import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
+import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
@@ -22,32 +17,23 @@ import timber.log.Timber
 @HiltAndroidApp
 class MainApplication : Application(), ReactApplication {
 
-    override val reactNativeHost: ReactNativeHost =
-        object : DefaultReactNativeHost(this) {
-            override fun getPackages(): List<ReactPackage> =
+    // RN 0.88 템플릿 방식: ReactNativeHost 없이 ReactHost만 만든다(진입 모듈 "index",
+    // 개발 지원은 디버그 빌드에서만 — getDefaultReactHost 기본값과 기존 설정이 같다).
+    override val reactHost: ReactHost by lazy {
+        getDefaultReactHost(
+            context = applicationContext,
+            packageList =
                 PackageList(this).packages.apply {
-                    // Packages that cannot be autolinked yet can be added manually here, for example:
-                    // add(MyReactNativePackage())
+                    // 자동 링크되지 않는 앱 자체 네이티브 모듈
                     add(MyReactPackage())
-                }
-
-            override fun getJSMainModuleName(): String = "index"
-
-            override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
-
-            override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
-        }
-
-    override val reactHost: ReactHost
-        get() = DefaultReactHost.getDefaultReactHost(applicationContext, reactNativeHost)
+                },
+        )
+    }
 
     override fun onCreate() {
         super.onCreate()
-        SoLoader.init(this, OpenSourceMergedSoMapping)
-        if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
-            // If you opted-in for the New Architecture, we load the native entry point for this app.
-            DefaultNewArchitectureEntryPoint.load()
-        }
+        // SoLoader 초기화 + New Architecture 진입점 로드(자동 생성 코드, 기존 수동 호출을 대체)
+        loadReactNative(this)
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }

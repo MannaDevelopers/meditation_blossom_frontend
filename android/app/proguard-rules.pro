@@ -35,3 +35,9 @@
 
 # Hilt EntryPoint 인터페이스 (EntryPointAccessors가 클래스로 조회)
 -keep @dagger.hilt.EntryPoint interface * { *; }
+
+# [#342] AGP 9(R8)부터 WorkManager가 리플렉션으로 만드는 Room DB 구현 클래스
+# (androidx.work.impl.WorkDatabase_Impl)의 기본 생성자가 제거돼 릴리스 빌드가 시작 즉시
+# "Unable to get provider androidx.startup.InitializationProvider"(NoSuchMethodException)로 크래시했다.
+# Room이 Class.newInstance()로 생성하는 *_Impl 클래스의 기본 생성자를 유지한다.
+-keep class * extends androidx.room.RoomDatabase { <init>(); }

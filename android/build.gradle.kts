@@ -1,7 +1,7 @@
 buildscript {
     extra.apply {
         set("minSdkVersion", 28)
-        set("compileSdkVersion", 36)
+        set("compileSdkVersion", 37)
         set("targetSdkVersion", 36)
         set("ndkVersion", "28.1.13356709")
     }
