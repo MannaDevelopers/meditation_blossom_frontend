@@ -20,15 +20,16 @@ const config = {
     assetExts: assetExts.filter((ext) => ext !== "svg"),
     sourceExts: [...sourceExts, "svg"],
     /**
-     * RN 0.86.2부터 react-native 패키지 자체에 package.json "exports" 필드가
-     * 새로 추가되면서, 이 옵션이 켜져 있으면 react-native 내부의 상대경로 require
-     * (Libraries/Core/setUpPerformance.js → setUpPerformanceModern 등)가 깨져
-     * 앱 시작 즉시 "[runtime not ready]: TypeError: Object is not a function"로
-     * 크래시한다. RN 0.78.1 당시 Firebase 관련 이슈(ISSUE-46) 대응으로 켰던
-     * 옵션이지만, 현재는 이 크래시를 막기 위해 꺼야 한다.
+     * RN 0.88부터 react-native 내부(react-private-interface, asset-registry)와
+     * @react-native/asset-utils가 package.json "exports"로만 해석되므로 반드시 켜야 한다.
+     *
+     * 예전(0.86.2)에 이 옵션을 켜면 "[runtime not ready]: TypeError: Object is not a function"로
+     * 시작 즉시 크래시해서 꺼뒀었는데, 진짜 원인은 함께 지정했던
+     * unstable_conditionNames: ["react-native", "browser", "require", "import"]였다.
+     * "import" 조건 때문에 일부 패키지의 ESM 빌드가 골라져 기본 export 해석이 깨졌다.
+     * conditionNames는 지정하지 말고 @react-native/metro-config 기본값(["react-native"])을 쓴다.
      */
-    unstable_enablePackageExports: false,
-    unstable_conditionNames: ["react-native", "browser", "require", "import"],
+    unstable_enablePackageExports: true,
     /**
      * iOS에서 react-native-tab-view의 Pager.ios.js(PagerViewAdapter, RNCViewPager 의존)를
      * 순수 JS 구현인 JsPager.tsx로 교체한다.
@@ -68,9 +69,10 @@ const config = {
        * axios 의존 체인, 강제 업데이트 기능에 사용)의 package.json은 "main"이
        * Node.js 전용 빌드(dist/node/axios.cjs, crypto/http 등 Node core 모듈 require)를
        * 가리키고, RN 호환 빌드(dist/browser/axios.cjs)로의 리다이렉트는 "exports" 맵의
-       * react-native/browser 조건에만 있다. unstable_enablePackageExports를 꺼둔 상태라
-       * 이 조건이 적용되지 않아 Metro가 Node 빌드를 골라 "Unable to resolve module
-       * crypto"로 번들링이 실패한다. axios 진입점만 명시적으로 browser 빌드로 리다이렉트.
+       * react-native/browser 조건에만 있다. exports를 꺼뒀던 시기(RN 0.86)에는 Metro가 Node
+       * 빌드를 골라 "Unable to resolve module crypto"로 번들링이 실패해 이 리다이렉트를 넣었다.
+       * RN 0.88에서 exports를 다시 켰으므로 없어도 react-native 조건으로 해석되지만, 검증된
+       * CJS browser 빌드로 고정해 두기 위해 유지한다.
        */
       if (moduleName === "axios") {
         return context.resolveRequest(

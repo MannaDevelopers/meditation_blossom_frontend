@@ -1,9 +1,9 @@
 [versions]
 #noinspection AndroidGradlePluginVersion. check libs.versions.toml on @react-native/gradle-plugin
-agp = "8.12.0"
+agp = "9.2.1"
 #noinspection NewerVersionAvailable. check libs.versions.toml on @react-native/gradle-plugin
-kotlin = "2.1.20"
-ksp = "2.1.20-2.0.1"
+kotlin = "2.2.0"
+ksp = "2.2.0-2.0.2"
 googleServices = "4.4.2"
 #noinspection GradleDependency. react-native-firebase 26.4.1 (sdkVersions.android.firebase)과 맞춘다.
 firebaseBom = "34.18.0"

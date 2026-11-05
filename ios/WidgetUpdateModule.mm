@@ -2,6 +2,8 @@
 #import <React/RCTBridgeModule.h>
 #import <ReactCodegen/AppSpecs/AppSpecs.h>
 
+// meditation_blossom-Swift.h에 SceneDelegate(부모: RCTDefaultReactNativeFactoryDelegate)가 노출되므로 먼저 선언을 가져온다([#342])
+#import <React_RCTAppDelegate/RCTDefaultReactNativeFactoryDelegate.h>
 #import "meditation_blossom-Swift.h"
 
 NS_ASSUME_NONNULL_BEGIN

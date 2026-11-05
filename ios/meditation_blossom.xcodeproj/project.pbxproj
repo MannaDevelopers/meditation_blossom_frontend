@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0808055756EF48E1AA2DF5FA /* Pretendard-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = CB14C5323D6A4E0CBAA87359 /* Pretendard-Regular.otf */; };
+		08132D683F13C0314BAEC4DB /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D399A643491FB0AE391CE82 /* SceneDelegate.swift */; };
 		09392194228A4ED7A98675B6 /* Pretendard-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = DEF7CBC928634FD6B2DE77C8 /* Pretendard-Medium.otf */; };
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
@@ -143,6 +144,7 @@
 		5999A83A0184DE1717910ED3 /* Pods_meditation_blossom.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_meditation_blossom.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = meditation_blossom/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		9C169B17C3504C6E8ED9A33A /* Pretendard-SemiBold.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Pretendard-SemiBold.otf"; path = "../src/assets/fonts/Pretendard-SemiBold.otf"; sourceTree = "<group>"; };
+		9D399A643491FB0AE391CE82 /* SceneDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = meditation_blossom/SceneDelegate.swift; sourceTree = "<group>"; };
 		9DDBC33AF57F48DA99EBFD26 /* Pretendard-ExtraBold.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Pretendard-ExtraBold.otf"; path = "../src/assets/fonts/Pretendard-ExtraBold.otf"; sourceTree = "<group>"; };
 		B1CC81BF1A45516CBFC1987A /* Pods-meditation_blossom-meditation_blossomTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-meditation_blossom-meditation_blossomTests.release.xcconfig"; path = "Target Support Files/Pods-meditation_blossom-meditation_blossomTests/Pods-meditation_blossom-meditation_blossomTests.release.xcconfig"; sourceTree = "<group>"; };
 		C3E1F34ED105C7A49E9C64D0 /* WorshipSermonSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = meditation_blossom/WorshipSermonSync.swift; sourceTree = "<group>"; };
@@ -254,6 +256,7 @@
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB71A68108700A75B9A /* main.m */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				9D399A643491FB0AE391CE82 /* SceneDelegate.swift */,
 			);
 			name = meditation_blossom;
 			sourceTree = "<group>";
@@ -786,6 +789,7 @@
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				35DF7D9B2F87741F004FEDA3 /* BibleDbHelper.swift in Sources */,
 				CCD66D7CBE695872713BF300 /* WorshipSermonSync.swift in Sources */,
+				08132D683F13C0314BAEC4DB /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1269,6 +1273,14 @@
 					"${PODS_ROOT}/React-graphics/react/renderer/graphics/platform/ios",
 					"${PODS_ROOT}/React-featureflags",
 					"${PODS_ROOT}/React-renderercss",
+					"${PODS_ROOT}/React-Fabric/react/renderer/components/scrollview/platform/cxx",
+					"${PODS_ROOT}/React-Fabric/react/renderer/components/scrollview/platform/ios",
+					"${PODS_ROOT}/React-FabricComponents/react/renderer/textlayoutmanager/platform/ios",
+					"${PODS_ROOT}/React-FabricComponents/react/renderer/components/text/platform/cxx",
+					"${PODS_ROOT}/React-FabricComponents/react/renderer/components/textinput/platform/ios",
+					"${PODS_ROOT}/React-FabricComponents/react/renderer/components/switch/iosswitch",
+					"${PODS_ROOT}/React-bridging",
+					"${PODS_ROOT}/React-cxxstableapi",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 13.4;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1372,6 +1384,14 @@
 					"${PODS_ROOT}/React-graphics/react/renderer/graphics/platform/ios",
 					"${PODS_ROOT}/React-featureflags",
 					"${PODS_ROOT}/React-renderercss",
+					"${PODS_ROOT}/React-Fabric/react/renderer/components/scrollview/platform/cxx",
+					"${PODS_ROOT}/React-Fabric/react/renderer/components/scrollview/platform/ios",
+					"${PODS_ROOT}/React-FabricComponents/react/renderer/textlayoutmanager/platform/ios",
+					"${PODS_ROOT}/React-FabricComponents/react/renderer/components/text/platform/cxx",
+					"${PODS_ROOT}/React-FabricComponents/react/renderer/components/textinput/platform/ios",
+					"${PODS_ROOT}/React-FabricComponents/react/renderer/components/switch/iosswitch",
+					"${PODS_ROOT}/React-bridging",
+					"${PODS_ROOT}/React-cxxstableapi",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 13.4;
 				LD_RUNPATH_SEARCH_PATHS = (

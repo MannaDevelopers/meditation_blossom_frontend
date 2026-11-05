@@ -96,6 +96,8 @@ src/
 
 | 경로 | 역할 |
 |------|------|
+| `ios/meditation_blossom/SceneDelegate.swift` | UIScene 진입점. RN 시작(`RCTReactNativeFactory`) + 딥링크·위젯 URL 처리 |
+| `ios/meditation_blossom/AppDelegate.mm` | Firebase/FCM/알림 등 앱 단위 이벤트만 (RN 시작·URL 처리는 SceneDelegate) |
 | `ios/WidgetUpdateModule.swift` | RN → iOS 위젯 + App Group 읽기/쓰기 |
 | `ios/MeditationBlossomWidget/MeditationBlossomWidget.swift` | WidgetKit 구현 |
 | `ios/MeditationBlossomWidget/Sermon.swift` | Swift Sermon 모델 (TS 타입 미러) |
@@ -137,6 +139,6 @@ App Group ID: `group.mannachurch.meditationblossom` (앱 + Widget Extension + No
 
 ## Environment
 
-- Node.js >= 22.11.0 (`.nvmrc` 참고), React Native 0.86.2, React 19
+- Node.js >= 22.11.0 (`.nvmrc` 참고), React Native 0.88.1, React 19.3
 - Android: targetSdk 35, minSdk 28, JDK 17
 - iOS: deployment target 16.6, Ruby 3.0+ with CocoaPods

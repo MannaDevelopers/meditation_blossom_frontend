@@ -90,7 +90,7 @@ android {
             signingConfig = signingConfigs.getByName("release")  // release signing 사용
             isMinifyEnabled = enableProguardInReleaseBuilds
             proguardFiles(
-                getDefaultProguardFile("proguard-android.txt"),
+                getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
