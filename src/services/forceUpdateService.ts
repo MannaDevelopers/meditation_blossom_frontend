@@ -1,4 +1,8 @@
-import remoteConfig from '@react-native-firebase/remote-config';
+import {
+  fetchAndActivate,
+  getRemoteConfig,
+  getValue,
+} from '@react-native-firebase/remote-config';
 import { Platform } from 'react-native';
 import { getVersion } from 'react-native-device-info';
 import { ForceUpdateConfig, needsForceUpdate } from '../types/ForceUpdate';
@@ -17,24 +21,26 @@ const DEFAULTS: Record<string, string | boolean> = {
 
 export async function initRemoteConfig(): Promise<void> {
   try {
-    const rc = remoteConfig();
-    await rc.setConfigSettings({ minimumFetchIntervalMillis: __DEV__ ? 0 : 3600000 });
-    await rc.setDefaults(DEFAULTS);
-    await rc.fetchAndActivate();
+    const rc = getRemoteConfig();
+    // v25+ 모듈형 API: settings/defaultConfig setter가 네이티브 반영을 큐에 넣고,
+    // fetchAndActivate()는 그 큐가 끝난 뒤 실행된다.
+    rc.settings = { ...rc.settings, minimumFetchIntervalMillis: __DEV__ ? 0 : 3600000 };
+    rc.defaultConfig = DEFAULTS;
+    await fetchAndActivate(rc);
   } catch (error) {
     logger.error('Failed to fetch Remote Config', error);
   }
 }
 
 export function getForceUpdateConfig(): ForceUpdateConfig {
-  const rc = remoteConfig();
+  const rc = getRemoteConfig();
   return {
-    force_update_enabled: rc.getValue('force_update_enabled').asBoolean(),
-    android_min_version: rc.getValue('android_min_version').asString(),
-    ios_min_version: rc.getValue('ios_min_version').asString(),
-    force_update_message: rc.getValue('force_update_message').asString(),
-    android_store_url: rc.getValue('android_store_url').asString(),
-    ios_store_url: rc.getValue('ios_store_url').asString(),
+    force_update_enabled: getValue(rc, 'force_update_enabled').asBoolean(),
+    android_min_version: getValue(rc, 'android_min_version').asString(),
+    ios_min_version: getValue(rc, 'ios_min_version').asString(),
+    force_update_message: getValue(rc, 'force_update_message').asString(),
+    android_store_url: getValue(rc, 'android_store_url').asString(),
+    ios_store_url: getValue(rc, 'ios_store_url').asString(),
   };
 }
 

@@ -7,7 +7,8 @@ jest.mock('@react-native-firebase/crashlytics', () => ({
 
 jest.mock('@react-native-firebase/analytics', () => ({
   getAnalytics: jest.fn(() => ({})),
-  logEvent: jest.fn(() => Promise.resolve()),
+  // RNFB v26+: 모듈형 logEvent는 동기(void)
+  logEvent: jest.fn(),
   setUserProperty: jest.fn(() => Promise.resolve()),
 }));
 
@@ -107,11 +108,17 @@ jest.mock('@react-native-firebase/remote-config', () => {
     };
     return defaults[key] || { asBoolean: () => false, asString: () => '' };
   });
-  return () => ({
-    setDefaults: jest.fn().mockResolvedValue(undefined),
-    fetchAndActivate: jest.fn().mockResolvedValue(undefined),
-    getValue: mockGetValue,
-  });
+  // RNFB v25+ 모듈형 API: getRemoteConfig()가 settings/defaultConfig를 가진 인스턴스를 돌려주고,
+  // fetchAndActivate/getValue는 인스턴스를 첫 인자로 받는다.
+  const mockInstance = {
+    settings: { minimumFetchIntervalMillis: 43200000, fetchTimeoutMillis: 60000 },
+    defaultConfig: {},
+  };
+  return {
+    getRemoteConfig: jest.fn(() => mockInstance),
+    fetchAndActivate: jest.fn().mockResolvedValue(true),
+    getValue: jest.fn((_rc, key) => mockGetValue(key)),
+  };
 });
 
 // Inject global stubs for native modules so tests that don't mock them explicitly

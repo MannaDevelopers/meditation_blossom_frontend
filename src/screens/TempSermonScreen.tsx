@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, SafeAreaView } from 'react-native';
-import { getFirestore, collection, FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
+import {
+  collection,
+  getDocs,
+  getFirestore,
+  orderBy,
+  query as buildQuery,
+  where,
+} from '@react-native-firebase/firestore';
+import type { Query } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { firestoreDocToSermon, Sermon, SermonMetadata } from '../types/Sermon';
 import logger from '../utils/logger';
@@ -128,20 +136,20 @@ function TempSermonScreen(): React.JSX.Element {
       
       // Firestore 쿼리 준비
       const sermonsCollection = collection(getFirestore(), 'sermons');
-      let query: FirebaseFirestoreTypes.Query = sermonsCollection;
+      let query: Query = sermonsCollection;
       
       // 최신 날짜 기준으로 쿼리 설정
       if (currentMetadata.latestDate) {
         logger.log(`Fetching sermons from date: ${currentMetadata.latestDate}`);
         
         // >= 연산자를 사용해 해당 날짜와 이후의 데이터를 가져옴
-        query = sermonsCollection.where('date', '>=', currentMetadata.latestDate);
+        query = buildQuery(sermonsCollection, where('date', '>=', currentMetadata.latestDate));
       }
       
       // 날짜 기준 내림차순 정렬
-      query = query.orderBy('date', 'desc');
+      query = buildQuery(query, orderBy('date', 'desc'));
       
-      const snapshot = await query.get();
+      const snapshot = await getDocs(query);
       logger.log(`Fetched ${snapshot.docs.length} sermons from server`);
       
       if (snapshot.empty) {
