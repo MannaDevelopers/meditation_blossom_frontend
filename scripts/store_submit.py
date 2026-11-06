@@ -162,7 +162,47 @@ def ios_find_or_create_version(asc: AppStoreConnect, app_id: str, version: str, 
     )["data"]
 
 
-def submit_ios(version: str, notes: str, build_number: str | None, wait_minutes: int, dry_run: bool) -> None:
+def ios_apply_age_rating(asc: AppStoreConnect, app_id: str, overrides: dict, dry_run: bool) -> None:
+    """수정 중인 앱 정보의 연령 등급 설문에서 빈 항목을 보여주고, overrides 값을 입력한다.
+
+    Apple이 설문 항목을 추가하면 기존 앱도 새 항목이 비어 심사 제출이 409로 막힌다.
+    """
+    app_infos = asc.request("GET", f"/v1/apps/{app_id}/appInfos")["data"]
+    if not app_infos:
+        fail("앱 정보(appInfos)를 찾지 못했습니다.")
+    # 출시된 앱 정보가 아닌, 수정 중인 것을 우선 사용
+    released = {"READY_FOR_DISTRIBUTION", "READY_FOR_SALE"}
+    app_info = next(
+        (i for i in app_infos if (i["attributes"].get("state") or i["attributes"].get("appStoreState")) not in released),
+        app_infos[0],
+    )
+    declaration = asc.request("GET", f"/v1/appInfos/{app_info['id']}/ageRatingDeclaration")["data"]
+    empty = sorted(k for k, v in declaration["attributes"].items() if v is None)
+    log(f"연령 등급 설문 빈 항목: {', '.join(empty) or '없음'}")
+
+    unknown = sorted(set(overrides) - set(declaration["attributes"]))
+    if unknown:
+        fail(f"연령 등급 설문에 없는 항목입니다: {', '.join(unknown)}")
+    missing = sorted(set(empty) - set(overrides))
+    if missing:
+        log(f"::warning::값을 지정하지 않은 빈 항목이 남아 있습니다: {', '.join(missing)}")
+
+    if not overrides:
+        return
+    if dry_run:
+        log(f"[dry-run] 연령 등급 입력 예정: {json.dumps(overrides, ensure_ascii=False)}")
+        return
+    log(f"연령 등급 입력: {json.dumps(overrides, ensure_ascii=False)}")
+    asc.request(
+        "PATCH",
+        f"/v1/ageRatingDeclarations/{declaration['id']}",
+        body={"data": {"type": "ageRatingDeclarations", "id": declaration["id"], "attributes": overrides}},
+    )
+
+
+def submit_ios(
+    version: str, notes: str, build_number: str | None, wait_minutes: int, dry_run: bool, age_rating: dict
+) -> None:
     if len(notes) > 4000:
         fail("iOS 업데이트 내용은 4000자 이하여야 합니다.")
 
@@ -180,9 +220,11 @@ def submit_ios(version: str, notes: str, build_number: str | None, wait_minutes:
     app_version = ios_find_or_create_version(asc, app_id, version, dry_run)
     if app_version is not None:
         state = app_version["attributes"].get("appStoreState")
-        log(f"App Store 버전 {version} 상태: {state}")
+        log(f"App Store 버전 {version} 상태: {state}, 출시 방식(releaseType): {app_version['attributes'].get('releaseType')}")
         if state not in ASC_EDITABLE_STATES:
             fail(f"버전 {version} 이 수정 가능한 상태가 아닙니다 ({state}). 이미 제출됐거나 출시된 버전일 수 있습니다.")
+
+    ios_apply_age_rating(asc, app_id, age_rating, dry_run)
 
     if dry_run:
         log(f"[dry-run] 빌드 {build['attributes'].get('version')} 연결, 업데이트 내용 입력, 심사 제출을 건너뜁니다.")
@@ -340,13 +382,24 @@ def main() -> None:
     parser.add_argument("--android-version-code", default="", help="비우면 build.gradle.kts 값 사용")
     parser.add_argument("--android-language", default="ko-KR")
     parser.add_argument("--wait-minutes", type=int, default=60, help="iOS 빌드 처리 대기 시간")
+    parser.add_argument(
+        "--age-rating",
+        default="",
+        help='연령 등급 설문 입력값 JSON (예: {"socialMedia": false}). 비우면 조회만',
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
     notes = require_env("RELEASE_NOTES").strip()
 
     if args.platform == "ios":
-        submit_ios(args.version, notes, args.ios_build_number or None, args.wait_minutes, args.dry_run)
+        try:
+            age_rating = json.loads(args.age_rating) if args.age_rating.strip() else {}
+        except json.JSONDecodeError as e:
+            fail(f"--age-rating JSON 형식 오류: {e}")
+        if not isinstance(age_rating, dict):
+            fail("--age-rating 은 JSON 객체여야 합니다.")
+        submit_ios(args.version, notes, args.ios_build_number or None, args.wait_minutes, args.dry_run, age_rating)
     else:
         submit_android(args.android_version_code or read_android_version_code(), notes, args.android_language, args.dry_run)
 

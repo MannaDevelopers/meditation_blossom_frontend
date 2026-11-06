@@ -25,6 +25,10 @@ on:
         description: Android versionCode (비우면 build.gradle.kts 값)
         required: false
         default: ''
+      ios_age_rating:
+        description: 'iOS 연령 등급 설문 입력 JSON (예 {"socialMedia": false}). 비우면 빈 항목 조회만'
+        required: false
+        default: ''
       dry_run:
         description: 조회·검증만 하고 제출하지 않음
         type: boolean
@@ -57,9 +61,10 @@ jobs:
           RELEASE_NOTES: ${{ inputs.release_notes }}
           VERSION: ${{ inputs.version }}
           BUILD_NUMBER: ${{ inputs.ios_build_number }}
+          AGE_RATING: ${{ inputs.ios_age_rating }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
-          args=(ios --version "$VERSION" --ios-build-number "$BUILD_NUMBER")
+          args=(ios --version "$VERSION" --ios-build-number "$BUILD_NUMBER" --age-rating "$AGE_RATING")
           if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
           python scripts/store_submit.py "${args[@]}"
 
