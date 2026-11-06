@@ -1,0 +1,102 @@
+name: Store Submit
+
+# 태그 빌드(ios-build / android-build)로 TestFlight·Play 내부 트랙에 올라간 빌드를
+# 새로 빌드하지 않고 그대로 심사에 제출한다. 수동 실행 전용.
+#   gh workflow run store-submit.yml -f version=1.2.23 -f release_notes="..." -f dry_run=false
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 제출할 플랫폼
+        type: choice
+        options: [both, ios, android]
+        default: both
+      version:
+        description: 마케팅 버전 (예 1.2.23)
+        required: true
+      release_notes:
+        description: 업데이트 내용 / 출시 노트 (Android는 500자 이하)
+        required: true
+      ios_build_number:
+        description: iOS 빌드 번호 (비우면 해당 버전의 최신 빌드)
+        required: false
+        default: ''
+      android_version_code:
+        description: Android versionCode (비우면 build.gradle.kts 값)
+        required: false
+        default: ''
+      dry_run:
+        description: 조회·검증만 하고 제출하지 않음
+        type: boolean
+        default: true
+
+concurrency:
+  group: store-submit
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    if: inputs.platform == 'both' || inputs.platform == 'ios'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install requests 'PyJWT[crypto]'
+      - name: Submit to App Store review
+        env:
+          ASC_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          VERSION: ${{ inputs.version }}
+          BUILD_NUMBER: ${{ inputs.ios_build_number }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          args=(ios --version "$VERSION" --ios-build-number "$BUILD_NUMBER")
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          python scripts/store_submit.py "${args[@]}"
+
+  android:
+    if: inputs.platform == 'both' || inputs.platform == 'android'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      # versionCode 미입력 시, 제출할 버전 태그의 build.gradle.kts 값을 쓴다
+      # (스크립트는 기본 브랜치 것을 쓰고, 버전 정보만 태그에서 읽음)
+      - name: Resolve versionCode
+        id: vc
+        env:
+          VERSION: ${{ inputs.version }}
+          VERSION_CODE: ${{ inputs.android_version_code }}
+        run: |
+          if [ -z "$VERSION_CODE" ]; then
+            git fetch --depth=1 origin "refs/tags/v$VERSION:refs/tags/v$VERSION"
+            VERSION_CODE=$(git show "v$VERSION:android/app/build.gradle.kts" | sed -nE 's/.*versionCode *= *([0-9]+).*/\1/p' | head -1)
+          fi
+          if [ -z "$VERSION_CODE" ]; then echo "::error::versionCode 를 알 수 없습니다."; exit 1; fi
+          echo "versionCode=$VERSION_CODE"
+          echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install requests google-auth
+      - name: Promote internal release to production
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          VERSION: ${{ inputs.version }}
+          VERSION_CODE: ${{ steps.vc.outputs.code }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          args=(android --version "$VERSION" --android-version-code "$VERSION_CODE")
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          python scripts/store_submit.py "${args[@]}"
