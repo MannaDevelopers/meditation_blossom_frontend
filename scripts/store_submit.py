@@ -201,7 +201,13 @@ def ios_apply_age_rating(asc: AppStoreConnect, app_id: str, overrides: dict, dry
 
 
 def submit_ios(
-    version: str, notes: str, build_number: str | None, wait_minutes: int, dry_run: bool, age_rating: dict
+    version: str,
+    notes: str,
+    build_number: str | None,
+    wait_minutes: int,
+    dry_run: bool,
+    age_rating: dict,
+    release_type: str | None,
 ) -> None:
     if len(notes) > 4000:
         fail("iOS 업데이트 내용은 4000자 이하여야 합니다.")
@@ -220,9 +226,32 @@ def submit_ios(
     app_version = ios_find_or_create_version(asc, app_id, version, dry_run)
     if app_version is not None:
         state = app_version["attributes"].get("appStoreState")
-        log(f"App Store 버전 {version} 상태: {state}, 출시 방식(releaseType): {app_version['attributes'].get('releaseType')}")
+        current_release_type = app_version["attributes"].get("releaseType")
+        log(f"App Store 버전 {version} 상태: {state}, 출시 방식(releaseType): {current_release_type}")
+        if release_type and release_type != current_release_type:
+            if dry_run:
+                log(f"[dry-run] 출시 방식을 {release_type} 로 변경 예정")
+            else:
+                log(f"출시 방식 변경: {current_release_type} → {release_type}")
+                asc.request(
+                    "PATCH",
+                    f"/v1/appStoreVersions/{app_version['id']}",
+                    body={
+                        "data": {
+                            "type": "appStoreVersions",
+                            "id": app_version["id"],
+                            "attributes": {"releaseType": release_type},
+                        }
+                    },
+                )
         if state not in ASC_EDITABLE_STATES:
+            if release_type:
+                # 이미 제출된 버전은 출시 방식만 바꾸고 끝낸다
+                log(f"버전 {version} 은 이미 제출된 상태({state})라 출시 방식만 처리하고 종료합니다.")
+                return
             fail(f"버전 {version} 이 수정 가능한 상태가 아닙니다 ({state}). 이미 제출됐거나 출시된 버전일 수 있습니다.")
+    elif release_type:
+        log(f"[dry-run] 새 버전의 출시 방식은 {release_type} 로 설정 예정")
 
     ios_apply_age_rating(asc, app_id, age_rating, dry_run)
 
@@ -387,6 +416,12 @@ def main() -> None:
         default="",
         help='연령 등급 설문 입력값 JSON (예: {"socialMedia": false}). 비우면 조회만',
     )
+    parser.add_argument(
+        "--ios-release-type",
+        choices=["MANUAL", "AFTER_APPROVAL", "KEEP"],
+        default="MANUAL",
+        help="승인 후 출시 방식. MANUAL=수동 출시. 이미 제출된 버전이면 출시 방식만 바꾸고 종료",
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
@@ -399,7 +434,15 @@ def main() -> None:
             fail(f"--age-rating JSON 형식 오류: {e}")
         if not isinstance(age_rating, dict):
             fail("--age-rating 은 JSON 객체여야 합니다.")
-        submit_ios(args.version, notes, args.ios_build_number or None, args.wait_minutes, args.dry_run, age_rating)
+        submit_ios(
+            args.version,
+            notes,
+            args.ios_build_number or None,
+            args.wait_minutes,
+            args.dry_run,
+            age_rating,
+            None if args.ios_release_type == "KEEP" else args.ios_release_type,
+        )
     else:
         submit_android(args.android_version_code or read_android_version_code(), notes, args.android_language, args.dry_run)
 

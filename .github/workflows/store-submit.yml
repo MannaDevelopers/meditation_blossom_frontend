@@ -29,6 +29,11 @@ on:
         description: 'iOS 연령 등급 설문 입력 JSON (예 {"socialMedia": false}). 비우면 빈 항목 조회만'
         required: false
         default: ''
+      ios_release_type:
+        description: 'iOS 승인 후 출시 방식 (MANUAL=수동 출시). 이미 제출된 버전이면 출시 방식만 변경'
+        type: choice
+        options: [MANUAL, AFTER_APPROVAL, KEEP]
+        default: MANUAL
       dry_run:
         description: 조회·검증만 하고 제출하지 않음
         type: boolean
@@ -62,9 +67,10 @@ jobs:
           VERSION: ${{ inputs.version }}
           BUILD_NUMBER: ${{ inputs.ios_build_number }}
           AGE_RATING: ${{ inputs.ios_age_rating }}
+          RELEASE_TYPE: ${{ inputs.ios_release_type }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
-          args=(ios --version "$VERSION" --ios-build-number "$BUILD_NUMBER" --age-rating "$AGE_RATING")
+          args=(ios --version "$VERSION" --ios-build-number "$BUILD_NUMBER" --age-rating "$AGE_RATING" --ios-release-type "$RELEASE_TYPE")
           if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
           python scripts/store_submit.py "${args[@]}"
 
