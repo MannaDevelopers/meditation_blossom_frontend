@@ -24,6 +24,13 @@
 -keep class app.mannadev.meditation.widget.** { *; }
 -keep class app.mannadev.meditation.service.** { *; }
 
+# [HOTFIX] v1.2.23 위젯 탭 무반응 회귀: ui.widget 패키지의 YoutubeLinkClickAction(Glance
+# ActionCallback)은 actionRunCallback<T>() 제네릭 인자로만 참조되어 R8이 도달 불가능한 코드로
+# 보고 제거/난독화한다. proguard-android-optimize.txt 전환([#342], v1.2.23) 이후 기본 생성자가
+# 벗겨져 리플렉션 인스턴스화가 실패, 위젯을 눌러도 앱/유튜브로 이동하지 않았다.
+-keep class app.mannadev.meditation.ui.widget.** { *; }
+-keep class * extends androidx.glance.appwidget.action.ActionCallback { <init>(); }
+
 # kotlinx-serialization: DTO 및 @Serializable 클래스의 생성된 serializer 유지
 -keepclassmembers @kotlinx.serialization.Serializable class app.mannadev.meditation.** {
     *** Companion;
